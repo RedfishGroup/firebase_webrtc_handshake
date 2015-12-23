@@ -1,0 +1,34 @@
+<html>
+  <head>
+    <script src="../jspm_packages/system.js"></script>
+    <script src="../config.js"></script>
+    <script src="../bower_components/webrtc-adapter/adapter.js"></script>
+    <script>
+      "use strict";
+      System.config({
+        baseURL:"../"
+      });
+      System.import('tests/testPeerJS')
+
+      function sendToPeer1() {
+        var el = document.getElementById('peer1input')
+        client1.connection.send(el.value)
+      }
+    </script>
+  </head>
+  <body>
+    <h1> WebRTC connected through firebase </h1>
+    <h3>   Two clients connect to a simple server that capitalizes the request and send it back. </h3>
+    <hr>
+    <div id="client1">Client 1 <br>
+      <input type="text" id="peer1input"></input>
+      <button onclick="sendToPeer1()">send</button>
+      <br>
+    </div><hr>
+    <div id="client2">Client 2 <br>
+    </div><hr>
+    <div id="server">Server <br> </div><hr>
+    <div id="log">
+    </div>
+  </body>
+</html>
