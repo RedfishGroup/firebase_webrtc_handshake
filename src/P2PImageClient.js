@@ -1,6 +1,6 @@
-import Peer from "../bower_components/simple-peer/simplepeer.min"
-import "../bower_components/firebase/firebase"
-import {settings} from "../src/settings"
+import Peer from "../bower_components/simple-peer/simplepeer.min.js"
+import "../bower_components/firebase/firebase.js"
+import {settings} from "../src/settings.js"
 
 export class P2PImageClient{
   constructor(options={}) {

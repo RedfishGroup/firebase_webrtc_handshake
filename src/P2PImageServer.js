@@ -1,7 +1,7 @@
-import Peer from "../bower_components/simple-peer/simplepeer.min"
-import "../bower_components/firebase/firebase"
-import {settings} from "../src/settings"
-import {Evented} from "../src/Evented"
+import Peer from "../bower_components/simple-peer/simplepeer.min.js"
+import "../bower_components/firebase/firebase.js"
+import {settings} from "../src/settings.js"
+import {Evented} from "../src/Evented.js"
 
 export class P2PImageServer extends Evented{
   constructor(options={}) {
