@@ -1,3 +1,3 @@
 export var settings={
-  firebaseURL : "https://livetexture.firebaseio.com/cam_tri/",
+  firebaseURL : "https://torrid-torch-716.firebaseio.com/",
 }
