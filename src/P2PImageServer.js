@@ -30,7 +30,7 @@ export class P2PImageServer extends Evented{
   }
 
   listenToChannels() {
-    // when a new channel is added listen to it
+    // when a new channel is added, listen to it.
     this.channelRef.on('child_added', (ev, prevKey)=>{
       if(this.connections.length > this.MAX_CONNECTIONS) {
         console.error('Too many connections. TODO:close/remove old stail connections')
