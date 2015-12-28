@@ -1,14 +1,14 @@
 <html>
   <head>
-    <script src="../jspm_packages/system.js"></script>
-    <script src="../config.js"></script>
+    <script src="../bower_components/system.js/dist/system.src.js"></script>
     <script src="../bower_components/webrtc-adapter/adapter.js"></script>
     <script>
       "use strict";
       System.config({
+        transpiler: 'bower_components/babel/browser.min.js',
         baseURL:"../"
       });
-      System.import('tests/testPeerJS')
+      System.import('tests/testPeerJS.js')
 
       function sendToPeer1() {
         var el = document.getElementById('peer1input')
