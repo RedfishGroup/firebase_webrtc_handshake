@@ -1,0 +1,15 @@
+{
+  "name": "simple-peer",
+  "homepage": "https://github.com/gauravtiwari/simple-peer",
+  "version": "5.11.4",
+  "_release": "5.11.4",
+  "_resolution": {
+    "type": "version",
+    "tag": "v5.11.4",
+    "commit": "f6cff502a29c8b0e84ac4ea16a95d38562f1ccfb"
+  },
+  "_source": "git://github.com/gauravtiwari/simple-peer.git",
+  "_target": "~5.11.4",
+  "_originalSource": "simple-peer",
+  "_direct": true
+}
