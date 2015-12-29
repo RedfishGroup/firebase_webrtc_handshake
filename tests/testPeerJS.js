@@ -4,11 +4,11 @@ import {P2PImageClient} from "../src/P2PImageClient.js"
 //
 // make a very simple server that capitalizes the object coming in.
 //
-window.p2ps = new P2PImageServer({id:'plumkin capitiliztion server' + Math.floor(10000*Math.random())})
-p2ps.on('connect', function(args){
+window.server = new P2PImageServer({id:'plumkin capitiliztion server' + Math.floor(10000*Math.random())})
+server.on('connect', function(args){
   sendToDiv('server', 'client connected to the server')
 })
-p2ps.on('data', function(args){
+server.on('data', function(args){
   sendToDiv('server', 'server recieved data:' + args.data)
   //capitalize the response
   args.peer.send(args.data.toUpperCase())
@@ -18,7 +18,7 @@ p2ps.on('data', function(args){
 //
 //    the first peer
 window.client1 = new P2PImageClient()
-client1.connectToPeerID(p2ps.id, function(err, connection) {
+client1.connectToPeerID(server.id, function(err, connection) {
   connection.on('connect', function () {
     sendToDiv('client1', "CONNECTED")
     connection.send("hello world")
@@ -30,7 +30,7 @@ client1.connectToPeerID(p2ps.id, function(err, connection) {
 })
 // the second peer
 window.client2 = new P2PImageClient()
-client2.connectToPeerID(p2ps.id, function(err, connection) {
+client2.connectToPeerID(server.id, function(err, connection) {
   connection.on('connect', function () {
     sendToDiv('client2', "CONNECTED")
     connection.send("hello mars")

@@ -29,6 +29,13 @@ export class P2PImageServer extends Evented{
     this.listenToChannels()
   }
 
+  sendToAll( data) {
+    for(var conx of this.connections) {
+      console.log(conx)
+      conx.peer.send(data)
+    }
+  }
+
   listenToChannels() {
     // when a new channel is added, listen to it.
     this.channelRef.on('child_added', (ev, prevKey)=>{

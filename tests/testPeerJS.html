@@ -11,11 +11,16 @@
         },
         //baseURL:"../"
       });
-      System.import('../tests/testPeerJS.js')
+      System.import('./testPeerJS.js')
 
       function sendToPeer1() {
         var el = document.getElementById('peer1input')
         client1.connection.send(el.value)
+      }
+
+      function sendToAll() {
+        var el = document.getElementById('serverinput')
+        server.sendToAll(el.value)
       }
     </script>
   </head>
@@ -30,7 +35,11 @@
     </div><hr>
     <div id="client2">Client 2 <br>
     </div><hr>
-    <div id="server">Server <br> </div><hr>
+    <div id="server">Server <br>
+      <input type="text" id="serverinput"></input>
+      <button onclick="sendToAll()">send to all</button>
+    </div>
+    <hr>
     <div id="log">
     </div>
   </body>
