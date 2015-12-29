@@ -1,4 +1,4 @@
-import "../bower_components/underscore/underscore-min.js"
+import "bower_components/underscore/underscore-min.js"
 
 export class Evented {
   constructor() {
