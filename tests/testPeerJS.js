@@ -1,5 +1,5 @@
-import {P2PImageServer} from "src/P2PImageServer.js"
-import {P2PImageClient} from "src/P2PImageClient.js"
+import {P2PImageServer} from "../src/P2PImageServer.js"
+import {P2PImageClient} from "../src/P2PImageClient.js"
 
 //
 // make a very simple server that capitalizes the object coming in.

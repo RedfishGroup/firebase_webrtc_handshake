@@ -6,9 +6,12 @@
       "use strict";
       System.config({
         transpiler: 'bower_components/babel/browser.min.js',
-        baseURL:"../"
+        paths: {
+          "bower_components/*":"../bower_components/*"
+        },
+        //baseURL:"../"
       });
-      System.import('tests/testPeerJS.js')
+      System.import('../tests/testPeerJS.js')
 
       function sendToPeer1() {
         var el = document.getElementById('peer1input')
