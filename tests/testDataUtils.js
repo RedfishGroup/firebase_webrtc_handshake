@@ -5,7 +5,7 @@ function test1chunking() {
   var zeroApeared = false
   // fill array with random values between 1 and something
   console.log(dtls)
-  var a = new ArrayBuffer(60000)
+  var a = new ArrayBuffer(4*2056*2056) // a good resolution for an image, rgba
   var aview = new Uint8Array(a)
   for(var j=0; j<aview.length; j++){
     aview[j] = Math.random()*100 + 1
@@ -30,8 +30,6 @@ function test1chunking() {
     console.log('chunking test passed')
   }
 }
-
-
 
 function runTests() {
   test1chunking()
