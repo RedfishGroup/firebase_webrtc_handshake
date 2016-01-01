@@ -59,3 +59,23 @@ function sendToDiv(id, text) {
   var el = document.getElementById(id)
   el.innerHTML += "...." + text + " <br>"
 }
+
+//
+// test if blob support is in yet
+//
+function testBlobSupport(){
+  var client = new P2PImageClient()
+  client.connectToPeerID(server.id, function(err, connection) {
+    connection.on('connect',function(){
+        try{
+          connection.send( new Blob(new Uint8Array(1234), {type: 'image/png'}))
+          alert('blobs are now supported. This warrents a re-write of some stuff')
+          sendToDiv('server','Blobs are now suported')
+        } catch(err2) {
+          console.error(err2)
+          sendToDiv('server','Blobs are still not supported')
+        }
+    })
+  })
+}
+testBlobSupport()

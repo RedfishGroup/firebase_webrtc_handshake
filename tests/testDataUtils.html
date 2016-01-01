@@ -7,14 +7,26 @@
       System.config({
         transpiler: 'bower_components/babel/browser.min.js',
         paths: {
-          "bower_components/*" : "../bower_components/*", 
+          "bower_components/*" : "../bower_components/*",
           "src/*" : "../src/*"
         },
-        //baseURL:"../"
       });
-      System.import('./testDataUtils.js')
+      System.import("./testDataUtils.js")
     </script>
   </head>
   <body>
+    <h1> test the chunking of webRTC </h1>
+    <hr>
+    <div>
+      The problem we are having is that Chrome does not yet support sending blobs over webRTC.
+      So we send array buffers instead.
+      <br>
+      The second problem is that when one sends arraybuffers across webrtc, there is a maximum size.
+      If your data is bigger than that, it automatically get broken up into smaller peices.
+      <br>
+      I am not sure if sending blobs will fix the problem of the data being broken into peices.
+    </div>
+    <hr>
+    <div id="tests"></div>
   </body>
 </html>

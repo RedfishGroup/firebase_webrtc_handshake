@@ -1,4 +1,6 @@
 import * as dtls from "src/dataUtils.js"
+import {P2PImageServer} from "../src/P2PImageServer.js"
+import {P2PImageClient} from "../src/P2PImageClient.js"
 
 function test1chunking() {
   var pass = true
@@ -31,8 +33,40 @@ function test1chunking() {
   }
 }
 
+function logMessage(messageHTML){
+  var dv = document.getElementById('tests')
+  dv.innerHTML += messageHTML
+  console.log(messageHTML)
+}
+
+function testBlobSupport(){
+  var server = new P2PImageServer({id:'blob test ' + Math.floor(10000*Math.random())})
+  var client = new P2PImageClient()
+  client.connectToPeerID(server.id, function(err, connection) {
+    connection.on('connect',function(){
+        try{
+          connection.send( new Blob(new Uint8Array(1234), {type: 'image/png'}))
+          alert('blobs are now supported. This warrents a re-write of some stuff')
+          logMessage('<div> Test Blob support: Blobs are now suported</div>')
+        } catch(err2) {
+          console.error(err2)
+          logMessage('<div> Test Blob support: Blobs are still not supported</div>')
+        }
+    })
+  })
+}
+
 function runTests() {
-  test1chunking()
+  // 1
+  try{
+    test1chunking()
+    logMessage( "<div>Test Chunking: Passed</div>")
+  } catch(e) {
+    console.error(e)
+    logMessage( "<div>Test Chunking <b>Failed</b>. See console for details</div>")
+  }
+  // 2
+  testBlobSupport()
 }
 
 runTests()
