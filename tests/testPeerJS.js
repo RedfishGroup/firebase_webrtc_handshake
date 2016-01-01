@@ -1,6 +1,8 @@
 import {P2PImageServer} from "../src/P2PImageServer.js"
 import {P2PImageClient} from "../src/P2PImageClient.js"
 
+window.P2PImageClient = P2PImageClient
+window.P2PImageServer = P2PImageServer
 //
 // make a very simple server that capitalizes the object coming in.
 //
