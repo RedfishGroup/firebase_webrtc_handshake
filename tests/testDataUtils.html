@@ -21,7 +21,7 @@
       The problem we are having is that Chrome does not yet support sending blobs over webRTC.
       So we send array buffers instead.
       <br>
-      The second problem is that when one sends arraybuffers across webrtc, there is a maximum size.
+      The second problem is that when one sends arraybuffers across webrtc, there is a maximum size(It apears to be 2^16 in chrome 47).
       If your data is bigger than that, it automatically get broken up into smaller peices.
       <br>
       I am not sure if sending blobs will fix the problem of the data being broken into peices.

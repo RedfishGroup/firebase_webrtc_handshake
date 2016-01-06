@@ -56,6 +56,54 @@ function testBlobSupport(){
   })
 }
 
+var testIfItGetsFragmented = function(){
+  console.log('testing fragmentation of message')
+  var bufferSize = Math.pow(2,18)
+  window.server3frag = new P2PImageServer({id:'auto fragmentation test ' + Math.floor(10000*Math.random())})
+  window.client3frag = new P2PImageClient()
+  var chunkCount=0
+  var chunksizes=[]
+  var passed = 0
+  var timeoutID
+  // server and client listeners
+  server3frag.on('connect', function(args){
+    //console.log('server 3:', 'client connected to the server')
+  })
+  server3frag.on('data', function(args){
+    //console.log('server 3 recieved data', args)
+    chunkCount ++
+    chunksizes.push(args.data.length)
+    clearTimeout(timeoutID)
+    timeoutID = setTimeout(()=>{
+      if(chunkCount > 1) {
+        logMessage(`Message Fragmented: message was broken into ${chunkCount} chunks`)
+        logMessage(`. The original message size was ${bufferSize}. The chunk sizes were `)
+        for(var cs of chunksizes) {
+          logMessage(`${cs}, `)
+        }
+        console.log('chunk sizes were', chunksizes)
+      } else {
+        logMessage(`Message in 1 peice: message was in ${chunkCount} chunk`)
+      }
+    },1000)
+  })
+  client3frag.connectToPeerID(server3frag.id, function(err, connection) {
+    connection.on('error', function(){
+      console.warn('error in fragmentation test')
+    })
+    connection.on('connect',function(){
+      //console.log('client 3 connected to', server3frag)
+      // prep data
+      var a = new ArrayBuffer(bufferSize) // a good resolution for an image, rgba
+      var aview = new Uint8Array(a)
+      for(var j=0; j<aview.length; j++){
+        aview[j] = Math.random()*100 + 1
+      }
+      connection.send(a)
+    })
+  })
+}
+
 function runTests() {
   // 1
   try{
@@ -67,6 +115,8 @@ function runTests() {
   }
   // 2
   testBlobSupport()
+  // 3
+  testIfItGetsFragmented()
 }
 
 runTests()
