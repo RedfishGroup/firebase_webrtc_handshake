@@ -2,6 +2,21 @@ import * as dtls from "src/dataUtils.js"
 import {P2PImageServer} from "../src/P2PImageServer.js"
 import {P2PImageClient} from "../src/P2PImageClient.js"
 
+function runTests() {
+  // 1
+  try{
+    test1chunking()
+    logMessage( "<div>Test Chunking: Passed</div>")
+  } catch(e) {
+    console.error(e)
+    logMessage( "<div>Test Chunking <b>Failed</b>. See console for details</div>")
+  }
+  // 2
+  testBlobSupport()
+  // 3
+  testIfItGetsFragmented()
+}
+
 function test1chunking() {
   var pass = true
   var zeroApeared = false
@@ -59,8 +74,8 @@ function testBlobSupport(){
 var testIfItGetsFragmented = function(){
   console.log('testing fragmentation of message')
   var bufferSize = Math.pow(2,18)
-  window.server3frag = new P2PImageServer({id:'auto fragmentation test ' + Math.floor(10000*Math.random())})
-  window.client3frag = new P2PImageClient()
+  var server3frag = new P2PImageServer({id:'auto fragmentation test ' + Math.floor(10000*Math.random())})
+  var client3frag = new P2PImageClient()
   var chunkCount=0
   var chunksizes=[]
   var passed = 0
@@ -102,21 +117,6 @@ var testIfItGetsFragmented = function(){
       connection.send(a)
     })
   })
-}
-
-function runTests() {
-  // 1
-  try{
-    test1chunking()
-    logMessage( "<div>Test Chunking: Passed</div>")
-  } catch(e) {
-    console.error(e)
-    logMessage( "<div>Test Chunking <b>Failed</b>. See console for details</div>")
-  }
-  // 2
-  testBlobSupport()
-  // 3
-  testIfItGetsFragmented()
 }
 
 runTests()
