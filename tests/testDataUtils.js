@@ -92,13 +92,10 @@ var testIfItGetsFragmented = function(){
     timeoutID = setTimeout(()=>{
       if(chunkCount > 1) {
         logMessage(`Message Fragmented: message was broken into ${chunkCount} chunks`)
-        logMessage(`. The original message size was ${bufferSize}. The chunk sizes were `)
-        for(var cs of chunksizes) {
-          logMessage(`${cs}, `)
-        }
+        logMessage(`. The original message size was ${bufferSize} bytes. The chunk sizes were ${chunksizes.toString()}`)
         console.log('chunk sizes were', chunksizes)
       } else {
-        logMessage(`Message in 1 peice: message was in ${chunkCount} chunk`)
+        logMessage(`Message was in ${chunkCount} chunk.`)
       }
     },1000)
   })
