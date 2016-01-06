@@ -73,7 +73,7 @@ function testBlobSupport(){
 
 var testIfItGetsFragmented = function(){
   console.log('testing fragmentation of message')
-  var bufferSize = Math.pow(2,18)
+  var bufferSize = Math.pow(2,17)// 66528 looks like the max size per chunk
   var server3frag = new P2PImageServer({id:'auto fragmentation test ' + Math.floor(10000*Math.random())})
   var client3frag = new P2PImageClient()
   var chunkCount=0
