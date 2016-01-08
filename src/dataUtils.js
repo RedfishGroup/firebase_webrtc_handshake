@@ -2,26 +2,26 @@ var CHUNK_SIZE = Math.pow(2,14) // size in bytes of the chunks breakArrayBufferI
 // this seems like a good guess
 
 // prepare data for tranposrt across the webrtc socket.(is socket the right word?)
-// It probably should support responseTypes of "arraybuffer", "blob", "json", and "text" kind of like xmlhttprequests
-export var repsonseTypes = {
-  arraybuffer:"arraybuffer",
-  blob:"blob", //not currently supported by chrome, It should be converted into an array buffer first...for now(hopefully).
-  json:"json",
-  text:"text",
+// It probably should support dataTypes of "arraybuffer", "blob", "json", and "text" kind of like xmlhttprequests
+export var dataType = {
+  arraybuffer: new ArrayBuffer().toString(),
+  blob: new Blob().toString(), //not currently supported by chrome, It should be converted into an array buffer first...for now(hopefully).
+  object: typeof {a:1},
+  string: typeof " ",
 }
 
 export class webRTCpayload {
   constructor(obj) {
     this.messages = []
-    if(typeof obj == "object") {
-      if(obj.toString() == "[object ArrayBuffer]") {
+    if(typeof obj == dataType.object) {
+      if(obj.toString() == dataType.arraybuffer) {
         this.messages = this._generateArrayBufferMessages(obj)
-      } else if(obj.toString() == "[object Blob]") {
-
+      } else if(obj.toString() == dataType.blob) {
+        throw('sorry not implemented yet')
       } else {  //just a normal object
         this.messages = this._generateJSONMessages(obj)
       }
-    } else if(typeof obj == "string") {
+    } else if(typeof obj == dataType.string) {
       this.messages = this._generateTextMessages(obj)
     } else {
       // just going to assume it is a typed array
@@ -31,7 +31,7 @@ export class webRTCpayload {
 
   _generateArrayBufferMessages(obj) {
     var msg1 = {
-      responseType : responseTypes.arraybuffer,
+      dataType : dataTypes.arraybuffer,
       length : obj.byteLength,
     }
     var chunks = breakArrayBufferIntoChunks(obj)
@@ -41,14 +41,14 @@ export class webRTCpayload {
 
   _generateTextMessages(obj) {
     return [{
-      responseType : responseTypes.text,
+      dataType : dataTypes.string,
       data : obj
     }]
   }
 
   _generateJSONMessages(obj) {
     return [{
-      responseType : responseTypes.json,
+      dataType : dataTypes.json,
       data : obj
     }]
   }

@@ -13,7 +13,12 @@ server.on('connect', function(args){
 server.on('data', function(args){
   sendToDiv('server', 'server recieved data:' + args.data)
   //capitalize the response
-  args.peer.send(args.data.toUpperCase())
+  try{
+    args.peer.send(args.data.toUpperCase())
+  } catch(err) {
+    console.warn((err));
+    console.log(args.data)
+  }
 })
 
 // connect to a server twice
