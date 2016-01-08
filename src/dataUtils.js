@@ -1,4 +1,7 @@
-var CHUNK_SIZE = Math.pow(2,14) // size in bytes of the chunks breakArrayBufferIntoChunks will use
+import * as SparkMD5 from "bower_components/SparkMD5/spark-md5.js"
+console.log(SparkMD5)
+
+var CHUNK_SIZE = Math.pow(2,12) // size in bytes of the chunks breakArrayBufferIntoChunks will use
 // this seems like a good guess
 
 // prepare data for tranposrt across the webrtc socket.(is socket the right word?)
@@ -86,14 +89,17 @@ export function arrayToBlobToImage(data, type, cb){
 }
 
 export function arrayBufferToChunks(buff) {
-  console.time('chunk')
+  console.time('chunks')
   var result = []
   for(var i=0; i<buff.byteLength; i+=CHUNK_SIZE) {
     var chunksize = Math.min(buff.byteLength-i, CHUNK_SIZE)
     var chunk = new Uint8Array( buff, i, chunksize)
+    SparkMD5.ArrayBuffer.hash(chunk)
+    //var slice = chunk.slice(0,128)//for speed I will just look at the first n bytes
+    //rush.digestFromArrayBuffer(slice)
     result.push(chunk)
   }
-  console.timeEnd('chunk')
+  console.timeEnd('chunks')
   return result
 }
 

@@ -21,6 +21,8 @@
     "underscore": "~1.8.3",
     "webrtc-adapter": "~0.2.5",
     "system.js": "~0.19.9",
-    "babel": "*"
+    "babel": "*",
+    "bson": "https://github.com/mongodb/js-bson.git",
+    "binary-protocol": "https://github.com/codemix/binary-protocol.git#~0.0.0"
   }
 }
