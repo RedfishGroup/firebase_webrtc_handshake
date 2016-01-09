@@ -8,7 +8,7 @@ window.spark = SparkMD5
 window.binarize = binarize
 window.rusha = rusha
 
-var CHUNK_SIZE = Math.pow(2,15) // size in bytes of the chunks breakArrayBufferIntoChunks will use
+var CHUNK_SIZE = Math.pow(2,16) // size in bytes of the chunks breakArrayBufferIntoChunks will use
 window.rushwork = new Worker("../bower_components/Rusha/rusha.min.js")
 
 // this seems like a good guess
@@ -103,19 +103,27 @@ export function arrayBufferToChunks(buff) {
   console.time('chunks')
   var result = []
   var wholeshebang = new Uint8Array(buff)
+  var msgcount = 0
+  rushwork.onmessage = function(){
+    //console.log(arguments)
+    msgcount++
+    if(msgcount == result.length){
+      console.timeEnd('chunks')
+    }
+  }
   for(var i=0; i<buff.byteLength; i+=CHUNK_SIZE) {
     var chunksize = Math.min(buff.byteLength-i, CHUNK_SIZE)
     //var chunk = new Uint8Array( buff, i, chunksize)
-    var chunk = wholeshebang.slice(i, chunksize)
-    var id = new Uint8Array(idSize);
-    for(var j=0; j<idSize; j++){ id[j] = Math.floor(Math.random()*255)}
-    rushwork.onmessage = function(){console.log("hello")}
-    rushwork.postMessage({id:id, data:chunk})
+    var chunk = wholeshebang.slice(i, i+chunksize)
+    var id = "id"+Math.floor(Math.random()*1000000)//new Uint8Array(idSize);
+    //for(var j=0; j<idSize; j++){ id[j] = Math.floor(Math.random()*255)}
+    //rushwork.postMessage({id:id, data:chunk})
     //var slice = chunk.slice(0,256)//for speed I will just look at the first n bytes
     //SparkMD5.ArrayBuffer.hash(chunk)
     //rush.digestFromArrayBuffer(chunk)
+    //console.log(chunk.length)
     //console.log(chunk.byteLength)
-    //var b = binarize.pack({id:id, chunk:chunk},function(){})
+    var b = binarize.pack({id:id, chunk:chunk},function(){})
     result.push(chunk)
   }
   console.timeEnd('chunks')
