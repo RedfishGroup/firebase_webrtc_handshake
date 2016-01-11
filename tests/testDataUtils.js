@@ -1,6 +1,7 @@
 import * as dtls from "src/dataUtils.js"
 import {P2PImageServer} from "../src/P2PImageServer.js"
 import {P2PImageClient} from "../src/P2PImageClient.js"
+import * as binarize from "bower_components/binarize.js/src/binarize.js"
 
 function runTests() {
   // 1
@@ -15,6 +16,8 @@ function runTests() {
   testBlobSupport()
   // 3
   testIfItGetsFragmented()
+  // 4
+  testImage()
 }
 
 function test1chunking() {
@@ -46,6 +49,29 @@ function test1chunking() {
   } else {
     console.log('chunking test passed')
   }
+}
+
+function testImage(){
+  var im = new Image()
+  im.onload = function(){
+    console.log('Image loaded')
+    dtls.imageToBlob(im, function(blob){
+      dtls.generateWebRTCpayload(blob, function(val){
+        console.log('fsgsdfg', val)
+        var stillbin = dtls.unChunk(val.chunks)
+        console.log('binary unchunked:',stillbin)
+        binarize.unpack(stillbin.buffer, function(bob){
+          console.time('arrayToBlobToImage')
+          var url = URL.createObjectURL(bob)
+          logMessage('Image check<br>')
+          logMessage(`<img src="${url}" />`)
+          console.timeEnd('arrayToBlobToImage')
+          //document.body.appendChild(img)
+        })
+      })
+   })
+  }
+  im.src = "owls.jpg"
 }
 
 function logMessage(messageHTML){

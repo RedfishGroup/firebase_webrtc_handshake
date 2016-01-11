@@ -1,18 +1,21 @@
 import * as binarize from "bower_components/binarize.js/src/binarize.js"
+import "bower_components/JavaScript-Canvas-to-Blob/js/canvas-to-blob.min.js"
+
 console.log('binarize',binarize)
 
 var CHUNK_SIZE = Math.pow(2,14) // size in bytes of the chunks breakArrayBufferIntoChunks will use
+var drawingCanvas // this is a canvas used by imageToBlob
 
 //
 // @param  {Function} callback []
 //
 export function generateWebRTCpayload(obj, callback) {
   console.time('generateWebRTCpayload')
-  binarize(obj, function(bin){
+  binarize.pack(obj, function(bin){
     var header = {
       chunked:false,
     }
-    var chunks = arrayBufferToChunks(bin)
+    var chunks = arrayBufferToChunks(bin.buffer)
     header.chunked = true
     header.chunkIDs = []
     for(var i in chunks) {
@@ -64,17 +67,14 @@ export function unChunk(chunks) {
   return result
 }
 
-export function arrayToBlobToImage(data, type, cb){
-  console.time('arrayToBlobToImage')
-  var bob = new Blob([data], {type:type})
-  var url = URL.createObjectURL(bob)
-  var img = new Image()
-  img.onload = function(){
-    URL.revokeObjectURL(this.src)
-    if(cb){cb(img)}
+export function imageToBlob(img, cb) {
+  if(!drawingCanvas) {
+    drawingCanvas = document.createElement('canvas')
   }
-  img.src = url
-  console.timeEnd('arrayToBlobToImage')
-  document.body.appendChild(img)
-  console.log('blob',bob)
+  drawingCanvas.width = img.width
+  drawingCanvas.height = img.height
+  drawingCanvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height)
+  drawingCanvas.toBlob(function(blob){
+    cb(blob)
+  })
 }
