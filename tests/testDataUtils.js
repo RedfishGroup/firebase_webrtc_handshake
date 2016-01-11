@@ -116,4 +116,4 @@ var testIfItGetsFragmented = function(){
   })
 }
 
-runTests()
+setTimeout(runTests,1)

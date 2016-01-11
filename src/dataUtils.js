@@ -1,82 +1,64 @@
-import * as SparkMD5 from "bower_components/SparkMD5/spark-md5.js"
-import rusha from "bower_components/Rusha/rusha.min.js"
 import * as binarize from "bower_components/binarize.js/src/binarize.js"
-
-console.log(SparkMD5)
 console.log('binarize',binarize)
-window.spark = SparkMD5
-window.binarize = binarize
-window.rusha = rusha
 
-var CHUNK_SIZE = Math.pow(2,15) // size in bytes of the chunks breakArrayBufferIntoChunks will use
-window.rushwork = new Worker("../bower_components/Rusha/rusha.min.js")
+var CHUNK_SIZE = Math.pow(2,14) // size in bytes of the chunks breakArrayBufferIntoChunks will use
 
-// this seems like a good guess
-
-// prepare data for tranposrt across the webrtc socket.(is socket the right word?)
-// It probably should support dataTypes of "arraybuffer", "blob", "json", and "text" kind of like xmlhttprequests
-export var dataType = {
-  arraybuffer: new ArrayBuffer().toString(),
-  blob: new Blob().toString(), //not currently supported by chrome, It should be converted into an array buffer first...for now(hopefully).
-  object: typeof {a:1},
-  string: typeof " ",
+//
+// @param  {Function} callback []
+//
+export function generateWebRTCpayload(obj, callback) {
+  console.time('generateWebRTCpayload')
+  binarize(obj, function(bin){
+    var header = {
+      chunked:false,
+    }
+    var chunks = arrayBufferToChunks(bin)
+    header.chunked = true
+    header.chunkIDs = []
+    for(var i in chunks) {
+      header.chunkIDs.push(i)
+    }
+    console.timeEnd('generateWebRTCpayload')
+    callback({header:header, chunks:chunks})
+  })
 }
 
-export class webRTCpayload {
-  constructor(obj) {
-    this.messages = []
-    if(typeof obj == dataType.object) {
-      if(obj.toString() == dataType.arraybuffer) {
-        this.messages = this._generateArrayBufferMessages(obj)
-      } else if(obj.toString() == dataType.blob) {
-        throw('sorry not implemented yet')
-      } else {  //just a normal object
-        this.messages = this._generateJSONMessages(obj)
-      }
-    } else if(typeof obj == dataType.string) {
-      this.messages = this._generateTextMessages(obj)
-    } else {
-      // just going to assume it is a typed array
-      console.warn('type not recognised...')
-    }
+export function arrayBufferToChunks(buff) {
+  console.time('chunks')
+  var result = {}
+  var wholeshebang = new Uint8Array(buff)
+  var count = 0
+  for(var i=0; i<buff.byteLength; i+=CHUNK_SIZE) {
+    var chunksize = Math.min(buff.byteLength-i, CHUNK_SIZE)
+    var chunk = wholeshebang.slice(i, i+chunksize)
+    var id = "id_"+Math.floor(Math.random()*100000000)//new Uint8Array(idSize);
+    binarize.pack({id:id, chunk:chunk},function(chbin){
+        result[id] = chbin
+    })//event though this is taking a calback i am pretty sure it executes synchronously on array buffers
+    count ++
   }
-
-  _generateArrayBufferMessages(obj) {
-    var msg1 = {
-      dataType : dataTypes.arraybuffer,
-      length : obj.byteLength,
-    }
-    var chunks = breakArrayBufferIntoChunks(obj)
-    var msgs = [msg1].concat(chunks)
-    return msgs
-  }
-
-  _generateTextMessages(obj) {
-    return [{
-      dataType : dataTypes.string,
-      data : obj
-    }]
-  }
-
-  _generateJSONMessages(obj) {
-    return [{
-      dataType : dataTypes.json,
-      data : obj
-    }]
-  }
+  console.timeEnd('chunks')
+  console.log(`generated ${count} chunks`)
+  return result
 }
 
 export function unChunk(chunks) {
   console.time('un-chunk')
   var totalSize = 0
-  for(var ch of chunks) {
-    totalSize += ch.length
+  var objs = []
+  for(var i in chunks) {
+    var ch = chunks[i]
+    binarize.unpack(ch.buffer, function(ch2) {
+      objs.push(ch2)
+      totalSize += ch2.chunk.length
+    })
   }
   var result = new Uint8Array(totalSize)
   var position = 0
-  for(var i of chunks) {
-    result.set(i, position)
-    position += i.length
+  for(var i=0; i<objs.length; i++) {
+    var ch = objs[i]
+    result.set(ch.chunk, position)
+    position += ch.chunk.length
   }
   console.timeEnd('un-chunk')
   return result
@@ -95,29 +77,4 @@ export function arrayToBlobToImage(data, type, cb){
   console.timeEnd('arrayToBlobToImage')
   document.body.appendChild(img)
   console.log('blob',bob)
-}
-
-export function arrayBufferToChunks(buff) {
-  console.time('chunks')
-  var result = []
-  var wholeshebang = new Uint8Array(buff)
-  for(var i=0; i<buff.byteLength; i+=CHUNK_SIZE) {
-    var chunksize = Math.min(buff.byteLength-i, CHUNK_SIZE)
-    var chunk = wholeshebang.slice(i, i+chunksize)
-    var id = "quack"+Math.floor(Math.random()*1000000)//new Uint8Array(idSize);
-    var b = binarize.pack({id:id, chunk:chunk},function(){})//event though this is taking a calback i am pretty sure it executes synchronously
-    result.push(b)
-  }
-  console.timeEnd('chunks')
-  return result
-}
-
-export function blobToArrayBuffer(blob, cb) {
-  var fr = new FileReader()
-  fr.onload = function(e){
-    if(!e.error){
-      cb(fr.result)
-    }
-  }.bind(this)
-  fr.readAsArrayBuffer(blob)
 }
