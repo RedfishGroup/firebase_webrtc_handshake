@@ -49,7 +49,7 @@ export class P2PImageServer extends Evented{
         if(sig.type == 'offer') {
           var channel = {
             ref: this.channelRef.child(ev.key()), //firebase
-            peer: this._makePeer() // simple-peer
+            peer: this._registerEvents() // simple-peer
           }
           this.connections.push(channel)
           // on message through webRTC (simple-peer)
@@ -76,7 +76,7 @@ export class P2PImageServer extends Evented{
     })
   }
 
-  _makePeer() {
+  _registerEvents() {
     var p = new Peer({ initiator: false, trickle: false })
     // fire events
     p.on('error', (err)=>{
