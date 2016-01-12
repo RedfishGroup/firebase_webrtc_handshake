@@ -1,9 +1,11 @@
 import Peer from "bower_components/simple-peer/simplepeer.min.js"
 import "bower_components/firebase/firebase.js"
 import {settings} from "./settings.js"
+import {Evented} from "./Evented.js"
 
-export class P2PImageClient{
+export class P2PImageClient extends Evented{
   constructor(options={}) {
+    super()
     this.fbref = new Firebase(settings.firebaseURL).child('peers')
     this.connection = null
     this.channelRef = null
@@ -17,7 +19,7 @@ export class P2PImageClient{
     })
   }
 
-  connectToPeerID(id, callback) {
+  connectToPeerID(id, callback=()=>{}) {
     this.getPeerList(()=>{
       var peer = this.peerList[id]
       if(!peer) {
@@ -45,11 +47,28 @@ export class P2PImageClient{
       var val = ev.val()
       if(val.type == 'answer') {
         this.connection.signal(val)
+        this._registerEvents()
       } else if(val.type == 'offer') {
         //ignore
       } else {
         console.warn('Client recieved unexpected signal through Firebase', data)
       }
+    })
+  }
+
+  _registerEvents() {
+    // fire events
+    this.connection.on('error', (err)=>{
+      console.error('client: error', err)
+      this.fire('error',{peer:this.connection, err:err})
+    })
+    this.connection.on('connect', ()=>{
+      console.log('client: client connected')
+      this.fire('connect',{peer:this.connection})
+    })
+    this.connection.on('data', (data)=>{
+      //console.log('server: server recieved some data: ',data)
+      this.fire('data',{peer:this.connection, data:data})
     })
   }
 }

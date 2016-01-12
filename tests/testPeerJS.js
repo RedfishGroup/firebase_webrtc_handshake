@@ -13,7 +13,12 @@ server.on('connect', function(args){
 server.on('data', function(args){
   sendToDiv('server', 'server recieved data:' + args.data)
   //capitalize the response
-  args.peer.send(args.data.toUpperCase())
+  try{
+    args.peer.send(args.data.toUpperCase())
+  } catch(err) {
+    console.warn((err));
+    console.log(args.data)
+  }
 })
 
 // connect to a server twice
@@ -31,16 +36,18 @@ client1.connectToPeerID(server.id, function(err, connection) {
   })
 })
 // the second peer
+// this one is using the evented events
 window.client2 = new P2PImageClient()
-client2.connectToPeerID(server.id, function(err, connection) {
-  connection.on('connect', function () {
-    sendToDiv('client2', "CONNECTED")
-    connection.send("hello mars")
-    sendToDiv('client2', "client 2 sent data: hello mars")
-  })
-  connection.on('data', function (data) {
-    sendToDiv('client2', 'client 2 recieved data:' + data)
-  })
+client2.connectToPeerID(server.id)
+client2.on('connect', function (args) {
+  sendToDiv('client2', "CONNECTED")
+  console.log('client2 connect', args)
+  args.peer.send("helLO MarS")
+  sendToDiv('client2', "client 2 sent data: helLO MarS")
+})
+client2.on('data', function (args) {
+  console.log('client2 data', args)
+  sendToDiv('client2', 'client 2 recieved data:' + args.data)
 })
 
 //
