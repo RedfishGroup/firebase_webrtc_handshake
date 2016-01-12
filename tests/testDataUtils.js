@@ -13,11 +13,13 @@ function runTests() {
     logMessage( "<div>Test Chunking <b>Failed</b>. See console for details</div>")
   }
   // 2
-  testBlobSupport()
+  //testBlobSupport()
   // 3
-  testIfItGetsFragmented()
+  //testIfItGetsFragmented()
   // 4
-  testImage()
+  //testImage()
+  // 5
+  testSendingImage()
 }
 
 function test1chunking() {
@@ -64,7 +66,7 @@ function testImage(){
           console.time('arrayToBlobToImage')
           var url = URL.createObjectURL(bob)
           logMessage('Image check<br>')
-          logMessage(`<img src="${url}" />`)
+          logMessage(`<img src="${url}" width=300 height=200/>`)
           console.timeEnd('arrayToBlobToImage')
           //document.body.appendChild(img)
         })
@@ -72,6 +74,34 @@ function testImage(){
    })
   }
   im.src = "owls.jpg"
+}
+
+function testSendingImage(){
+  console.log('test sending image called')
+  var server2 = new P2PImageServer({id:'image test ' + Math.floor(10000*Math.random())})
+  var client2 = new P2PImageClient()
+  var im = new Image()
+  im.onload = function(){
+    console.log('Image2 loaded')
+    dtls.imageToBlob(im, function(blob){
+      dtls.generateWebRTCpayload(blob, function(val){
+        client2.connection.send(val.header)
+        for(var i in val.chunks){
+          var ch = val.chunks[i]
+          console.log('sending', ch)
+          client2.connection.send(ch.buffer)
+        }
+      })
+   })
+  }
+  server2.on('data', function(args){
+    console.log('server2 recived data', args)
+  })
+  client2.connectToPeerID(server2.id, function(err, connection) {
+    connection.on('connect', function () {
+      im.src = "owls.jpg"
+    })
+  })
 }
 
 function logMessage(messageHTML){

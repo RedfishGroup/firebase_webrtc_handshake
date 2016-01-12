@@ -1,9 +1,10 @@
 import * as binarize from "bower_components/binarize.js/src/binarize.js"
 import "bower_components/JavaScript-Canvas-to-Blob/js/canvas-to-blob.min.js"
+import {Evented} from "./Evented.js"
 
 console.log('binarize',binarize)
 
-var CHUNK_SIZE = Math.pow(2,14) // size in bytes of the chunks breakArrayBufferIntoChunks will use
+var CHUNK_SIZE = Math.pow(2,16) // size in bytes of the chunks. 2^16 is just under the limit in chrome.
 var drawingCanvas // this is a canvas used by imageToBlob
 
 //
@@ -77,4 +78,30 @@ export function imageToBlob(img, cb) {
   drawingCanvas.toBlob(function(blob){
     cb(blob)
   })
+}
+
+export class unChunker extends Evented {
+
+  constructor(){
+    super()
+    this.channels = {}
+    this.chunks = []
+  }
+
+  registerChunk(msg){
+    if(typeof msg == "object" && msg.data) {
+      if(msg.data instanceof Uint8Array) {
+        //the is a chunk
+
+      } else if (msg.data instanceof Object) {
+        //this is a new message probably
+      } else {
+        console.warn('not my type', msg)
+      }
+    } else {
+      console.warn('Not my type', msg)
+    }
+  }
+
+
 }
