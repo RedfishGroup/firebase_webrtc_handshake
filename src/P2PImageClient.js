@@ -70,5 +70,9 @@ export class P2PImageClient extends Evented{
       //console.log('server: server recieved some data: ',data)
       this.fire('data',{peer:this.connection, data:data})
     })
+    this.connection.on('close', (data)=>{
+      console.log('connection closed', this.connection)
+      this.fire('close',{peer:this.connection})
+    })
   }
 }

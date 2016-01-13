@@ -49,7 +49,7 @@ export class P2PImageServer extends Evented{
         if(sig.type == 'offer') {
           var channel = {
             ref: this.channelRef.child(ev.key()), //firebase
-            peer: this._registerEvents() // simple-peer
+            peer: this._makePeer() // simple-peer
           }
           this.connections.push(channel)
           // on message through webRTC (simple-peer)
@@ -76,7 +76,7 @@ export class P2PImageServer extends Evented{
     })
   }
 
-  _registerEvents() {
+  _makePeer() {
     var p = new Peer({ initiator: false, trickle: false })
     // fire events
     p.on('error', (err)=>{
@@ -90,6 +90,10 @@ export class P2PImageServer extends Evented{
     p.on('data', (data)=>{
       //console.log('server: server recieved some data: ',data)
       this.fire('data',{peer:p, data:data})
+    })
+    this.on('close', (data)=>{
+      console.log('connection closed', this.connection)
+      this.fire('close',{peer:this.connection})
     })
     //TODO make it so server can register events that will get called on each individual connection
     return p
