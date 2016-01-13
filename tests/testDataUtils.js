@@ -16,7 +16,7 @@ function runTests() {
   // 2
   testBlobSupport()
   // 3
-  //testIfItGetsFragmented()
+  testIfItGetsFragmented()
   // 4
   testSendingImage()
 }
@@ -74,11 +74,9 @@ function testSendingImage(){
     console.log('Image2 loaded')
     dtls.imageToBlob(im, function(blob){
       client2.connection.sendBig(blob)
+      client2.connection.sendBig(blob)
    })
   }
-  /*server2.on('data', function(args){
-    console.log('server2 recived data')
-  })*/
   server2.on('dataBig', function(args){
     console.log('server2 recieved dataBig', args)
     var url = URL.createObjectURL(args.data)
