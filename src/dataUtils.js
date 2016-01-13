@@ -14,30 +14,27 @@ export function generateWebRTCpayload(obj, callback) {
   console.time('generateWebRTCpayload')
   binarize.pack(obj, function(bin){
     var header = {
-      chunked:false,
+      payloadID:Math.floor(Math.random()*100000000),
     }
-    var chunks = arrayBufferToChunks(bin.buffer)
-    header.chunked = true
-    header.chunkIDs = []
-    for(var i in chunks) {
-      header.chunkIDs.push(i)
-    }
+    var chunks = arrayBufferToChunks(bin.buffer, header.payloadID)
+    header.chunkCount = chunks.length
     console.timeEnd('generateWebRTCpayload')
     callback({header:header, chunks:chunks})
   })
 }
 
-export function arrayBufferToChunks(buff) {
+export function arrayBufferToChunks(buff, payloadID) {
   console.time('chunks')
-  var result = {}
+  var result = []
   var wholeshebang = new Uint8Array(buff)
   var count = 0
+  payloadID = payloadID || Math.floor(Math.random()*100000000)
   for(var i=0; i<buff.byteLength; i+=CHUNK_SIZE) {
     var chunksize = Math.min(buff.byteLength-i, CHUNK_SIZE)
     var chunk = wholeshebang.slice(i, i+chunksize)
-    var id = "id_"+Math.floor(Math.random()*100000000)//new Uint8Array(idSize);
-    binarize.pack({id:id, chunk:chunk},function(chbin){
-        result[id] = chbin
+    var id = count//new Uint8Array(idSize);
+    binarize.pack({payloadID:payloadID, id:id, chunk:chunk},function(chbin){
+        result.push(chbin)
     })//event though this is taking a calback i am pretty sure it executes synchronously on array buffers
     count ++
   }
@@ -46,27 +43,6 @@ export function arrayBufferToChunks(buff) {
   return result
 }
 
-export function unChunk(chunks) {
-  console.time('un-chunk')
-  var totalSize = 0
-  var objs = []
-  for(var i in chunks) {
-    var ch = chunks[i]
-    binarize.unpack(ch.buffer, function(ch2) {
-      objs.push(ch2)
-      totalSize += ch2.chunk.length
-    })
-  }
-  var result = new Uint8Array(totalSize)
-  var position = 0
-  for(var i=0; i<objs.length; i++) {
-    var ch = objs[i]
-    result.set(ch.chunk, position)
-    position += ch.chunk.length
-  }
-  console.timeEnd('un-chunk')
-  return result
-}
 
 export function imageToBlob(img, cb) {
   if(!drawingCanvas) {
@@ -78,30 +54,4 @@ export function imageToBlob(img, cb) {
   drawingCanvas.toBlob(function(blob){
     cb(blob)
   })
-}
-
-export class unChunker extends Evented {
-
-  constructor(){
-    super()
-    this.channels = {}
-    this.chunks = []
-  }
-
-  registerChunk(msg){
-    if(typeof msg == "object" && msg.data) {
-      if(msg.data instanceof Uint8Array) {
-        //the is a chunk
-
-      } else if (msg.data instanceof Object) {
-        //this is a new message probably
-      } else {
-        console.warn('not my type', msg)
-      }
-    } else {
-      console.warn('Not my type', msg)
-    }
-  }
-
-
 }

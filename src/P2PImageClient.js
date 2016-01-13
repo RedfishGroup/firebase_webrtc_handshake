@@ -1,4 +1,4 @@
-import Peer from "bower_components/simple-peer/simplepeer.min.js"
+import {PeerBinary} from "./PeerBinary.js"
 import "bower_components/firebase/firebase.js"
 import {settings} from "./settings.js"
 import {Evented} from "./Evented.js"
@@ -27,7 +27,7 @@ export class P2PImageClient extends Evented{
         callback("peer not defined")
       } else {
         this.serverRef = this.fbref.child(id)
-        var p = new Peer({ initiator: true, trickle: false })
+        var p = new PeerBinary({ initiator: true, trickle: false })
         this.connection = p
         p.on('signal', (data)=>{
           if(data.type == "offer") {
@@ -73,6 +73,9 @@ export class P2PImageClient extends Evented{
     this.connection.on('close', (data)=>{
       console.log('connection closed', this.connection)
       this.fire('close',{peer:this.connection})
+    })
+    this.connection.on('dataBig', (data)=>{
+      this.fire('dataBig',{peer:this.connection, data:data})
     })
   }
 }

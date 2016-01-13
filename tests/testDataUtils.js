@@ -1,4 +1,5 @@
 import * as dtls from "src/dataUtils.js"
+import * as pb from "src/peerBinary.js"
 import {P2PImageServer} from "../src/P2PImageServer.js"
 import {P2PImageClient} from "../src/P2PImageClient.js"
 import * as binarize from "bower_components/binarize.js/src/binarize.js"
@@ -13,12 +14,10 @@ function runTests() {
     logMessage( "<div>Test Chunking <b>Failed</b>. See console for details</div>")
   }
   // 2
-  //testBlobSupport()
+  testBlobSupport()
   // 3
   //testIfItGetsFragmented()
   // 4
-  //testImage()
-  // 5
   testSendingImage()
 }
 
@@ -33,8 +32,20 @@ function test1chunking() {
     aview[j] = Math.random()*100 + 1
   }
   // chunk and unChunk
-  var chunks = dtls.arrayBufferToChunks(a)
-  var a2 = dtls.unChunk(chunks)
+  var payload
+  dtls.generateWebRTCpayload(a, function(ev){payload = ev})
+  var unchunk = new pb.UnChunker()
+  var a2
+  unchunk.onData = function(val){
+    a2 = new Uint8Array(val)
+  }
+  unchunk.registerChunk(payload.header)
+  //shuffle chunks
+  payload.chunks.sort(function(){return Math.round(Math.random()*4 - 2) })
+  for(var i=0;i<payload.chunks.length; i++) {
+    unchunk.registerChunk(payload.chunks[i])
+  }
+  // test if it came back ok
   for(var j=0; j<aview.length; j++){
     if(aview[j] != a2[j]) {
       pass = false
@@ -45,35 +56,13 @@ function test1chunking() {
   }
   //
   if(!pass){
+    console.log(a2, aview)
     throw('chunk test failed, values Do not equal')
   } else if(zeroApeared) {
     throw('chunk test failed. There should not be any zeros')
   } else {
     console.log('chunking test passed')
   }
-}
-
-function testImage(){
-  var im = new Image()
-  im.onload = function(){
-    console.log('Image loaded')
-    dtls.imageToBlob(im, function(blob){
-      dtls.generateWebRTCpayload(blob, function(val){
-        console.log('fsgsdfg', val)
-        var stillbin = dtls.unChunk(val.chunks)
-        console.log('binary unchunked:',stillbin)
-        binarize.unpack(stillbin.buffer, function(bob){
-          console.time('arrayToBlobToImage')
-          var url = URL.createObjectURL(bob)
-          logMessage('Image check<br>')
-          logMessage(`<img src="${url}" width=300 height=200/>`)
-          console.timeEnd('arrayToBlobToImage')
-          //document.body.appendChild(img)
-        })
-      })
-   })
-  }
-  im.src = "owls.jpg"
 }
 
 function testSendingImage(){
@@ -84,18 +73,17 @@ function testSendingImage(){
   im.onload = function(){
     console.log('Image2 loaded')
     dtls.imageToBlob(im, function(blob){
-      dtls.generateWebRTCpayload(blob, function(val){
-        client2.connection.send(val.header)
-        for(var i in val.chunks){
-          var ch = val.chunks[i]
-          console.log('sending', ch)
-          client2.connection.send(ch.buffer)
-        }
-      })
+      client2.connection.sendBig(blob)
    })
   }
-  server2.on('data', function(args){
-    console.log('server2 recived data', args)
+  /*server2.on('data', function(args){
+    console.log('server2 recived data')
+  })*/
+  server2.on('dataBig', function(args){
+    console.log('server2 recieved dataBig', args)
+    var url = URL.createObjectURL(args.data)
+    logMessage('Image sent across webrtc<br>')
+    logMessage(`<img src="${url}" width=300 height=200/>`)
   })
   client2.connectToPeerID(server2.id, function(err, connection) {
     connection.on('connect', function () {

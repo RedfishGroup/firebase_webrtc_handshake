@@ -1,4 +1,4 @@
-import Peer from "bower_components/simple-peer/simplepeer.min.js"
+import {PeerBinary} from "./PeerBinary.js"
 import "bower_components/firebase/firebase.js"
 import {settings} from "./settings.js"
 import {Evented} from "./Evented.js"
@@ -77,7 +77,8 @@ export class P2PImageServer extends Evented{
   }
 
   _makePeer() {
-    var p = new Peer({ initiator: false, trickle: false })
+    console.log('_makePeer called')
+    var p = new PeerBinary({ initiator: false, trickle: false })
     // fire events
     p.on('error', (err)=>{
       console.error('server: error', err)
@@ -91,9 +92,12 @@ export class P2PImageServer extends Evented{
       //console.log('server: server recieved some data: ',data)
       this.fire('data',{peer:p, data:data})
     })
-    this.on('close', (data)=>{
+    p.on('close', (data)=>{
       console.log('connection closed', this.connection)
       this.fire('close',{peer:this.connection})
+    })
+    p.on('dataBig', (data)=>{
+      this.fire('dataBig',{peer:p, data:data})
     })
     //TODO make it so server can register events that will get called on each individual connection
     return p
