@@ -14,11 +14,13 @@ function runTests() {
     logMessage( "<div>Test Chunking <b>Failed</b>. See console for details</div>")
   }
   // 2
-  testBlobSupport()
+  //testBlobSupport()
   // 3
-  testIfItGetsFragmented()
+  //testIfItGetsFragmented()
   // 4
-  testSendingImage()
+  //testSendingImage()
+  // 5
+  testSomeDataTypes()
 }
 
 function test1chunking() {
@@ -65,6 +67,31 @@ function test1chunking() {
   }
 }
 
+function testSomeDataTypes() {
+  var server3 = new P2PImageServer({id:'image test ' + Math.floor(10000*Math.random())})
+  var client3 = new P2PImageClient()
+  var str = false
+  var num = false
+  var arr = false
+  server3.on('dataBig', function(args){
+    console.log('server 3', args)
+    if(args.data == "big fart"){ str = true}
+    else if(args.data == Math.PI){ num = true}
+    else if(args.data.length == 12) { arr = true}
+    //
+    if( str && num && arr) {
+      logMessage("<div>String, Array, Number test <b>Passed</b> with sendBig</div>")
+    }
+  })
+  client3.connectToPeerID(server3.id, function(err, connection) {
+    connection.on('connect', function () {
+      connection.sendBig("big fart")
+      connection.sendBig(new Array(12))
+      connection.sendBig(Math.PI)
+    })
+  })
+}
+
 function testSendingImage(){
   console.log('test sending image called')
   var server2 = new P2PImageServer({id:'image test ' + Math.floor(10000*Math.random())})
@@ -80,8 +107,8 @@ function testSendingImage(){
   server2.on('dataBig', function(args){
     console.log('server2 recieved dataBig', args)
     var url = URL.createObjectURL(args.data)
-    logMessage('Image sent across webrtc<br>')
-    logMessage(`<img src="${url}" width=300 height=200/>`)
+    logMessage('Image sent across webrtc')
+    logMessage(`<img src="${url}" width=300 height=200/><br>`)
   })
   client2.connectToPeerID(server2.id, function(err, connection) {
     connection.on('connect', function () {
