@@ -21,6 +21,8 @@
     "underscore": "~1.8.3",
     "webrtc-adapter": "~0.2.5",
     "system.js": "~0.19.9",
-    "babel": "*"
+    "babel": "*",
+    "binarize": "https://github.com/agektmr/binarize.js",
+    "JavaScript-Canvas-to-Blob": "https://github.com/blueimp/JavaScript-Canvas-to-Blob.git#~3.1.0"
   }
 }

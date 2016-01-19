@@ -1,6 +1,8 @@
 import * as dtls from "src/dataUtils.js"
+import * as pb from "src/peerBinary.js"
 import {P2PImageServer} from "../src/P2PImageServer.js"
 import {P2PImageClient} from "../src/P2PImageClient.js"
+import * as binarize from "bower_components/binarize.js/src/binarize.js"
 
 function runTests() {
   // 1
@@ -15,6 +17,10 @@ function runTests() {
   testBlobSupport()
   // 3
   testIfItGetsFragmented()
+  // 4
+  testSendingImage()
+  // 5
+  testSomeDataTypes()
 }
 
 function test1chunking() {
@@ -22,14 +28,26 @@ function test1chunking() {
   var zeroApeared = false
   // fill array with random values between 1 and something
   console.log(dtls)
-  var a = new ArrayBuffer(4*2056*2056) // a good resolution for an image, rgba
+  var a = new ArrayBuffer(4*1280*1280) // a good resolution for an image, rgba
   var aview = new Uint8Array(a)
   for(var j=0; j<aview.length; j++){
     aview[j] = Math.random()*100 + 1
   }
   // chunk and unChunk
-  var chunks = dtls.arrayBufferToChunks(a)
-  var a2 = dtls.unChunk(chunks)
+  var payload
+  dtls.generateWebRTCpayload(a, function(ev){payload = ev})
+  var unchunk = new pb.UnChunker()
+  var a2
+  unchunk.onData = function(val){
+    a2 = new Uint8Array(val)
+  }
+  unchunk.registerChunk(payload.header)
+  //shuffle chunks
+  payload.chunks.sort(function(){return Math.round(Math.random()*4 - 2) })
+  for(var i=0;i<payload.chunks.length; i++) {
+    unchunk.registerChunk(payload.chunks[i])
+  }
+  // test if it came back ok
   for(var j=0; j<aview.length; j++){
     if(aview[j] != a2[j]) {
       pass = false
@@ -40,12 +58,63 @@ function test1chunking() {
   }
   //
   if(!pass){
+    console.log(a2, aview)
     throw('chunk test failed, values Do not equal')
   } else if(zeroApeared) {
     throw('chunk test failed. There should not be any zeros')
   } else {
     console.log('chunking test passed')
   }
+}
+
+function testSomeDataTypes() {
+  var server3 = new P2PImageServer({id:'image test ' + Math.floor(10000*Math.random())})
+  var client3 = new P2PImageClient()
+  var str = false
+  var num = false
+  var arr = false
+  server3.on('dataBig', function(args){
+    console.log('server 3', args)
+    if(args.data == "big fart"){ str = true}
+    else if(args.data == Math.PI){ num = true}
+    else if(args.data.length == 12) { arr = true}
+    //
+    if( str && num && arr) {
+      logMessage("<div>String, Array, Number test <b>Passed</b> with sendBig</div>")
+    }
+  })
+  client3.connectToPeerID(server3.id, function(err, connection) {
+    connection.on('connect', function () {
+      connection.sendBig("big fart")
+      connection.sendBig(new Array(12))
+      connection.sendBig(Math.PI)
+    })
+  })
+}
+
+function testSendingImage(){
+  console.log('test sending image called')
+  var server2 = new P2PImageServer({id:'image test ' + Math.floor(10000*Math.random())})
+  var client2 = new P2PImageClient()
+  var im = new Image()
+  im.onload = function(){
+    console.log('Image2 loaded')
+    dtls.imageToBlob(im, function(blob){
+      client2.connection.sendBig(blob)
+      client2.connection.sendBig(blob)
+   })
+  }
+  server2.on('dataBig', function(args){
+    console.log('server2 recieved dataBig', args)
+    var url = URL.createObjectURL(args.data)
+    logMessage('Image sent across webrtc')
+    logMessage(`<img src="${url}" width=300 height=200/><br>`)
+  })
+  client2.connectToPeerID(server2.id, function(err, connection) {
+    connection.on('connect', function () {
+      im.src = "owls.jpg"
+    })
+  })
 }
 
 function logMessage(messageHTML){
@@ -116,4 +185,4 @@ var testIfItGetsFragmented = function(){
   })
 }
 
-runTests()
+setTimeout(runTests,1)
