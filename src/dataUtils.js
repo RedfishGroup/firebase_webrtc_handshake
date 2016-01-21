@@ -1,10 +1,11 @@
 import * as binarize from "bower_components/binarize.js/src/binarize.js"
 import "bower_components/JavaScript-Canvas-to-Blob/js/canvas-to-blob.min.js"
 import {Evented} from "./Evented.js"
+import {settings} from "./settings.js"
 
-console.log('binarize',binarize)
+console.log('settings', settings)
 
-var CHUNK_SIZE = Math.pow(2,16) // size in bytes of the chunks. 2^16 is just under the limit in chrome.
+var CHUNK_SIZE = settings.CHUNK_SIZE // size in bytes of the chunks. 2^16 is just under the limit in chrome.
 var drawingCanvas // this is a canvas used by imageToBlob
 
 //
