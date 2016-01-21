@@ -5,7 +5,6 @@ import {settings} from "./settings.js"
 
 console.log('settings', settings)
 
-var CHUNK_SIZE = settings.CHUNK_SIZE // size in bytes of the chunks. 2^16 is just under the limit in chrome.
 var drawingCanvas // this is a canvas used by imageToBlob
 
 //
@@ -30,8 +29,8 @@ export function arrayBufferToChunks(buff, payloadID) {
   var wholeshebang = new Uint8Array(buff)
   var count = 0
   payloadID = payloadID || Math.floor(Math.random()*100000000)
-  for(var i=0; i<buff.byteLength; i+=CHUNK_SIZE) {
-    var chunksize = Math.min(buff.byteLength-i, CHUNK_SIZE)
+  for(var i=0; i<buff.byteLength; i+=settings.CHUNK_SIZE) {
+    var chunksize = Math.min(buff.byteLength-i, settings.CHUNK_SIZE)
     var chunk = wholeshebang.slice(i, i+chunksize)
     var id = count//new Uint8Array(idSize);
     binarize.pack({payloadID:payloadID, id:id, chunk:chunk},function(chbin){
