@@ -44,10 +44,11 @@ export class P2PImageClient extends Evented{
   _createChannel(offer) {
     this.channelRef = this.serverRef.child('channels').push({offer:offer})
     this.channelRef.on('child_added',(ev)=>{
+      console.log('channel message, client', ev.val())
       var val = ev.val()
       if(val.type == 'answer') {
-        this.connection.signal(val)
         this._registerEvents()
+        setTimeout(()=>{this.connection.signal(val)}, 100)
       } else if(val.type == 'offer') {
         //ignore
       } else {
@@ -55,6 +56,7 @@ export class P2PImageClient extends Evented{
       }
     })
   }
+
 
   _registerEvents() {
     // fire events
