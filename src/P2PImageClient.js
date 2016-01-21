@@ -48,7 +48,7 @@ export class P2PImageClient extends Evented{
       var val = ev.val()
       if(val.type == 'answer') {
         this._registerEvents()
-        setTimeout(()=>{this.connection.signal(val)}, 100)
+        setTimeout(()=>{this.connection.signal(val)}, 100)// a slight delay helps establish connection, I think.
       } else if(val.type == 'offer') {
         //ignore
       } else {
