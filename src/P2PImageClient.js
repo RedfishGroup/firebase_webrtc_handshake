@@ -9,6 +9,7 @@ export class P2PImageClient extends Evented{
     this.fbref = new Firebase(settings.firebaseURL).child('peers')
     this.connection = null
     this.channelRef = null
+    this.debug = false
   }
 
   getPeerList(callback) {
@@ -27,12 +28,15 @@ export class P2PImageClient extends Evented{
         callback("peer not defined")
       } else {
         this.serverRef = this.fbref.child(id)
-        var p = new PeerBinary({ initiator: true, trickle: false })
+        var p = new PeerBinary({ initiator: true, trickle: true })
         this.connection = p
         p.on('signal', (data)=>{
           if(data.type == "offer") {
             this._createChannel(data)
-          } else {
+          } else if(data.candidate){
+            if(this.debug) console.log('client recieved candidate from webrtc', data)
+            this.outRef.push(data)
+          }else {
             console.warn('Client recieved unexpected signal through WebRTC:', data)
           }
         })
@@ -42,17 +46,23 @@ export class P2PImageClient extends Evented{
   }
 
   _createChannel(offer) {
-    this.channelRef = this.serverRef.child('channels').push({offer:offer})
-    this.channelRef.on('child_added',(ev)=>{
-      console.log('channel message, client', ev.val())
+    //this.channelRef = this.serverRef.child('channels').push({offer:offer})
+    this.channelRef = this.serverRef.child('channels').push({
+      fromClient:[offer]
+    })
+    this.outRef = this.channelRef.child('fromClient')
+    this.inRef = this.channelRef.child('fromServer')
+    this.inRef.on('child_added',(ev)=>{
+      if(this.debug) console.log('channel message, client', ev.val())
       var val = ev.val()
       if(val.type == 'answer') {
         this._registerEvents()
-        setTimeout(()=>{this.connection.signal(val)}, 100)// a slight delay helps establish connection, I think.
-      } else if(val.type == 'offer') {
-        //ignore
+        setTimeout(()=>{this.connection.signal(val)}, 1)// a slight delay helps establish connection, I think.
+      } else if(val.candidate) {
+        if(this.debug) console.log('client recieved candidate from firebase')
+        setTimeout(()=>{this.connection.signal(val)}, 1)
       } else {
-        console.warn('Client recieved unexpected signal through Firebase', data)
+        console.warn('Client recieved unexpected signal through Firebase', val)
       }
     })
   }
@@ -65,15 +75,15 @@ export class P2PImageClient extends Evented{
       this.fire('error',{peer:this.connection, err:err})
     })
     this.connection.on('connect', ()=>{
-      console.log('client: client connected')
+      if(this.debug) console.log('client: client connected')
       this.fire('connect',{peer:this.connection})
     })
     this.connection.on('data', (data)=>{
-      //console.log('server: server recieved some data: ',data)
+      //if(this.debug) console.log('server: server recieved some data: ',data)
       this.fire('data',{peer:this.connection, data:data})
     })
     this.connection.on('close', (data)=>{
-      console.log('connection closed', this.connection)
+      if(this.debug) console.log('connection closed', this.connection)
       this.fire('close',{peer:this.connection})
     })
     this.connection.on('dataBig', (data)=>{

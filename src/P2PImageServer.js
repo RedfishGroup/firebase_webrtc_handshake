@@ -7,10 +7,11 @@ export class P2PImageServer extends Evented{
   constructor(options={}) {
     super() //no idea what this does
     this.MAX_CONNECTIONS = 20
+    this.debug = false
     this.id = "server"+Math.floor(Math.random()*100000)
     this.firebaseURL = settings.firebaseURL
     _.extendOwn(this, options)
-    console.log(this.id)
+    if(this.debug) console.log(this.id)
     this.init()
   }
 
@@ -31,10 +32,12 @@ export class P2PImageServer extends Evented{
 
   sendToAll( data) {
     for(var conx of this.connections) {
-      console.log(conx)
+      if(this.debug) console.log(conx)
       conx.peer.send(data)
     }
   }
+
+
 
   listenToChannels() {
     // when a new channel is added, listen to it.
@@ -44,26 +47,32 @@ export class P2PImageServer extends Evented{
         return
       }
       var val = ev.val()
-      for(var i in val) {
-        var sig = val[i]
+      for(var i in val.fromClient) {
+        var sig = val.fromClient[i]
         if(sig.type == 'offer') {
           var channel = {
-            ref: this.channelRef.child(ev.key()), //firebase
+            outRef: this.channelRef.child(ev.key()).child("fromServer"), //firebase
+            inRef: this.channelRef.child(ev.key()).child("fromClient"),
             peer: this._makePeer() // simple-peer
           }
           this.connections.push(channel)
           // on message through webRTC (simple-peer)
           channel.peer.on('signal', (data)=>{
             if(data.type == "answer") {
-              channel.ref.push(data)
-            } else {
+              channel.outRef.push(data)
+            } else if(data.candidate) {
+              channel.outRef.push(data)
+            }else {
               console.warn('unexpected message from WebRTC', data)
             }
           })
           // on message through firebase
-          channel.ref.on('child_added', (ev2)=>{
+          channel.inRef.on('child_added', (ev2)=>{
             var val2 = ev2.val()
-            if(val2.type == 'offer') {
+            if(val2.candidate) {
+              if(this.debug) console.log('server got candidate from firebase', val2)
+              channel.peer.signal(val2)
+            } else if(val2.type == 'offer') {
               channel.peer.signal(val2)
             } else if(val2.type == 'answer') {
               //ignore this. It was probably from me.
@@ -77,23 +86,23 @@ export class P2PImageServer extends Evented{
   }
 
   _makePeer() {
-    console.log('_makePeer called')
-    var p = new PeerBinary({ initiator: false, trickle: false })
+    if(this.debug) console.log('_makePeer called')
+    var p = new PeerBinary({ initiator: false, trickle: true })
     // fire events
     p.on('error', (err)=>{
       console.error('server: error', err)
       this.fire('error',{peer:p, err:err})
     })
     p.on('connect', ()=>{
-      console.log('server: client connected')
+      if(this.debug) console.log('server: client connected')
       this.fire('connect',{peer:p})
     })
     p.on('data', (data)=>{
-      //console.log('server: server recieved some data: ',data)
+      //if(this.debug) console.log('server: server recieved some data: ',data)
       this.fire('data',{peer:p, data:data})
     })
     p.on('close', (data)=>{
-      console.log('connection closed', this.connection)
+      if(this.debug) console.log('connection closed', this.connection)
       this.fire('close',{peer:this.connection})
     })
     p.on('dataBig', (data)=>{
