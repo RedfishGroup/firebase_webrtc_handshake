@@ -28,7 +28,7 @@ export class P2PImageClient extends Evented{
         callback("peer not defined")
       } else {
         this.serverRef = this.fbref.child(id)
-        var p = new PeerBinary({ initiator: true, trickle: true })
+        var p = new PeerBinary({ initiator: true, trickle: true , iceServers: settings.ICE_SERVERS })
         this.connection = p
         p.on('signal', (data)=>{
           if(data.type == "offer") {

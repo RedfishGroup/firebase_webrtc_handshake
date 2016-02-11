@@ -87,7 +87,7 @@ export class P2PImageServer extends Evented{
 
   _makePeer() {
     if(this.debug) console.log('_makePeer called')
-    var p = new PeerBinary({ initiator: false, trickle: true })
+    var p = new PeerBinary({ initiator: false, trickle: true, iceServers: settings.ICE_SERVERS})
     // fire events
     p.on('error', (err)=>{
       console.error('server: error', err)
