@@ -37,8 +37,6 @@ export class P2PImageServer extends Evented{
     }
   }
 
-
-
   listenToChannels() {
     // when a new channel is added, listen to it.
     this.channelRef.on('child_added', (ev, prevKey)=>{
@@ -117,7 +115,8 @@ export class P2PImageServer extends Evented{
     this.updateRef.off()
     this.userRef.off()
     for(var x of this.connections) {
-      x.ref.off()
+      x.outRef.off()
+      x.inRef.off()
       x.peer.destroy()
     }
     this.connections = []
