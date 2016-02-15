@@ -7,7 +7,7 @@ export class P2PImageClient extends Evented{
   constructor(options={}) {
     super()
     _.extend(this,settings)
-    _.extend(settings,options)
+    _.extend(this,options)
     this.fbref = new Firebase(this.firebaseURL).child('peers')
     this.connection = null
     this.channelRef = null
