@@ -6,7 +6,9 @@ import {Evented} from "./Evented.js"
 export class P2PImageClient extends Evented{
   constructor(options={}) {
     super()
-    this.fbref = new Firebase(settings.firebaseURL).child('peers')
+    _.extend(this,settings)
+    _.extend(settings,options)
+    this.fbref = new Firebase(this.firebaseURL).child('peers')
     this.connection = null
     this.channelRef = null
     this.debug = false
@@ -28,7 +30,7 @@ export class P2PImageClient extends Evented{
         callback("peer not defined")
       } else {
         this.serverRef = this.fbref.child(id)
-        var p = new PeerBinary({ initiator: true, trickle: true , iceServers: settings.ICE_SERVERS })
+        var p = new PeerBinary({ initiator: true, trickle: true , iceServers: this.ICE_SERVERS })
         this.connection = p
         p.on('signal', (data)=>{
           if(data.type == "offer") {
