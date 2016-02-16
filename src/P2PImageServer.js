@@ -96,14 +96,15 @@ export class P2PImageServer extends Evented{
       this.fire('connect',{peer:p})
     })
     p.on('data', (data)=>{
-      //if(this.debug) console.log('server: server recieved some data: ',data)
+      if(this.debug) console.log('server: server recieved some data: ',data)
       this.fire('data',{peer:p, data:data})
     })
-    p.on('close', (data)=>{
-      if(this.debug) console.log('connection closed', this.connection)
+    p.on('close', ()=>{
+      if(this.debug) console.log('server: connection closed', this.connection)
       this.fire('close',{peer:this.connection})
     })
     p.on('dataBig', (data)=>{
+      if(this.debug) console.log('server: server recieved some data: ',data)
       this.fire('dataBig',{peer:p, data:data})
     })
     //TODO make it so server can register events that will get called on each individual connection

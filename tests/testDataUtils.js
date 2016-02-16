@@ -21,6 +21,8 @@ function runTests() {
   testSendingImage()
   // 5
   testSomeDataTypes()
+  // 6
+  testDisconnect()
 }
 
 function test1chunking() {
@@ -183,6 +185,50 @@ var testIfItGetsFragmented = function(){
       connection.send(a)
     })
   })
+}
+
+function testDisconnect() {
+  var status = {
+    server:false,
+    client:false,
+    clientcb:false,
+  }
+  function checkIfDone(){
+    if(status.server && status.client && status.clientcb) {
+      logMessage('successfull disconnection test<br>')
+    }
+  }
+  var id = 'disconnect-test-' + Math.floor(10000*Math.random())
+  window.server4disconnect= new P2PImageServer({id:id})
+  window.client4disconnect= new P2PImageClient()
+  window.client4disconnect.debug=true
+  window.server4disconnect.debug=true
+  //
+  server4disconnect.on('close', function(){
+    console.log('server received disconnect')
+    status.server = true
+    checkIfDone()
+  })
+  server4disconnect.on('connect', function(){
+    client4disconnect.disconnect(function(){
+      console.log("disconnect callback called")
+      status.clientcb = true
+      checkIfDone()
+    })
+  })
+  //
+  client4disconnect.connectToPeerID(id,(err, connection)=>{
+    if(err) {
+      console.warn('failed to connect')
+    }
+    console.log('disconnect test connected')
+    client4disconnect.on('close', function(){
+      console.log('client recived disconnect')
+      status.client = true
+      checkIfDone()
+    })
+  })
+
 }
 
 setTimeout(runTests,1)

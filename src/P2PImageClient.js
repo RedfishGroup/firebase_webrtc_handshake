@@ -32,6 +32,7 @@ export class P2PImageClient extends Evented{
         this.serverRef = this.fbref.child(id)
         var p = new PeerBinary({ initiator: true, trickle: true , iceServers: this.ICE_SERVERS })
         this.connection = p
+        this._registerEvents()
         p.on('signal', (data)=>{
           if(data.type == "offer") {
             this._createChannel(data)
@@ -47,6 +48,20 @@ export class P2PImageClient extends Evented{
     })
   }
 
+  disconnect(callback) {
+    callback = callback || function(){console.log('client disconnected from server', arguments)}
+    if(this.serverRef) { this.serverRef.off() }
+    if(this.outRef) { this.outRef.off() }
+    if(this.inRef) {this.inRef.off()}
+    if(this.connection) {
+      this.connection.destroy(callback)
+    } else{
+      callback()
+    }
+    // QUESTION: should I also disconnect from the listeners to the events emitted by this class?
+    //     it would be this.off()
+  }
+
   _createChannel(offer) {
     //this.channelRef = this.serverRef.child('channels').push({offer:offer})
     this.channelRef = this.serverRef.child('channels').push({
@@ -58,7 +73,6 @@ export class P2PImageClient extends Evented{
       if(this.debug) console.log('channel message, client', ev.val())
       var val = ev.val()
       if(val.type == 'answer') {
-        this._registerEvents()
         setTimeout(()=>{this.connection.signal(val)}, 1)// a slight delay helps establish connection, I think.
       } else if(val.candidate) {
         if(this.debug) console.log('client recieved candidate from firebase')
@@ -81,7 +95,7 @@ export class P2PImageClient extends Evented{
       this.fire('connect',{peer:this.connection})
     })
     this.connection.on('data', (data)=>{
-      //if(this.debug) console.log('server: server recieved some data: ',data)
+      if(this.debug) console.log('server: server recieved some data: ',data)
       this.fire('data',{peer:this.connection, data:data})
     })
     this.connection.on('close', (data)=>{
