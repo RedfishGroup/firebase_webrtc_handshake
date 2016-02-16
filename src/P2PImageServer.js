@@ -3,7 +3,23 @@ import "bower_components/firebase/firebase.js"
 import {settings} from "./settings.js"
 import {Evented} from "./Evented.js"
 
+class Channel{
+
+  constructor(fbref, peer) {
+    this.outRef = fbref.child("fromServer") //firebase
+    this.inRef = fbref.child("fromClient")
+    this.peer = peer // simple-peer
+  }
+
+  destroy() {
+    this.outRef.off()
+    this.inRef.off()
+    this.peer.destroy()
+  }
+}
+
 export class P2PImageServer extends Evented{
+  
   constructor(options={}) {
     super() //no idea what this does
     this.MAX_CONNECTIONS = 20
@@ -48,11 +64,7 @@ export class P2PImageServer extends Evented{
       for(var i in val.fromClient) {
         var sig = val.fromClient[i]
         if(sig.type == 'offer') {
-          var channel = {
-            outRef: this.channelRef.child(ev.key()).child("fromServer"), //firebase
-            inRef: this.channelRef.child(ev.key()).child("fromClient"),
-            peer: this._makePeer() // simple-peer
-          }
+          var channel = new Channel(this.channelRef.child(ev.key()), this._makePeer())
           this.connections.push(channel)
           // on message through webRTC (simple-peer)
           channel.peer.on('signal', (data)=>{
@@ -116,9 +128,7 @@ export class P2PImageServer extends Evented{
     this.updateRef.off()
     this.userRef.off()
     for(var x of this.connections) {
-      x.outRef.off()
-      x.inRef.off()
-      x.peer.destroy()
+      x.destroy()
     }
     this.connections = []
     clearInterval(this.intervalID)
@@ -135,9 +145,7 @@ export class P2PImageServer extends Evented{
     }
     if(index>=0) {
       var conn = this.connections[index]
-      conn.outRef.off()
-      conn.inRef.off()
-      conn.peer.destroy()
+      conn.destroy()
       this.connections.splice(index,1)
       console.log(this.connections)
     }
