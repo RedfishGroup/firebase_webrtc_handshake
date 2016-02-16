@@ -100,11 +100,11 @@ export class P2PImageServer extends Evented{
       this.fire('data',{peer:p, data:data})
     })
     p.on('close', ()=>{
-      if(this.debug) console.log('server: connection closed', this.connection)
-      this.fire('close',{peer:this.connection})
+      if(this.debug) console.log('server: connection closed', p)
+      this._removeConnection(p)
+      this.fire('close',{peer: p})
     })
     p.on('dataBig', (data)=>{
-      if(this.debug) console.log('server: server recieved some data: ',data)
       this.fire('dataBig',{peer:p, data:data})
     })
     //TODO make it so server can register events that will get called on each individual connection
@@ -124,4 +124,22 @@ export class P2PImageServer extends Evented{
     clearInterval(this.intervalID)
   }
 
+  _removeConnection(peer) {
+    var index=-1
+    for(var i=0; i<this.connections.length; i++) {
+      var conn = this.connections[i]
+      if(conn.peer == peer) {
+        console.log('found my connection', i, conn)
+        index = i
+      }
+    }
+    if(index>=0) {
+      var conn = this.connections[index]
+      conn.outRef.off()
+      conn.inRef.off()
+      conn.peer.destroy()
+      this.connections.splice(index,1)
+      console.log(this.connections)
+    }
+  }
 }

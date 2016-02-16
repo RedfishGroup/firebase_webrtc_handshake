@@ -14,13 +14,13 @@ function runTests() {
     logMessage( "<div>Test Chunking <b>Failed</b>. See console for details</div>")
   }
   // 2
-  testBlobSupport()
+  //testBlobSupport()
   // 3
-  testIfItGetsFragmented()
+  //testIfItGetsFragmented()
   // 4
-  testSendingImage()
+  //testSendingImage()
   // 5
-  testSomeDataTypes()
+  //testSomeDataTypes()
   // 6
   testDisconnect()
 }
