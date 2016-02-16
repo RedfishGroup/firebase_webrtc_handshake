@@ -1,7 +1,7 @@
 import * as dtls from "src/dataUtils.js"
 import * as pb from "src/peerBinary.js"
-import {P2PImageServer} from "../src/P2PImageServer.js"
-import {P2PImageClient} from "../src/P2PImageClient.js"
+import {P2PServer} from "../src/P2PServer.js"
+import {P2PClient} from "../src/P2PClient.js"
 import * as binarize from "bower_components/binarize.js/src/binarize.js"
 
 function runTests() {
@@ -70,8 +70,8 @@ function test1chunking() {
 }
 
 function testSomeDataTypes() {
-  var server3 = new P2PImageServer({id:'image test ' + Math.floor(10000*Math.random())})
-  var client3 = new P2PImageClient()
+  var server3 = new P2PServer({id:'image test ' + Math.floor(10000*Math.random())})
+  var client3 = new P2PClient()
   var str = false
   var num = false
   var arr = false
@@ -96,8 +96,8 @@ function testSomeDataTypes() {
 
 function testSendingImage(){
   console.log('test sending image called')
-  var server2 = new P2PImageServer({id:'image test ' + Math.floor(10000*Math.random())})
-  var client2 = new P2PImageClient()
+  var server2 = new P2PServer({id:'image test ' + Math.floor(10000*Math.random())})
+  var client2 = new P2PClient()
   var im = new Image()
   im.onload = function(){
     console.log('Image2 loaded')
@@ -126,8 +126,8 @@ function logMessage(messageHTML){
 }
 
 function testBlobSupport(){
-  var server = new P2PImageServer({id:'blob test ' + Math.floor(10000*Math.random())})
-  var client = new P2PImageClient()
+  var server = new P2PServer({id:'blob test ' + Math.floor(10000*Math.random())})
+  var client = new P2PClient()
   client.connectToPeerID(server.id, function(err, connection) {
     connection.on('connect',function(){
         try{
@@ -145,8 +145,8 @@ function testBlobSupport(){
 var testIfItGetsFragmented = function(){
   console.log('testing fragmentation of message')
   var bufferSize = Math.pow(2,17)// 66528 looks like the max size per chunk
-  var server3frag = new P2PImageServer({id:'auto fragmentation test ' + Math.floor(10000*Math.random())})
-  var client3frag = new P2PImageClient()
+  var server3frag = new P2PServer({id:'auto fragmentation test ' + Math.floor(10000*Math.random())})
+  var client3frag = new P2PClient()
   var chunkCount=0
   var chunksizes=[]
   var passed = 0
@@ -199,8 +199,8 @@ function testDisconnect() {
     }
   }
   var id = 'disconnect-test-' + Math.floor(10000*Math.random())
-  window.server4disconnect= new P2PImageServer({id:id})
-  window.client4disconnect= new P2PImageClient()
+  window.server4disconnect= new P2PServer({id:id})
+  window.client4disconnect= new P2PClient()
   window.client4disconnect.debug=true
   window.server4disconnect.debug=true
   //

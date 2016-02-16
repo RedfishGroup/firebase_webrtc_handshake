@@ -1,12 +1,12 @@
-import {P2PImageServer} from "../src/P2PImageServer.js"
-import {P2PImageClient} from "../src/P2PImageClient.js"
+import {P2PServer} from "../src/P2PServer.js"
+import {P2PClient} from "../src/P2PClient.js"
 
-window.P2PImageClient = P2PImageClient
-window.P2PImageServer = P2PImageServer
+window.P2PClient = P2PClient
+window.P2PServer = P2PServer
 //
 // make a very simple server that capitalizes the object coming in.
 //
-window.server = new P2PImageServer({id:'plumkin capitiliztion server' + Math.floor(10000*Math.random())})
+window.server = new P2PServer({id:'plumkin capitiliztion server' + Math.floor(10000*Math.random())})
 server.on('connect', function(args){
   sendToDiv('server', 'client connected to the server')
 })
@@ -24,7 +24,7 @@ server.on('data', function(args){
 // connect to a server twice
 //
 //    the first peer
-window.client1 = new P2PImageClient()
+window.client1 = new P2PClient()
 client1.connectToPeerID(server.id, function(err, connection) {
   connection.on('connect', function () {
     sendToDiv('client1', "CONNECTED")
@@ -37,7 +37,7 @@ client1.connectToPeerID(server.id, function(err, connection) {
 })
 // the second peer
 // this one is using the evented events
-window.client2 = new P2PImageClient()
+window.client2 = new P2PClient()
 client2.connectToPeerID(server.id)
 client2.on('connect', function (args) {
   sendToDiv('client2', "CONNECTED")
@@ -73,7 +73,7 @@ function sendToDiv(id, text) {
 // test if blob support is in yet
 //
 function testBlobSupport(){
-  var client = new P2PImageClient()
+  var client = new P2PClient()
   client.connectToPeerID(server.id, function(err, connection) {
     connection.on('connect',function(){
         try{
