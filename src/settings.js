@@ -13,6 +13,7 @@ export var settings={
       "credential": "W5GTdhQQ6DqOD7k6bS8+xZVNQXm+fgLXSEQpN8bTe70=",
       "urls": "turn:global.turn.twilio.com:3478?transport=udp"
     }
-  ]
+  ],
+  POLLING_FREQUENCY:15000,
 
 }

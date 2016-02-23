@@ -42,7 +42,7 @@ export class P2PServer extends Evented{
     this.connections = []
     this._intervalID = setInterval(()=>{
       this.updateRef.set(new Date().getTime())
-    }, 4000)
+    }, settings.POLLING_FREQUENCY)
     this.listenToChannels()
   }
 
