@@ -11,20 +11,20 @@ var drawingCanvas // this is a canvas used by imageToBlob
 // @param  {Function} callback []
 //
 export function generateWebRTCpayload(obj, callback) {
-  console.time('generateWebRTCpayload')
+  //console.time('generateWebRTCpayload')
   binarize.pack(obj, function(bin){
     var header = {
       payloadID:Math.floor(Math.random()*100000000),
     }
     var chunks = arrayBufferToChunks(bin.buffer, header.payloadID)
     header.chunkCount = chunks.length
-    console.timeEnd('generateWebRTCpayload')
+    //console.timeEnd('generateWebRTCpayload')
     callback({header:header, chunks:chunks})
   })
 }
 
 export function arrayBufferToChunks(buff, payloadID) {
-  console.time('chunks')
+  //console.time('chunks')
   var result = []
   var wholeshebang = new Uint8Array(buff)
   var count = 0
@@ -38,8 +38,8 @@ export function arrayBufferToChunks(buff, payloadID) {
     })//event though this is taking a calback i am pretty sure it executes synchronously on array buffers
     count ++
   }
-  console.timeEnd('chunks')
-  console.log(`generated ${count} chunks`)
+  //console.timeEnd('chunks')
+  //console.log(`generated ${count} chunks`)
   return result
 }
 
