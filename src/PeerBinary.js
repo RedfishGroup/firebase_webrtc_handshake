@@ -1,4 +1,5 @@
-import Peer from "../bower_components/simple-peer/simplepeer.min.js"
+import * as Peer2 from "../bower_components/simple-peer/simplepeer.min.js"
+var Peer = Peer2.default
 import {generateWebRTCpayload} from "./dataUtils.js"
 import * as binarize from "../bower_components/binarize.js/src/binarize.js"
 
