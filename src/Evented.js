@@ -1,4 +1,3 @@
-import "bower_components/underscore/underscore-min.js"
 
 export class Evented {
   constructor() {
@@ -16,7 +15,10 @@ export class Evented {
   off(eventName, callback) {
     if (this.events.hasOwnProperty(eventName)) {
       if (typeof callback === "function") {
-        this.events[eventName] = _.without(this.events[eventName], callback);
+        //_.without(this.events[eventName], callback);
+        this.events = this.events.filter( function(x){
+            if ( x != this.events[eventName]) { return x }
+        })
       } else {
         delete this.events[eventName];
       }
@@ -24,7 +26,12 @@ export class Evented {
   }
 
   fire(eventName, argument) {
-    _.each(this.events[eventName], (cb) => setTimeout(() => cb(argument)));
+    //_.each(this.events[eventName], (cb) => setTimeout(() => cb(argument)));
+    if (this.events[eventName]) {
+      for (var cb of this.events[eventName]) {
+        setTimeout(() => cb(argument))
+      }
+    }
   }
 
   fireAll(argument) {

@@ -1,6 +1,6 @@
-import Peer from "bower_components/simple-peer/simplepeer.min.js"
+import Peer from "../bower_components/simple-peer/simplepeer.min.js"
 import {generateWebRTCpayload} from "./dataUtils.js"
-import * as binarize from "bower_components/binarize.js/src/binarize.js"
+import * as binarize from "../bower_components/binarize.js/src/binarize.js"
 
 export class PeerBinary extends Peer {
   constructor(options){

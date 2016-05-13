@@ -1,5 +1,5 @@
 import {PeerBinary} from "./PeerBinary.js"
-import "bower_components/firebase/firebase.js"
+import "../bower_components/firebase/firebase.js"
 import {settings} from "./settings.js"
 import {Evented} from "./Evented.js"
 
@@ -26,7 +26,7 @@ export class P2PServer extends Evented{
     this.debug = false
     this.id = "server"+Math.floor(Math.random()*100000)
     this.firebaseURL = settings.firebaseURL
-    _.extendOwn(this, options)
+    Object.assign(this, options) //_.extendOwn(this, options)
     if(this.debug) console.log(this.id)
     this.init()
   }
