@@ -1,1 +1,0 @@
-module.exports = require("npm:webrtc-adapter@1.1.0/src/js/adapter_core.js");
