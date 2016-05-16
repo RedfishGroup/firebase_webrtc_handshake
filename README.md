@@ -13,4 +13,4 @@ Setup:
 
 Building:
   1. TODO make this better
-  2. jspm bundle tests/testDataUtils.js dist/build.js
+  2. jspm bundle-sfx --minify tests/testDataUtils.js dist/build.min.js

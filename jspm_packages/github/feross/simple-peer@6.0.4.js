@@ -1,0 +1,1 @@
+module.exports = require("github:feross/simple-peer@6.0.4/index.js");

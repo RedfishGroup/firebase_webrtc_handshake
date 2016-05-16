@@ -1,0 +1,19 @@
+{
+  "main": "index",
+  "format": "cjs",
+  "meta": {
+    "*": {
+      "globals": {
+        "process": "process"
+      }
+    },
+    "*.json": {
+      "format": "json"
+    }
+  },
+  "map": {
+    "./core-js/object.js": "./core-js/object/index.js",
+    "./regenerator.js": "./regenerator/index.js",
+    "babel-runtime": "."
+  }
+}

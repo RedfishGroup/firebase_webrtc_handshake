@@ -1,0 +1,1 @@
+module.exports = require("github:agektmr/binarize.js@master/src/binarize");

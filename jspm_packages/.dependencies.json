@@ -1,0 +1,13 @@
+{
+  "github:systemjs/plugin-json@0.1.2": {},
+  "npm:babel-runtime@5.8.38": {},
+  "npm:webrtc-adapter@1.1.0": {},
+  "npm:core-js@1.2.6": {},
+  "github:agektmr/binarize.js@master": {},
+  "github:feross/simple-peer@6.0.4": {},
+  "github:firebase/firebase-bower@2.4.2": {},
+  "github:jspm/nodelibs-fs@0.2.0-alpha": {},
+  "github:jspm/nodelibs-process@0.2.0-alpha": {},
+  "github:jspm/nodelibs-path@0.2.0-alpha": {},
+  "npm:systemjs-plugin-babel@0.0.10": {}
+}
