@@ -1,5 +1,5 @@
 import {PeerBinary} from "./PeerBinary.js"
-import "../bower_components/firebase/firebase.js"
+import "firebase"
 import {settings} from "./settings.js"
 import {Evented} from "./Evented.js"
 

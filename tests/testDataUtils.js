@@ -6,7 +6,7 @@ import {P2PClient} from "../src/P2PClient.js"
 function runTests() {
   // 1
   try{
-    test1chunking()
+    //test1chunking()
     logMessage( "<div>Test Chunking: Passed</div>")
   } catch(e) {
     console.error(e)

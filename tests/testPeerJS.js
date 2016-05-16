@@ -14,13 +14,18 @@ server.on('data', function(args){
   sendToDiv('server', 'server recieved data:' + args.data)
   //capitalize the response
   try{
-    args.peer.send(args.data.toUpperCase())
+    var str2 = ab2str(args.data) //sudennly data is coming in as a uint8 
+    args.peer.send(str2.toUpperCase())
   } catch(err) {
     console.warn((err));
     console.log(args.data)
   }
 })
 
+//convert uint8 array to something string
+function ab2str(buf) {
+  return String.fromCharCode.apply(null, new Uint16Array(buf));
+}
 // connect to a server twice
 //
 //    the first peer

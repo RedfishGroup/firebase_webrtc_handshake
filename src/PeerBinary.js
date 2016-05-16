@@ -1,7 +1,8 @@
-import * as Peer2 from "../bower_components/simple-peer/simplepeer.min.js"
+import * as Peer2 from "feross/simple-peer.git/simplepeer.min.js"
 var Peer = Peer2.default
+window.simpPeer = Peer
 import {generateWebRTCpayload} from "./dataUtils.js"
-import * as binarize from "../bower_components/binarize.js/src/binarize.js"
+import * as binarize from "agektmr/binarize.js.git/src/binarize.js"
 
 export class PeerBinary extends Peer {
   constructor(options){
@@ -24,7 +25,7 @@ export class PeerBinary extends Peer {
 
   sendBig(chunk) {
     generateWebRTCpayload(chunk, (stuff)=>{
-      this.send(stuff.header)
+      this.send(JSON.stringify(stuff.header))
       for(var i in stuff.chunks){
         var ch = stuff.chunks[i]
         this.send(ch.buffer)
@@ -47,7 +48,10 @@ export class UnChunker {
   }
 
   registerChunk(msg){
-    if( this._isChunk(msg)) {
+    var header = this.parseHeader(msg)
+    if (header) {
+      this._newPayload(header.payloadID, header.chunkCount)
+    } else if( this._isChunk(msg)) {
       //the is a chunk hopefully
       binarize.unpack(msg.buffer,(val)=>{
         this._appendToPayload(val)
@@ -59,12 +63,15 @@ export class UnChunker {
           })
         }
       })
-    } else if (this._isHeader(msg)) {
-      this._newPayload(msg.payloadID, msg.chunkCount)
     } else {
       console.warn('not my type', msg)
+      //console.warn(this._ab2str(msg))
     }
     return null
+  }
+
+  _ab2str(buf) {
+    return String.fromCharCode.apply(null, new Uint16Array(buf));
   }
 
   _newPayload(id, count) {
@@ -107,13 +114,25 @@ export class UnChunker {
     this.payloadCount --
   }
 
-  _isHeader(data) {
+  parseHeader(data) {
     if(typeof data == "object" && !(data instanceof Uint8Array)) {
       if(data.chunkCount && data.chunkCount > 0) {
-        return true
+        return data
+      }
+    } else if(data.length && data.length < 60) { // might have been packed or something.
+      var str = this._ab2str(data)
+      if(str) {
+        try{
+          var json = JSON.parse(str)
+          if(json && json.payloadID) {
+            return json
+          }
+        } catch (er) {
+          // probably not a header. Not a big deal
+        }
       }
     }
-    return false
+    return undefined
   }
 
   _isChunk(msg){
