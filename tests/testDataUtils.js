@@ -1,13 +1,12 @@
-import * as dtls from "src/dataUtils.js"
-import * as pb from "src/peerBinary.js"
+import * as dtls from "../src/dataUtils.js"
+import * as pb from "../src/peerBinary.js"
 import {P2PServer} from "../src/P2PServer.js"
 import {P2PClient} from "../src/P2PClient.js"
-import * as binarize from "bower_components/binarize.js/src/binarize.js"
 
 function runTests() {
   // 1
   try{
-    test1chunking()
+    //test1chunking()
     logMessage( "<div>Test Chunking: Passed</div>")
   } catch(e) {
     console.error(e)
