@@ -1,0 +1,115 @@
+<html>
+  <head>
+    <script src="../jspm_packages/system.js"></script>
+    <script src="../jspm.browser.js"></script>
+    <script src="../jspm.config.js"></script>
+    <script>
+      "use strict";
+      System.import("../src/index.js").then(function(fu){
+        console.log('unbundled es6:', fu)
+      })
+      System.import("../dist/build.js").then(function(fu3){
+        console.log('build:', fu3)
+        window.P2P = fu3
+        init()
+      })
+
+      function init() {
+        window.server = new P2P.P2PServer({id:'plumkin capitiliztion server' + Math.floor(10000*Math.random())})
+        server.on('connect', function(args){
+          sendToDiv('server', 'client connected to the server')
+        })
+        server.on('data', function(args){
+          sendToDiv('server', 'server recieved data:' + args.data)
+          //capitalize the response
+          try{
+            var str2 = ab2str(args.data) //sudennly data is coming in as a uint8
+            args.peer.send(str2.toUpperCase())
+          } catch(err) {
+            console.warn((err));
+            console.log(args.data)
+          }
+        })
+
+        //convert uint8 array to something string
+        function ab2str(buf) {
+          return String.fromCharCode.apply(null, new Uint16Array(buf));
+        }
+        // connect to a server twice
+        //
+        //    the first peer
+        window.client1 = new P2P.P2PClient()
+        client1.connectToPeerID(server.id, function(err, connection) {
+          connection.on('connect', function () {
+            sendToDiv('client1', "CONNECTED")
+            connection.send("hello world")
+            sendToDiv('client1', "client 1 sent data: hello world")
+          })
+          connection.on('data', function (data) {
+            sendToDiv('client1', 'client 1 recieved data:' + data)
+          })
+        })
+        // the second peer
+        // this one is using the evented events
+        window.client2 = new P2P.P2PClient()
+        client2.connectToPeerID(server.id)
+        client2.on('connect', function (args) {
+          sendToDiv('client2', "CONNECTED")
+          console.log('client2 connect', args)
+          args.peer.send("helLO MarS")
+          sendToDiv('client2', "client 2 sent data: helLO MarS")
+        })
+        client2.on('data', function (args) {
+          console.log('client2 data', args)
+          sendToDiv('client2', 'client 2 recieved data:' + args.data)
+        })
+
+        //
+        //  Just test if there are more peers
+        //
+        client1.getPeerList(function(err,val){
+          var count = 0
+          for(var i in val) {
+            var server = val[i]
+            count ++
+          }
+          console.assert(!err, err)
+          console.assert(count > 0, "No servers. That shouldn't happen")
+        })
+
+        //helper function
+        function sendToDiv(id, text) {
+          var el = document.getElementById(id)
+          el.innerHTML += "...." + text + " <br>"
+        }
+
+        window.sendToPeer1 = function() {
+          var el = document.getElementById('peer1input')
+          client1.connection.send(el.value)
+        }
+
+        window.sendToAll = function() {
+          var el = document.getElementById('serverinput')
+          server.sendToAll(el.value)
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="client1">Client 1 <br>
+      <input type="text" id="peer1input"></input>
+      <button onclick="sendToPeer1()">send</button>
+      <br>
+    </div><hr>
+    <div id="client2">Client 2 <br>
+    </div><hr>
+    <div id="server">Server <br>
+      <input type="text" id="serverinput"></input>
+      <button onclick="sendToAll()">send to all</button><br>
+    </div>
+    <hr>
+    <div id="log">
+    </div>
+  </body>
+</html>

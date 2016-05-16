@@ -5,7 +5,7 @@ Uses simple-peer, which is a very nice WebRTC wrapper library.
 
 Setup:
   1. install nodejs
-  2. install jspm, `sudo npm install -g jspm`
+  2. install jspm, `npm install -g jspm@beta`
   3. `cd firebase_webrtc_handshake`
   4. install dependencies `jspm install`  
   5. try some of the tests from chrome
@@ -13,4 +13,4 @@ Setup:
 
 Building:
   1. TODO make this better
-  2. jspm bundle-sfx --minify tests/testDataUtils.js dist/build.min.js
+  2. jspm build --minify src/index.js dist/build.js
