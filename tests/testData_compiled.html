@@ -1,0 +1,72 @@
+<html>
+  <head>
+    <script src="../jspm_packages/system.js"></script>
+    <script src="../config.js"></script>
+    <script src="../dist/build.js"></script>
+    <script>
+        System.import("./testDataUtils.js")
+    </script>
+  </head>
+  <style type="text/css">
+    code { white-space: pre; }
+  </style>
+  <body>
+    <h1> test the chunking of webRTC </h1>
+    <hr>
+    <div>
+      The problem we are having is that Chrome does not yet support sending blobs over webRTC.
+      So we send array buffers instead.
+      <br>
+      The second problem is that when one sends arraybuffers across webrtc, there is a maximum size(It apears to be 66528 bytes in chrome 47).
+      If your data is bigger than that, it automatically get broken up into smaller peices.
+      <br>
+      I am not sure if sending blobs will fix the problem of the data being broken into peices.
+    </div>
+    <hr>
+    <div id="tests"></div>
+
+    <hr>
+    <div>
+      Here are some notes:
+        I was trying to chunk up the data and send the hashes over. I really like the rush sha1 library but, it took like 200ms to hash all of the chunks for a 1024*1024*4 databuffer
+        . In retrospect I would like to use the hash, but it might be overkill. So I am using a library called binarize. It stores almost any object as binary data.
+        This might turn out to be very useful.
+        <br>
+        Here are some quick notes on how to use the different library in case I need it in the future
+        <code>
+          export function arrayBufferToChunks(buff) {
+            var idSize=8
+            var rush = new Rusha()
+            console.time('chunks')
+            var result = []
+            var wholeshebang = new Uint8Array(buff)
+            var msgcount = 0
+            rushwork.onmessage = function(){
+              //console.log(arguments)
+              msgcount++
+              if(msgcount == result.length){
+                console.timeEnd('chunks')
+              }
+            }
+            for(var i=0; i<buff.byteLength; i+=CHUNK_SIZE) {
+              var chunksize = Math.min(buff.byteLength-i, CHUNK_SIZE)
+              //var chunk = new Uint8Array( buff, i, chunksize)
+              var chunk = wholeshebang.slice(i, i+chunksize)
+              var id = "id"+Math.floor(Math.random()*1000000)//new Uint8Array(idSize);
+              //for(var j=0; j<idSize; j++){ id[j] = Math.floor(Math.random()*255)}
+              //rushwork.postMessage({id:id, data:chunk})
+              //var slice = chunk.slice(0,1024)//for speed I will just look at the first n bytes
+              //SparkMD5.ArrayBuffer.hash(chunk)
+              //rush.digestFromArrayBuffer(chunk)
+              //console.log(chunk.length)
+              //console.log(chunk.byteLength)
+              //var b = binarize.pack({id:id, chunk:chunk},function(){})
+              result.push(chunk)
+            }
+            console.timeEnd('chunks')
+            return result
+          }
+        </code>
+    </div>
+  </body>
+</html>
