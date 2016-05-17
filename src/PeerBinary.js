@@ -3,6 +3,7 @@ var Peer = Peer2.default
 window.simpPeer = Peer
 import {generateWebRTCpayload} from "./dataUtils.js"
 import * as binarize from "agektmr/binarize.js.git/src/binarize.js"
+import "../lib/webrtc_adapter.js"
 
 export class PeerBinary extends Peer {
   constructor(options){
