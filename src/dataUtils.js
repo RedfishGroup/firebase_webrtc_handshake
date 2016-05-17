@@ -1,6 +1,4 @@
-//import * as binarize from "../bower_components/binarize.js/src/binarize.js"
 import * as binarize from "agektmr/binarize.js.git/src/binarize.js"
-//import "bower_components/JavaScript-Canvas-to-Blob/js/canvas-to-blob.min.js"
 import {Evented} from "./Evented.js"
 import {settings} from "./settings.js"
 
