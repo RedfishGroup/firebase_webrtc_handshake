@@ -74,11 +74,19 @@ function testSomeDataTypes() {
   var str = false
   var num = false
   var arr = false
+  var obj = {why:'does code decay like this', n:3 }
   server3.on('dataBig', function(args){
     console.log('server 3', args)
     if(args.data == "big fart"){ str = true}
     else if(args.data == Math.PI){ num = true}
     else if(args.data.length == 12) { arr = true}
+    try{
+      if (JSON.stringify(obj) == JSON.stringify(args.data)) {
+        logMessage("<div>Object worked</div>" + JSON.stringify(args.data,null,2))
+      }
+    } catch(err) {
+      console.error(err)
+    }
     //
     if( str && num && arr) {
       logMessage("<div>String, Array, Number test <b>Passed</b> with sendBig</div>")
@@ -89,6 +97,7 @@ function testSomeDataTypes() {
       connection.sendBig("big fart")
       connection.sendBig(new Array(12))
       connection.sendBig(Math.PI)
+      connection.sendBig(obj)
     })
   })
 }

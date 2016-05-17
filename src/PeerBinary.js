@@ -136,7 +136,7 @@ export class UnChunker {
   }
 
   _isChunk(msg){
-    if(this.payloadCount <= 0){return false}
+    if (this.payloadCount <= 0) {return false}
     return msg instanceof Uint8Array || msg instanceof DataView
   }
 
