@@ -14399,6 +14399,7 @@ $__System.register('1', ['2', '3', '4', '5'], function (_export, _context) {
           _this.debug = false;
           _this.id = "server" + Math.floor(Math.random() * 100000);
           _this.firebaseURL = settings.firebaseURL;
+          _this.stream = undefined;
           Object.assign(_this, options); //_.extendOwn(this, options)
           if (_this.debug) console.log(_this.id);
           _this.init();
@@ -14416,6 +14417,9 @@ $__System.register('1', ['2', '3', '4', '5'], function (_export, _context) {
             this.userRef.onDisconnect().remove();
             this.updateRef.set(new Date().getTime());
             this.channelRef = this.userRef.child('channels');
+            if (this.stream) {
+              this.userRef.child('isStream').set(true);
+            }
             this.channelRef.set([]);
             this.connections = [];
             this._intervalID = setInterval(function () {
@@ -14503,7 +14507,9 @@ $__System.register('1', ['2', '3', '4', '5'], function (_export, _context) {
             var _this4 = this;
 
             if (this.debug) console.log('_makePeer called');
-            var p = new PeerBinary({ initiator: false, trickle: true, iceServers: settings.ICE_SERVERS });
+            var myoptions = { initiator: false, trickle: true, iceServers: settings.ICE_SERVERS };
+            if (this.stream) myoptions.stream = this.stream;
+            var p = new PeerBinary(myoptions);
             // fire events
             p.on('error', function (err) {
               console.error('server: error', err);
@@ -14524,6 +14530,10 @@ $__System.register('1', ['2', '3', '4', '5'], function (_export, _context) {
             });
             p.on('dataBig', function (data) {
               _this4.fire('dataBig', { peer: p, data: data });
+            });
+            p.on('stream', function (stream) {
+              if (_this4.debug) console.log('Server: connected to stream', stream);
+              _this4.fire('stream', { peer: p, stream: stream });
             });
             //TODO make it so server can register events that will get called on each individual connection
             return p;
@@ -14600,6 +14610,7 @@ $__System.register('1', ['2', '3', '4', '5'], function (_export, _context) {
           _this.fbref = new Firebase(_this.firebaseURL).child('peers');
           _this.connection = null;
           _this.channelRef = null;
+          _this.stream = undefined;
           _this.debug = false;
           return _this;
         }
@@ -14629,22 +14640,40 @@ $__System.register('1', ['2', '3', '4', '5'], function (_export, _context) {
                 callback("peer not defined");
               } else {
                 _this3.serverRef = _this3.fbref.child(id);
-                var p = new PeerBinary({ initiator: true, trickle: true, iceServers: _this3.ICE_SERVERS });
-                _this3.connection = p;
-                _this3._registerEvents();
-                p.on('signal', function (data) {
-                  if (data.type == "offer") {
-                    _this3._createChannel(data);
-                  } else if (data.candidate) {
-                    if (_this3.debug) console.log('client recieved candidate from webrtc', data);
-                    _this3.outRef.push(data);
-                  } else {
-                    console.warn('Client recieved unexpected signal through WebRTC:', data);
+                _this3.serverRef.once('value', function (ev1) {
+                  var sval = ev1.val();
+                  var pOpts = { initiator: true, trickle: true, iceServers: _this3.ICE_SERVERS };
+                  if (sval.isStream) {
+                    pOpts.stream = _this3.getMyStream();
                   }
+                  var p = new PeerBinary(pOpts);
+                  _this3.connection = p;
+                  _this3._registerEvents();
+                  p.on('signal', function (data) {
+                    if (data.type == "offer") {
+                      _this3._createChannel(data);
+                    } else if (data.candidate) {
+                      if (_this3.debug) console.log('client recieved candidate from webrtc', data);
+                      _this3.outRef.push(data);
+                    } else {
+                      console.warn('Client recieved unexpected signal through WebRTC:', data);
+                    }
+                  });
+                  callback(null, _this3.connection);
                 });
-                callback(null, _this3.connection);
               }
             });
+          }
+        }, {
+          key: "getMyStream",
+          value: function getMyStream() {
+            if (this.stream) return this.stream;
+            // create fake stream if no stream specified, and the server is in streaming mode.
+            //    because, at the moment, simple-peer must have a stream from the initiator.
+            var fakeCanvas = document.createElement('canvas');
+            fakeCanvas.width = fakeCanvas.height = 1;
+            var fakeStream = fakeCanvas.captureStream();
+            return fakeStream;
           }
         }, {
           key: "disconnect",
@@ -14721,6 +14750,10 @@ $__System.register('1', ['2', '3', '4', '5'], function (_export, _context) {
             });
             this.connection.on('dataBig', function (data) {
               _this5.fire('dataBig', { peer: _this5.connection, data: data });
+            });
+            this.connection.on('stream', function (stream) {
+              if (_this5.debug) console.log('Client: connected to stream', stream);
+              _this5.fire('stream', { peer: _this5.connection, stream: stream });
             });
           }
         }]);
