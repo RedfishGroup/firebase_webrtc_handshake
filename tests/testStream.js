@@ -41,3 +41,5 @@ function startClient () {
    })
  })
 }
+
+startCamera()

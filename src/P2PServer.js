@@ -23,7 +23,7 @@ export class P2PServer extends Evented{
   constructor(options={}) {
     super() //no idea what this does
     this.MAX_CONNECTIONS = 20
-    this.debug = true
+    this.debug = false
     this.id = "server"+Math.floor(Math.random()*100000)
     this.firebaseURL = settings.firebaseURL
     this.stream = undefined

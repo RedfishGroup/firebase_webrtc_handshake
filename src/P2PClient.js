@@ -12,7 +12,7 @@ export class P2PClient extends Evented{
     this.connection = null
     this.channelRef = null
     this.stream = undefined
-    this.debug = true
+    this.debug = false
   }
 
   getPeerList(callback) {
@@ -59,7 +59,7 @@ export class P2PClient extends Evented{
   getMyStream () {
     if (this.stream) return this.stream
     // create fake stream if no stream specified, and the server is streaming.
-    //    because 
+    //    because
     let fakeCanvas = document.createElement('canvas')
     fakeCanvas.width = fakeCanvas.height = 1
     var fakeStream = fakeCanvas.captureStream()
