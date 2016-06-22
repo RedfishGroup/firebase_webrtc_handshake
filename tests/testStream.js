@@ -1,7 +1,5 @@
 import {P2PServer} from "../src/P2PServer.js"
 import {P2PClient} from "../src/P2PClient.js"
-import * as Peer2 from "feross/simple-peer.git/simplepeer.min.js"
-var Peer = Peer2.default
 
 var gStream = undefined
 var gServer = undefined
