@@ -58,8 +58,8 @@ export class P2PClient extends Evented{
 
   getMyStream () {
     if (this.stream) return this.stream
-    // create fake stream if no stream specified, and the server is streaming.
-    //    because
+    // create fake stream if no stream specified, and the server is in streaming mode.
+    //    because, at the moment, simple-peer must have a stream from the initiator.
     let fakeCanvas = document.createElement('canvas')
     fakeCanvas.width = fakeCanvas.height = 1
     var fakeStream = fakeCanvas.captureStream()
