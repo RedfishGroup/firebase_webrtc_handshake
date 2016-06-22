@@ -14,3 +14,11 @@ Setup:
 Building:
   1. TODO make this better
   2. jspm build --minify src/index.js dist/build.js
+  
+Usage Examples:
+  * Look in the tests directory for in depth usage examples
+  * [Streams](./tests/testStream.js)
+  * [Simple Data Channel](./tests/testPeerJS.js)
+  * [More Complicated Data Channel](./tests/testDataUtils.js)
+  
+  
