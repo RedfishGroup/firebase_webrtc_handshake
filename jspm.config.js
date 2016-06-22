@@ -33,7 +33,7 @@ SystemJS.config({
     "path": "github:jspm/nodelibs-path@0.2.0-alpha",
     "plugin-babel": "npm:systemjs-plugin-babel@0.0.10",
     "process": "github:jspm/nodelibs-process@0.2.0-alpha",
-    "webrtc-adapter": "npm:webrtc-adapter@1.1.0"
+    "webrtc-adapter": "npm:webrtc-adapter@1.4.0"
   },
   packages: {
     "npm:babel-runtime@5.8.38": {
@@ -42,6 +42,11 @@ SystemJS.config({
     "npm:core-js@1.2.6": {
       "map": {
         "systemjs-json": "github:systemjs/plugin-json@0.1.2"
+      }
+    },
+    "npm:webrtc-adapter@1.4.0": {
+      "map": {
+        "sdp": "npm:sdp@1.0.1"
       }
     }
   }

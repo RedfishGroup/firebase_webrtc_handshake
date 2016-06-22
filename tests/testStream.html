@@ -1,0 +1,31 @@
+<html>
+  <head>
+    <script src="../jspm_packages/system.js"></script>
+    <script src="../jspm.browser.js"></script>
+    <script src="../jspm.config.js"></script>
+    <script >
+      System.import('./testStream.js')
+
+      function start() {
+        startCamera()
+      }
+
+
+    </script>
+  </head>
+  <a href='javascript:start()'>Start</a>
+  <br>
+  <body>
+    <div>
+      Local video display (Server): <br>
+      <video id='serverVideo' autoplay/>
+      <br>
+    </div>
+    <div>
+      Client Video: <br>
+      <video id='client2Video' autoplay/>
+    </div>
+    <div id="log">
+    </div>
+  </body>
+</html>

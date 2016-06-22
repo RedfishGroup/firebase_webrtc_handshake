@@ -23,9 +23,10 @@ export class P2PServer extends Evented{
   constructor(options={}) {
     super() //no idea what this does
     this.MAX_CONNECTIONS = 20
-    this.debug = false
+    this.debug = true
     this.id = "server"+Math.floor(Math.random()*100000)
     this.firebaseURL = settings.firebaseURL
+    this.stream = undefined
     Object.assign(this, options) //_.extendOwn(this, options)
     if(this.debug) console.log(this.id)
     this.init()
@@ -38,6 +39,9 @@ export class P2PServer extends Evented{
     this.userRef.onDisconnect().remove()
     this.updateRef.set(new Date().getTime())
     this.channelRef = this.userRef.child('channels')
+    if (this.stream) {
+      this.userRef.child('isStream').set(true)
+    }
     this.channelRef.set([])
     this.connections = []
     this._intervalID = setInterval(()=>{
@@ -97,7 +101,9 @@ export class P2PServer extends Evented{
 
   _makePeer() {
     if(this.debug) console.log('_makePeer called')
-    var p = new PeerBinary({ initiator: false, trickle: true, iceServers: settings.ICE_SERVERS})
+    var myoptions = { initiator: false, trickle: true, iceServers: settings.ICE_SERVERS }
+    if (this.stream) myoptions.stream = this.stream
+    var p = new PeerBinary(myoptions)
     // fire events
     p.on('error', (err)=>{
       console.error('server: error', err)
@@ -118,6 +124,10 @@ export class P2PServer extends Evented{
     })
     p.on('dataBig', (data)=>{
       this.fire('dataBig',{peer:p, data:data})
+    })
+    p.on('stream', (stream)=>{
+      if (this.debug) console.log('Server: connected to stream',stream)
+      this.fire('stream',{peer:p, stream:stream})
     })
     //TODO make it so server can register events that will get called on each individual connection
     return p
