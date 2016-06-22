@@ -11,6 +11,7 @@ export class P2PClient extends Evented{
     this.fbref = new Firebase(this.firebaseURL).child('peers')
     this.connection = null
     this.channelRef = null
+    this.stream = undefined
     this.debug = false
   }
 
@@ -30,22 +31,39 @@ export class P2PClient extends Evented{
         callback("peer not defined")
       } else {
         this.serverRef = this.fbref.child(id)
-        var p = new PeerBinary({ initiator: true, trickle: true , iceServers: this.ICE_SERVERS })
-        this.connection = p
-        this._registerEvents()
-        p.on('signal', (data)=>{
-          if(data.type == "offer") {
-            this._createChannel(data)
-          } else if(data.candidate){
-            if(this.debug) console.log('client recieved candidate from webrtc', data)
-            this.outRef.push(data)
-          }else {
-            console.warn('Client recieved unexpected signal through WebRTC:', data)
+        this.serverRef.once('value', (ev1) => {
+          var sval = ev1.val()
+          let pOpts = { initiator: true, trickle: true , iceServers: this.ICE_SERVERS }
+          if (sval.isStream) {
+            pOpts.stream = this.getMyStream()
           }
+          var p = new PeerBinary(pOpts)
+          this.connection = p
+          this._registerEvents()
+          p.on('signal', (data)=>{
+            if(data.type == "offer") {
+              this._createChannel(data)
+            } else if(data.candidate){
+              if(this.debug) console.log('client recieved candidate from webrtc', data)
+              this.outRef.push(data)
+            }else {
+              console.warn('Client recieved unexpected signal through WebRTC:', data)
+            }
+          })
+          callback(null, this.connection)
         })
-        callback(null, this.connection)
       }
     })
+  }
+
+  getMyStream () {
+    if (this.stream) return this.stream
+    // create fake stream if no stream specified, and the server is in streaming mode.
+    //    because, at the moment, simple-peer must have a stream from the initiator.
+    let fakeCanvas = document.createElement('canvas')
+    fakeCanvas.width = fakeCanvas.height = 1
+    var fakeStream = fakeCanvas.captureStream()
+    return fakeStream
   }
 
   disconnect(callback) {
@@ -104,6 +122,10 @@ export class P2PClient extends Evented{
     })
     this.connection.on('dataBig', (data)=>{
       this.fire('dataBig',{peer:this.connection, data:data})
+    })
+    this.connection.on('stream', (stream)=>{
+      if (this.debug) console.log('Client: connected to stream',stream)
+      this.fire('stream',{peer:this.connection, stream:stream})
     })
   }
 }

@@ -1,0 +1,22 @@
+<html>
+  <head>
+    <script src="../jspm_packages/system.js"></script>
+    <script src="../jspm.browser.js"></script>
+    <script src="../jspm.config.js"></script>
+    <script >
+      System.import('./testStream.js')
+    </script>
+  </head>
+    <div>
+      Local video display (Server): <br>
+      <video id='serverVideo' autoplay/>
+      <br>
+    </div>
+    <div>
+      Client Video (you should see a video here): <br>
+      <video id='client2Video' autoplay/>
+    </div>
+    <div id="log">
+    </div>
+  </body>
+</html>
