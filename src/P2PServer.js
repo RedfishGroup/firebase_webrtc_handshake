@@ -27,6 +27,7 @@ export class P2PServer extends Evented{
     this.id = "server"+Math.floor(Math.random()*100000)
     this.firebaseURL = settings.firebaseURL
     this.stream = undefined
+    this.iceServers = settings.ICE_SERVERS
     Object.assign(this, options) //_.extendOwn(this, options)
     if(this.debug) console.log(this.id)
     this.init()

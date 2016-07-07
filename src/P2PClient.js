@@ -6,6 +6,7 @@ import {Evented} from "./Evented.js"
 export class P2PClient extends Evented{
   constructor(options={}) {
     super()
+    this.iceServers = settings.ICE_SERVERS
     Object.assign(this, settings)//_.extend(this,settings)
     Object.assign(this, options)//_.extend(this,options)
     this.fbref = new Firebase(this.firebaseURL).child('peers')

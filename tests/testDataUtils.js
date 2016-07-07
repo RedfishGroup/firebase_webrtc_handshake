@@ -22,6 +22,9 @@ function runTests() {
   testSomeDataTypes()
   // 6
   testDisconnect()
+  //
+  testAnotherIceServer()
+
 }
 
 function test1chunking() {
@@ -237,6 +240,45 @@ function testDisconnect() {
     })
   })
 
+}
+
+function testAnotherIceServer() {
+  var http = new XMLHttpRequest();
+  var url = "https://service.xirsys.com/ice";
+  var params = JSON.stringify({
+
+                          ident: "simtable",
+                          secret: "0099daf6-4486-11e6-acfb-2b5d0b49b1ef",
+                          domain: "www.livetexture.com",
+                          application: "default",
+                          room: "default",
+                          secure: 1
+  });
+  http.open("POST", url, true);
+  http.setRequestHeader("Content-type", "application/json; charset=utf-8");
+  http.onreadystatechange = function() {
+      if(http.readyState == 4 && http.status == 200) {
+        try {
+          var response = JSON.parse(http.responseText)
+          var serverICE = new P2PServer({iceServers:response.d.iceServers, id:'Ice test ' + Math.floor(10000*Math.random())})
+          var clientICE = new P2PClient({iceServers:response.d.iceServers})
+          clientICE.connectToPeerID(serverICE.id, (err2, connection)=>{
+            if (err2) {
+              logMessage('<div> Error using different ice server</div>')
+              console.error(er1)
+            } else {
+              logMessage('<div> Connected to a different ice server</div>')
+              console.log('Ice server success', clientICE.iceServers)
+            }
+          })
+        } catch(err) {
+          logMessage('<div> Error using different ice server</div>')
+          console.error(err)
+        }
+
+      }
+  }
+  http.send(params);
 }
 
 setTimeout(runTests,1)
