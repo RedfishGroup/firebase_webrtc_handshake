@@ -102,7 +102,10 @@ export class P2PServer extends Evented{
 
   _makePeer() {
     if(this.debug) console.log('_makePeer called')
-    var myoptions = { initiator: false, trickle: true, iceServers: settings.ICE_SERVERS }
+    var myoptions = { initiator: false, trickle: true, config:{
+        iceServers: this.iceServers
+      }
+    }
     if (this.stream) myoptions.stream = this.stream
     var p = new PeerBinary(myoptions)
     // fire events

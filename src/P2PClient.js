@@ -34,7 +34,9 @@ export class P2PClient extends Evented{
         this.serverRef = this.fbref.child(id)
         this.serverRef.once('value', (ev1) => {
           var sval = ev1.val()
-          let pOpts = { initiator: true, trickle: true , iceServers: this.ICE_SERVERS }
+          let pOpts = { initiator: true, trickle: true , config:{
+              iceServers: this.iceServers
+            } }
           if (sval.isStream) {
             pOpts.stream = this.getMyStream()
           }
