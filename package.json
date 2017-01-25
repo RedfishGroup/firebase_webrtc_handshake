@@ -32,5 +32,18 @@
         }
       }
     }
-  }
+  },
+  "name": "firebase_webrtc_handshake",
+  "description": "Facilitate a webrtc connection using Firebase.",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RedfishGroup/firebase_webrtc_handshake.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/RedfishGroup/firebase_webrtc_handshake/issues"
+  },
+  "homepage": "https://github.com/RedfishGroup/firebase_webrtc_handshake#readme"
 }
