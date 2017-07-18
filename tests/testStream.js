@@ -1,5 +1,7 @@
-import {P2PServer} from "../src/P2PServer.js"
-import {P2PClient} from "../src/P2PClient.js"
+//import {P2PServer} from "../src/P2PServer.js"
+//import {P2PClient} from "../src/P2PClient.js"
+
+import {P2PServer, P2PClient} from "../dist/build.js"
 
 var gStream = undefined
 var gServer = undefined
