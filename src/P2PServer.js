@@ -38,7 +38,7 @@ export class P2PServer extends Evented{
     this.userRef = fbref.child(this.id)
     this.updateRef = this.userRef.child('lastUpdate')
     this.userRef.onDisconnect().remove()
-    this.updateRef.set(new Date().getTime())
+    this.updateRef.set(Firebase.ServerValue.TIMESTAMP)
     this.channelRef = this.userRef.child('channels')
     if (this.stream) {
       this.userRef.child('isStream').set(true)
@@ -46,7 +46,7 @@ export class P2PServer extends Evented{
     this.channelRef.set([])
     this.connections = []
     this._intervalID = setInterval(()=>{
-      this.updateRef.set(new Date().getTime())
+      this.updateRef.set(Firebase.ServerValue.TIMESTAMP)
     }, settings.POLLING_FREQUENCY)
     this.listenToChannels()
   }
