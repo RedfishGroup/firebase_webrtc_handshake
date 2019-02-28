@@ -1,38 +1,4 @@
 {
-  "jspm": {
-    "main": "app.js",
-    "dependencies": {
-      "agektmr/binarize.js.git": "github:agektmr/binarize.js@master",
-      "feross/simple-peer.git": "github:feross/simple-peer@^6.0.4",
-      "firebase": "github:firebase/firebase-bower@^2.4.2",
-      "webrtc-adapter": "npm:webrtc-adapter@^1.1.0"
-    },
-    "devDependencies": {
-      "babel-runtime": "npm:babel-runtime@^5.8.24",
-      "core-js": "npm:core-js@^1.1.4",
-      "fs": "github:jspm/nodelibs-fs@^0.2.0-alpha",
-      "path": "github:jspm/nodelibs-path@^0.2.0-alpha",
-      "plugin-babel": "npm:systemjs-plugin-babel@^0.0.10",
-      "process": "github:jspm/nodelibs-process@^0.2.0-alpha"
-    },
-    "buildConfig": {
-      "transpileES6": true,
-      "minify": true
-    },
-    "overrides": {
-      "github:firebase/firebase-bower@2.4.2": {
-        "main": "firebase",
-        "registry": "jspm"
-      },
-      "npm:babel-runtime@5.8.38": {
-        "main": false,
-        "dependencies": {},
-        "optionalDependencies": {
-          "core-js": "^1.2.0"
-        }
-      }
-    }
-  },
   "name": "firebase_webrtc_handshake",
   "description": "Facilitate a webrtc connection using Firebase.",
   "version": "1.0.0",
@@ -45,5 +11,15 @@
   "bugs": {
     "url": "https://github.com/RedfishGroup/firebase_webrtc_handshake/issues"
   },
-  "homepage": "https://github.com/RedfishGroup/firebase_webrtc_handshake#readme"
+  "homepage": "https://github.com/RedfishGroup/firebase_webrtc_handshake#readme",
+  "dependencies": {
+    "binarize.js": "^0.5.1",
+    "firebase": "^5.8.4",
+    "firebase-bower": "https://github.com/firebase/firebase-bower.git#2.4.2",
+    "rollup-plugin-commonjs": "^9.2.1",
+    "rollup-plugin-node-globals": "^1.4.0",
+    "rollup-plugin-node-resolve": "^4.0.1",
+    "rollup-plugin-replace": "^2.1.0",
+    "simple-peer": "^9.2.1"
+  }
 }

@@ -1,21 +1,10 @@
 <html>
   <head>
-    <script src="../jspm_packages/system.js"></script>
-    <script src="../jspm.browser.js"></script>
-    <script src="../jspm.config.js"></script>
-    <script>
-      "use strict";
-      System.import("../src/index.js").then(function(fu){
-        console.log('unbundled es6:', fu)
-      })
-      System.import("../dist/build.js").then(function(fu3){
-        console.log('build:', fu3)
-        window.P2P = fu3
-        init()
-      })
+  
+    <script type="module">
+      import {P2PServer , P2PClient, imageToBlob} from '../dist/build.js'
 
-      function init() {
-        window.server = new P2P.P2PServer({id:'plumkin capitiliztion server' + Math.floor(10000*Math.random())})
+        window.server = new P2PServer({id:'plumkin capitiliztion server' + Math.floor(10000*Math.random())})
         server.on('connect', function(args){
           sendToDiv('server', 'client connected to the server')
         })
@@ -38,7 +27,7 @@
         // connect to a server twice
         //
         //    the first peer
-        window.client1 = new P2P.P2PClient()
+        window.client1 = new P2PClient()
         client1.connectToPeerID(server.id, function(err, connection) {
           connection.on('connect', function () {
             sendToDiv('client1', "CONNECTED")
@@ -51,7 +40,7 @@
         })
         // the second peer
         // this one is using the evented events
-        window.client2 = new P2P.P2PClient()
+        window.client2 = new P2PClient()
         client2.connectToPeerID(server.id)
         client2.on('connect', function (args) {
           sendToDiv('client2', "CONNECTED")
@@ -92,21 +81,21 @@
           var el = document.getElementById('serverinput')
           server.sendToAll(el.value)
         }
-      }
+
     </script>
   </head>
 
   <body>
     <div id="client1">Client 1 <br>
       <input type="text" id="peer1input"></input>
-      <button onclick="sendToPeer1()">send</button>
+      <button onclick="window.sendToPeer1()">send</button>
       <br>
     </div><hr>
     <div id="client2">Client 2 <br>
     </div><hr>
     <div id="server">Server <br>
       <input type="text" id="serverinput"></input>
-      <button onclick="sendToAll()">send to all</button><br>
+      <button onclick="window.sendToAll()">send to all</button><br>
     </div>
     <hr>
     <div id="log">
