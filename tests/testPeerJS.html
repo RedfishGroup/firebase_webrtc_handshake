@@ -1,11 +1,9 @@
 <html>
   <head>
-    <script src="../jspm_packages/system.js"></script>
-    <script src="../jspm.browser.js"></script>
-    <script src="../jspm.config.js"></script>
+    <script type=module>
+      import './testPeerJS.js'
+    </script>
     <script>
-      System.import('./testPeerJS.js')
-
       function sendToPeer1() {
         var el = document.getElementById('peer1input')
         client1.connection.send(el.value)
