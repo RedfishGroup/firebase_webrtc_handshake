@@ -1,6 +1,11 @@
-import * as dtls from "../src/dataUtils.js";
-import * as pb from "../src/peerBinary.js";
-import { P2PServer, P2PClient, imageToBlob } from "../dist/build.js";
+import {
+  P2PServer,
+  P2PClient,
+  PeerBinary,
+  UnChunker,
+  generateWebRTCpayload,
+  imageToBlob
+} from "../dist/build.js";
 
 function runTests() {
   // 1
@@ -31,7 +36,7 @@ function test1chunking() {
   var pass = true;
   var zeroApeared = false;
   // fill array with random values between 1 and something
-  console.log(dtls);
+
   var a = new ArrayBuffer(4 * 1280 * 1280); // a good resolution for an image, rgba
   var aview = new Uint8Array(a);
   for (var j = 0; j < aview.length; j++) {
@@ -39,10 +44,10 @@ function test1chunking() {
   }
   // chunk and unChunk
   var payload;
-  dtls.generateWebRTCpayload(a, function(ev) {
+  generateWebRTCpayload(a, function(ev) {
     payload = ev;
   });
-  var unchunk = new pb.UnChunker();
+  var unchunk = new UnChunker();
   var a2;
   unchunk.onData = function(val) {
     a2 = new Uint8Array(val);
@@ -128,7 +133,7 @@ function testSendingImage() {
   var im = new Image();
   im.onload = function() {
     console.log("Image2 loaded");
-    dtls.imageToBlob(im, function(blob) {
+    imageToBlob(im, function(blob) {
       client2.connection.sendBig(blob);
       client2.connection.sendBig(blob);
     });

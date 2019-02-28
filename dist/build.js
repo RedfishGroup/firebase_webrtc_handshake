@@ -2517,7 +2517,8 @@ var settings = {
   POLLING_FREQUENCY: 15000
 };
 
-console.log("settings", settings);
+var binarize$1 = binarize;
+console.log("binarize", binarize$1);
 
 var drawingCanvas; // this is a canvas used by imageToBlob
 
@@ -2526,7 +2527,7 @@ var drawingCanvas; // this is a canvas used by imageToBlob
 //
 function generateWebRTCpayload(obj, callback) {
   //console.time('generateWebRTCpayload')
-  undefined(obj, function(bin) {
+  binarize$1.pack(obj, function(bin) {
     var header = {
       payloadID: Math.floor(Math.random() * 100000000)
     };
@@ -2547,7 +2548,7 @@ function arrayBufferToChunks(buff, payloadID) {
     var chunksize = Math.min(buff.byteLength - i, settings.CHUNK_SIZE);
     var chunk = wholeshebang.slice(i, i + chunksize);
     var id = count; //new Uint8Array(idSize);
-    undefined({ payloadID: payloadID, id: id, chunk: chunk }, function(
+    binarize$1.pack({ payloadID: payloadID, id: id, chunk: chunk }, function(
       chbin
     ) {
       result.push(chbin);
@@ -53605,9 +53606,160 @@ class P2PClient extends Evented {
   }
 }
 
-var P2PServer$1 = P2PServer;
-var P2PClient$1 = P2PClient;
-var imageToBlob$1 = imageToBlob;
+var Peer$1 = simplepeer_min;
+window.simpPeer = Peer$1;
+console.log("peer2", Peer2);
 
-export { P2PServer$1 as P2PServer, P2PClient$1 as P2PClient, imageToBlob$1 as imageToBlob };
+class PeerBinary$1 extends Peer$1 {
+  constructor(options) {
+    //console.log('PeerBinary contructor called')
+    super(options);
+    this._registerDataMessage();
+    this.unchunker = new UnChunker$1(); //
+    this.unchunker.onData = val => {
+      this.emit("dataBig", val);
+    };
+  }
+
+  //want to overide these 2 functions I think.
+  _registerDataMessage(event) {
+    this.on("data", data => {
+      //when its done with a complete chunk, call this.emit('dataBig', completed)
+      this.unchunker.registerChunk(data);
+    });
+  }
+
+  sendBig(chunk) {
+    generateWebRTCpayload(chunk, stuff => {
+      this.send(JSON.stringify(stuff.header));
+      for (var i in stuff.chunks) {
+        var ch = stuff.chunks[i];
+        this.send(ch.buffer);
+      }
+    });
+  }
+}
+
+//
+// Takes a bunch of possibly out of order shunks and assembles them into one
+//
+class UnChunker$1 {
+  constructor() {
+    this.payloads = {};
+    this.payloadCount = 0;
+    this.onData = function(val) {
+      console.log("default, data is ready:", val);
+    };
+  }
+
+  registerChunk(msg) {
+    var header = this.parseHeader(msg);
+    if (header) {
+      this._newPayload(header.payloadID, header.chunkCount);
+    } else if (this._isChunk(msg)) {
+      //the is a chunk hopefully
+      undefined(msg.buffer, val => {
+        this._appendToPayload(val);
+        //this.emit('dataBig', val)
+        if (this._isPayloadReady(val.payloadID)) {
+          this._assembleChunks(val.payloadID, result => {
+            this.onData(result);
+            return result;
+          });
+        }
+      });
+    } else {
+      console.warn("not my type", msg);
+      //console.warn(this._ab2str(msg))
+    }
+    return null;
+  }
+
+  _ab2str(buf) {
+    return String.fromCharCode.apply(null, new Uint16Array(buf));
+  }
+
+  _newPayload(id, count) {
+    this.payloads[id] = {
+      count: count,
+      chunks: [],
+      lastUpdate: new Date()
+    };
+    this.payloadCount++;
+  }
+
+  _appendToPayload(chunk) {
+    var pl = this.payloads[chunk.payloadID];
+    pl.lastUpdate = new Date();
+    pl.chunks.push(chunk);
+  }
+
+  _assembleChunks(payloadID, cb) {
+    var pl = this.payloads[payloadID];
+    pl.chunks.sort(function(a, b) {
+      return Number(a.id) - Number(b.id);
+    });
+    var totalSize = 0;
+    for (var i = 0; i < pl.chunks.length; i++) {
+      totalSize += pl.chunks[i].chunk.length;
+    }
+    var result = new Uint8Array(totalSize);
+    var position = 0;
+    for (var i = 0; i < pl.chunks.length; i++) {
+      var ch = pl.chunks[i];
+      result.set(ch.chunk, position);
+      position += ch.chunk.length;
+    }
+    undefined(result.buffer, cb);
+    this._removePayload(payloadID);
+  }
+
+  _removePayload(id) {
+    delete this.payloads[id];
+    this.payloadCount--;
+  }
+
+  parseHeader(data) {
+    if (typeof data == "object" && !(data instanceof Uint8Array)) {
+      if (data.chunkCount && data.chunkCount > 0) {
+        return data;
+      }
+    } else if (data.length && data.length < 60) {
+      // might have been packed or something.
+      var str = this._ab2str(data);
+      if (str) {
+        try {
+          var json = JSON.parse(str);
+          if (json && json.payloadID) {
+            return json;
+          }
+        } catch (er) {
+          // probably not a header. Not a big deal
+        }
+      }
+    }
+    return undefined;
+  }
+
+  _isChunk(msg) {
+    if (this.payloadCount <= 0) {
+      return false;
+    }
+    return msg instanceof Uint8Array || msg instanceof DataView;
+  }
+
+  _isPayloadReady(id) {
+    var pl = this.payloads[id];
+    if (pl.chunks.length == pl.count) {
+      return true;
+    }
+    return false;
+  }
+}
+
+// export var P2PServer = serv.P2PServer;
+// export var P2PClient = client.P2PClient;
+// export var imageToBlob = im2bl.imageToBlob;
+
+export { P2PServer, P2PClient, generateWebRTCpayload, arrayBufferToChunks, imageToBlob, PeerBinary$1 as PeerBinary, UnChunker$1 as UnChunker };
 //# sourceMappingURL=build.js.map

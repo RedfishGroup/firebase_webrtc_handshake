@@ -1,8 +1,9 @@
-import * as binarize from "binarize.js/src/binarize.js";
+import * as binarize2 from "binarize.js/src/binarize.js";
 import { Evented } from "./Evented.js";
 import { settings } from "./settings.js";
 
-console.log("settings", settings);
+var binarize = binarize2.default;
+console.log("binarize", binarize);
 
 var drawingCanvas; // this is a canvas used by imageToBlob
 

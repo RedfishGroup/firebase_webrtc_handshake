@@ -1,7 +1,21 @@
-import * as serv from './P2PServer.js'
-import * as client from './P2PClient.js'
-import * as im2bl from './dataUtils.js'
+import { P2PServer } from "./P2PServer.js";
+import { P2PClient } from "./P2PClient.js";
+import {
+  generateWebRTCpayload,
+  arrayBufferToChunks,
+  imageToBlob
+} from "./dataUtils.js";
+import { PeerBinary, UnChunker } from "./peerBinary.js";
 
-export var P2PServer = serv.P2PServer
-export var P2PClient = client.P2PClient
-export var imageToBlob = im2bl.imageToBlob
+export {
+  P2PServer,
+  P2PClient,
+  generateWebRTCpayload,
+  arrayBufferToChunks,
+  imageToBlob,
+  PeerBinary,
+  UnChunker
+};
+// export var P2PServer = serv.P2PServer;
+// export var P2PClient = client.P2PClient;
+// export var imageToBlob = im2bl.imageToBlob;
