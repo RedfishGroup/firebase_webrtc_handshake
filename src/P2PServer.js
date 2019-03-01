@@ -5,7 +5,7 @@ import { getDatabase } from "./defaultFirebase.js";
 import * as firebase2 from "firebase/dist/index.esm";
 var firebase = firebase2.default;
 
-class Channel {
+export class Channel {
   constructor(fbref, peer) {
     this.outRef = fbref.child("fromServer"); //firebase
     this.inRef = fbref.child("fromClient");
@@ -26,7 +26,7 @@ export class P2PServer extends Evented {
     this.debug = false;
     this.id = "server" + Math.floor(Math.random() * 100000);
     this.stream = undefined;
-    this.iceServers = settings.ICE_SERVERS;
+    this.iceServers = options.ICE_SERVERS || settings.ICE_SERVERS;
     this.database;
     if (options.database) {
       this.database = options.database;
@@ -76,8 +76,9 @@ export class P2PServer extends Evented {
       for (var i in val.fromClient) {
         var sig = val.fromClient[i];
         if (sig.type == "offer") {
+          var mykey = ev.key;
           var channel = new Channel(
-            this.channelRef.child(ev.key),
+            this.channelRef.child(mykey),
             this._makePeer()
           );
           this.connections.push(channel);

@@ -1,4 +1,4 @@
-import { P2PServer } from "./P2PServer.js";
+import { P2PServer, Channel } from "./P2PServer.js";
 import { P2PClient } from "./P2PClient.js";
 import {
   generateWebRTCpayload,
@@ -14,7 +14,8 @@ export {
   arrayBufferToChunks,
   imageToBlob,
   PeerBinary,
-  UnChunker
+  UnChunker,
+  Channel
 };
 // export var P2PServer = serv.P2PServer;
 // export var P2PClient = client.P2PClient;

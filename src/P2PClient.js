@@ -6,9 +6,9 @@ import { getDatabase } from "./defaultFirebase.js";
 export class P2PClient extends Evented {
   constructor(options = {}) {
     super();
-    this.iceServers = settings.ICE_SERVERS;
-    Object.assign(this, settings); //_.extend(this,settings)
-    Object.assign(this, options); //_.extend(this,options)
+    this.iceServers = options.ICE_SERVERS || settings.ICE_SERVERS;
+    Object.assign(this, settings);
+    Object.assign(this, options);
     this.database;
     if (options.database) {
       this.database = options.database;
