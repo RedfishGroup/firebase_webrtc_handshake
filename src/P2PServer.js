@@ -22,11 +22,16 @@ export class Channel {
 export class P2PServer extends Evented {
   constructor(options = {}) {
     super(); //no idea what this does
+    console.assert(
+      options.iceServers,
+      "Server: no ice servers yet. Using defaults"
+    );
     this.MAX_CONNECTIONS = 20;
     this.debug = false;
     this.id = "server" + Math.floor(Math.random() * 100000);
     this.stream = undefined;
-    this.iceServers = options.ICE_SERVERS || settings.ICE_SERVERS;
+    this.iceServers =
+      options.iceServers || options.ICE_SERVERS || settings.ICE_SERVERS;
     this.database;
     if (options.database) {
       this.database = options.database;
@@ -35,7 +40,9 @@ export class P2PServer extends Evented {
     }
     Object.assign(this, options);
     if (this.debug) console.log(this.id);
-    this.init();
+    if (!options.dontCallInitYet) {
+      this.init();
+    }
   }
 
   init() {
@@ -58,8 +65,13 @@ export class P2PServer extends Evented {
 
   sendToAll(data) {
     for (var conx of this.connections) {
-      if (this.debug) console.log(conx);
-      conx.peer.send(data);
+      if (conx && conx.peer) {
+        try {
+          conx.peer.sendBig.bind(conx.peer)(data);
+        } catch (err) {
+          log.error(err, "Got an error, interrupted connection? ");
+        }
+      }
     }
   }
 
@@ -114,6 +126,7 @@ export class P2PServer extends Evented {
 
   _makePeer() {
     if (this.debug) console.log("_makePeer called");
+    this.fire("makePeer", undefined);
     var myoptions = {
       initiator: false,
       trickle: true,
@@ -153,9 +166,12 @@ export class P2PServer extends Evented {
   }
 
   destroy() {
+    this.channelRef.remove();
+    this.updateRef.remove();
     this.channelRef.off();
     this.updateRef.off();
     this.userRef.off();
+    this.isListening = false;
     for (var x of this.connections) {
       x.destroy();
     }
@@ -168,7 +184,7 @@ export class P2PServer extends Evented {
     for (var i = 0; i < this.connections.length; i++) {
       var conn = this.connections[i];
       if (conn.peer == peer) {
-        console.log("found my connection", i, conn);
+        if (this.debug) console.log("found my connection", i, conn);
         index = i;
       }
     }
@@ -176,7 +192,7 @@ export class P2PServer extends Evented {
       var conn = this.connections[index];
       conn.destroy();
       this.connections.splice(index, 1);
-      console.log(this.connections);
+      if (this.debug) console.log(this.connections);
     }
   }
 }
