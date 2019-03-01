@@ -1,7 +1,7 @@
 import { PeerBinary } from "./PeerBinary.js";
 import { settings } from "./settings.js";
 import { Evented } from "./Evented.js";
-import { database } from "./defaultFirebase.js";
+import { getDatabase } from "./defaultFirebase.js";
 import * as firebase2 from "firebase/dist/index.esm";
 var firebase = firebase2.default;
 
@@ -27,13 +27,19 @@ export class P2PServer extends Evented {
     this.id = "server" + Math.floor(Math.random() * 100000);
     this.stream = undefined;
     this.iceServers = settings.ICE_SERVERS;
-    Object.assign(this, options); //_.extendOwn(this, options)
+    this.database;
+    if (options.database) {
+      this.database = options.database;
+    } else {
+      this.database = getDatabase();
+    }
+    Object.assign(this, options);
     if (this.debug) console.log(this.id);
     this.init();
   }
 
   init() {
-    var fbref = database.ref("peers"); // new firebase(this.firebaseURL).child("peers");
+    var fbref = this.database.ref("peers"); // new firebase(this.firebaseURL).child("peers");
     this.userRef = fbref.child(this.id);
     this.updateRef = this.userRef.child("lastUpdate");
     this.userRef.onDisconnect().remove();

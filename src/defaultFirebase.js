@@ -8,7 +8,11 @@ var defaultFBConfig = {
   databaseURL: "https://torrid-torch-716.firebaseio.com/"
 };
 
-firebase.initializeApp(defaultFBConfig);
+var database;
 
-// Get a reference to the database service
-export var database = firebase.database();
+export function getDatabase() {
+  if (database) return database;
+  firebase.initializeApp(defaultFBConfig);
+  database = firebase.database();
+  return database;
+}

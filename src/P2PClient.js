@@ -1,7 +1,7 @@
 import { PeerBinary } from "./PeerBinary.js";
 import { settings } from "./settings.js";
 import { Evented } from "./Evented.js";
-import { database } from "./defaultFirebase.js";
+import { getDatabase } from "./defaultFirebase.js";
 
 export class P2PClient extends Evented {
   constructor(options = {}) {
@@ -9,7 +9,13 @@ export class P2PClient extends Evented {
     this.iceServers = settings.ICE_SERVERS;
     Object.assign(this, settings); //_.extend(this,settings)
     Object.assign(this, options); //_.extend(this,options)
-    this.fbref = database.ref("peers"); // new firebase(this.firebaseURL).child("peers");
+    this.database;
+    if (options.database) {
+      this.database = options.database;
+    } else {
+      this.database = getDatabase();
+    }
+    this.fbref = this.database.ref("peers"); // new firebase(this.firebaseURL).child("peers");
     this.connection = null;
     this.channelRef = null;
     this.stream = undefined;

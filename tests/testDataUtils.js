@@ -88,7 +88,11 @@ function testSomeDataTypes() {
   var str = false;
   var num = false;
   var arr = false;
-  var obj = { why: "does code decay like this", n: 3 };
+  var obj = {
+    why: "I dont know",
+    n: 3,
+    msg: "also this passed through the network"
+  };
   server3.on("dataBig", function(args) {
     console.log("server 3", args);
     if (args.data == "big fart") {
