@@ -1,9 +1,8 @@
-import * as binarize2 from "binarize.js/src/binarize.js";
 import { Evented } from "./Evented.js";
 import { settings } from "./settings.js";
+import * as msgpacklite from "msgpack-lite/dist/msgpack.min.js";
 
-var binarize = binarize2.default;
-console.log("binarize", binarize);
+var msgPack = msgpacklite.default;
 
 var drawingCanvas; // this is a canvas used by imageToBlob
 
@@ -11,16 +10,34 @@ var drawingCanvas; // this is a canvas used by imageToBlob
 // @param  {Function} callback []
 //
 export function generateWebRTCpayload(obj, callback) {
-  //console.time('generateWebRTCpayload')
-  binarize.pack(obj, function(bin) {
-    var header = {
-      payloadID: Math.floor(Math.random() * 100000000)
-    };
-    var chunks = arrayBufferToChunks(bin.buffer, header.payloadID);
-    header.chunkCount = chunks.length;
-    //console.timeEnd('generateWebRTCpayload')
-    callback({ header: header, chunks: chunks });
+  if (obj.constructor == Blob) {
+    generateWebRTCpayloadForBlob(obj, callback);
+  } else {
+    _generateWebRTCpayload(obj, callback);
+  }
+}
+export function generateWebRTCpayloadForBlob(obj, callback) {
+  var reader = new FileReader();
+  reader.addEventListener("loadend", function() {
+    const view = new Int8Array(reader.result);
+    _generateWebRTCpayload(view, callback, { isBlob: true, type: obj.type });
   });
+  reader.readAsArrayBuffer(obj);
+}
+export function _generateWebRTCpayload(obj, callback, headerOpt = {}) {
+  //console.time('generateWebRTCpayload')
+  let bin = msgPack.encode(obj);
+  var header = Object.assign(
+    {
+      iAmAHeader: true,
+      payloadID: Math.floor(Math.random() * 100000000)
+    },
+    headerOpt
+  );
+  var chunks = arrayBufferToChunks(bin, header.payloadID);
+  header.chunkCount = chunks.length;
+  //console.timeEnd('generateWebRTCpayload')
+  callback({ header: msgPack.encode(header), chunks: chunks });
 }
 
 export function arrayBufferToChunks(buff, payloadID) {
@@ -33,11 +50,8 @@ export function arrayBufferToChunks(buff, payloadID) {
     var chunksize = Math.min(buff.byteLength - i, settings.CHUNK_SIZE);
     var chunk = wholeshebang.slice(i, i + chunksize);
     var id = count; //new Uint8Array(idSize);
-    binarize.pack({ payloadID: payloadID, id: id, chunk: chunk }, function(
-      chbin
-    ) {
-      result.push(chbin);
-    }); //event though this is taking a calback i am pretty sure it executes synchronously on array buffers
+    let chbin = msgPack.encode({ payloadID: payloadID, id: id, chunk: chunk });
+    result.push(chbin);
     count++;
   }
   //console.timeEnd('chunks')

@@ -16,6 +16,7 @@
     "binarize.js": "^0.5.1",
     "firebase": "^5.8.4",
     "firebase-bower": "https://github.com/firebase/firebase-bower.git#2.4.2",
+    "msgpack-lite": "^0.1.26",
     "rollup-plugin-commonjs": "^9.2.1",
     "rollup-plugin-node-globals": "^1.4.0",
     "rollup-plugin-node-resolve": "^4.0.1",

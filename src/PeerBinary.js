@@ -1,12 +1,12 @@
 import * as Peer2 from "simple-peer/simplepeer.min.js";
-
 import { generateWebRTCpayload } from "./dataUtils.js";
-import * as binarize from "binarize.js/src/binarize.js";
 import "../lib/webrtc_adapter.js";
+import * as msgpacklite from "msgpack-lite/dist/msgpack.min.js";
 
+var msgPack = msgpacklite.default;
 var Peer = Peer2.default;
 window.simpPeer = Peer;
-console.log("peer2", Peer2);
+console.log("msg pack", msgpacklite);
 
 export class PeerBinary extends Peer {
   constructor(options) {
@@ -29,10 +29,10 @@ export class PeerBinary extends Peer {
 
   sendBig(chunk) {
     generateWebRTCpayload(chunk, stuff => {
-      this.send(JSON.stringify(stuff.header));
+      this.send(stuff.header);
       for (var i in stuff.chunks) {
         var ch = stuff.chunks[i];
-        this.send(ch.buffer);
+        this.send(ch);
       }
     });
   }
@@ -53,10 +53,11 @@ export class UnChunker {
   registerChunk(msg) {
     var header = this.parseHeader(msg);
     if (header) {
-      this._newPayload(header.payloadID, header.chunkCount);
+      this._newPayload(header.payloadID, header);
     } else if (this._isChunk(msg)) {
       //the is a chunk hopefully
-      binarize.unpack(msg.buffer, val => {
+      try {
+        let val = msgPack.decode(msg);
         this._appendToPayload(val);
         //this.emit('dataBig', val)
         if (this._isPayloadReady(val.payloadID)) {
@@ -65,7 +66,10 @@ export class UnChunker {
             return result;
           });
         }
-      });
+      } catch (err) {
+        console.error(err);
+        console.error("val:", msg);
+      }
     } else {
       console.warn("not my type", msg);
       //console.warn(this._ab2str(msg))
@@ -73,16 +77,12 @@ export class UnChunker {
     return null;
   }
 
-  _ab2str(buf) {
-    return String.fromCharCode.apply(null, new Uint16Array(buf));
-  }
-
-  _newPayload(id, count) {
-    this.payloads[id] = {
-      count: count,
+  _newPayload(id, header) {
+    this.payloads[id] = Object.assign(header, {
+      count: header.chunkCount,
       chunks: [],
       lastUpdate: new Date()
-    };
+    });
     this.payloadCount++;
   }
 
@@ -108,8 +108,17 @@ export class UnChunker {
       result.set(ch.chunk, position);
       position += ch.chunk.length;
     }
-    binarize.unpack(result.buffer, cb);
-    this._removePayload(payloadID);
+    try {
+      let val1 = msgPack.decode(result);
+      if (pl.isBlob) {
+        val1 = new Blob([val1.buffer], { type: pl.type });
+      }
+      cb(val1);
+      this._removePayload(payloadID);
+    } catch (err) {
+      console.error(err);
+      console.error("buffer", result);
+    }
   }
 
   _removePayload(id) {
@@ -122,13 +131,12 @@ export class UnChunker {
       if (data.chunkCount && data.chunkCount > 0) {
         return data;
       }
-    } else if (data.length && data.length < 60) {
+    } else if (data.length && data.length < 4000) {
       // might have been packed or something.
-      var str = this._ab2str(data);
-      if (str) {
+      var json = msgPack.decode(data);
+      if (json) {
         try {
-          var json = JSON.parse(str);
-          if (json && json.payloadID) {
+          if (json && json.iAmAHeader) {
             return json;
           }
         } catch (er) {

@@ -140,7 +140,12 @@ function testSendingImage() {
   };
   server2.on("dataBig", function(args) {
     console.log("server2 recieved dataBig", args);
-    var url = URL.createObjectURL(args.data);
+    try {
+      var url = URL.createObjectURL(args.data);
+    } catch (err) {
+      console.error("error with data ", args);
+      console.error(err);
+    }
     logMessage("Image sent across webrtc");
     logMessage(`<img src="${url}" width=300 height=200/><br>`);
   });
