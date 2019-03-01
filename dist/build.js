@@ -50894,8 +50894,6 @@ function getDatabase() {
   return database;
 }
 
-// Get a reference to the database service
-
 var firebase$2 = firebase;
 
 class Channel {
@@ -50919,7 +50917,7 @@ class P2PServer extends Evented {
     this.debug = false;
     this.id = "server" + Math.floor(Math.random() * 100000);
     this.stream = undefined;
-    this.iceServers = settings.ICE_SERVERS;
+    this.iceServers = options.ICE_SERVERS || settings.ICE_SERVERS;
     this.database;
     if (options.database) {
       this.database = options.database;
@@ -50969,8 +50967,9 @@ class P2PServer extends Evented {
       for (var i in val.fromClient) {
         var sig = val.fromClient[i];
         if (sig.type == "offer") {
+          var mykey = ev.key;
           var channel = new Channel(
-            this.channelRef.child(ev.key),
+            this.channelRef.child(mykey),
             this._makePeer()
           );
           this.connections.push(channel);
@@ -51074,9 +51073,9 @@ class P2PServer extends Evented {
 class P2PClient extends Evented {
   constructor(options = {}) {
     super();
-    this.iceServers = settings.ICE_SERVERS;
-    Object.assign(this, settings); //_.extend(this,settings)
-    Object.assign(this, options); //_.extend(this,options)
+    this.iceServers = options.ICE_SERVERS || settings.ICE_SERVERS;
+    Object.assign(this, settings);
+    Object.assign(this, options);
     this.database;
     if (options.database) {
       this.database = options.database;
@@ -51392,5 +51391,5 @@ class UnChunker$1 {
 // export var P2PClient = client.P2PClient;
 // export var imageToBlob = im2bl.imageToBlob;
 
-export { P2PServer, P2PClient, generateWebRTCpayload, arrayBufferToChunks, imageToBlob, PeerBinary$1 as PeerBinary, UnChunker$1 as UnChunker };
+export { P2PServer, P2PClient, generateWebRTCpayload, arrayBufferToChunks, imageToBlob, PeerBinary$1 as PeerBinary, UnChunker$1 as UnChunker, Channel };
 //# sourceMappingURL=build.js.map
