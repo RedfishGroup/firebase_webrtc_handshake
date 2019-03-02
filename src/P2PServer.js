@@ -142,7 +142,8 @@ export class P2PServer extends Evented {
       trickle: true,
       config: {
         iceServers: this.iceServers
-      }
+      },
+      peerID: this.id
     };
     if (this.stream) myoptions.stream = this.stream;
     var p = new PeerBinary(myoptions);
