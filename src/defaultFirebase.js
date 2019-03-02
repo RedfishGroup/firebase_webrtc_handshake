@@ -13,6 +13,6 @@ var database;
 export function getDatabase() {
   if (database) return database;
   firebase.initializeApp(defaultFBConfig);
-  database = firebase.database();
+  database = firebase.database().ref("/");
   return database;
 }

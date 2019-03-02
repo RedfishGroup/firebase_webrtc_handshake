@@ -16,7 +16,7 @@ export class P2PClient extends Evented {
     } else {
       this.database = getDatabase();
     }
-    this.fbref = this.database.ref("peers"); // new firebase(this.firebaseURL).child("peers");
+    this.fbref = this.database.child("peers"); // new firebase(this.firebaseURL).child("peers");
     this.connection = null;
     this.channelRef = null;
     this.stream = undefined;
