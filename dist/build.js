@@ -50919,17 +50919,20 @@ class P2PServer extends Evented {
     );
     this.MAX_CONNECTIONS = 20;
     this.debug = false;
+    this.isListening = false;
     this.id = "server" + Math.floor(Math.random() * 100000);
     this.stream = undefined;
     this.iceServers =
       options.iceServers || options.ICE_SERVERS || settings.ICE_SERVERS;
     this.database;
+    this.POLLING_FREQUENCY =
+      options.POLLING_FREQUENCY || settings.POLLING_FREQUENCY;
+    Object.assign(this, options);
     if (options.database) {
       this.database = options.database;
     } else {
       this.database = getDatabase();
     }
-    Object.assign(this, options);
     if (this.debug) console.log(this.id);
     if (!options.dontCallInitYet) {
       this.init();
@@ -50950,11 +50953,13 @@ class P2PServer extends Evented {
     this.connections = [];
     this._intervalID = setInterval(() => {
       this._updateOnFireBase();
-    }, settings.POLLING_FREQUENCY);
+    }, this.POLLING_FREQUENCY);
     this.listenToChannels();
+    this.fire("init", undefined);
   }
 
   _updateOnFireBase() {
+    // one may want to overwrite this
     this.updateRef.set(firebase$2.database.ServerValue.TIMESTAMP);
   }
 
@@ -51015,6 +51020,7 @@ class P2PServer extends Evented {
         }
       }
     });
+    this.isListening = true;
   }
 
   _makePeer() {
