@@ -58,9 +58,13 @@ export class P2PServer extends Evented {
     this.channelRef.set([]);
     this.connections = [];
     this._intervalID = setInterval(() => {
-      this.updateRef.set(firebase.database.ServerValue.TIMESTAMP);
+      this._updateOnFireBase();
     }, settings.POLLING_FREQUENCY);
     this.listenToChannels();
+  }
+
+  _updateOnFireBase() {
+    this.updateRef.set(firebase.database.ServerValue.TIMESTAMP);
   }
 
   sendToAll(data) {
