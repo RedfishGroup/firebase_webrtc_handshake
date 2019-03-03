@@ -13,6 +13,9 @@ var database;
 export function getDatabase() {
   if (database) return database;
   firebase.initializeApp(defaultFBConfig);
-  database = firebase.database().ref("/");
+  database = firebase
+    .database()
+    .ref("/")
+    .child("peers");
   return database;
 }

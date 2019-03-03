@@ -49,7 +49,7 @@ export class P2PServer extends Evented {
   }
 
   init() {
-    var fbref = this.database.child("peers"); // new firebase(this.firebaseURL).child("peers");
+    var fbref = this.database;
     this.userRef = fbref.child(this.id);
     this.updateRef = this.userRef.child("lastUpdate");
     this.userRef.onDisconnect().remove();

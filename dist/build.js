@@ -50890,7 +50890,10 @@ var database;
 function getDatabase() {
   if (database) return database;
   firebase$1.initializeApp(defaultFBConfig);
-  database = firebase$1.database().ref("/");
+  database = firebase$1
+    .database()
+    .ref("/")
+    .child("peers");
   return database;
 }
 
@@ -50940,7 +50943,7 @@ class P2PServer extends Evented {
   }
 
   init() {
-    var fbref = this.database.child("peers"); // new firebase(this.firebaseURL).child("peers");
+    var fbref = this.database;
     this.userRef = fbref.child(this.id);
     this.updateRef = this.userRef.child("lastUpdate");
     this.userRef.onDisconnect().remove();
@@ -51110,7 +51113,7 @@ class P2PClient extends Evented {
     } else {
       this.database = getDatabase();
     }
-    this.fbref = this.database.child("peers"); // new firebase(this.firebaseURL).child("peers");
+    this.fbref = this.database;
     this.connection = null;
     this.channelRef = null;
     this.stream = undefined;
