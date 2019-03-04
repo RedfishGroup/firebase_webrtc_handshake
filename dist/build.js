@@ -7479,7 +7479,7 @@ function __importDefault(mod) {
     return (mod && mod.__esModule) ? mod : { default: mod };
 }
 
-var tslib_es6 = /*#__PURE__*/Object.freeze({
+var tslib_1 = /*#__PURE__*/Object.freeze({
 	__extends: __extends,
 	__assign: __assign,
 	__rest: __rest,
@@ -8593,7 +8593,7 @@ var Hash = /** @class */ (function () {
  * @struct
  */
 var Sha1 = /** @class */ (function (_super) {
-    tslib_es6.__extends(Sha1, _super);
+    tslib_1.__extends(Sha1, _super);
     function Sha1() {
         var _this = _super.call(this) || this;
         /**
@@ -12478,7 +12478,7 @@ var Index = /** @class */ (function () {
  */
 var __EMPTY_NODE;
 var KeyIndex = /** @class */ (function (_super) {
-    tslib_es6.__extends(KeyIndex, _super);
+    tslib_1.__extends(KeyIndex, _super);
     function KeyIndex() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -12886,7 +12886,7 @@ function setMaxNode$1(val) {
  * @private
  */
 var PriorityIndex = /** @class */ (function (_super) {
-    tslib_es6.__extends(PriorityIndex, _super);
+    tslib_1.__extends(PriorityIndex, _super);
     function PriorityIndex() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -14351,7 +14351,7 @@ var ChildrenNode = /** @class */ (function () {
  * @private
  */
 var MaxNode = /** @class */ (function (_super) {
-    tslib_es6.__extends(MaxNode, _super);
+    tslib_1.__extends(MaxNode, _super);
     function MaxNode() {
         return _super.call(this, new SortedMap(NAME_COMPARATOR), ChildrenNode.EMPTY_NODE, IndexMap.Default) || this;
     }
@@ -14511,7 +14511,7 @@ setNodeFromJSON(nodeFromJSON$1);
  * @private
  */
 var ValueIndex = /** @class */ (function (_super) {
-    tslib_es6.__extends(ValueIndex, _super);
+    tslib_1.__extends(ValueIndex, _super);
     function ValueIndex() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -14592,7 +14592,7 @@ var VALUE_INDEX = new ValueIndex();
  * @extends {Index}
  */
 var PathIndex = /** @class */ (function (_super) {
-    tslib_es6.__extends(PathIndex, _super);
+    tslib_1.__extends(PathIndex, _super);
     function PathIndex(indexPath_) {
         var _this = _super.call(this) || this;
         _this.indexPath_ = indexPath_;
@@ -20371,7 +20371,7 @@ var EventEmitter = /** @class */ (function () {
  * @extends {EventEmitter}
  */
 var VisibilityMonitor = /** @class */ (function (_super) {
-    tslib_es6.__extends(VisibilityMonitor, _super);
+    tslib_1.__extends(VisibilityMonitor, _super);
     function VisibilityMonitor() {
         var _this = _super.call(this, ['visible']) || this;
         var hidden;
@@ -20452,7 +20452,7 @@ var VisibilityMonitor = /** @class */ (function (_super) {
  * @extends {EventEmitter}
  */
 var OnlineMonitor = /** @class */ (function (_super) {
-    tslib_es6.__extends(OnlineMonitor, _super);
+    tslib_1.__extends(OnlineMonitor, _super);
     function OnlineMonitor() {
         var _this = _super.call(this, ['online']) || this;
         _this.online_ = true;
@@ -22211,7 +22211,7 @@ var INVALID_AUTH_TOKEN_THRESHOLD = 3;
  * in quotes to make sure the closure compiler does not minify them.
  */
 var PersistentConnection = /** @class */ (function (_super) {
-    tslib_es6.__extends(PersistentConnection, _super);
+    tslib_1.__extends(PersistentConnection, _super);
     /**
      * @implements {ServerActions}
      * @param {!RepoInfo} repoInfo_ Data about the namespace we are connecting to
@@ -22985,7 +22985,7 @@ var PersistentConnection = /** @class */ (function (_super) {
  * persistent connection (using WebSockets or long-polling)
  */
 var ReadonlyRestClient = /** @class */ (function (_super) {
-    tslib_es6.__extends(ReadonlyRestClient, _super);
+    tslib_1.__extends(ReadonlyRestClient, _super);
     /**
      * @param {!RepoInfo} repoInfo_ Data about the namespace we are connecting to
      * @param {function(string, *, boolean, ?number)} onDataUpdate_ A callback for new data from the server
@@ -24441,7 +24441,7 @@ var QueryParams = /** @class */ (function () {
  * limitations under the License.
  */
 var Reference = /** @class */ (function (_super) {
-    tslib_es6.__extends(Reference, _super);
+    tslib_1.__extends(Reference, _super);
     /**
      * Call options:
      *   new Reference(Repo, Path) or
@@ -25707,8 +25707,8 @@ var DatabaseInternals = /** @class */ (function () {
     }
     /** @return {Promise<void>} */
     DatabaseInternals.prototype.delete = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 this.database.checkDeleted_('delete');
                 RepoManager.getInstance().deleteRepo(this.database.repo_);
                 this.database.repo_ = null;
@@ -26411,7 +26411,7 @@ var Code = {
  * and compatible `code` and `message` fields.)
  */
 var FirestoreError = /** @class */ (function (_super) {
-    tslib_es6.__extends(FirestoreError, _super);
+    tslib_1.__extends(FirestoreError, _super);
     function FirestoreError(code, message) {
         var _this = _super.call(this, message) || this;
         _this.code = code;
@@ -27357,7 +27357,7 @@ var Path = /** @class */ (function () {
  * within Firestore.
  */
 var ResourcePath = /** @class */ (function (_super) {
-    tslib_es6.__extends(ResourcePath, _super);
+    tslib_1.__extends(ResourcePath, _super);
     function ResourcePath() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -27391,7 +27391,7 @@ var ResourcePath = /** @class */ (function (_super) {
 var identifierRegExp = /^[_a-zA-Z][_a-zA-Z0-9]*$/;
 /** A dot-separated path for navigating sub-objects within a document. */
 var FieldPath = /** @class */ (function (_super) {
-    tslib_es6.__extends(FieldPath, _super);
+    tslib_1.__extends(FieldPath, _super);
     function FieldPath() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -27579,7 +27579,7 @@ var MaybeDocument = /** @class */ (function () {
  * data has local mutations applied to it.
  */
 var Document = /** @class */ (function (_super) {
-    tslib_es6.__extends(Document, _super);
+    tslib_1.__extends(Document, _super);
     function Document(key, version$$1, data, options, 
     /**
      * Memoized serialized form of the document for optimization purposes (avoids repeated
@@ -27641,7 +27641,7 @@ var Document = /** @class */ (function (_super) {
  * denotes time we know it didn't exist at.
  */
 var NoDocument = /** @class */ (function (_super) {
-    tslib_es6.__extends(NoDocument, _super);
+    tslib_1.__extends(NoDocument, _super);
     function NoDocument(key, version$$1, options) {
         var _this = _super.call(this, key, version$$1) || this;
         _this.hasCommittedMutations = !!(options && options.hasCommittedMutations);
@@ -27670,7 +27670,7 @@ var NoDocument = /** @class */ (function (_super) {
  * document that was updated without a known base document).
  */
 var UnknownDocument = /** @class */ (function (_super) {
-    tslib_es6.__extends(UnknownDocument, _super);
+    tslib_1.__extends(UnknownDocument, _super);
     function UnknownDocument(key, version$$1) {
         return _super.call(this, key, version$$1) || this;
     }
@@ -28202,7 +28202,7 @@ var FieldValue = /** @class */ (function () {
     return FieldValue;
 }());
 var NullValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(NullValue, _super);
+    tslib_1.__extends(NullValue, _super);
     function NullValue() {
         var _this = _super.call(this) || this;
         _this.typeOrder = TypeOrder.NullValue;
@@ -28227,7 +28227,7 @@ var NullValue = /** @class */ (function (_super) {
     return NullValue;
 }(FieldValue));
 var BooleanValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(BooleanValue, _super);
+    tslib_1.__extends(BooleanValue, _super);
     function BooleanValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -28256,7 +28256,7 @@ var BooleanValue = /** @class */ (function (_super) {
 }(FieldValue));
 /** Base class for IntegerValue and DoubleValue. */
 var NumberValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(NumberValue, _super);
+    tslib_1.__extends(NumberValue, _super);
     function NumberValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -28312,7 +28312,7 @@ function numericEquals(left, right) {
     }
 }
 var IntegerValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(IntegerValue, _super);
+    tslib_1.__extends(IntegerValue, _super);
     function IntegerValue(internalValue) {
         return _super.call(this, internalValue) || this;
     }
@@ -28329,7 +28329,7 @@ var IntegerValue = /** @class */ (function (_super) {
     return IntegerValue;
 }(NumberValue));
 var DoubleValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(DoubleValue, _super);
+    tslib_1.__extends(DoubleValue, _super);
     function DoubleValue(internalValue) {
         var _this = _super.call(this, internalValue) || this;
         _this.internalValue = internalValue;
@@ -28352,7 +28352,7 @@ var DoubleValue = /** @class */ (function (_super) {
 }(NumberValue));
 // TODO(b/37267885): Add truncation support
 var StringValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(StringValue, _super);
+    tslib_1.__extends(StringValue, _super);
     function StringValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -28374,7 +28374,7 @@ var StringValue = /** @class */ (function (_super) {
     return StringValue;
 }(FieldValue));
 var TimestampValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(TimestampValue, _super);
+    tslib_1.__extends(TimestampValue, _super);
     function TimestampValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -28422,7 +28422,7 @@ var TimestampValue = /** @class */ (function (_super) {
  *   localWriteTime.
  */
 var ServerTimestampValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(ServerTimestampValue, _super);
+    tslib_1.__extends(ServerTimestampValue, _super);
     function ServerTimestampValue(localWriteTime, previousValue) {
         var _this = _super.call(this) || this;
         _this.localWriteTime = localWriteTime;
@@ -28465,7 +28465,7 @@ var ServerTimestampValue = /** @class */ (function (_super) {
     return ServerTimestampValue;
 }(FieldValue));
 var BlobValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(BlobValue, _super);
+    tslib_1.__extends(BlobValue, _super);
     function BlobValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -28488,7 +28488,7 @@ var BlobValue = /** @class */ (function (_super) {
     return BlobValue;
 }(FieldValue));
 var RefValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(RefValue, _super);
+    tslib_1.__extends(RefValue, _super);
     function RefValue(databaseId, key) {
         var _this = _super.call(this) || this;
         _this.databaseId = databaseId;
@@ -28517,7 +28517,7 @@ var RefValue = /** @class */ (function (_super) {
     return RefValue;
 }(FieldValue));
 var GeoPointValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(GeoPointValue, _super);
+    tslib_1.__extends(GeoPointValue, _super);
     function GeoPointValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -28540,7 +28540,7 @@ var GeoPointValue = /** @class */ (function (_super) {
     return GeoPointValue;
 }(FieldValue));
 var ObjectValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(ObjectValue, _super);
+    tslib_1.__extends(ObjectValue, _super);
     function ObjectValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -28653,7 +28653,7 @@ var ObjectValue = /** @class */ (function (_super) {
     return ObjectValue;
 }(FieldValue));
 var ArrayValue = /** @class */ (function (_super) {
-    tslib_es6.__extends(ArrayValue, _super);
+    tslib_1.__extends(ArrayValue, _super);
     function ArrayValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -29118,7 +29118,7 @@ var RelationOp = /** @class */ (function () {
     return RelationOp;
 }());
 var RelationFilter = /** @class */ (function (_super) {
-    tslib_es6.__extends(RelationFilter, _super);
+    tslib_1.__extends(RelationFilter, _super);
     function RelationFilter(field, op, value) {
         var _this = _super.call(this) || this;
         _this.field = field;
@@ -29196,7 +29196,7 @@ var RelationFilter = /** @class */ (function (_super) {
  * Filter that matches 'null' values.
  */
 var NullFilter = /** @class */ (function (_super) {
-    tslib_es6.__extends(NullFilter, _super);
+    tslib_1.__extends(NullFilter, _super);
     function NullFilter(field) {
         var _this = _super.call(this) || this;
         _this.field = field;
@@ -29226,7 +29226,7 @@ var NullFilter = /** @class */ (function (_super) {
  * Filter that matches 'NaN' values.
  */
 var NanFilter = /** @class */ (function (_super) {
-    tslib_es6.__extends(NanFilter, _super);
+    tslib_1.__extends(NanFilter, _super);
     function NanFilter(field) {
         var _this = _super.call(this) || this;
         _this.field = field;
@@ -29928,7 +29928,7 @@ var Mutation = /** @class */ (function () {
  * object value contents.
  */
 var SetMutation = /** @class */ (function (_super) {
-    tslib_es6.__extends(SetMutation, _super);
+    tslib_1.__extends(SetMutation, _super);
     function SetMutation(key, value, precondition) {
         var _this = _super.call(this) || this;
         _this.key = key;
@@ -29980,7 +29980,7 @@ var SetMutation = /** @class */ (function (_super) {
  *    ignored.
  */
 var PatchMutation = /** @class */ (function (_super) {
-    tslib_es6.__extends(PatchMutation, _super);
+    tslib_1.__extends(PatchMutation, _super);
     function PatchMutation(key, data, fieldMask, precondition) {
         var _this = _super.call(this) || this;
         _this.key = key;
@@ -30064,7 +30064,7 @@ var PatchMutation = /** @class */ (function (_super) {
  * Mutation for rationale).
  */
 var TransformMutation = /** @class */ (function (_super) {
-    tslib_es6.__extends(TransformMutation, _super);
+    tslib_1.__extends(TransformMutation, _super);
     function TransformMutation(key, fieldTransforms) {
         var _this = _super.call(this) || this;
         _this.key = key;
@@ -30184,7 +30184,7 @@ var TransformMutation = /** @class */ (function (_super) {
 }(Mutation));
 /** A mutation that deletes the document at the given key. */
 var DeleteMutation = /** @class */ (function (_super) {
-    tslib_es6.__extends(DeleteMutation, _super);
+    tslib_1.__extends(DeleteMutation, _super);
     function DeleteMutation(key, precondition) {
         var _this = _super.call(this) || this;
         _this.key = key;
@@ -35409,7 +35409,7 @@ function documentGlobalStore(txn) {
  * Handles the details of adding and updating documents in the IndexedDbRemoteDocumentCache
  */
 var IndexedDbRemoteDocumentChangeBuffer = /** @class */ (function (_super) {
-    tslib_es6.__extends(IndexedDbRemoteDocumentChangeBuffer, _super);
+    tslib_1.__extends(IndexedDbRemoteDocumentChangeBuffer, _super);
     function IndexedDbRemoteDocumentChangeBuffer(documentCache) {
         var _this = _super.call(this) || this;
         _this.documentCache = documentCache;
@@ -37186,7 +37186,7 @@ var UNSUPPORTED_PLATFORM_ERROR_MSG = 'This platform is either missing' +
 //     firestore_zombie_<persistence_prefix>_<instance_key>
 var ZOMBIED_CLIENTS_KEY_PREFIX = 'firestore_zombie';
 var IndexedDbTransaction = /** @class */ (function (_super) {
-    tslib_es6.__extends(IndexedDbTransaction, _super);
+    tslib_1.__extends(IndexedDbTransaction, _super);
     function IndexedDbTransaction(simpleDbTransaction, currentSequenceNumber) {
         var _this = _super.call(this) || this;
         _this.simpleDbTransaction = simpleDbTransaction;
@@ -37240,9 +37240,9 @@ var IndexedDbPersistence = /** @class */ (function () {
         }
     };
     IndexedDbPersistence.createIndexedDbPersistence = function (persistenceKey, clientId, platform$$1, queue, serializer, lruParams) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var persistence;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         persistence = new IndexedDbPersistence(persistenceKey, clientId, platform$$1, queue, serializer, lruParams);
@@ -37255,9 +37255,9 @@ var IndexedDbPersistence = /** @class */ (function () {
         });
     };
     IndexedDbPersistence.createMultiClientIndexedDbPersistence = function (persistenceKey, clientId, platform$$1, queue, serializer, lruParams, multiClientParams) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var persistence;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         persistence = new IndexedDbPersistence(persistenceKey, clientId, platform$$1, queue, serializer, lruParams, multiClientParams);
@@ -37317,8 +37317,8 @@ var IndexedDbPersistence = /** @class */ (function () {
     };
     IndexedDbPersistence.prototype.setPrimaryStateListener = function (primaryStateListener) {
         var _this = this;
-        this.primaryStateListener = function (primaryState) { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        this.primaryStateListener = function (primaryState) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 if (this.started) {
                     return [2 /*return*/, primaryStateListener(primaryState)];
                 }
@@ -37333,8 +37333,8 @@ var IndexedDbPersistence = /** @class */ (function () {
             this.networkEnabled = networkEnabled;
             // Schedule a primary lease refresh for immediate execution. The eventual
             // lease update will be propagated via `primaryStateListener`.
-            this.queue.enqueueAndForget(function () { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
-                return tslib_es6.__generator(this, function (_a) {
+            this.queue.enqueueAndForget(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                return tslib_1.__generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
                             if (!this.started) return [3 /*break*/, 2];
@@ -37407,10 +37407,10 @@ var IndexedDbPersistence = /** @class */ (function () {
      * time of all clients.
      */
     IndexedDbPersistence.prototype.maybeGarbageCollectMultiClientState = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
             var activeClients_1, inactiveClients_1;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (!(this.isPrimary &&
@@ -37555,9 +37555,9 @@ var IndexedDbPersistence = /** @class */ (function () {
         });
     };
     IndexedDbPersistence.prototype.shutdown = function (deleteData) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         // The shutdown() operations are idempotent and can be called even when
@@ -37863,8 +37863,8 @@ function isPrimaryLeaseLostError(err) {
  * @return A Promise that resolves after we recovered, or the original error.
  */
 function ignoreIfPrimaryLeaseLoss(err) {
-    return tslib_es6.__awaiter(this, void 0, void 0, function () {
-        return tslib_es6.__generator(this, function (_a) {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__generator(this, function (_a) {
             if (isPrimaryLeaseLostError(err)) {
                 debug(LOG_TAG$2, 'Unexpectedly lost primary lease');
             }
@@ -39505,7 +39505,7 @@ var MemoryRemoteDocumentCache = /** @class */ (function () {
  * Handles the details of adding and updating documents in the MemoryRemoteDocumentCache.
  */
 var MemoryRemoteDocumentChangeBuffer = /** @class */ (function (_super) {
-    tslib_es6.__extends(MemoryRemoteDocumentChangeBuffer, _super);
+    tslib_1.__extends(MemoryRemoteDocumentChangeBuffer, _super);
     function MemoryRemoteDocumentChangeBuffer(sizer, documentCache) {
         var _this = _super.call(this) || this;
         _this.sizer = sizer;
@@ -39609,8 +39609,8 @@ var MemoryPersistence = /** @class */ (function () {
         configurable: true
     });
     MemoryPersistence.prototype.getActiveClients = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 return [2 /*return*/, [this.clientId]];
             });
         });
@@ -40165,8 +40165,8 @@ var PersistentStream = /** @class */ (function () {
      * When stop returns, isStarted() and isOpen() will both return false.
      */
     PersistentStream.prototype.stop = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (!this.isStarted()) return [3 /*break*/, 2];
@@ -40217,8 +40217,8 @@ var PersistentStream = /** @class */ (function () {
     };
     /** Called by the idle timer when the stream should close due to inactivity. */
     PersistentStream.prototype.handleIdleCloseTimer = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 if (this.isOpen()) {
                     // When timing out an idle stream there's no reason to force the stream into backoff when
                     // it restarts so set the stream state to Initial instead of Error.
@@ -40249,8 +40249,8 @@ var PersistentStream = /** @class */ (function () {
      * @param error the error the connection was closed with.
      */
     PersistentStream.prototype.close = function (finalState, error$$1) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         assert(this.isStarted(), 'Only started streams should be closed.');
@@ -40352,8 +40352,8 @@ var PersistentStream = /** @class */ (function () {
         var _this = this;
         assert(this.state === PersistentStreamState.Error, 'Should only perform backoff when in Error state');
         this.state = PersistentStreamState.Backoff;
-        this.backoff.backoffAndRun(function () { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        this.backoff.backoffAndRun(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 assert(this.state === PersistentStreamState.Backoff, 'Backoff elapsed but state is now: ' + this.state);
                 this.state = PersistentStreamState.Initial;
                 this.start();
@@ -40403,7 +40403,7 @@ var PersistentStream = /** @class */ (function () {
  * sent from the server for ListenResponses.
  */
 var PersistentListenStream = /** @class */ (function (_super) {
-    tslib_es6.__extends(PersistentListenStream, _super);
+    tslib_1.__extends(PersistentListenStream, _super);
     function PersistentListenStream(queue, connection, credentials, serializer, listener) {
         var _this = _super.call(this, queue, TimerId.ListenStreamConnectionBackoff, TimerId.ListenStreamIdle, connection, credentials, listener) || this;
         _this.serializer = serializer;
@@ -40465,7 +40465,7 @@ var PersistentListenStream = /** @class */ (function (_super) {
  * TODO(b/33271235): Use proto types
  */
 var PersistentWriteStream = /** @class */ (function (_super) {
-    tslib_es6.__extends(PersistentWriteStream, _super);
+    tslib_1.__extends(PersistentWriteStream, _super);
     function PersistentWriteStream(queue, connection, credentials, serializer, listener) {
         var _this = _super.call(this, queue, TimerId.WriteStreamConnectionBackoff, TimerId.WriteStreamIdle, connection, credentials, listener) || this;
         _this.serializer = serializer;
@@ -41099,9 +41099,9 @@ var RemoteStore = /** @class */ (function () {
     };
     /** Re-enables the network. Idempotent. */
     RemoteStore.prototype.enableNetwork = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _a;
-            return tslib_es6.__generator(this, function (_b) {
+            return tslib_1.__generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
                         this.networkEnabled = true;
@@ -41132,8 +41132,8 @@ var RemoteStore = /** @class */ (function () {
      * enableNetwork().
      */
     RemoteStore.prototype.disableNetwork = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.networkEnabled = false;
@@ -41148,8 +41148,8 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.disableNetworkInternal = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, this.writeStream.stop()];
                     case 1:
@@ -41168,8 +41168,8 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.shutdown = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         debug(LOG_TAG$8, 'RemoteStore shutting down.');
@@ -41264,9 +41264,9 @@ var RemoteStore = /** @class */ (function () {
         this.watchChangeAggregator = null;
     };
     RemoteStore.prototype.onWatchStreamOpen = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 forEachNumber(this.listenTargets, function (targetId, queryData) {
                     _this.sendWatchRequest(queryData);
                 });
@@ -41275,8 +41275,8 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.onWatchStreamClose = function (error$$1) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 if (error$$1 === undefined) {
                     // Graceful stop (due to stop() or idle timeout). Make sure that's
                     // desirable.
@@ -41299,9 +41299,9 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.onWatchStreamChange = function (watchChange, snapshotVersion) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var lastRemoteSnapshotVersion;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         // Mark the client as online since we got a message from the server
@@ -41397,8 +41397,8 @@ var RemoteStore = /** @class */ (function () {
         var error$$1 = watchChange.cause;
         var promiseChain = Promise.resolve();
         watchChange.targetIds.forEach(function (targetId) {
-            promiseChain = promiseChain.then(function () { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
-                return tslib_es6.__generator(this, function (_a) {
+            promiseChain = promiseChain.then(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                return tslib_1.__generator(this, function (_a) {
                     // A watched target might have been removed already.
                     if (contains(this.listenTargets, targetId)) {
                         delete this.listenTargets[targetId];
@@ -41420,9 +41420,9 @@ var RemoteStore = /** @class */ (function () {
      * Starts the write stream if necessary.
      */
     RemoteStore.prototype.fillWritePipeline = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var lastBatchIdRetrieved, batch;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (!this.canAddToWritePipeline()) return [3 /*break*/, 4];
@@ -41484,8 +41484,8 @@ var RemoteStore = /** @class */ (function () {
         this.writeStream.start();
     };
     RemoteStore.prototype.onWriteStreamOpen = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 this.writeStream.writeHandshake();
                 return [2 /*return*/];
             });
@@ -41519,10 +41519,10 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.onWriteStreamClose = function (error$$1) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
             var errorHandling;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 if (error$$1 === undefined) {
                     // Graceful stop (due to stop() or idle timeout). Make sure that's
                     // desirable.
@@ -41555,8 +41555,8 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.handleHandshakeError = function (error$$1) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 // Reset the token if it's a permanent error, signaling the write stream is
                 // no longer valid. Note that the handshake does not count as a write: see
                 // comments on isPermanentWriteError for details.
@@ -41572,10 +41572,10 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.handleWriteError = function (error$$1) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
             var batch;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 // Only handle permanent errors here. If it's transient, just let the retry
                 // logic kick in.
                 if (isPermanentWriteError(error$$1.code)) {
@@ -41600,8 +41600,8 @@ var RemoteStore = /** @class */ (function () {
         return new Transaction(this.datastore);
     };
     RemoteStore.prototype.handleCredentialChange = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (!this.canUseNetwork()) return [3 /*break*/, 3];
@@ -41627,8 +41627,8 @@ var RemoteStore = /** @class */ (function () {
      * Toggles the network state when the client gains or loses its primary lease.
      */
     RemoteStore.prototype.applyPrimaryState = function (isPrimary) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.isPrimary = isPrimary;
@@ -41716,9 +41716,9 @@ var EventManager = /** @class */ (function () {
         }
     };
     EventManager.prototype.unlisten = function (listener) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var query, lastListen, queryInfo, i;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 query = listener.query;
                 lastListen = false;
                 queryInfo = this.queries.get(query);
@@ -42423,9 +42423,9 @@ var SyncEngine = /** @class */ (function () {
      * subscribed handlers. Returns the targetId of the query.
      */
     SyncEngine.prototype.listen = function (query) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var targetId, viewSnapshot, queryView, queryData, status_1;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.assertSubscribed('listen()');
@@ -42496,9 +42496,9 @@ var SyncEngine = /** @class */ (function () {
         return this.localStore.executeQuery(queryView.query).then(function (docs) {
             return _this.localStore
                 .remoteDocumentKeys(queryView.targetId)
-                .then(function (remoteKeys) { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
+                .then(function (remoteKeys) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                 var viewSnapshot;
-                return tslib_es6.__generator(this, function (_a) {
+                return tslib_1.__generator(this, function (_a) {
                     viewSnapshot = queryView.view.synchronizeWithPersistedState(docs, remoteKeys);
                     if (this.isPrimary) {
                         this.updateTrackedLimbos(queryView.targetId, viewSnapshot.limboChanges);
@@ -42510,10 +42510,10 @@ var SyncEngine = /** @class */ (function () {
     };
     /** Stops listening to the query. */
     SyncEngine.prototype.unlisten = function (query) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
             var queryView, targetRemainsActive;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.assertSubscribed('unlisten()');
@@ -42690,10 +42690,10 @@ var SyncEngine = /** @class */ (function () {
         }
     };
     SyncEngine.prototype.rejectListen = function (targetId, err) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
             var limboResolution, limboKey, documentUpdates, resolvedLimboDocuments, event_1, queryView_1;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.assertSubscribed('rejectListens()');
@@ -42731,9 +42731,9 @@ var SyncEngine = /** @class */ (function () {
     };
     // PORTING NOTE: Multi-tab only
     SyncEngine.prototype.applyBatchState = function (batchId, batchState, error$$1) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var documents;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.assertSubscribed('applyBatchState()');
@@ -42911,10 +42911,10 @@ var SyncEngine = /** @class */ (function () {
         return this.limboTargetsByKey;
     };
     SyncEngine.prototype.emitNewSnapsAndNotifyLocalStore = function (changes, remoteEvent) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
             var newSnaps, docChangesInAllViews, queriesProcessed;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         newSnaps = [];
@@ -42965,9 +42965,9 @@ var SyncEngine = /** @class */ (function () {
         assert(this.syncEngineListener !== null, 'Trying to call ' + fnName + ' before calling subscribe().');
     };
     SyncEngine.prototype.handleCredentialChange = function (user) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var userChanged, result;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         userChanged = !this.currentUser.isEqual(user);
@@ -42992,10 +42992,10 @@ var SyncEngine = /** @class */ (function () {
     };
     // PORTING NOTE: Multi-tab only
     SyncEngine.prototype.applyPrimaryState = function (isPrimary) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
             var activeTargets, activeQueries, _i, activeQueries_1, queryData, activeTargets_1, p_1;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (!(isPrimary === true && this.isPrimary !== true)) return [3 /*break*/, 3];
@@ -43064,9 +43064,9 @@ var SyncEngine = /** @class */ (function () {
         var activeQueries = [];
         var newViewSnapshots = [];
         var _loop_1 = function (targetId) {
-            p = p.then(function () { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
+            p = p.then(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                 var queryData, queryView, viewChange, query;
-                return tslib_es6.__generator(this, function (_a) {
+                return tslib_1.__generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
                             queryView = this.queryViewsByTarget[targetId];
@@ -43129,10 +43129,10 @@ var SyncEngine = /** @class */ (function () {
     };
     // PORTING NOTE: Multi-tab only
     SyncEngine.prototype.applyTargetState = function (targetId, state, error$$1) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
             var _a, queryView;
-            return tslib_es6.__generator(this, function (_b) {
+            return tslib_1.__generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
                         if (this.isPrimary) {
@@ -43151,9 +43151,9 @@ var SyncEngine = /** @class */ (function () {
                         return [3 /*break*/, 4];
                     case 1:
                         {
-                            return [2 /*return*/, this.localStore.getNewDocumentChanges().then(function (changes) { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
+                            return [2 /*return*/, this.localStore.getNewDocumentChanges().then(function (changes) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                                     var synthesizedRemoteEvent;
-                                    return tslib_es6.__generator(this, function (_a) {
+                                    return tslib_1.__generator(this, function (_a) {
                                         switch (_a.label) {
                                             case 0:
                                                 synthesizedRemoteEvent = RemoteEvent.createSynthesizedRemoteEventForCurrentChange(targetId, state === 'current');
@@ -43163,9 +43163,9 @@ var SyncEngine = /** @class */ (function () {
                                                 return [2 /*return*/];
                                         }
                                     });
-                                }); }, function (err) { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
+                                }); }, function (err) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                                     var activeTargets_2;
-                                    return tslib_es6.__generator(this, function (_a) {
+                                    return tslib_1.__generator(this, function (_a) {
                                         switch (_a.label) {
                                             case 0:
                                                 if (!isDocumentChangeMissingError(err)) return [3 /*break*/, 2];
@@ -43203,10 +43203,10 @@ var SyncEngine = /** @class */ (function () {
     };
     // PORTING NOTE: Multi-tab only
     SyncEngine.prototype.applyActiveTargetsChange = function (added, removed) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
             var _i, added_1, targetId, query, queryData, _loop_2, this_1, _a, removed_1, targetId;
-            return tslib_es6.__generator(this, function (_b) {
+            return tslib_1.__generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
                         if (!this.isPrimary) {
@@ -43237,7 +43237,7 @@ var SyncEngine = /** @class */ (function () {
                     case 6:
                         _loop_2 = function (targetId) {
                             var queryView;
-                            return tslib_es6.__generator(this, function (_a) {
+                            return tslib_1.__generator(this, function (_a) {
                                 switch (_a.label) {
                                     case 0:
                                         queryView = this_1.queryViewsByTarget[targetId];
@@ -43646,10 +43646,10 @@ var WebStorageSharedClientState = /** @class */ (function () {
         return !!(platform$$1.window && platform$$1.window.localStorage != null);
     };
     WebStorageSharedClientState.prototype.start = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
             var existingClients, _i, existingClients_1, clientId, storageItem, clientState, onlineStateJSON, onlineState, _a, _b, event_1;
-            return tslib_es6.__generator(this, function (_c) {
+            return tslib_1.__generator(this, function (_c) {
                 switch (_c.label) {
                     case 0:
                         assert(!this.started, 'WebStorageSharedClientState already started');
@@ -43797,9 +43797,9 @@ var WebStorageSharedClientState = /** @class */ (function () {
                     'garbage-collected our state');
                 return;
             }
-            this.queue.enqueueAndForget(function () { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
+            this.queue.enqueueAndForget(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                 var clientState, clientId, mutationMetadata, queryTargetMetadata, onlineState, sequenceNumber;
-                return tslib_es6.__generator(this, function (_a) {
+                return tslib_1.__generator(this, function (_a) {
                     if (!this.started) {
                         this.earlyEvents.push(event);
                         return [2 /*return*/];
@@ -43949,8 +43949,8 @@ var WebStorageSharedClientState = /** @class */ (function () {
         return SharedOnlineState.fromWebStorageEntry(value);
     };
     WebStorageSharedClientState.prototype.handleMutationBatchEvent = function (mutationBatch) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 if (mutationBatch.user.uid !== this.currentUser.uid) {
                     debug(LOG_TAG$10, "Ignoring mutation for non-active user " + mutationBatch.user.uid);
                     return [2 /*return*/];
@@ -43974,16 +43974,16 @@ var WebStorageSharedClientState = /** @class */ (function () {
         var newTargets = this.getAllActiveQueryTargets();
         var addedTargets = [];
         var removedTargets = [];
-        newTargets.forEach(function (targetId) { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        newTargets.forEach(function (targetId) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 if (!existingTargets.has(targetId)) {
                     addedTargets.push(targetId);
                 }
                 return [2 /*return*/];
             });
         }); });
-        existingTargets.forEach(function (targetId) { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        existingTargets.forEach(function (targetId) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 if (!newTargets.has(targetId)) {
                     removedTargets.push(targetId);
                 }
@@ -44298,9 +44298,9 @@ var FirestoreClient = /** @class */ (function () {
         var serializer = new JsonProtoSerializer(this.databaseInfo.databaseId, {
             useProto3Json: true
         });
-        return Promise.resolve().then(function () { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
+        return Promise.resolve().then(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
             var persistence, lruParams;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (settings.experimentalTabSynchronization &&
@@ -44347,10 +44347,10 @@ var FirestoreClient = /** @class */ (function () {
         debug(LOG_TAG$11, 'Initializing. user=', user.uid);
         return this.platform
             .loadConnection(this.databaseInfo)
-            .then(function (connection) { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
+            .then(function (connection) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
             var _this = this;
             var serializer, datastore, remoteStoreOnlineStateChangedHandler, sharedClientStateOnlineStateChangedHandler;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.localStore = new LocalStore(this.persistence, user);
@@ -44383,8 +44383,8 @@ var FirestoreClient = /** @class */ (function () {
                         _a.sent();
                         // NOTE: This will immediately call the listener, so we make sure to
                         // set it after localStore / remoteStore are started.
-                        return [4 /*yield*/, this.persistence.setPrimaryStateListener(function (isPrimary) { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
-                                return tslib_es6.__generator(this, function (_a) {
+                        return [4 /*yield*/, this.persistence.setPrimaryStateListener(function (isPrimary) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                return tslib_1.__generator(this, function (_a) {
                                     switch (_a.label) {
                                         case 0: return [4 /*yield*/, this.syncEngine.applyPrimaryState(isPrimary)];
                                         case 1:
@@ -44424,8 +44424,8 @@ var FirestoreClient = /** @class */ (function () {
     };
     FirestoreClient.prototype.shutdown = function (options) {
         var _this = this;
-        return this.asyncQueue.enqueue(function () { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return this.asyncQueue.enqueue(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         // PORTING NOTE: LocalStore does not need an explicit shutdown on web.
@@ -44514,7 +44514,7 @@ var FirestoreClient = /** @class */ (function () {
         var _this = this;
         // We have to wait for the async queue to be sure syncEngine is initialized.
         return this.asyncQueue
-            .enqueue(function () { return tslib_es6.__awaiter(_this, void 0, void 0, function () { return tslib_es6.__generator(this, function (_a) {
+            .enqueue(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () { return tslib_1.__generator(this, function (_a) {
             return [2 /*return*/];
         }); }); })
             .then(function () { return _this.syncEngine.runTransaction(updateFunction); });
@@ -44958,7 +44958,7 @@ var FieldValueImpl = /** @class */ (function () {
     return FieldValueImpl;
 }());
 var DeleteFieldValueImpl = /** @class */ (function (_super) {
-    tslib_es6.__extends(DeleteFieldValueImpl, _super);
+    tslib_1.__extends(DeleteFieldValueImpl, _super);
     function DeleteFieldValueImpl() {
         return _super.call(this, 'FieldValue.delete') || this;
     }
@@ -44967,7 +44967,7 @@ var DeleteFieldValueImpl = /** @class */ (function (_super) {
     return DeleteFieldValueImpl;
 }(FieldValueImpl));
 var ServerTimestampFieldValueImpl = /** @class */ (function (_super) {
-    tslib_es6.__extends(ServerTimestampFieldValueImpl, _super);
+    tslib_1.__extends(ServerTimestampFieldValueImpl, _super);
     function ServerTimestampFieldValueImpl() {
         return _super.call(this, 'FieldValue.serverTimestamp') || this;
     }
@@ -44976,7 +44976,7 @@ var ServerTimestampFieldValueImpl = /** @class */ (function (_super) {
     return ServerTimestampFieldValueImpl;
 }(FieldValueImpl));
 var ArrayUnionFieldValueImpl = /** @class */ (function (_super) {
-    tslib_es6.__extends(ArrayUnionFieldValueImpl, _super);
+    tslib_1.__extends(ArrayUnionFieldValueImpl, _super);
     function ArrayUnionFieldValueImpl(_elements) {
         var _this = _super.call(this, 'FieldValue.arrayUnion') || this;
         _this._elements = _elements;
@@ -44985,7 +44985,7 @@ var ArrayUnionFieldValueImpl = /** @class */ (function (_super) {
     return ArrayUnionFieldValueImpl;
 }(FieldValueImpl));
 var ArrayRemoveFieldValueImpl = /** @class */ (function (_super) {
-    tslib_es6.__extends(ArrayRemoveFieldValueImpl, _super);
+    tslib_1.__extends(ArrayRemoveFieldValueImpl, _super);
     function ArrayRemoveFieldValueImpl(_elements) {
         var _this = _super.call(this, 'FieldValue.arrayRemove') || this;
         _this._elements = _elements;
@@ -45686,8 +45686,8 @@ var Firestore = /** @class */ (function () {
         // TODO(mikelehen): Use modularized initialization instead.
         this._queue = new AsyncQueue();
         this.INTERNAL = {
-            delete: function (options) { return tslib_es6.__awaiter(_this, void 0, void 0, function () {
-                return tslib_es6.__generator(this, function (_a) {
+            delete: function (options) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                return tslib_1.__generator(this, function (_a) {
                     if (this._firestoreClient) {
                         return [2 /*return*/, this._firestoreClient.shutdown(options)];
                     }
@@ -45998,8 +45998,8 @@ var WriteBatch = /** @class */ (function () {
         return this;
     };
     WriteBatch.prototype.commit = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
-            return tslib_es6.__generator(this, function (_a) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
                 this.verifyNotCommitted();
                 this._committed = true;
                 if (this._mutations.length > 0) {
@@ -46337,7 +46337,7 @@ var DocumentSnapshot = /** @class */ (function () {
     return DocumentSnapshot;
 }());
 var QueryDocumentSnapshot = /** @class */ (function (_super) {
-    tslib_es6.__extends(QueryDocumentSnapshot, _super);
+    tslib_1.__extends(QueryDocumentSnapshot, _super);
     function QueryDocumentSnapshot(firestore, key, document, fromCache, hasPendingWrites) {
         return _super.call(this, firestore, key, document, fromCache, hasPendingWrites) || this;
     }
@@ -46834,7 +46834,7 @@ docChangesPropertiesToOverride.forEach(function (property) {
     catch (err) { } // Ignore this failure intentionally
 });
 var CollectionReference = /** @class */ (function (_super) {
-    tslib_es6.__extends(CollectionReference, _super);
+    tslib_1.__extends(CollectionReference, _super);
     function CollectionReference(path, firestore) {
         var _this = _super.call(this, Query.atPath(path), firestore) || this;
         if (path.length % 2 !== 1) {
@@ -47136,7 +47136,7 @@ var errorCodeMap = {
  * client that called the function.
  */
 var HttpsErrorImpl = /** @class */ (function (_super) {
-    tslib_es6.__extends(HttpsErrorImpl, _super);
+    tslib_1.__extends(HttpsErrorImpl, _super);
     function HttpsErrorImpl(code, message, details) {
         var _this = _super.call(this, message) || this;
         // This is a workaround for a bug in TypeScript when extending Error:
@@ -47244,9 +47244,9 @@ var ContextProvider = /** @class */ (function () {
         this.app = app;
     }
     ContextProvider.prototype.getAuthToken = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var token, e_1;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         _a.trys.push([0, 2, , 3]);
@@ -47267,9 +47267,9 @@ var ContextProvider = /** @class */ (function () {
         });
     };
     ContextProvider.prototype.getInstanceIdToken = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var messaging, token, e_2;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         _a.trys.push([0, 2, , 3]);
@@ -47298,9 +47298,9 @@ var ContextProvider = /** @class */ (function () {
         });
     };
     ContextProvider.prototype.getContext = function () {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var authToken, instanceIdToken;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, this.getAuthToken()];
                     case 1:
@@ -47496,9 +47496,9 @@ var Service = /** @class */ (function () {
      * @return A Promise that will succeed when the request finishes.
      */
     Service.prototype.postJSON = function (url, body, headers) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var response, e_1, json, e_2;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         headers.append('Content-Type', 'application/json');
@@ -47549,9 +47549,9 @@ var Service = /** @class */ (function () {
      * @param data The data to pass as params to the function.s
      */
     Service.prototype.call = function (name, data) {
-        return tslib_es6.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var url, body, headers, context, response, error, responseData, decodedData;
-            return tslib_es6.__generator(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         url = this._url(name);
