@@ -40,6 +40,7 @@ export class P2PClient extends Evented {
         console.error("peer not defined. id:", id);
         callback("peer not defined");
       } else {
+        this.id = id;
         this.serverRef = this.fbref.child(id);
         this.serverRef.once("value", ev1 => {
           var sval = ev1.val();
