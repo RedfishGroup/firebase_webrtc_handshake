@@ -21,6 +21,7 @@ export class P2PClient extends Evented {
     this.channelRef = null;
     this.stream = undefined;
     this.debug = false;
+    this.connectionCallbacks = [];
   }
 
   getPeerList(callback) {
@@ -32,6 +33,7 @@ export class P2PClient extends Evented {
   }
 
   connectToPeerID(id, callback = () => {}) {
+    this.connectionCallbacks.push(callback);
     this.getPeerList(() => {
       var peer = this.peerList[id];
       if (!peer) {
@@ -68,7 +70,7 @@ export class P2PClient extends Evented {
               );
             }
           });
-          callback(null, this.connection);
+          //callback(null, this.connection);
         });
       }
     });
@@ -141,6 +143,14 @@ export class P2PClient extends Evented {
     });
     this.connection.on("connect", () => {
       if (this.debug) console.log("client: client connected");
+      try {
+        for (var callback of this.connectionCallbacks) {
+          callback(null, this.connection);
+        }
+        this.connectionCallbacks = [];
+      } catch (err) {
+        console.warn(err);
+      }
       this.fire("connect", { peer: this.connection });
     });
     this.connection.on("data", data => {

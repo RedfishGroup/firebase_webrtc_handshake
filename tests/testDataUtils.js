@@ -119,12 +119,12 @@ function testSomeDataTypes() {
     }
   });
   client3.connectToPeerID(server3.id, function(err, connection) {
-    connection.on("connect", function() {
-      connection.sendBig("big fart");
-      connection.sendBig(new Array(12));
-      connection.sendBig(Math.PI);
-      connection.sendBig(obj);
-    });
+    //connection.on("connect", function() {
+    connection.sendBig("big fart");
+    connection.sendBig(new Array(12));
+    connection.sendBig(Math.PI);
+    connection.sendBig(obj);
+    //    });
   });
 }
 
@@ -154,9 +154,9 @@ function testSendingImage() {
     logMessage(`<img src="${url}" width=300 height=200/><br>`);
   });
   client2.connectToPeerID(server2.id, function(err, connection) {
-    connection.on("connect", function() {
-      im.src = "owls.jpg";
-    });
+    //connection.on("connect", function() {
+    im.src = "owls.jpg";
+    //});
   });
 }
 
@@ -172,20 +172,18 @@ function testBlobSupport() {
   });
   var client = new P2PClient();
   client.connectToPeerID(server.id, function(err, connection) {
-    connection.on("connect", function() {
-      try {
-        connection.send(new Blob(new Uint8Array(1234), { type: "image/png" }));
-        alert(
-          "blobs are now supported. This warrents a re-write of some stuff"
-        );
-        logMessage("<div> Test Blob support: Blobs are now suported</div>");
-      } catch (err2) {
-        console.error(err2);
-        logMessage(
-          "<div> Test Blob support: Blobs are still not supported</div>"
-        );
-      }
-    });
+    //connection.on("connect", function() {
+    try {
+      connection.send(new Blob(new Uint8Array(1234), { type: "image/png" }));
+      alert("blobs are now supported. This warrents a re-write of some stuff");
+      logMessage("<div> Test Blob support: Blobs are now suported</div>");
+    } catch (err2) {
+      console.error(err2);
+      logMessage(
+        "<div> Test Blob support: Blobs are still not supported</div>"
+      );
+    }
+    //    });
   });
 }
 
@@ -202,7 +200,7 @@ var testIfItGetsFragmented = function() {
   var timeoutID;
   // server and client listeners
   server3frag.on("connect", function(args) {
-    //console.log('server 3:', 'client connected to the server')
+    console.log("server 3:", "client connected to the server");
   });
   server3frag.on("data", function(args) {
     //console.log('server 3 recieved data', args)
@@ -227,16 +225,16 @@ var testIfItGetsFragmented = function() {
     connection.on("error", function() {
       console.warn("error in fragmentation test");
     });
-    connection.on("connect", function() {
-      //console.log('client 3 connected to', server3frag)
-      // prep data
-      var a = new ArrayBuffer(bufferSize); // a good resolution for an image, rgba
-      var aview = new Uint8Array(a);
-      for (var j = 0; j < aview.length; j++) {
-        aview[j] = Math.random() * 100 + 1;
-      }
-      connection.send(a);
-    });
+    //connection.on("connect", function() {
+    //console.log('client 3 connected to', server3frag)
+    // prep data
+    var a = new ArrayBuffer(bufferSize); // a good resolution for an image, rgba
+    var aview = new Uint8Array(a);
+    for (var j = 0; j < aview.length; j++) {
+      aview[j] = Math.random() * 100 + 1;
+    }
+    connection.send(a);
+    //});
   });
 };
 

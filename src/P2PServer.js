@@ -76,6 +76,18 @@ export class P2PServer extends Evented {
     for (var conx of this.connections) {
       if (conx && conx.peer) {
         try {
+          conx.peer.send.bind(conx.peer)(data);
+        } catch (err) {
+          log.error(err, "Got an error, interrupted connection? ");
+        }
+      }
+    }
+  }
+
+  sendToAllBig(data) {
+    for (var conx of this.connections) {
+      if (conx && conx.peer) {
+        try {
           conx.peer.sendBig.bind(conx.peer)(data);
         } catch (err) {
           log.error(err, "Got an error, interrupted connection? ");
