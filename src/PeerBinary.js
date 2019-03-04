@@ -1,6 +1,6 @@
 import * as Peer2 from "simple-peer/simplepeer.min.js";
 import { generateWebRTCpayload } from "./dataUtils.js";
-import "../lib/webrtc_adapter.js";
+import adapter from "webrtc-adapter/src/js/adapter_core.js";
 import * as msgpacklite from "msgpack-lite/dist/msgpack.min.js";
 
 var msgPack = msgpacklite.default;
