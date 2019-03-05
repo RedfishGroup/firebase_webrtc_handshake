@@ -111,7 +111,7 @@ export class UnChunker {
     try {
       let val1 = msgPack.decode(result);
       if (pl.isBlob) {
-        let descript = { type: pl.type };
+        let descript = { isBlob: true, type: pl.type };
         for (var i in pl) {
           if (i !== "count" && i !== "chunks") {
             descript[i] = pl[i];
