@@ -102,7 +102,7 @@ var drawingCanvas; // this is a canvas used by imageToBlob
 // @param  {Function} callback []
 //
 function generateWebRTCpayload(obj, callback) {
-  if (obj.constructor == Blob) {
+  if (obj.constructor == Blob || obj.constructor == File) {
     generateWebRTCpayloadForBlob(obj, callback);
   } else {
     _generateWebRTCpayload(obj, callback);
@@ -112,7 +112,12 @@ function generateWebRTCpayloadForBlob(obj, callback) {
   var reader = new FileReader();
   reader.addEventListener("loadend", function() {
     const view = new Int8Array(reader.result);
-    _generateWebRTCpayload(view, callback, { isBlob: true, type: obj.type });
+    let descript = { isBlob: true, type: obj.type };
+    if (obj.lastModified) descript.lastModified = obj.lastModified;
+    if (obj.name) descript.name = obj.name;
+    if (obj.size) descript.size = obj.size;
+    if (obj.exif) descript.exif = obj.exif;
+    _generateWebRTCpayload(view, callback, descript);
   });
   reader.readAsArrayBuffer(obj);
 }
