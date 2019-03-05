@@ -111,7 +111,13 @@ export class UnChunker {
     try {
       let val1 = msgPack.decode(result);
       if (pl.isBlob) {
-        val1 = new Blob([val1.buffer], { type: pl.type });
+        let descript = { type: pl.type };
+        for (var i in pl) {
+          if (i !== "count" && i !== "chunks") {
+            descript[i] = pl[i];
+          }
+        }
+        val1 = new Blob([val1.buffer], descript);
       }
       cb(val1);
       this._removePayload(payloadID);
