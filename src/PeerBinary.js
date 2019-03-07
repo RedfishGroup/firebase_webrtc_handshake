@@ -1,5 +1,5 @@
 import * as Peer2 from "simple-peer/simplepeer.min.js";
-import { generateWebRTCpayload } from "./dataUtils.js";
+import { generateWebRTCpayload, recursivelyDecodeBlobs } from "./dataUtils.js";
 import adapter from "webrtc-adapter/src/js/adapter_core.js";
 import * as msgpacklite from "msgpack-lite/dist/msgpack.min.js";
 
@@ -27,14 +27,13 @@ export class PeerBinary extends Peer {
     });
   }
 
-  sendBig(chunk) {
-    generateWebRTCpayload(chunk, stuff => {
-      this.send(stuff.header);
-      for (var i in stuff.chunks) {
-        var ch = stuff.chunks[i];
-        this.send(ch);
-      }
-    });
+  async sendBig(chunk) {
+    let stuff = await generateWebRTCpayload(chunk);
+    this.send(stuff.header);
+    for (var i in stuff.chunks) {
+      var ch = stuff.chunks[i];
+      this.send(ch);
+    }
   }
 }
 
@@ -92,7 +91,7 @@ export class UnChunker {
     pl.chunks.push(chunk);
   }
 
-  _assembleChunks(payloadID, cb) {
+  async _assembleChunks(payloadID, cb) {
     var pl = this.payloads[payloadID];
     pl.chunks.sort(function(a, b) {
       return Number(a.id) - Number(b.id);
@@ -110,16 +109,8 @@ export class UnChunker {
     }
     try {
       let val1 = msgPack.decode(result);
-      if (pl.isBlob) {
-        let descript = { isBlob: true, type: pl.type };
-        for (var i in pl) {
-          if (i !== "count" && i !== "chunks") {
-            descript[i] = pl[i];
-          }
-        }
-        val1 = new Blob([val1.buffer], descript);
-      }
-      cb(val1);
+      let val2 = await recursivelyDecodeBlobs(val1);
+      cb(val2);
       this._removePayload(payloadID);
     } catch (err) {
       console.error(err);

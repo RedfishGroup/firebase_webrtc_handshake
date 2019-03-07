@@ -98,30 +98,72 @@ var msgPack = msgpack_min;
 
 var drawingCanvas; // this is a canvas used by imageToBlob
 
+const MAX_RECURSIVE_DEPTH = 2;
 //
 // @param  {Function} callback []
 //
-function generateWebRTCpayload(obj, callback) {
-  if (obj.constructor == Blob || obj.constructor == File) {
-    generateWebRTCpayloadForBlob(obj, callback);
-  } else {
-    _generateWebRTCpayload(obj, callback);
-  }
+async function generateWebRTCpayload(obj) {
+  let deBlobbed = await recursivelyEncodeBlobs(obj);
+  let result = _generateWebRTCpayload(deBlobbed);
+  return result;
 }
-function generateWebRTCpayloadForBlob(obj, callback) {
-  var reader = new FileReader();
-  reader.addEventListener("loadend", function() {
-    const view = new Int8Array(reader.result);
-    let descript = { isBlob: true, type: obj.type };
-    if (obj.lastModified) descript.lastModified = obj.lastModified;
-    if (obj.name) descript.name = obj.name;
-    if (obj.size) descript.size = obj.size;
-    if (obj.exif) descript.exif = obj.exif;
-    _generateWebRTCpayload(view, callback, descript);
+function deBlob(obj) {
+  return new Promise((resolve, reject) => {
+    var reader = new FileReader();
+    reader.addEventListener("loadend", function() {
+      const view = new Int8Array(reader.result);
+      let descript = { isBlob: true, type: obj.type };
+      if (obj.lastModified) descript.lastModified = obj.lastModified;
+      if (obj.name) descript.name = obj.name;
+      if (obj.size) descript.size = obj.size;
+      if (obj.exif) descript.exif = obj.exif;
+      descript.view = view; // _generateWebRTCpayload(view, descript);
+      resolve(descript);
+    });
+    reader.readAsArrayBuffer(obj);
   });
-  reader.readAsArrayBuffer(obj);
 }
-function _generateWebRTCpayload(obj, callback, headerOpt = {}) {
+
+async function recursivelyEncodeBlobs(obj, depth = 0) {
+  if (depth > MAX_RECURSIVE_DEPTH) {
+    throw (depth);
+  }
+  if (obj.constructor == File || obj.constructor == Blob) {
+    return await deBlob(obj);
+  } else if (obj.constructor == Object) {
+    let res = {};
+    for (var i in obj) {
+      res[i] = await recursivelyEncodeBlobs(obj[i], depth + 1);
+    }
+    return res;
+  }
+  return obj;
+}
+
+async function recursivelyDecodeBlobs(obj, depth = 0) {
+  if (depth > MAX_RECURSIVE_DEPTH) {
+    throw (depth);
+  }
+  if (obj.constructor == Object && obj.type && obj.isBlob) {
+    let descript = {};
+    for (var i in obj) {
+      if (i !== "view" && i != "chunks") {
+        descript[i] = obj[i];
+      }
+    }
+    let val1 = new Blob([obj.view], descript);
+    return val1;
+  } else if (obj.constructor == Object) {
+    let res = {};
+    for (var i in obj) {
+      res[i] = await recursivelyDecodeBlobs(obj[i], depth + 1);
+    }
+    return res;
+  }
+  return obj;
+}
+
+async function _generateWebRTCpayload(obj, headerOpt = {}) {
   //console.time('generateWebRTCpayload')
   let bin = msgPack.encode(obj);
   var header = Object.assign(
@@ -134,7 +176,7 @@ function _generateWebRTCpayload(obj, callback, headerOpt = {}) {
   var chunks = arrayBufferToChunks(bin, header.payloadID);
   header.chunkCount = chunks.length;
   //console.timeEnd('generateWebRTCpayload')
-  callback({ header: msgPack.encode(header), chunks: chunks });
+  return { header: msgPack.encode(header), chunks: chunks };
 }
 
 function arrayBufferToChunks(buff, payloadID) {
@@ -5179,14 +5221,13 @@ class PeerBinary extends Peer {
     });
   }
 
-  sendBig(chunk) {
-    generateWebRTCpayload(chunk, stuff => {
-      this.send(stuff.header);
-      for (var i in stuff.chunks) {
-        var ch = stuff.chunks[i];
-        this.send(ch);
-      }
-    });
+  async sendBig(chunk) {
+    let stuff = await generateWebRTCpayload(chunk);
+    this.send(stuff.header);
+    for (var i in stuff.chunks) {
+      var ch = stuff.chunks[i];
+      this.send(ch);
+    }
   }
 }
 
@@ -5244,7 +5285,7 @@ class UnChunker {
     pl.chunks.push(chunk);
   }
 
-  _assembleChunks(payloadID, cb) {
+  async _assembleChunks(payloadID, cb) {
     var pl = this.payloads[payloadID];
     pl.chunks.sort(function(a, b) {
       return Number(a.id) - Number(b.id);
@@ -5262,16 +5303,8 @@ class UnChunker {
     }
     try {
       let val1 = msgPack$1.decode(result);
-      if (pl.isBlob) {
-        let descript = { isBlob: true, type: pl.type };
-        for (var i in pl) {
-          if (i !== "count" && i !== "chunks") {
-            descript[i] = pl[i];
-          }
-        }
-        val1 = new Blob([val1.buffer], descript);
-      }
-      cb(val1);
+      let val2 = await recursivelyDecodeBlobs(val1);
+      cb(val2);
       this._removePayload(payloadID);
     } catch (err) {
       console.error(err);
@@ -53807,14 +53840,13 @@ class PeerBinary$1 extends Peer$1 {
     });
   }
 
-  sendBig(chunk) {
-    generateWebRTCpayload(chunk, stuff => {
-      this.send(stuff.header);
-      for (var i in stuff.chunks) {
-        var ch = stuff.chunks[i];
-        this.send(ch);
-      }
-    });
+  async sendBig(chunk) {
+    let stuff = await generateWebRTCpayload(chunk);
+    this.send(stuff.header);
+    for (var i in stuff.chunks) {
+      var ch = stuff.chunks[i];
+      this.send(ch);
+    }
   }
 }
 
@@ -53872,7 +53904,7 @@ class UnChunker$1 {
     pl.chunks.push(chunk);
   }
 
-  _assembleChunks(payloadID, cb) {
+  async _assembleChunks(payloadID, cb) {
     var pl = this.payloads[payloadID];
     pl.chunks.sort(function(a, b) {
       return Number(a.id) - Number(b.id);
@@ -53890,16 +53922,8 @@ class UnChunker$1 {
     }
     try {
       let val1 = msgPack$2.decode(result);
-      if (pl.isBlob) {
-        let descript = { isBlob: true, type: pl.type };
-        for (var i in pl) {
-          if (i !== "count" && i !== "chunks") {
-            descript[i] = pl[i];
-          }
-        }
-        val1 = new Blob([val1.buffer], descript);
-      }
-      cb(val1);
+      let val2 = await recursivelyDecodeBlobs(val1);
+      cb(val2);
       this._removePayload(payloadID);
     } catch (err) {
       console.error(err);
@@ -53953,5 +53977,5 @@ class UnChunker$1 {
 // export var P2PClient = client.P2PClient;
 // export var imageToBlob = im2bl.imageToBlob;
 
-export { P2PServer, P2PClient, generateWebRTCpayload, arrayBufferToChunks, imageToBlob, PeerBinary$1 as PeerBinary, UnChunker$1 as UnChunker, Channel };
+export { P2PServer, P2PClient, generateWebRTCpayload, arrayBufferToChunks, imageToBlob, PeerBinary$1 as PeerBinary, UnChunker$1 as UnChunker, Channel, recursivelyEncodeBlobs };
 //# sourceMappingURL=build.js.map

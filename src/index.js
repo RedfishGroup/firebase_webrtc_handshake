@@ -3,7 +3,8 @@ import { P2PClient } from "./P2PClient.js";
 import {
   generateWebRTCpayload,
   arrayBufferToChunks,
-  imageToBlob
+  imageToBlob,
+  recursivelyEncodeBlobs
 } from "./dataUtils.js";
 import { PeerBinary, UnChunker } from "./peerBinary.js";
 
@@ -15,7 +16,8 @@ export {
   imageToBlob,
   PeerBinary,
   UnChunker,
-  Channel
+  Channel,
+  recursivelyEncodeBlobs
 };
 // export var P2PServer = serv.P2PServer;
 // export var P2PClient = client.P2PClient;

@@ -4,7 +4,8 @@ import {
   PeerBinary,
   UnChunker,
   generateWebRTCpayload,
-  imageToBlob
+  imageToBlob,
+  recursivelyEncodeBlobs
 } from "../dist/build.js";
 
 function runTests() {
@@ -32,7 +33,7 @@ function runTests() {
   testAnotherIceServer();
 }
 
-function test1chunking() {
+async function test1chunking() {
   var pass = true;
   var zeroApeared = false;
   // fill array with random values between 1 and something
@@ -43,10 +44,7 @@ function test1chunking() {
     aview[j] = Math.random() * 100 + 1;
   }
   // chunk and unChunk
-  var payload;
-  generateWebRTCpayload(a, function(ev) {
-    payload = ev;
-  });
+  var payload = await generateWebRTCpayload(a);
   var unchunk = new UnChunker();
   var a2;
   unchunk.onData = function(val) {
@@ -137,9 +135,15 @@ function testSendingImage() {
   var im = new Image();
   im.onload = function() {
     console.log("Image2 loaded");
-    imageToBlob(im, function(blob) {
+    imageToBlob(im, async function(blob) {
       client2.connection.sendBig(blob);
       client2.connection.sendBig(blob);
+      let test1 = await recursivelyEncodeBlobs({
+        foo: "foo",
+        taco: 1,
+        blobinside: { blob }
+      });
+      console.log("Test encoding of nested blobs", test1);
     });
   };
   server2.on("dataBig", function(args) {

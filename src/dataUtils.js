@@ -6,30 +6,72 @@ var msgPack = msgpacklite.default;
 
 var drawingCanvas; // this is a canvas used by imageToBlob
 
+const MAX_RECURSIVE_DEPTH = 2;
 //
 // @param  {Function} callback []
 //
-export function generateWebRTCpayload(obj, callback) {
-  if (obj.constructor == Blob || obj.constructor == File) {
-    generateWebRTCpayloadForBlob(obj, callback);
-  } else {
-    _generateWebRTCpayload(obj, callback);
-  }
+export async function generateWebRTCpayload(obj) {
+  let deBlobbed = await recursivelyEncodeBlobs(obj);
+  let result = _generateWebRTCpayload(deBlobbed);
+  return result;
 }
-export function generateWebRTCpayloadForBlob(obj, callback) {
-  var reader = new FileReader();
-  reader.addEventListener("loadend", function() {
-    const view = new Int8Array(reader.result);
-    let descript = { isBlob: true, type: obj.type };
-    if (obj.lastModified) descript.lastModified = obj.lastModified;
-    if (obj.name) descript.name = obj.name;
-    if (obj.size) descript.size = obj.size;
-    if (obj.exif) descript.exif = obj.exif;
-    _generateWebRTCpayload(view, callback, descript);
+export function deBlob(obj) {
+  return new Promise((resolve, reject) => {
+    var reader = new FileReader();
+    reader.addEventListener("loadend", function() {
+      const view = new Int8Array(reader.result);
+      let descript = { isBlob: true, type: obj.type };
+      if (obj.lastModified) descript.lastModified = obj.lastModified;
+      if (obj.name) descript.name = obj.name;
+      if (obj.size) descript.size = obj.size;
+      if (obj.exif) descript.exif = obj.exif;
+      descript.view = view; // _generateWebRTCpayload(view, descript);
+      resolve(descript);
+    });
+    reader.readAsArrayBuffer(obj);
   });
-  reader.readAsArrayBuffer(obj);
 }
-export function _generateWebRTCpayload(obj, callback, headerOpt = {}) {
+
+export async function recursivelyEncodeBlobs(obj, depth = 0) {
+  if (depth > MAX_RECURSIVE_DEPTH) {
+    throw ("max depth reached", depth);
+  }
+  if (obj.constructor == File || obj.constructor == Blob) {
+    return await deBlob(obj);
+  } else if (obj.constructor == Object) {
+    let res = {};
+    for (var i in obj) {
+      res[i] = await recursivelyEncodeBlobs(obj[i], depth + 1);
+    }
+    return res;
+  }
+  return obj;
+}
+
+export async function recursivelyDecodeBlobs(obj, depth = 0) {
+  if (depth > MAX_RECURSIVE_DEPTH) {
+    throw ("max depth reached", depth);
+  }
+  if (obj.constructor == Object && obj.type && obj.isBlob) {
+    let descript = {};
+    for (var i in obj) {
+      if (i !== "view" && i != "chunks") {
+        descript[i] = obj[i];
+      }
+    }
+    let val1 = new Blob([obj.view], descript);
+    return val1;
+  } else if (obj.constructor == Object) {
+    let res = {};
+    for (var i in obj) {
+      res[i] = await recursivelyDecodeBlobs(obj[i], depth + 1);
+    }
+    return res;
+  }
+  return obj;
+}
+
+export async function _generateWebRTCpayload(obj, headerOpt = {}) {
   //console.time('generateWebRTCpayload')
   let bin = msgPack.encode(obj);
   var header = Object.assign(
@@ -42,7 +84,7 @@ export function _generateWebRTCpayload(obj, callback, headerOpt = {}) {
   var chunks = arrayBufferToChunks(bin, header.payloadID);
   header.chunkCount = chunks.length;
   //console.timeEnd('generateWebRTCpayload')
-  callback({ header: msgPack.encode(header), chunks: chunks });
+  return { header: msgPack.encode(header), chunks: chunks };
 }
 
 export function arrayBufferToChunks(buff, payloadID) {

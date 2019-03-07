@@ -25,19 +25,19 @@ function startServer(stream) {
     id: "Main Stream Server" + Math.floor(10000 * Math.random()),
     stream: stream
   });
-  startClient();
+  setTimeout(startClient, 2000);
 }
 
 function startClient() {
   client1 = new P2PClient();
+  client1.on("stream", function(descript) {
+    var video = document.getElementById("client2Video");
+    console.log("client stream", descript.stream);
+    video.srcObject = descript.stream;
+  });
   client1.connectToPeerID(gServer.id, function(err, connection) {
     connection.on("connect", function() {
       console.log("connected");
-    });
-    connection.on("stream", function(stream2) {
-      var video = document.getElementById("client2Video");
-      console.log("client stream", stream2);
-      video.srcObject = stream2;
     });
   });
 }
