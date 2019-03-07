@@ -6,7 +6,7 @@ var msgPack = msgpacklite.default;
 
 var drawingCanvas; // this is a canvas used by imageToBlob
 
-const MAX_RECURSIVE_DEPTH = 2;
+const MAX_RECURSIVE_DEPTH = 10;
 //
 // @param  {Function} callback []
 //
