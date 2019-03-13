@@ -7,7 +7,8 @@ import commonjs from "rollup-plugin-commonjs";
 
 // import babel from "rollup-plugin-babel";
 
-export default {
+export default [
+{
   input: "src/index.js",
   output: {
     file: "dist/build.js",
@@ -19,4 +20,18 @@ export default {
     globals(),
     resolve({ jsnext: true, main: true, browser: true })
   ]
-};
+},
+{
+  input: "src/index.js",
+  output: {
+    file: "dist/build.cjs.js",
+    format: "cjs",
+    sourcemap: true
+  },
+  plugins: [
+    commonjs(),
+    globals(),
+    resolve({ jsnext: true, main: true, browser: true })
+  ]
+}
+];
