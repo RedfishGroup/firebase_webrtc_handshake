@@ -61,6 +61,7 @@ export class P2PServer extends Evented {
     this.channelRef.set([]);
     this.connections = [];
     this._intervalID = setInterval(() => {
+      this.fire("updateTimeStamp", undefined);
       this._updateOnFireBase();
     }, this.POLLING_FREQUENCY);
     this.listenToChannels();

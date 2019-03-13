@@ -1,5 +1,7 @@
 import { P2PServer, Channel } from "./P2PServer.js";
 import { P2PClient } from "./P2PClient.js";
+import { firebase } from "./defaultFirebase.js";
+
 import {
   generateWebRTCpayload,
   arrayBufferToChunks,
@@ -17,8 +19,6 @@ export {
   PeerBinary,
   UnChunker,
   Channel,
-  recursivelyEncodeBlobs
+  recursivelyEncodeBlobs,
+  firebase
 };
-// export var P2PServer = serv.P2PServer;
-// export var P2PClient = client.P2PClient;
-// export var imageToBlob = im2bl.imageToBlob;

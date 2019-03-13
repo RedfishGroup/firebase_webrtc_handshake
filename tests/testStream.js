@@ -1,4 +1,4 @@
-import { P2PServer, P2PClient } from "../dist/build.js";
+import { P2PServer, P2PClient, firebase } from "../dist/build.js";
 
 var gStream = undefined;
 var gServer = undefined;
@@ -49,18 +49,18 @@ startCamera();
 //
 function startCanvas() {
   let canv = document.getElementById("canv1");
+  let ctx = canv.getContext("2d");
+  ctx.beginPath();
   setInterval(() => {
-    let ctx = canv.getContext("2d");
     ctx.fillStyle = "#27f";
     ctx.strokeStyle = "#a7f";
     ctx.fillRect(Math.random() * 300, Math.random() * 300, 20, 20);
-    ctx.moveTo(Math.random() * 300, Math.random() * 300);
-    ctx.lineTo(Math.random() * 300, Math.random() * 300);
-    ctx.stroke();
+    ctx.fillStyle = "#f7f";
+    ctx.fillRect(Math.random() * 300, Math.random() * 300, 20, 20);
   }, 200);
   var stream = canv.captureStream();
   console.log(stream);
-  startCanvasServer(stream);
+  return stream;
 }
 
 function startCanvasServer(stream) {
@@ -90,9 +90,6 @@ function startCanvasClient(id) {
         });
     };
     video.srcObject = descript.stream;
-    // setTimeout(() => {
-    //   video.play();
-    // }, 2000);
   });
   client1.connectToPeerID(id, function(err, connection) {
     connection.on("connect canvas", function() {
@@ -101,4 +98,5 @@ function startCanvasClient(id) {
   });
 }
 
-startCanvas();
+let stream = startCanvas();
+startCanvasServer(stream);
