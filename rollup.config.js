@@ -15,11 +15,23 @@ export default [
         file: 'dist/build.js',
         format: 'esm',
         sourcemap: true,
+        globals: {
+          'simple-peer': 'simple-peer/simplepeer.min.js',
+          firebase: 'firebase/dist/index.esm',
+          'msgpack-lite': 'msgpack-lite/dist/msgpack.min.js',
+          'webrtc-adapter': 'webrtc-adapter/src/js/adapter_core.js',
+        },
       },
       {
         file: 'dist/build.cjs.js',
         format: 'cjs',
         sourcemap: true,
+        globals: {
+          'simple-peer': 'simple-peer/simplepeer.min.js',
+          firebase: 'firebase/dist/index.esm',
+          'msgpack-lite': 'msgpack-lite/dist/msgpack.min.js',
+          'webrtc-adapter': 'webrtc-adapter/src/js/adapter_core.js',
+        },
       },
     ],
     plugins: [
