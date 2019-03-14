@@ -17,6 +17,7 @@
   "homepage": "https://github.com/RedfishGroup/firebase_webrtc_handshake#readme",
   "dependencies": {
     "binarize.js": "^0.5.1",
+    "expressjs": "^1.0.1",
     "firebase": "^5.8.4",
     "firebase-bower": "https://github.com/firebase/firebase-bower.git#2.4.2",
     "msgpack-lite": "^0.1.26",

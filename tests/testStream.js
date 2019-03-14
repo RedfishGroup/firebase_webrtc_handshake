@@ -42,7 +42,7 @@ function startClient() {
   });
 }
 
-startCamera();
+//startCamera();
 
 //
 // canvas stream
@@ -98,5 +98,45 @@ function startCanvasClient(id) {
   });
 }
 
+function startRTEServer(stream) {
+  let app;
+  if (firebase.apps.length > 0) {
+    app = firebase.apps[0];
+  } else {
+    app = firebase.initializeApp(
+      {
+        apiKey: "AIzaSyBI-Js8EBS6pe2GmTG0IGpxgeIbtGJkbIA",
+        databaseURL: "https://livetexture.firebaseio.com",
+        authDomain: "livetexture.firebaseapp.com",
+        projectId: "firebase-livetexture"
+      },
+      "livetexture"
+    );
+  }
+  let database = app.database("https://livetexture.firebaseio.com");
+  let ref = database
+    .ref("/")
+    .child("cameras")
+    .child("peers");
+
+  let myID = "RTECanvasStreamServer" + Math.floor(10000 * Math.random());
+  var canServer = new P2PServer({
+    id: myID,
+    stream: stream,
+    database: ref
+  });
+  canServer.on("updateTimeStamp", () => {
+    ref
+      .child(canServer.id)
+      .child("displayName")
+      .set("test of canvas stream");
+  });
+  canServer.on("dataBig", ev => {
+    console.log("databig", ev);
+  });
+  document.body.getElementById("myID").innerHTML = myID;
+}
+
 let stream = startCanvas();
 startCanvasServer(stream);
+startRTEServer(stream);
