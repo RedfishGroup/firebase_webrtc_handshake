@@ -2,7 +2,7 @@
   <head>
   
     <script type="module">
-      import {P2PServer , P2PClient, imageToBlob} from '../dist/build.js'
+      import {P2PServer , P2PClient, imageToBlob} from '../dist/build.full.js'
 
         window.server = new P2PServer({id:'plumkin capitiliztion server' + Math.floor(10000*Math.random())})
         server.on('connect', function(args){

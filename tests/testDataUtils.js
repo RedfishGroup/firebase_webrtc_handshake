@@ -6,7 +6,7 @@ import {
   generateWebRTCpayload,
   imageToBlob,
   recursivelyEncodeBlobs
-} from "../dist/build.js";
+} from "../dist/build.full.js";
 
 function runTests() {
   // 1

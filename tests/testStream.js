@@ -1,4 +1,4 @@
-import { P2PServer, P2PClient, firebase } from "../dist/build.js";
+import { P2PServer, P2PClient, firebase } from "../dist/build.full.js";
 
 var gStream = undefined;
 var gServer = undefined;

@@ -5820,25 +5820,6 @@ class UnChunker {
   self.fetch.polyfill = true;
 })(typeof self !== 'undefined' ? self : undefined);
 
-/**
- * @this {Promise}
- */
-function finallyConstructor(callback) {
-  var constructor = this.constructor;
-  return this.then(
-    function(value) {
-      return constructor.resolve(callback()).then(function() {
-        return value;
-      });
-    },
-    function(reason) {
-      return constructor.resolve(callback()).then(function() {
-        return constructor.reject(reason);
-      });
-    }
-  );
-}
-
 // Store setTimeout reference so promise-polyfill will be unaffected by
 // other code modifying setTimeout (like sinon.useFakeTimers())
 var setTimeoutFunc = setTimeout;
@@ -5852,21 +5833,13 @@ function bind(fn, thisArg) {
   };
 }
 
-/**
- * @constructor
- * @param {Function} fn
- */
 function Promise$1(fn) {
   if (!(this instanceof Promise$1))
     throw new TypeError('Promises must be constructed via new');
   if (typeof fn !== 'function') throw new TypeError('not a function');
-  /** @type {!number} */
   this._state = 0;
-  /** @type {!boolean} */
   this._handled = false;
-  /** @type {Promise|undefined} */
   this._value = undefined;
-  /** @type {!Array<!Function>} */
   this._deferreds = [];
 
   doResolve(fn, this);
@@ -5947,9 +5920,6 @@ function finale(self) {
   self._deferreds = null;
 }
 
-/**
- * @constructor
- */
 function Handler(onFulfilled, onRejected, promise) {
   this.onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : null;
   this.onRejected = typeof onRejected === 'function' ? onRejected : null;
@@ -5989,14 +5959,27 @@ Promise$1.prototype['catch'] = function(onRejected) {
 };
 
 Promise$1.prototype.then = function(onFulfilled, onRejected) {
-  // @ts-ignore
   var prom = new this.constructor(noop);
 
   handle(this, new Handler(onFulfilled, onRejected, prom));
   return prom;
 };
 
-Promise$1.prototype['finally'] = finallyConstructor;
+Promise$1.prototype['finally'] = function(callback) {
+  var constructor = this.constructor;
+  return this.then(
+    function(value) {
+      return constructor.resolve(callback()).then(function() {
+        return value;
+      });
+    },
+    function(reason) {
+      return constructor.resolve(callback()).then(function() {
+        return constructor.reject(reason);
+      });
+    }
+  );
+};
 
 Promise$1.all = function(arr) {
   return new Promise$1(function(resolve, reject) {
@@ -6076,7 +6059,6 @@ Promise$1._unhandledRejectionFn = function _unhandledRejectionFn(err) {
   }
 };
 
-/** @suppress {undefinedVars} */
 var globalNS = (function() {
   // the only reliable means to get the global object is
   // `Function('return this')()`
@@ -6093,10 +6075,8 @@ var globalNS = (function() {
   throw new Error('unable to locate global object');
 })();
 
-if (!('Promise' in globalNS)) {
-  globalNS['Promise'] = Promise$1;
-} else if (!globalNS.Promise.prototype['finally']) {
-  globalNS.Promise.prototype['finally'] = finallyConstructor;
+if (!globalNS.Promise) {
+  globalNS.Promise = Promise$1;
 }
 
 var _global = createCommonjsModule(function (module) {
@@ -6109,7 +6089,7 @@ if (typeof __g == 'number') __g = global; // eslint-disable-line no-undef
 });
 
 var _core = createCommonjsModule(function (module) {
-var core = module.exports = { version: '2.6.5' };
+var core = module.exports = { version: '2.5.5' };
 if (typeof __e == 'number') __e = core; // eslint-disable-line no-undef
 });
 var _core_1 = _core.version;
@@ -6205,31 +6185,14 @@ var _uid = function (key) {
   return 'Symbol('.concat(key === undefined ? '' : key, ')_', (++id + px).toString(36));
 };
 
-var _library = false;
-
-var _shared = createCommonjsModule(function (module) {
-var SHARED = '__core-js_shared__';
-var store = _global[SHARED] || (_global[SHARED] = {});
-
-(module.exports = function (key, value) {
-  return store[key] || (store[key] = value !== undefined ? value : {});
-})('versions', []).push({
-  version: _core.version,
-  mode: 'global',
-  copyright: '© 2019 Denis Pushkarev (zloirock.ru)'
-});
-});
-
-var _functionToString = _shared('native-function-to-string', Function.toString);
-
 var _redefine = createCommonjsModule(function (module) {
 var SRC = _uid('src');
-
 var TO_STRING = 'toString';
-var TPL = ('' + _functionToString).split(TO_STRING);
+var $toString = Function[TO_STRING];
+var TPL = ('' + $toString).split(TO_STRING);
 
 _core.inspectSource = function (it) {
-  return _functionToString.call(it);
+  return $toString.call(it);
 };
 
 (module.exports = function (O, key, val, safe) {
@@ -6249,7 +6212,7 @@ _core.inspectSource = function (it) {
   }
 // add fake Function#toString for correct work wrapped methods / constructors with methods like LoDash isNative
 })(Function.prototype, TO_STRING, function toString() {
-  return typeof this == 'function' && this[SRC] || _functionToString.call(this);
+  return typeof this == 'function' && this[SRC] || $toString.call(this);
 });
 });
 
@@ -6361,6 +6324,12 @@ var _toLength = function (it) {
 
 var _isArray = Array.isArray || function isArray(arg) {
   return _cof(arg) == 'Array';
+};
+
+var SHARED = '__core-js_shared__';
+var store = _global[SHARED] || (_global[SHARED] = {});
+var _shared = function (key) {
+  return store[key] || (store[key] = {});
 };
 
 var _wks = createCommonjsModule(function (module) {
@@ -6747,6 +6716,8 @@ var f$3 = _wks;
 var _wksExt = {
 	f: f$3
 };
+
+var _library = false;
 
 var defineProperty = _objectDp.f;
 var _wksDefine = function (name) {
@@ -7390,12 +7361,9 @@ and limitations under the License.
 ***************************************************************************** */
 /* global Reflect, Promise */
 
-var extendStatics = function(d, b) {
-    extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-    return extendStatics(d, b);
-};
+var extendStatics = Object.setPrototypeOf ||
+    ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+    function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
 
 function __extends(d, b) {
     extendStatics(d, b);
@@ -7403,15 +7371,12 @@ function __extends(d, b) {
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 }
 
-var __assign = function() {
-    __assign = Object.assign || function __assign(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
+var __assign = Object.assign || function __assign(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+        s = arguments[i];
+        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
+    }
+    return t;
 };
 
 function __rest(s, e) {
@@ -7455,8 +7420,8 @@ function __generator(thisArg, body) {
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
         while (_) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
+            if (f = 1, y && (t = y[op[0] & 2 ? "return" : op[0] ? "throw" : "next"]) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [0, t.value];
             switch (op[0]) {
                 case 0: case 1: t = op; break;
                 case 4: _.label++; return { value: op[1], done: false };
@@ -7524,7 +7489,7 @@ function __asyncGenerator(thisArg, _arguments, generator) {
     return i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i;
     function verb(n) { if (g[n]) i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; }
     function resume(n, v) { try { step(g[n](v)); } catch (e) { settle(q[0][3], e); } }
-    function step(r) { r.value instanceof __await ? Promise.resolve(r.value.v).then(fulfill, reject) : settle(q[0][2], r); }
+    function step(r) { r.value instanceof __await ? Promise.resolve(r.value.v).then(fulfill, reject) : settle(q[0][2], r);  }
     function fulfill(value) { resume("next", value); }
     function reject(value) { resume("throw", value); }
     function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
@@ -7533,15 +7498,13 @@ function __asyncGenerator(thisArg, _arguments, generator) {
 function __asyncDelegator(o) {
     var i, p;
     return i = {}, verb("next"), verb("throw", function (e) { throw e; }), verb("return"), i[Symbol.iterator] = function () { return this; }, i;
-    function verb(n, f) { i[n] = o[n] ? function (v) { return (p = !p) ? { value: __await(o[n](v)), done: n === "return" } : f ? f(v) : v; } : f; }
+    function verb(n, f) { if (o[n]) i[n] = function (v) { return (p = !p) ? { value: __await(o[n](v)), done: n === "return" } : f ? f(v) : v; }; }
 }
 
 function __asyncValues(o) {
     if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
-    var m = o[Symbol.asyncIterator], i;
-    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
-    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
-    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+    var m = o[Symbol.asyncIterator];
+    return m ? m.call(o) : typeof __values === "function" ? __values(o) : o[Symbol.iterator]();
 }
 
 function __makeTemplateObject(cooked, raw) {
@@ -7562,7 +7525,7 @@ function __importDefault(mod) {
 
 var tslib_1 = /*#__PURE__*/Object.freeze({
 	__extends: __extends,
-	get __assign () { return __assign; },
+	__assign: __assign,
 	__rest: __rest,
 	__decorate: __decorate,
 	__param: __param,
@@ -9373,7 +9336,6 @@ exports.validateContextObject = validateContextObject;
 exports.validateNamespace = validateNamespace;
 exports.stringLength = stringLength;
 exports.stringToByteArray = stringToByteArray$1;
-
 });
 
 unwrapExports(index_cjs);
@@ -9627,7 +9589,7 @@ function createFirebaseNamespace() {
         app: app,
         apps: null,
         Promise: Promise,
-        SDK_VERSION: '5.9.0',
+        SDK_VERSION: '5.8.3',
         INTERNAL: {
             registerService: registerService,
             createFirebaseNamespace: createFirebaseNamespace,
@@ -9824,95 +9786,86 @@ var appErrors = new index_cjs.ErrorFactory('app', 'Firebase', errors);
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// Node detection logic from: https://github.com/iliakan/detect-node/
-var isNode = false;
-try {
-    isNode =
-        Object.prototype.toString.call(commonjsGlobal.process) === '[object process]';
-}
-catch (e) { }
-isNode &&
-    console.warn("\nWarning: This is a browser-targeted Firebase bundle but it appears it is being\nrun in a Node environment.  If running in a Node environment, make sure you\nare using the bundle specified by the \"main\" field in package.json.\n\nIf you are using Webpack, you can specify \"main\" as the first item in\n\"resolve.mainFields\":\nhttps://webpack.js.org/configuration/resolve/#resolvemainfields\n\nIf using Rollup, use the rollup-plugin-node-resolve plugin and set \"module\"\nto false and \"main\" to true:\nhttps://github.com/rollup/rollup-plugin-node-resolve\n");
 var firebase = createFirebaseNamespace();
 
 exports.firebase = firebase;
 exports.default = firebase;
-
 });
 
 var firebase = unwrapExports(index_cjs$2);
 var index_cjs_1$1 = index_cjs$2.firebase;
 
-(function() {var g,aa=aa||{},k=this;function l(a){return "string"==typeof a}function ba(a){return "boolean"==typeof a}var ca=/^[\w+/_-]+[=]{0,2}$/,da=null;function ea(){}
-function fa(a){var b=typeof a;if("object"==b)if(a){if(a instanceof Array)return "array";if(a instanceof Object)return b;var c=Object.prototype.toString.call(a);if("[object Window]"==c)return "object";if("[object Array]"==c||"number"==typeof a.length&&"undefined"!=typeof a.splice&&"undefined"!=typeof a.propertyIsEnumerable&&!a.propertyIsEnumerable("splice"))return "array";if("[object Function]"==c||"undefined"!=typeof a.call&&"undefined"!=typeof a.propertyIsEnumerable&&!a.propertyIsEnumerable("call"))return "function"}else return "null";
-else if("function"==b&&"undefined"==typeof a.call)return "object";return b}function ha(a){return null===a}function ia(a){return "array"==fa(a)}function ja(a){var b=fa(a);return "array"==b||"object"==b&&"number"==typeof a.length}function n(a){return "function"==fa(a)}function q(a){var b=typeof a;return "object"==b&&null!=a||"function"==b}var ka="closure_uid_"+(1E9*Math.random()>>>0),ma=0;function na(a,b,c){return a.call.apply(a.bind,arguments)}
-function oa(a,b,c){if(!a)throw Error();if(2<arguments.length){var d=Array.prototype.slice.call(arguments,2);return function(){var c=Array.prototype.slice.call(arguments);Array.prototype.unshift.apply(c,d);return a.apply(b,c)}}return function(){return a.apply(b,arguments)}}function r(a,b,c){Function.prototype.bind&&-1!=Function.prototype.bind.toString().indexOf("native code")?r=na:r=oa;return r.apply(null,arguments)}
-function pa(a,b){var c=Array.prototype.slice.call(arguments,1);return function(){var b=c.slice();b.push.apply(b,arguments);return a.apply(this,b)}}var qa=Date.now||function(){return +new Date};function t(a,b){function c(){}c.prototype=b.prototype;a.pb=b.prototype;a.prototype=new c;a.prototype.constructor=a;a.gd=function(a,c,f){for(var d=Array(arguments.length-2),e=2;e<arguments.length;e++)d[e-2]=arguments[e];return b.prototype[c].apply(a,d)};}function ra(a){if(!a)return !1;try{return !!a.$goog_Thenable}catch(b){return !1}}function u(a){if(Error.captureStackTrace)Error.captureStackTrace(this,u);else{var b=Error().stack;b&&(this.stack=b);}a&&(this.message=String(a));}t(u,Error);u.prototype.name="CustomError";function sa(a,b){a=a.split("%s");for(var c="",d=a.length-1,e=0;e<d;e++)c+=a[e]+(e<b.length?b[e]:"%s");u.call(this,c+a[d]);}t(sa,u);sa.prototype.name="AssertionError";function ta(a,b){throw new sa("Failure"+(a?": "+a:""),Array.prototype.slice.call(arguments,1));}function ua(a,b){this.c=a;this.f=b;this.b=0;this.a=null;}ua.prototype.get=function(){if(0<this.b){this.b--;var a=this.a;this.a=a.next;a.next=null;}else a=this.c();return a};function va(a,b){a.f(b);100>a.b&&(a.b++,b.next=a.a,a.a=b);}function wa(){this.b=this.a=null;}var ya=new ua(function(){return new xa},function(a){a.reset();});wa.prototype.add=function(a,b){var c=ya.get();c.set(a,b);this.b?this.b.next=c:this.a=c;this.b=c;};function za(){var a=Aa,b=null;a.a&&(b=a.a,a.a=a.a.next,a.a||(a.b=null),b.next=null);return b}function xa(){this.next=this.b=this.a=null;}xa.prototype.set=function(a,b){this.a=a;this.b=b;this.next=null;};xa.prototype.reset=function(){this.next=this.b=this.a=null;};var Ba=Array.prototype.indexOf?function(a,b){return Array.prototype.indexOf.call(a,b,void 0)}:function(a,b){if(l(a))return l(b)&&1==b.length?a.indexOf(b,0):-1;for(var c=0;c<a.length;c++)if(c in a&&a[c]===b)return c;return -1},v=Array.prototype.forEach?function(a,b,c){Array.prototype.forEach.call(a,b,c);}:function(a,b,c){for(var d=a.length,e=l(a)?a.split(""):a,f=0;f<d;f++)f in e&&b.call(c,e[f],f,a);};
-function Ca(a,b){var c=a.length,d=l(a)?a.split(""):a;for(--c;0<=c;--c)c in d&&b.call(void 0,d[c],c,a);}
-var Da=Array.prototype.map?function(a,b){return Array.prototype.map.call(a,b,void 0)}:function(a,b){for(var c=a.length,d=Array(c),e=l(a)?a.split(""):a,f=0;f<c;f++)f in e&&(d[f]=b.call(void 0,e[f],f,a));return d},Ea=Array.prototype.some?function(a,b){return Array.prototype.some.call(a,b,void 0)}:function(a,b){for(var c=a.length,d=l(a)?a.split(""):a,e=0;e<c;e++)if(e in d&&b.call(void 0,d[e],e,a))return !0;return !1};
-function Fa(a){a:{var b=Ga;for(var c=a.length,d=l(a)?a.split(""):a,e=0;e<c;e++)if(e in d&&b.call(void 0,d[e],e,a)){b=e;break a}b=-1;}return 0>b?null:l(a)?a.charAt(b):a[b]}function Ha(a,b){return 0<=Ba(a,b)}function Ia(a,b){b=Ba(a,b);var c;(c=0<=b)&&Array.prototype.splice.call(a,b,1);return c}function w(a,b){var c=0;Ca(a,function(d,e){b.call(void 0,d,e,a)&&1==Array.prototype.splice.call(a,e,1).length&&c++;});}function Ja(a){return Array.prototype.concat.apply([],arguments)}
-function Ka(a){var b=a.length;if(0<b){for(var c=Array(b),d=0;d<b;d++)c[d]=a[d];return c}return []}var La=String.prototype.trim?function(a){return a.trim()}:function(a){return /^[\s\xa0]*([\s\S]*?)[\s\xa0]*$/.exec(a)[1]},Ma=/&/g,Na=/</g,Oa=/>/g,Pa=/"/g,Qa=/'/g,Ra=/\x00/g,Sa=/[\x00&<>"']/;function y(a,b){return -1!=a.indexOf(b)}function Ta(a,b){return a<b?-1:a>b?1:0}var Ua;a:{var Va=k.navigator;if(Va){var Wa=Va.userAgent;if(Wa){Ua=Wa;break a}}Ua="";}function z(a){return y(Ua,a)}function Xa(a,b){for(var c in a)b.call(void 0,a[c],c,a);}function Ya(a){for(var b in a)return !1;return !0}function Za(a){var b={},c;for(c in a)b[c]=a[c];return b}var $a="constructor hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf".split(" ");function ab(a,b){for(var c,d,e=1;e<arguments.length;e++){d=arguments[e];for(c in d)a[c]=d[c];for(var f=0;f<$a.length;f++)c=$a[f],Object.prototype.hasOwnProperty.call(d,c)&&(a[c]=d[c]);}}function bb(a,b){for(var c=a.split("%s"),d="",e=Array.prototype.slice.call(arguments,1);e.length&&1<c.length;)d+=c.shift()+e.shift();return d+c.join("%s")}function cb(a){Sa.test(a)&&(-1!=a.indexOf("&")&&(a=a.replace(Ma,"&amp;")),-1!=a.indexOf("<")&&(a=a.replace(Na,"&lt;")),-1!=a.indexOf(">")&&(a=a.replace(Oa,"&gt;")),-1!=a.indexOf('"')&&(a=a.replace(Pa,"&quot;")),-1!=a.indexOf("'")&&(a=a.replace(Qa,"&#39;")),-1!=a.indexOf("\x00")&&(a=a.replace(Ra,"&#0;")));return a}function db(a){k.setTimeout(function(){throw a;},0);}var eb;
-function fb(){var a=k.MessageChannel;"undefined"===typeof a&&"undefined"!==typeof window&&window.postMessage&&window.addEventListener&&!z("Presto")&&(a=function(){var a=document.createElement("IFRAME");a.style.display="none";a.src="";document.documentElement.appendChild(a);var b=a.contentWindow;a=b.document;a.open();a.write("");a.close();var c="callImmediate"+Math.random(),d="file:"==b.location.protocol?"*":b.location.protocol+"//"+b.location.host;a=r(function(a){if(("*"==d||a.origin==d)&&a.data==
-c)this.port1.onmessage();},this);b.addEventListener("message",a,!1);this.port1={};this.port2={postMessage:function(){b.postMessage(c,d);}};});if("undefined"!==typeof a&&!z("Trident")&&!z("MSIE")){var b=new a,c={},d=c;b.port1.onmessage=function(){if(void 0!==c.next){c=c.next;var a=c.xb;c.xb=null;a();}};return function(a){d.next={xb:a};d=d.next;b.port2.postMessage(0);}}return "undefined"!==typeof document&&"onreadystatechange"in document.createElement("SCRIPT")?function(a){var b=document.createElement("SCRIPT");
-b.onreadystatechange=function(){b.onreadystatechange=null;b.parentNode.removeChild(b);b=null;a();a=null;};document.documentElement.appendChild(b);}:function(a){k.setTimeout(a,0);}}function hb(a,b){ib||jb();kb||(ib(),kb=!0);Aa.add(a,b);}var ib;function jb(){if(k.Promise&&k.Promise.resolve){var a=k.Promise.resolve(void 0);ib=function(){a.then(lb);};}else ib=function(){var a=lb;!n(k.setImmediate)||k.Window&&k.Window.prototype&&!z("Edge")&&k.Window.prototype.setImmediate==k.setImmediate?(eb||(eb=fb()),eb(a)):k.setImmediate(a);};}var kb=!1,Aa=new wa;function lb(){for(var a;a=za();){try{a.a.call(a.b);}catch(b){db(b);}va(ya,a);}kb=!1;}function A(a,b){this.a=mb;this.i=void 0;this.f=this.b=this.c=null;this.g=this.h=!1;if(a!=ea)try{var c=this;a.call(b,function(a){nb(c,ob,a);},function(a){if(!(a instanceof pb))try{if(a instanceof Error)throw a;throw Error("Promise rejected.");}catch(e){}nb(c,qb,a);});}catch(d){nb(this,qb,d);}}var mb=0,ob=2,qb=3;function rb(){this.next=this.f=this.b=this.g=this.a=null;this.c=!1;}rb.prototype.reset=function(){this.f=this.b=this.g=this.a=null;this.c=!1;};var sb=new ua(function(){return new rb},function(a){a.reset();});
-function tb(a,b,c){var d=sb.get();d.g=a;d.b=b;d.f=c;return d}function B(a){if(a instanceof A)return a;var b=new A(ea);nb(b,ob,a);return b}function C(a){return new A(function(b,c){c(a);})}function ub(a,b,c){vb(a,b,c,null)||hb(pa(b,a));}function wb(a){return new A(function(b,c){var d=a.length,e=[];if(d)for(var f=function(a,c){d--;e[a]=c;0==d&&b(e);},h=function(a){c(a);},m=0,p;m<a.length;m++)p=a[m],ub(p,pa(f,m),h);else b(e);})}
-function xb(a){return new A(function(b){var c=a.length,d=[];if(c)for(var e=function(a,e,f){c--;d[a]=e?{Eb:!0,value:f}:{Eb:!1,reason:f};0==c&&b(d);},f=0,h;f<a.length;f++)h=a[f],ub(h,pa(e,f,!0),pa(e,f,!1));else b(d);})}A.prototype.then=function(a,b,c){return yb(this,n(a)?a:null,n(b)?b:null,c)};A.prototype.$goog_Thenable=!0;g=A.prototype;g.ia=function(a,b){a=tb(a,a,b);a.c=!0;zb(this,a);return this};g.s=function(a,b){return yb(this,null,a,b)};
-g.cancel=function(a){this.a==mb&&hb(function(){var b=new pb(a);Ab(this,b);},this);};function Ab(a,b){if(a.a==mb)if(a.c){var c=a.c;if(c.b){for(var d=0,e=null,f=null,h=c.b;h&&(h.c||(d++,h.a==a&&(e=h),!(e&&1<d)));h=h.next)e||(f=h);e&&(c.a==mb&&1==d?Ab(c,b):(f?(d=f,d.next==c.f&&(c.f=d),d.next=d.next.next):Bb(c),Cb(c,e,qb,b)));}a.c=null;}else nb(a,qb,b);}function zb(a,b){a.b||a.a!=ob&&a.a!=qb||Db(a);a.f?a.f.next=b:a.b=b;a.f=b;}
-function yb(a,b,c,d){var e=tb(null,null,null);e.a=new A(function(a,h){e.g=b?function(c){try{var e=b.call(d,c);a(e);}catch(x){h(x);}}:a;e.b=c?function(b){try{var e=c.call(d,b);void 0===e&&b instanceof pb?h(b):a(e);}catch(x){h(x);}}:h;});e.a.c=a;zb(a,e);return e.a}g.Pc=function(a){this.a=mb;nb(this,ob,a);};g.Qc=function(a){this.a=mb;nb(this,qb,a);};
-function nb(a,b,c){a.a==mb&&(a===c&&(b=qb,c=new TypeError("Promise cannot resolve to itself")),a.a=1,vb(c,a.Pc,a.Qc,a)||(a.i=c,a.a=b,a.c=null,Db(a),b!=qb||c instanceof pb||Eb(a,c)));}function vb(a,b,c,d){if(a instanceof A)return zb(a,tb(b||ea,c||null,d)),!0;if(ra(a))return a.then(b,c,d),!0;if(q(a))try{var e=a.then;if(n(e))return Fb(a,e,b,c,d),!0}catch(f){return c.call(d,f),!0}return !1}
-function Fb(a,b,c,d,e){function f(a){m||(m=!0,d.call(e,a));}function h(a){m||(m=!0,c.call(e,a));}var m=!1;try{b.call(a,h,f);}catch(p){f(p);}}function Db(a){a.h||(a.h=!0,hb(a.Yb,a));}function Bb(a){var b=null;a.b&&(b=a.b,a.b=b.next,b.next=null);a.b||(a.f=null);return b}g.Yb=function(){for(var a;a=Bb(this);)Cb(this,a,this.a,this.i);this.h=!1;};
-function Cb(a,b,c,d){if(c==qb&&b.b&&!b.c)for(;a&&a.g;a=a.c)a.g=!1;if(b.a)b.a.c=null,Gb(b,c,d);else try{b.c?b.g.call(b.f):Gb(b,c,d);}catch(e){Hb.call(null,e);}va(sb,b);}function Gb(a,b,c){b==ob?a.g.call(a.f,c):a.b&&a.b.call(a.f,c);}function Eb(a,b){a.g=!0;hb(function(){a.g&&Hb.call(null,b);});}var Hb=db;function pb(a){u.call(this,a);}t(pb,u);pb.prototype.name="cancel";function Ib(){this.qa=this.qa;this.ja=this.ja;}var Jb=0;Ib.prototype.qa=!1;function Lb(a){if(!a.qa&&(a.qa=!0,a.va(),0!=Jb)){var b=a[ka]||(a[ka]=++ma);}}Ib.prototype.va=function(){if(this.ja)for(;this.ja.length;)this.ja.shift()();};function Mb(a){Mb[" "](a);return a}Mb[" "]=ea;function Nb(a,b){var c=Ob;return Object.prototype.hasOwnProperty.call(c,a)?c[a]:c[a]=b(a)}var Pb=z("Opera"),Qb=z("Trident")||z("MSIE"),Rb=z("Edge"),Sb=Rb||Qb,Tb=z("Gecko")&&!(y(Ua.toLowerCase(),"webkit")&&!z("Edge"))&&!(z("Trident")||z("MSIE"))&&!z("Edge"),Ub=y(Ua.toLowerCase(),"webkit")&&!z("Edge");function Vb(){var a=k.document;return a?a.documentMode:void 0}var Wb;
-a:{var Xb="",Yb=function(){var a=Ua;if(Tb)return /rv:([^\);]+)(\)|;)/.exec(a);if(Rb)return /Edge\/([\d\.]+)/.exec(a);if(Qb)return /\b(?:MSIE|rv)[: ]([^\);]+)(\)|;)/.exec(a);if(Ub)return /WebKit\/(\S+)/.exec(a);if(Pb)return /(?:Version)[ \/]?(\S+)/.exec(a)}();Yb&&(Xb=Yb?Yb[1]:"");if(Qb){var Zb=Vb();if(null!=Zb&&Zb>parseFloat(Xb)){Wb=String(Zb);break a}}Wb=Xb;}var Ob={};
-function $b(a){return Nb(a,function(){for(var b=0,c=La(String(Wb)).split("."),d=La(String(a)).split("."),e=Math.max(c.length,d.length),f=0;0==b&&f<e;f++){var h=c[f]||"",m=d[f]||"";do{h=/(\d*)(\D*)(.*)/.exec(h)||["","","",""];m=/(\d*)(\D*)(.*)/.exec(m)||["","","",""];if(0==h[0].length&&0==m[0].length)break;b=Ta(0==h[1].length?0:parseInt(h[1],10),0==m[1].length?0:parseInt(m[1],10))||Ta(0==h[2].length,0==m[2].length)||Ta(h[2],m[2]);h=h[3];m=m[3];}while(0==b)}return 0<=b})}var ac;var bc=k.document;
-ac=bc&&Qb?Vb()||("CSS1Compat"==bc.compatMode?parseInt(Wb,10):5):void 0;var cc=Object.freeze||function(a){return a};var dc=!Qb||9<=Number(ac),ec=Qb&&!$b("9"),fc=function(){if(!k.addEventListener||!Object.defineProperty)return !1;var a=!1,b=Object.defineProperty({},"passive",{get:function(){a=!0;}});try{k.addEventListener("test",ea,b),k.removeEventListener("test",ea,b);}catch(c){}return a}();function D(a,b){this.type=a;this.b=this.target=b;this.Kb=!0;}D.prototype.preventDefault=function(){this.Kb=!1;};function gc(a,b){D.call(this,a?a.type:"");this.relatedTarget=this.b=this.target=null;this.button=this.screenY=this.screenX=this.clientY=this.clientX=0;this.key="";this.metaKey=this.shiftKey=this.altKey=this.ctrlKey=!1;this.pointerId=0;this.pointerType="";this.a=null;if(a){var c=this.type=a.type,d=a.changedTouches&&a.changedTouches.length?a.changedTouches[0]:null;this.target=a.target||a.srcElement;this.b=b;if(b=a.relatedTarget){if(Tb){a:{try{Mb(b.nodeName);var e=!0;break a}catch(f){}e=!1;}e||(b=null);}}else"mouseover"==
-c?b=a.fromElement:"mouseout"==c&&(b=a.toElement);this.relatedTarget=b;d?(this.clientX=void 0!==d.clientX?d.clientX:d.pageX,this.clientY=void 0!==d.clientY?d.clientY:d.pageY,this.screenX=d.screenX||0,this.screenY=d.screenY||0):(this.clientX=void 0!==a.clientX?a.clientX:a.pageX,this.clientY=void 0!==a.clientY?a.clientY:a.pageY,this.screenX=a.screenX||0,this.screenY=a.screenY||0);this.button=a.button;this.key=a.key||"";this.ctrlKey=a.ctrlKey;this.altKey=a.altKey;this.shiftKey=a.shiftKey;this.metaKey=
-a.metaKey;this.pointerId=a.pointerId||0;this.pointerType=l(a.pointerType)?a.pointerType:hc[a.pointerType]||"";this.a=a;a.defaultPrevented&&this.preventDefault();}}t(gc,D);var hc=cc({2:"touch",3:"pen",4:"mouse"});gc.prototype.preventDefault=function(){gc.pb.preventDefault.call(this);var a=this.a;if(a.preventDefault)a.preventDefault();else if(a.returnValue=!1,ec)try{if(a.ctrlKey||112<=a.keyCode&&123>=a.keyCode)a.keyCode=-1;}catch(b){}};gc.prototype.f=function(){return this.a};var ic="closure_listenable_"+(1E6*Math.random()|0),jc=0;function kc(a,b,c,d,e){this.listener=a;this.proxy=null;this.src=b;this.type=c;this.capture=!!d;this.Ma=e;this.key=++jc;this.oa=this.Ia=!1;}function lc(a){a.oa=!0;a.listener=null;a.proxy=null;a.src=null;a.Ma=null;}function mc(a){this.src=a;this.a={};this.b=0;}mc.prototype.add=function(a,b,c,d,e){var f=a.toString();a=this.a[f];a||(a=this.a[f]=[],this.b++);var h=nc(a,b,d,e);-1<h?(b=a[h],c||(b.Ia=!1)):(b=new kc(b,this.src,f,!!d,e),b.Ia=c,a.push(b));return b};function oc(a,b){var c=b.type;c in a.a&&Ia(a.a[c],b)&&(lc(b),0==a.a[c].length&&(delete a.a[c],a.b--));}function nc(a,b,c,d){for(var e=0;e<a.length;++e){var f=a[e];if(!f.oa&&f.listener==b&&f.capture==!!c&&f.Ma==d)return e}return -1}var pc="closure_lm_"+(1E6*Math.random()|0),qc={};function sc(a,b,c,d,e){if(d&&d.once)tc(a,b,c,d,e);else if(ia(b))for(var f=0;f<b.length;f++)sc(a,b[f],c,d,e);else c=uc(c),a&&a[ic]?vc(a,b,c,q(d)?!!d.capture:!!d,e):wc(a,b,c,!1,d,e);}
-function wc(a,b,c,d,e,f){if(!b)throw Error("Invalid event type");var h=q(e)?!!e.capture:!!e,m=xc(a);m||(a[pc]=m=new mc(a));c=m.add(b,c,d,h,f);if(!c.proxy){d=yc();c.proxy=d;d.src=a;d.listener=c;if(a.addEventListener)fc||(e=h),void 0===e&&(e=!1),a.addEventListener(b.toString(),d,e);else if(a.attachEvent)a.attachEvent(zc(b.toString()),d);else if(a.addListener&&a.removeListener)a.addListener(d);else throw Error("addEventListener and attachEvent are unavailable.");}}
-function yc(){var a=Ac,b=dc?function(c){return a.call(b.src,b.listener,c)}:function(c){c=a.call(b.src,b.listener,c);if(!c)return c};return b}function tc(a,b,c,d,e){if(ia(b))for(var f=0;f<b.length;f++)tc(a,b[f],c,d,e);else c=uc(c),a&&a[ic]?Bc(a,b,c,q(d)?!!d.capture:!!d,e):wc(a,b,c,!0,d,e);}
-function E(a,b,c,d,e){if(ia(b))for(var f=0;f<b.length;f++)E(a,b[f],c,d,e);else(d=q(d)?!!d.capture:!!d,c=uc(c),a&&a[ic])?(a=a.o,b=String(b).toString(),b in a.a&&(f=a.a[b],c=nc(f,c,d,e),-1<c&&(lc(f[c]),Array.prototype.splice.call(f,c,1),0==f.length&&(delete a.a[b],a.b--)))):a&&(a=xc(a))&&(b=a.a[b.toString()],a=-1,b&&(a=nc(b,c,d,e)),(c=-1<a?b[a]:null)&&Cc(c));}
-function Cc(a){if("number"!=typeof a&&a&&!a.oa){var b=a.src;if(b&&b[ic])oc(b.o,a);else{var c=a.type,d=a.proxy;b.removeEventListener?b.removeEventListener(c,d,a.capture):b.detachEvent?b.detachEvent(zc(c),d):b.addListener&&b.removeListener&&b.removeListener(d);(c=xc(b))?(oc(c,a),0==c.b&&(c.src=null,b[pc]=null)):lc(a);}}}function zc(a){return a in qc?qc[a]:qc[a]="on"+a}
-function Dc(a,b,c,d){var e=!0;if(a=xc(a))if(b=a.a[b.toString()])for(b=b.concat(),a=0;a<b.length;a++){var f=b[a];f&&f.capture==c&&!f.oa&&(f=Ec(f,d),e=e&&!1!==f);}return e}function Ec(a,b){var c=a.listener,d=a.Ma||a.src;a.Ia&&Cc(a);return c.call(d,b)}
-function Ac(a,b){if(a.oa)return !0;if(!dc){if(!b)a:{b=["window","event"];for(var c=k,d=0;d<b.length;d++)if(c=c[b[d]],null==c){b=null;break a}b=c;}d=b;b=new gc(d,this);c=!0;if(!(0>d.keyCode||void 0!=d.returnValue)){a:{var e=!1;if(0==d.keyCode)try{d.keyCode=-1;break a}catch(h){e=!0;}if(e||void 0==d.returnValue)d.returnValue=!0;}d=[];for(e=b.b;e;e=e.parentNode)d.push(e);a=a.type;for(e=d.length-1;0<=e;e--){b.b=d[e];var f=Dc(d[e],a,!0,b);c=c&&f;}for(e=0;e<d.length;e++)b.b=d[e],f=Dc(d[e],a,!1,b),c=c&&f;}return c}return Ec(a,
-new gc(b,this))}function xc(a){a=a[pc];return a instanceof mc?a:null}var Fc="__closure_events_fn_"+(1E9*Math.random()>>>0);function uc(a){if(n(a))return a;a[Fc]||(a[Fc]=function(b){return a.handleEvent(b)});return a[Fc]}function F(){Ib.call(this);this.o=new mc(this);this.Rb=this;this.Wa=null;}t(F,Ib);F.prototype[ic]=!0;F.prototype.addEventListener=function(a,b,c,d){sc(this,a,b,c,d);};F.prototype.removeEventListener=function(a,b,c,d){E(this,a,b,c,d);};
-F.prototype.dispatchEvent=function(a){var b,c=this.Wa;if(c)for(b=[];c;c=c.Wa)b.push(c);c=this.Rb;var d=a.type||a;if(l(a))a=new D(a,c);else if(a instanceof D)a.target=a.target||c;else{var e=a;a=new D(d,c);ab(a,e);}e=!0;if(b)for(var f=b.length-1;0<=f;f--){var h=a.b=b[f];e=Gc(h,d,!0,a)&&e;}h=a.b=c;e=Gc(h,d,!0,a)&&e;e=Gc(h,d,!1,a)&&e;if(b)for(f=0;f<b.length;f++)h=a.b=b[f],e=Gc(h,d,!1,a)&&e;return e};
-F.prototype.va=function(){F.pb.va.call(this);if(this.o){var a=this.o,c;for(c in a.a){for(var d=a.a[c],e=0;e<d.length;e++)lc(d[e]);delete a.a[c];a.b--;}}this.Wa=null;};function vc(a,b,c,d,e){a.o.add(String(b),c,!1,d,e);}function Bc(a,b,c,d,e){a.o.add(String(b),c,!0,d,e);}
-function Gc(a,b,c,d){b=a.o.a[String(b)];if(!b)return !0;b=b.concat();for(var e=!0,f=0;f<b.length;++f){var h=b[f];if(h&&!h.oa&&h.capture==c){var m=h.listener,p=h.Ma||h.src;h.Ia&&oc(a.o,h);e=!1!==m.call(p,d)&&e;}}return e&&0!=d.Kb}function Hc(a,b,c){if(n(a))c&&(a=r(a,c));else if(a&&"function"==typeof a.handleEvent)a=r(a.handleEvent,a);else throw Error("Invalid listener argument");return 2147483647<Number(b)?-1:k.setTimeout(a,b||0)}function Ic(a){var b=null;return (new A(function(c,d){b=Hc(function(){c(void 0);},a);-1==b&&d(Error("Failed to schedule timer."));})).s(function(a){k.clearTimeout(b);throw a;})}function Jc(a){if(a.S&&"function"==typeof a.S)return a.S();if(l(a))return a.split("");if(ja(a)){for(var b=[],c=a.length,d=0;d<c;d++)b.push(a[d]);return b}b=[];c=0;for(d in a)b[c++]=a[d];return b}function Kc(a){if(a.U&&"function"==typeof a.U)return a.U();if(!a.S||"function"!=typeof a.S){if(ja(a)||l(a)){var b=[];a=a.length;for(var c=0;c<a;c++)b.push(c);return b}b=[];c=0;for(var d in a)b[c++]=d;return b}}
-function Lc(a,b){if(a.forEach&&"function"==typeof a.forEach)a.forEach(b,void 0);else if(ja(a)||l(a))v(a,b,void 0);else for(var c=Kc(a),d=Jc(a),e=d.length,f=0;f<e;f++)b.call(void 0,d[f],c&&c[f],a);}function Mc(a,b){this.b={};this.a=[];this.c=0;var c=arguments.length;if(1<c){if(c%2)throw Error("Uneven number of arguments");for(var d=0;d<c;d+=2)this.set(arguments[d],arguments[d+1]);}else if(a)if(a instanceof Mc)for(c=a.U(),d=0;d<c.length;d++)this.set(c[d],a.get(c[d]));else for(d in a)this.set(d,a[d]);}g=Mc.prototype;g.S=function(){Nc(this);for(var a=[],b=0;b<this.a.length;b++)a.push(this.b[this.a[b]]);return a};g.U=function(){Nc(this);return this.a.concat()};
-g.clear=function(){this.b={};this.c=this.a.length=0;};function Nc(a){if(a.c!=a.a.length){for(var b=0,c=0;b<a.a.length;){var d=a.a[b];Oc(a.b,d)&&(a.a[c++]=d);b++;}a.a.length=c;}if(a.c!=a.a.length){var e={};for(c=b=0;b<a.a.length;)d=a.a[b],Oc(e,d)||(a.a[c++]=d,e[d]=1),b++;a.a.length=c;}}g.get=function(a,b){return Oc(this.b,a)?this.b[a]:b};g.set=function(a,b){Oc(this.b,a)||(this.c++,this.a.push(a));this.b[a]=b;};
-g.forEach=function(a,b){for(var c=this.U(),d=0;d<c.length;d++){var e=c[d],f=this.get(e);a.call(b,f,e,this);}};function Oc(a,b){return Object.prototype.hasOwnProperty.call(a,b)}var Pc=/^(?:([^:/?#.]+):)?(?:\/\/(?:([^/?#]*)@)?([^/#?]*?)(?::([0-9]+))?(?=[/#?]|$))?([^?#]+)?(?:\?([^#]*))?(?:#([\s\S]*))?$/;function Qc(a,b){if(a){a=a.split("&");for(var c=0;c<a.length;c++){var d=a[c].indexOf("="),e=null;if(0<=d){var f=a[c].substring(0,d);e=a[c].substring(d+1);}else f=a[c];b(f,e?decodeURIComponent(e.replace(/\+/g," ")):"");}}}function Rc(a,b){this.b=this.o=this.c="";this.i=null;this.h=this.g="";this.f=!1;if(a instanceof Rc){this.f=void 0!==b?b:a.f;Sc(this,a.c);this.o=a.o;this.b=a.b;Tc(this,a.i);this.g=a.g;b=a.a;var c=new Uc;c.c=b.c;b.a&&(c.a=new Mc(b.a),c.b=b.b);Vc(this,c);this.h=a.h;}else a&&(c=String(a).match(Pc))?(this.f=!!b,Sc(this,c[1]||"",!0),this.o=Wc(c[2]||""),this.b=Wc(c[3]||"",!0),Tc(this,c[4]),this.g=Wc(c[5]||"",!0),Vc(this,c[6]||"",!0),this.h=Wc(c[7]||"")):(this.f=!!b,this.a=new Uc(null,this.f));}
-Rc.prototype.toString=function(){var a=[],b=this.c;b&&a.push(Xc(b,Yc,!0),":");var c=this.b;if(c||"file"==b)a.push("//"),(b=this.o)&&a.push(Xc(b,Yc,!0),"@"),a.push(encodeURIComponent(String(c)).replace(/%25([0-9a-fA-F]{2})/g,"%$1")),c=this.i,null!=c&&a.push(":",String(c));if(c=this.g)this.b&&"/"!=c.charAt(0)&&a.push("/"),a.push(Xc(c,"/"==c.charAt(0)?Zc:$c,!0));(c=this.a.toString())&&a.push("?",c);(c=this.h)&&a.push("#",Xc(c,ad));return a.join("")};
-function Sc(a,b,c){a.c=c?Wc(b,!0):b;a.c&&(a.c=a.c.replace(/:$/,""));}function Tc(a,b){if(b){b=Number(b);if(isNaN(b)||0>b)throw Error("Bad port number "+b);a.i=b;}else a.i=null;}function Vc(a,b,c){b instanceof Uc?(a.a=b,bd(a.a,a.f)):(c||(b=Xc(b,cd)),a.a=new Uc(b,a.f));}function G(a,b,c){a.a.set(b,c);}function dd(a,b){return a.a.get(b)}function ed(a){return a instanceof Rc?new Rc(a):new Rc(a,void 0)}function fd(a,b){var c=new Rc(null,void 0);Sc(c,"https");a&&(c.b=a);b&&(c.g=b);return c}
-function Wc(a,b){return a?b?decodeURI(a.replace(/%25/g,"%2525")):decodeURIComponent(a):""}function Xc(a,b,c){return l(a)?(a=encodeURI(a).replace(b,gd),c&&(a=a.replace(/%25([0-9a-fA-F]{2})/g,"%$1")),a):null}function gd(a){a=a.charCodeAt(0);return "%"+(a>>4&15).toString(16)+(a&15).toString(16)}var Yc=/[#\/\?@]/g,$c=/[#\?:]/g,Zc=/[#\?]/g,cd=/[#\?@]/g,ad=/#/g;function Uc(a,b){this.b=this.a=null;this.c=a||null;this.f=!!b;}
-function hd(a){a.a||(a.a=new Mc,a.b=0,a.c&&Qc(a.c,function(b,c){a.add(decodeURIComponent(b.replace(/\+/g," ")),c);}));}function id(a){var b=Kc(a);if("undefined"==typeof b)throw Error("Keys are undefined");var c=new Uc(null,void 0);a=Jc(a);for(var d=0;d<b.length;d++){var e=b[d],f=a[d];ia(f)?jd(c,e,f):c.add(e,f);}return c}g=Uc.prototype;g.add=function(a,b){hd(this);this.c=null;a=kd(this,a);var c=this.a.get(a);c||this.a.set(a,c=[]);c.push(b);this.b+=1;return this};
-function ld(a,b){hd(a);b=kd(a,b);Oc(a.a.b,b)&&(a.c=null,a.b-=a.a.get(b).length,a=a.a,Oc(a.b,b)&&(delete a.b[b],a.c--,a.a.length>2*a.c&&Nc(a)));}g.clear=function(){this.a=this.c=null;this.b=0;};function md(a,b){hd(a);b=kd(a,b);return Oc(a.a.b,b)}g.forEach=function(a,b){hd(this);this.a.forEach(function(c,d){v(c,function(c){a.call(b,c,d,this);},this);},this);};g.U=function(){hd(this);for(var a=this.a.S(),b=this.a.U(),c=[],d=0;d<b.length;d++)for(var e=a[d],f=0;f<e.length;f++)c.push(b[d]);return c};
-g.S=function(a){hd(this);var b=[];if(l(a))md(this,a)&&(b=Ja(b,this.a.get(kd(this,a))));else{a=this.a.S();for(var c=0;c<a.length;c++)b=Ja(b,a[c]);}return b};g.set=function(a,b){hd(this);this.c=null;a=kd(this,a);md(this,a)&&(this.b-=this.a.get(a).length);this.a.set(a,[b]);this.b+=1;return this};g.get=function(a,b){if(!a)return b;a=this.S(a);return 0<a.length?String(a[0]):b};function jd(a,b,c){ld(a,b);0<c.length&&(a.c=null,a.a.set(kd(a,b),Ka(c)),a.b+=c.length);}
-g.toString=function(){if(this.c)return this.c;if(!this.a)return "";for(var a=[],b=this.a.U(),c=0;c<b.length;c++){var d=b[c],e=encodeURIComponent(String(d));d=this.S(d);for(var f=0;f<d.length;f++){var h=e;""!==d[f]&&(h+="="+encodeURIComponent(String(d[f])));a.push(h);}}return this.c=a.join("&")};function kd(a,b){b=String(b);a.f&&(b=b.toLowerCase());return b}function bd(a,b){b&&!a.f&&(hd(a),a.c=null,a.a.forEach(function(a,b){var c=b.toLowerCase();b!=c&&(ld(this,b),jd(this,c,a));},a));a.f=b;}var nd=!Qb||9<=Number(ac);function od(a,b){this.a=a===pd&&b||"";this.b=qd;}od.prototype.na=!0;od.prototype.ma=function(){return this.a};od.prototype.toString=function(){return "Const{"+this.a+"}"};function rd(a){if(a instanceof od&&a.constructor===od&&a.b===qd)return a.a;ta("expected object of type Const, got '"+a+"'");return "type_error:Const"}var qd={},pd={};function sd(){this.a="";this.b=td;}sd.prototype.na=!0;sd.prototype.ma=function(){return this.a};sd.prototype.toString=function(){return "TrustedResourceUrl{"+this.a+"}"};function ud(a){if(a instanceof sd&&a.constructor===sd&&a.b===td)return a.a;ta("expected object of type TrustedResourceUrl, got '"+a+"' of type "+fa(a));return "type_error:TrustedResourceUrl"}
-function vd(a,b){var c=rd(a);if(!wd.test(c))throw Error("Invalid TrustedResourceUrl format: "+c);a=c.replace(xd,function(a,e){if(!Object.prototype.hasOwnProperty.call(b,e))throw Error('Found marker, "'+e+'", in format string, "'+c+'", but no valid label mapping found in args: '+JSON.stringify(b));a=b[e];return a instanceof od?rd(a):encodeURIComponent(String(a))});return yd(a)}var xd=/%{(\w+)}/g,wd=/^((https:)?\/\/[0-9a-z.:[\]-]+\/|\/[^/\\]|[^:/\\%]+\/|[^:/\\%]*[?#]|about:blank#)/i,td={};
-function yd(a){var b=new sd;b.a=a;return b}function zd(){this.a="";this.b=Ad;}zd.prototype.na=!0;zd.prototype.ma=function(){return this.a};zd.prototype.toString=function(){return "SafeUrl{"+this.a+"}"};function Bd(a){if(a instanceof zd&&a.constructor===zd&&a.b===Ad)return a.a;ta("expected object of type SafeUrl, got '"+a+"' of type "+fa(a));return "type_error:SafeUrl"}var Cd=/^(?:(?:https?|mailto|ftp):|[^:/?#]*(?:[/?#]|$))/i;
-function Dd(a){if(a instanceof zd)return a;a="object"==typeof a&&a.na?a.ma():String(a);Cd.test(a)||(a="about:invalid#zClosurez");return Ed(a)}var Ad={};function Ed(a){var b=new zd;b.a=a;return b}Ed("about:blank");function Fd(){this.a="";this.b=Gd;}Fd.prototype.na=!0;Fd.prototype.ma=function(){return this.a};Fd.prototype.toString=function(){return "SafeHtml{"+this.a+"}"};function Hd(a){if(a instanceof Fd&&a.constructor===Fd&&a.b===Gd)return a.a;ta("expected object of type SafeHtml, got '"+a+"' of type "+fa(a));return "type_error:SafeHtml"}var Gd={};function Id(a){var b=new Fd;b.a=a;return b}Id("<!DOCTYPE html>");Id("");Id("<br>");function Jd(a,b){a.src=ud(b);if(null===da)b:{b=k.document;if((b=b.querySelector&&b.querySelector("script[nonce]"))&&(b=b.nonce||b.getAttribute("nonce"))&&ca.test(b)){da=b;break b}da="";}b=da;b&&a.setAttribute("nonce",b);}function Kd(a){var b=document;return l(a)?b.getElementById(a):a}function Ld(a,b){Xa(b,function(b,d){b&&"object"==typeof b&&b.na&&(b=b.ma());"style"==d?a.style.cssText=b:"class"==d?a.className=b:"for"==d?a.htmlFor=b:Md.hasOwnProperty(d)?a.setAttribute(Md[d],b):0==d.lastIndexOf("aria-",0)||0==d.lastIndexOf("data-",0)?a.setAttribute(d,b):a[d]=b;});}
-var Md={cellpadding:"cellPadding",cellspacing:"cellSpacing",colspan:"colSpan",frameborder:"frameBorder",height:"height",maxlength:"maxLength",nonce:"nonce",role:"role",rowspan:"rowSpan",type:"type",usemap:"useMap",valign:"vAlign",width:"width"};
-function Nd(a,b,c){var d=arguments,e=document,f=String(d[0]),h=d[1];if(!nd&&h&&(h.name||h.type)){f=["<",f];h.name&&f.push(' name="',cb(h.name),'"');if(h.type){f.push(' type="',cb(h.type),'"');var m={};ab(m,h);delete m.type;h=m;}f.push(">");f=f.join("");}f=e.createElement(f);h&&(l(h)?f.className=h:ia(h)?f.className=h.join(" "):Ld(f,h));2<d.length&&Od(e,f,d);return f}
-function Od(a,b,c){function d(c){c&&b.appendChild(l(c)?a.createTextNode(c):c);}for(var e=2;e<c.length;e++){var f=c[e];!ja(f)||q(f)&&0<f.nodeType?d(f):v(Pd(f)?Ka(f):f,d);}}function Pd(a){if(a&&"number"==typeof a.length){if(q(a))return "function"==typeof a.item||"string"==typeof a.item;if(n(a))return "function"==typeof a.item}return !1}function Qd(a){var b=[];Rd(new Sd,a,b);return b.join("")}function Sd(){}
-function Rd(a,b,c){if(null==b)c.push("null");else{if("object"==typeof b){if(ia(b)){var d=b;b=d.length;c.push("[");for(var e="",f=0;f<b;f++)c.push(e),Rd(a,d[f],c),e=",";c.push("]");return}if(b instanceof String||b instanceof Number||b instanceof Boolean)b=b.valueOf();else{c.push("{");e="";for(d in b)Object.prototype.hasOwnProperty.call(b,d)&&(f=b[d],"function"!=typeof f&&(c.push(e),Td(d,c),c.push(":"),Rd(a,f,c),e=","));c.push("}");return}}switch(typeof b){case "string":Td(b,c);break;case "number":c.push(isFinite(b)&&
-!isNaN(b)?String(b):"null");break;case "boolean":c.push(String(b));break;case "function":c.push("null");break;default:throw Error("Unknown type: "+typeof b);}}}var Ud={'"':'\\"',"\\":"\\\\","/":"\\/","\b":"\\b","\f":"\\f","\n":"\\n","\r":"\\r","\t":"\\t","\x0B":"\\u000b"},Vd=/\uffff/.test("\uffff")?/[\\"\x00-\x1f\x7f-\uffff]/g:/[\\"\x00-\x1f\x7f-\xff]/g;
-function Td(a,b){b.push('"',a.replace(Vd,function(a){var b=Ud[a];b||(b="\\u"+(a.charCodeAt(0)|65536).toString(16).substr(1),Ud[a]=b);return b}),'"');}function Wd(){var a=H();return Qb&&!!ac&&11==ac||/Edge\/\d+/.test(a)}function Xd(){return k.window&&k.window.location.href||self&&self.location&&self.location.href||""}function Yd(a,b){b=b||k.window;var c="about:blank";a&&(c=Bd(Dd(a)));b.location.href=c;}function Zd(a,b){var c=[],d;for(d in a)d in b?typeof a[d]!=typeof b[d]?c.push(d):"object"==typeof a[d]&&null!=a[d]&&null!=b[d]?0<Zd(a[d],b[d]).length&&c.push(d):a[d]!==b[d]&&c.push(d):c.push(d);for(d in b)d in a||c.push(d);return c}
-function $d(){var a=H();a=ae(a)!=be?null:(a=a.match(/\sChrome\/(\d+)/i))&&2==a.length?parseInt(a[1],10):null;return a&&30>a?!1:!Qb||!ac||9<ac}function ce(a){a=(a||H()).toLowerCase();return a.match(/android/)||a.match(/webos/)||a.match(/iphone|ipad|ipod/)||a.match(/blackberry/)||a.match(/windows phone/)||a.match(/iemobile/)?!0:!1}function de(a){a=a||k.window;try{a.close();}catch(b){}}
-function ee(a,b,c){var d=Math.floor(1E9*Math.random()).toString();b=b||500;c=c||600;var e=(window.screen.availHeight-c)/2,f=(window.screen.availWidth-b)/2;b={width:b,height:c,top:0<e?e:0,left:0<f?f:0,location:!0,resizable:!0,statusbar:!0,toolbar:!1};c=H().toLowerCase();d&&(b.target=d,y(c,"crios/")&&(b.target="_blank"));ae(H())==fe&&(a=a||"http://localhost",b.scrollbars=!0);c=a||"";(a=b)||(a={});d=window;b=c instanceof zd?c:Dd("undefined"!=typeof c.href?c.href:String(c));c=a.target||c.target;e=[];
-for(h in a)switch(h){case "width":case "height":case "top":case "left":e.push(h+"="+a[h]);break;case "target":case "noopener":case "noreferrer":break;default:e.push(h+"="+(a[h]?1:0));}var h=e.join(",");(z("iPhone")&&!z("iPod")&&!z("iPad")||z("iPad")||z("iPod"))&&d.navigator&&d.navigator.standalone&&c&&"_self"!=c?(h=d.document.createElement("A"),b instanceof zd||b instanceof zd||(b="object"==typeof b&&b.na?b.ma():String(b),Cd.test(b)||(b="about:invalid#zClosurez"),b=Ed(b)),h.href=Bd(b),h.setAttribute("target",
-c),a.noreferrer&&h.setAttribute("rel","noreferrer"),a=document.createEvent("MouseEvent"),a.initMouseEvent("click",!0,!0,d,1),h.dispatchEvent(a),h={}):a.noreferrer?(h=d.open("",c,h),a=Bd(b),h&&(Sb&&y(a,";")&&(a="'"+a.replace(/'/g,"%27")+"'"),h.opener=null,a=Id('<meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0; url='+cb(a)+'">'),h.document.write(Hd(a)),h.document.close())):(h=d.open(Bd(b),c,h))&&a.noopener&&(h.opener=null);if(h)try{h.focus();}catch(m){}return h}
-function ge(a){return new A(function(b){function c(){Ic(2E3).then(function(){if(!a||a.closed)b();else return c()});}return c()})}var he=/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,ie=/^[^@]+@[^@]+$/;function je(){var a=null;return (new A(function(b){"complete"==k.document.readyState?b():(a=function(){b();},tc(window,"load",a));})).s(function(b){E(window,"load",a);throw b;})}
-function ke(){return le(void 0)?je().then(function(){return new A(function(a,b){var c=k.document,d=setTimeout(function(){b(Error("Cordova framework is not ready."));},1E3);c.addEventListener("deviceready",function(){clearTimeout(d);a();},!1);})}):C(Error("Cordova must run in an Android or iOS file scheme."))}function le(a){a=a||H();return !("file:"!==me()||!a.toLowerCase().match(/iphone|ipad|ipod|android/))}function ne(){var a=k.window;try{return !(!a||a==a.top)}catch(b){return !1}}
-function oe(){return "object"!==typeof k.window&&"function"===typeof k.importScripts}function pe(){return firebase.INTERNAL.hasOwnProperty("reactNative")?"ReactNative":firebase.INTERNAL.hasOwnProperty("node")?"Node":oe()?"Worker":"Browser"}function qe(){var a=pe();return "ReactNative"===a||"Node"===a}function re(){for(var a=50,b=[];0<a;)b.push("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(Math.floor(62*Math.random()))),a--;return b.join("")}var fe="Firefox",be="Chrome";
-function ae(a){var b=a.toLowerCase();if(y(b,"opera/")||y(b,"opr/")||y(b,"opios/"))return "Opera";if(y(b,"iemobile"))return "IEMobile";if(y(b,"msie")||y(b,"trident/"))return "IE";if(y(b,"edge/"))return "Edge";if(y(b,"firefox/"))return fe;if(y(b,"silk/"))return "Silk";if(y(b,"blackberry"))return "Blackberry";if(y(b,"webos"))return "Webos";if(!y(b,"safari/")||y(b,"chrome/")||y(b,"crios/")||y(b,"android"))if(!y(b,"chrome/")&&!y(b,"crios/")||y(b,"edge/")){if(y(b,"android"))return "Android";if((a=a.match(/([a-zA-Z\d\.]+)\/[a-zA-Z\d\.]*$/))&&
-2==a.length)return a[1]}else return be;else return "Safari";return "Other"}var se={Wc:"FirebaseCore-web",Yc:"FirebaseUI-web"};function te(a,b){b=b||[];var c=[],d={},e;for(e in se)d[se[e]]=!0;for(e=0;e<b.length;e++)"undefined"!==typeof d[b[e]]&&(delete d[b[e]],c.push(b[e]));c.sort();b=c;b.length||(b=["FirebaseCore-web"]);c=pe();"Browser"===c?(d=H(),c=ae(d)):"Worker"===c&&(d=H(),c=ae(d)+"-"+c);return c+"/JsCore/"+a+"/"+b.join(",")}function H(){return k.navigator&&k.navigator.userAgent||""}
-function I(a,b){a=a.split(".");b=b||k;for(var c=0;c<a.length&&"object"==typeof b&&null!=b;c++)b=b[a[c]];c!=a.length&&(b=void 0);return b}function ue(){try{var a=k.localStorage,b=ve();if(a)return a.setItem(b,"1"),a.removeItem(b),Wd()?!!k.indexedDB:!0}catch(c){return oe()&&!!k.indexedDB}return !1}function we(){return (xe()||"chrome-extension:"===me()||le())&&!qe()&&ue()&&!oe()}function xe(){return "http:"===me()||"https:"===me()}function me(){return k.location&&k.location.protocol||null}
-function ye(a){a=a||H();return ce(a)||ae(a)==fe?!1:!0}function ze(a){return "undefined"===typeof a?null:Qd(a)}function Ae(a){var b={},c;for(c in a)a.hasOwnProperty(c)&&null!==a[c]&&void 0!==a[c]&&(b[c]=a[c]);return b}function Be(a){if(null!==a)return JSON.parse(a)}function ve(a){return a?a:Math.floor(1E9*Math.random()).toString()}function Ce(a){a=a||H();return "Safari"==ae(a)||a.toLowerCase().match(/iphone|ipad|ipod/)?!1:!0}
-function De(){var a=k.___jsl;if(a&&a.H)for(var b in a.H)if(a.H[b].r=a.H[b].r||[],a.H[b].L=a.H[b].L||[],a.H[b].r=a.H[b].L.concat(),a.CP)for(var c=0;c<a.CP.length;c++)a.CP[c]=null;}function Ee(a,b){if(a>b)throw Error("Short delay should be less than long delay!");this.a=a;this.c=b;a=H();b=pe();this.b=ce(a)||"ReactNative"===b;}
-Ee.prototype.get=function(){var a=k.navigator;return (a&&"boolean"===typeof a.onLine&&(xe()||"chrome-extension:"===me()||"undefined"!==typeof a.connection)?a.onLine:1)?this.b?this.c:this.a:Math.min(5E3,this.a)};function Fe(){var a=k.document;return a&&"undefined"!==typeof a.visibilityState?"visible"==a.visibilityState:!0}
-function Ge(){var a=k.document,b=null;return Fe()||!a?B():(new A(function(c){b=function(){Fe()&&(a.removeEventListener("visibilitychange",b,!1),c());};a.addEventListener("visibilitychange",b,!1);})).s(function(c){a.removeEventListener("visibilitychange",b,!1);throw c;})}function He(a){try{var b=new Date(parseInt(a,10));if(!isNaN(b.getTime())&&!/[^0-9]/.test(a))return b.toUTCString()}catch(c){}return null}function Ie(){return !(!I("fireauth.oauthhelper",k)&&!I("fireauth.iframe",k))}
-function Je(){var a=k.navigator;return a&&a.serviceWorker&&a.serviceWorker.controller||null}function Ke(){var a=k.navigator;return a&&a.serviceWorker?B().then(function(){return a.serviceWorker.ready}).then(function(a){return a.active||null}).s(function(){return null}):B(null)}var Le={};function Me(a){Le[a]||(Le[a]=!0,"undefined"!==typeof console&&"function"===typeof console.warn&&console.warn(a));}var Ne;try{var Oe={};Object.defineProperty(Oe,"abcd",{configurable:!0,enumerable:!0,value:1});Object.defineProperty(Oe,"abcd",{configurable:!0,enumerable:!0,value:2});Ne=2==Oe.abcd;}catch(a){Ne=!1;}function J(a,b,c){Ne?Object.defineProperty(a,b,{configurable:!0,enumerable:!0,value:c}):a[b]=c;}function K(a,b){if(b)for(var c in b)b.hasOwnProperty(c)&&J(a,c,b[c]);}function Pe(a){var b={};K(b,a);return b}function Qe(a){var b={},c;for(c in a)a.hasOwnProperty(c)&&(b[c]=a[c]);return b}
-function Re(a,b){if(!b||!b.length)return !0;if(!a)return !1;for(var c=0;c<b.length;c++){var d=a[b[c]];if(void 0===d||null===d||""===d)return !1}return !0}function Se(a){var b=a;if("object"==typeof a&&null!=a){b="length"in a?[]:{};for(var c in a)J(b,c,Se(a[c]));}return b}function Te(a){var b={},c=a[Ue],d=a[Ve];a=a[We];if(!a||a!=Xe&&!c)throw Error("Invalid provider user info!");b[Ye]=d||null;b[Ze]=c||null;J(this,$e,a);J(this,af,Se(b));}var Xe="EMAIL_SIGNIN",Ue="email",Ve="newEmail",We="requestType",Ze="email",Ye="fromEmail",af="data",$e="operation";function L(a,b){this.code=bf+a;this.message=b||cf[a]||"";}t(L,Error);L.prototype.C=function(){return {code:this.code,message:this.message}};L.prototype.toJSON=function(){return this.C()};function df(a){var b=a&&a.code;return b?new L(b.substring(bf.length),a.message):null}
-var bf="auth/",cf={"argument-error":"","app-not-authorized":"This app, identified by the domain where it's hosted, is not authorized to use Firebase Authentication with the provided API key. Review your key configuration in the Google API console.","app-not-installed":"The requested mobile application corresponding to the identifier (Android package name or iOS bundle ID) provided is not installed on this device.","captcha-check-failed":"The reCAPTCHA response token provided is either invalid, expired, already used or the domain associated with it does not match the list of whitelisted domains.",
+(function() {var g,aa=aa||{},k=this;function l(a){return "string"==typeof a}function ba(a){return "boolean"==typeof a}function ca(){}
+function da(a){var b=typeof a;if("object"==b)if(a){if(a instanceof Array)return "array";if(a instanceof Object)return b;var c=Object.prototype.toString.call(a);if("[object Window]"==c)return "object";if("[object Array]"==c||"number"==typeof a.length&&"undefined"!=typeof a.splice&&"undefined"!=typeof a.propertyIsEnumerable&&!a.propertyIsEnumerable("splice"))return "array";if("[object Function]"==c||"undefined"!=typeof a.call&&"undefined"!=typeof a.propertyIsEnumerable&&!a.propertyIsEnumerable("call"))return "function"}else return "null";
+else if("function"==b&&"undefined"==typeof a.call)return "object";return b}function ea(a){return null===a}function fa(a){return "array"==da(a)}function ha(a){var b=da(a);return "array"==b||"object"==b&&"number"==typeof a.length}function n(a){return "function"==da(a)}function q(a){var b=typeof a;return "object"==b&&null!=a||"function"==b}var ia="closure_uid_"+(1E9*Math.random()>>>0),ja=0;function ka(a,b,c){return a.call.apply(a.bind,arguments)}
+function ma(a,b,c){if(!a)throw Error();if(2<arguments.length){var d=Array.prototype.slice.call(arguments,2);return function(){var c=Array.prototype.slice.call(arguments);Array.prototype.unshift.apply(c,d);return a.apply(b,c)}}return function(){return a.apply(b,arguments)}}function r(a,b,c){Function.prototype.bind&&-1!=Function.prototype.bind.toString().indexOf("native code")?r=ka:r=ma;return r.apply(null,arguments)}
+function na(a,b){var c=Array.prototype.slice.call(arguments,1);return function(){var b=c.slice();b.push.apply(b,arguments);return a.apply(this,b)}}var oa=Date.now||function(){return +new Date};function t(a,b){function c(){}c.prototype=b.prototype;a.ob=b.prototype;a.prototype=new c;a.prototype.constructor=a;a.ed=function(a,c,f){for(var d=Array(arguments.length-2),e=2;e<arguments.length;e++)d[e-2]=arguments[e];return b.prototype[c].apply(a,d)};}function pa(a){a.prototype.then=a.prototype.then;a.prototype.$goog_Thenable=!0;}function qa(a){if(!a)return !1;try{return !!a.$goog_Thenable}catch(b){return !1}}function u(a){if(Error.captureStackTrace)Error.captureStackTrace(this,u);else{var b=Error().stack;b&&(this.stack=b);}a&&(this.message=String(a));}t(u,Error);u.prototype.name="CustomError";function ra(a,b){a=a.split("%s");for(var c="",d=a.length-1,e=0;e<d;e++)c+=a[e]+(e<b.length?b[e]:"%s");u.call(this,c+a[d]);}t(ra,u);ra.prototype.name="AssertionError";function sa(a,b){throw new ra("Failure"+(a?": "+a:""),Array.prototype.slice.call(arguments,1));}function ta(a,b){this.c=a;this.f=b;this.b=0;this.a=null;}ta.prototype.get=function(){if(0<this.b){this.b--;var a=this.a;this.a=a.next;a.next=null;}else a=this.c();return a};function ua(a,b){a.f(b);100>a.b&&(a.b++,b.next=a.a,a.a=b);}function va(){this.b=this.a=null;}var xa=new ta(function(){return new wa},function(a){a.reset();});va.prototype.add=function(a,b){var c=xa.get();c.set(a,b);this.b?this.b.next=c:this.a=c;this.b=c;};function ya(){var a=za,b=null;a.a&&(b=a.a,a.a=a.a.next,a.a||(a.b=null),b.next=null);return b}function wa(){this.next=this.b=this.a=null;}wa.prototype.set=function(a,b){this.a=a;this.b=b;this.next=null;};wa.prototype.reset=function(){this.next=this.b=this.a=null;};var Aa=Array.prototype.indexOf?function(a,b){return Array.prototype.indexOf.call(a,b,void 0)}:function(a,b){if(l(a))return l(b)&&1==b.length?a.indexOf(b,0):-1;for(var c=0;c<a.length;c++)if(c in a&&a[c]===b)return c;return -1},v=Array.prototype.forEach?function(a,b,c){Array.prototype.forEach.call(a,b,c);}:function(a,b,c){for(var d=a.length,e=l(a)?a.split(""):a,f=0;f<d;f++)f in e&&b.call(c,e[f],f,a);};
+function Ba(a,b){var c=a.length,d=l(a)?a.split(""):a;for(--c;0<=c;--c)c in d&&b.call(void 0,d[c],c,a);}
+var Ca=Array.prototype.map?function(a,b){return Array.prototype.map.call(a,b,void 0)}:function(a,b){for(var c=a.length,d=Array(c),e=l(a)?a.split(""):a,f=0;f<c;f++)f in e&&(d[f]=b.call(void 0,e[f],f,a));return d},Da=Array.prototype.some?function(a,b){return Array.prototype.some.call(a,b,void 0)}:function(a,b){for(var c=a.length,d=l(a)?a.split(""):a,e=0;e<c;e++)if(e in d&&b.call(void 0,d[e],e,a))return !0;return !1};
+function Ea(a){a:{var b=Fa;for(var c=a.length,d=l(a)?a.split(""):a,e=0;e<c;e++)if(e in d&&b.call(void 0,d[e],e,a)){b=e;break a}b=-1;}return 0>b?null:l(a)?a.charAt(b):a[b]}function Ga(a,b){return 0<=Aa(a,b)}function Ha(a,b){b=Aa(a,b);var c;(c=0<=b)&&Array.prototype.splice.call(a,b,1);return c}function w(a,b){var c=0;Ba(a,function(d,e){b.call(void 0,d,e,a)&&1==Array.prototype.splice.call(a,e,1).length&&c++;});}function Ia(a){return Array.prototype.concat.apply([],arguments)}
+function Ja(a){var b=a.length;if(0<b){for(var c=Array(b),d=0;d<b;d++)c[d]=a[d];return c}return []}function Ka(a,b){for(var c=a.split("%s"),d="",e=Array.prototype.slice.call(arguments,1);e.length&&1<c.length;)d+=c.shift()+e.shift();return d+c.join("%s")}var La=String.prototype.trim?function(a){return a.trim()}:function(a){return /^[\s\xa0]*([\s\S]*?)[\s\xa0]*$/.exec(a)[1]};
+function Ma(a){if(!Na.test(a))return a;-1!=a.indexOf("&")&&(a=a.replace(Oa,"&amp;"));-1!=a.indexOf("<")&&(a=a.replace(Pa,"&lt;"));-1!=a.indexOf(">")&&(a=a.replace(Qa,"&gt;"));-1!=a.indexOf('"')&&(a=a.replace(Ra,"&quot;"));-1!=a.indexOf("'")&&(a=a.replace(Sa,"&#39;"));-1!=a.indexOf("\x00")&&(a=a.replace(Ta,"&#0;"));return a}var Oa=/&/g,Pa=/</g,Qa=/>/g,Ra=/"/g,Sa=/'/g,Ta=/\x00/g,Na=/[\x00&<>"']/;function y(a,b){return -1!=a.indexOf(b)}function Ua(a,b){return a<b?-1:a>b?1:0}var Va;a:{var Wa=k.navigator;if(Wa){var Xa=Wa.userAgent;if(Xa){Va=Xa;break a}}Va="";}function z(a){return y(Va,a)}function Ya(a,b){for(var c in a)b.call(void 0,a[c],c,a);}function Za(a){for(var b in a)return !1;return !0}function $a(a){var b={},c;for(c in a)b[c]=a[c];return b}var ab="constructor hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf".split(" ");function bb(a,b){for(var c,d,e=1;e<arguments.length;e++){d=arguments[e];for(c in d)a[c]=d[c];for(var f=0;f<ab.length;f++)c=ab[f],Object.prototype.hasOwnProperty.call(d,c)&&(a[c]=d[c]);}}function cb(a){k.setTimeout(function(){throw a;},0);}var db;
+function eb(){var a=k.MessageChannel;"undefined"===typeof a&&"undefined"!==typeof window&&window.postMessage&&window.addEventListener&&!z("Presto")&&(a=function(){var a=document.createElement("IFRAME");a.style.display="none";a.src="";document.documentElement.appendChild(a);var b=a.contentWindow;a=b.document;a.open();a.write("");a.close();var c="callImmediate"+Math.random(),d="file:"==b.location.protocol?"*":b.location.protocol+"//"+b.location.host;a=r(function(a){if(("*"==d||a.origin==d)&&a.data==
+c)this.port1.onmessage();},this);b.addEventListener("message",a,!1);this.port1={};this.port2={postMessage:function(){b.postMessage(c,d);}};});if("undefined"!==typeof a&&!z("Trident")&&!z("MSIE")){var b=new a,c={},d=c;b.port1.onmessage=function(){if(void 0!==c.next){c=c.next;var a=c.wb;c.wb=null;a();}};return function(a){d.next={wb:a};d=d.next;b.port2.postMessage(0);}}return "undefined"!==typeof document&&"onreadystatechange"in document.createElement("SCRIPT")?function(a){var b=document.createElement("SCRIPT");
+b.onreadystatechange=function(){b.onreadystatechange=null;b.parentNode.removeChild(b);b=null;a();a=null;};document.documentElement.appendChild(b);}:function(a){k.setTimeout(a,0);}}function fb(a,b){hb||ib();jb||(hb(),jb=!0);za.add(a,b);}var hb;function ib(){if(k.Promise&&k.Promise.resolve){var a=k.Promise.resolve(void 0);hb=function(){a.then(kb);};}else hb=function(){var a=kb;!n(k.setImmediate)||k.Window&&k.Window.prototype&&!z("Edge")&&k.Window.prototype.setImmediate==k.setImmediate?(db||(db=eb()),db(a)):k.setImmediate(a);};}var jb=!1,za=new va;function kb(){for(var a;a=ya();){try{a.a.call(a.b);}catch(b){cb(b);}ua(xa,a);}jb=!1;}function A(a,b){this.a=lb;this.i=void 0;this.f=this.b=this.c=null;this.g=this.h=!1;if(a!=ca)try{var c=this;a.call(b,function(a){mb(c,nb,a);},function(a){if(!(a instanceof ob))try{if(a instanceof Error)throw a;throw Error("Promise rejected.");}catch(e){}mb(c,pb,a);});}catch(d){mb(this,pb,d);}}var lb=0,nb=2,pb=3;function qb(){this.next=this.f=this.b=this.g=this.a=null;this.c=!1;}qb.prototype.reset=function(){this.f=this.b=this.g=this.a=null;this.c=!1;};var rb=new ta(function(){return new qb},function(a){a.reset();});
+function sb(a,b,c){var d=rb.get();d.g=a;d.b=b;d.f=c;return d}function B(a){if(a instanceof A)return a;var b=new A(ca);mb(b,nb,a);return b}function C(a){return new A(function(b,c){c(a);})}function tb(a,b,c){ub(a,b,c,null)||fb(na(b,a));}function vb(a){return new A(function(b,c){var d=a.length,e=[];if(d)for(var f=function(a,c){d--;e[a]=c;0==d&&b(e);},h=function(a){c(a);},m=0,p;m<a.length;m++)p=a[m],tb(p,na(f,m),h);else b(e);})}
+function wb(a){return new A(function(b){var c=a.length,d=[];if(c)for(var e=function(a,e,f){c--;d[a]=e?{Db:!0,value:f}:{Db:!1,reason:f};0==c&&b(d);},f=0,h;f<a.length;f++)h=a[f],tb(h,na(e,f,!0),na(e,f,!1));else b(d);})}A.prototype.then=function(a,b,c){return xb(this,n(a)?a:null,n(b)?b:null,c)};pa(A);g=A.prototype;g.ia=function(a,b){a=sb(a,a,b);a.c=!0;yb(this,a);return this};g.s=function(a,b){return xb(this,null,a,b)};g.cancel=function(a){this.a==lb&&fb(function(){var b=new ob(a);zb(this,b);},this);};
+function zb(a,b){if(a.a==lb)if(a.c){var c=a.c;if(c.b){for(var d=0,e=null,f=null,h=c.b;h&&(h.c||(d++,h.a==a&&(e=h),!(e&&1<d)));h=h.next)e||(f=h);e&&(c.a==lb&&1==d?zb(c,b):(f?(d=f,d.next==c.f&&(c.f=d),d.next=d.next.next):Ab(c),Bb(c,e,pb,b)));}a.c=null;}else mb(a,pb,b);}function yb(a,b){a.b||a.a!=nb&&a.a!=pb||Cb(a);a.f?a.f.next=b:a.b=b;a.f=b;}
+function xb(a,b,c,d){var e=sb(null,null,null);e.a=new A(function(a,h){e.g=b?function(c){try{var e=b.call(d,c);a(e);}catch(x){h(x);}}:a;e.b=c?function(b){try{var e=c.call(d,b);void 0===e&&b instanceof ob?h(b):a(e);}catch(x){h(x);}}:h;});e.a.c=a;yb(a,e);return e.a}g.Nc=function(a){this.a=lb;mb(this,nb,a);};g.Oc=function(a){this.a=lb;mb(this,pb,a);};
+function mb(a,b,c){a.a==lb&&(a===c&&(b=pb,c=new TypeError("Promise cannot resolve to itself")),a.a=1,ub(c,a.Nc,a.Oc,a)||(a.i=c,a.a=b,a.c=null,Cb(a),b!=pb||c instanceof ob||Db(a,c)));}function ub(a,b,c,d){if(a instanceof A)return yb(a,sb(b||ca,c||null,d)),!0;if(qa(a))return a.then(b,c,d),!0;if(q(a))try{var e=a.then;if(n(e))return Eb(a,e,b,c,d),!0}catch(f){return c.call(d,f),!0}return !1}
+function Eb(a,b,c,d,e){function f(a){m||(m=!0,d.call(e,a));}function h(a){m||(m=!0,c.call(e,a));}var m=!1;try{b.call(a,h,f);}catch(p){f(p);}}function Cb(a){a.h||(a.h=!0,fb(a.Yb,a));}function Ab(a){var b=null;a.b&&(b=a.b,a.b=b.next,b.next=null);a.b||(a.f=null);return b}g.Yb=function(){for(var a;a=Ab(this);)Bb(this,a,this.a,this.i);this.h=!1;};
+function Bb(a,b,c,d){if(c==pb&&b.b&&!b.c)for(;a&&a.g;a=a.c)a.g=!1;if(b.a)b.a.c=null,Fb(b,c,d);else try{b.c?b.g.call(b.f):Fb(b,c,d);}catch(e){Gb.call(null,e);}ua(rb,b);}function Fb(a,b,c){b==nb?a.g.call(a.f,c):a.b&&a.b.call(a.f,c);}function Db(a,b){a.g=!0;fb(function(){a.g&&Gb.call(null,b);});}var Gb=cb;function ob(a){u.call(this,a);}t(ob,u);ob.prototype.name="cancel";function Hb(){this.qa=this.qa;this.ja=this.ja;}var Ib=0;Hb.prototype.qa=!1;function Kb(a){if(!a.qa&&(a.qa=!0,a.va(),0!=Ib)){var b=a[ia]||(a[ia]=++ja);}}Hb.prototype.va=function(){if(this.ja)for(;this.ja.length;)this.ja.shift()();};function Lb(a){Lb[" "](a);return a}Lb[" "]=ca;function Mb(a,b){var c=Nb;return Object.prototype.hasOwnProperty.call(c,a)?c[a]:c[a]=b(a)}var Ob=z("Opera"),Pb=z("Trident")||z("MSIE"),Qb=z("Edge"),Rb=Qb||Pb,Sb=z("Gecko")&&!(y(Va.toLowerCase(),"webkit")&&!z("Edge"))&&!(z("Trident")||z("MSIE"))&&!z("Edge"),Tb=y(Va.toLowerCase(),"webkit")&&!z("Edge");function Ub(){var a=k.document;return a?a.documentMode:void 0}var Vb;
+a:{var Wb="",Xb=function(){var a=Va;if(Sb)return /rv:([^\);]+)(\)|;)/.exec(a);if(Qb)return /Edge\/([\d\.]+)/.exec(a);if(Pb)return /\b(?:MSIE|rv)[: ]([^\);]+)(\)|;)/.exec(a);if(Tb)return /WebKit\/(\S+)/.exec(a);if(Ob)return /(?:Version)[ \/]?(\S+)/.exec(a)}();Xb&&(Wb=Xb?Xb[1]:"");if(Pb){var Yb=Ub();if(null!=Yb&&Yb>parseFloat(Wb)){Vb=String(Yb);break a}}Vb=Wb;}var Nb={};
+function Zb(a){return Mb(a,function(){for(var b=0,c=La(String(Vb)).split("."),d=La(String(a)).split("."),e=Math.max(c.length,d.length),f=0;0==b&&f<e;f++){var h=c[f]||"",m=d[f]||"";do{h=/(\d*)(\D*)(.*)/.exec(h)||["","","",""];m=/(\d*)(\D*)(.*)/.exec(m)||["","","",""];if(0==h[0].length&&0==m[0].length)break;b=Ua(0==h[1].length?0:parseInt(h[1],10),0==m[1].length?0:parseInt(m[1],10))||Ua(0==h[2].length,0==m[2].length)||Ua(h[2],m[2]);h=h[3];m=m[3];}while(0==b)}return 0<=b})}var $b;var ac=k.document;
+$b=ac&&Pb?Ub()||("CSS1Compat"==ac.compatMode?parseInt(Vb,10):5):void 0;var bc=Object.freeze||function(a){return a};var cc=!Pb||9<=Number($b),dc=Pb&&!Zb("9"),ec=function(){if(!k.addEventListener||!Object.defineProperty)return !1;var a=!1,b=Object.defineProperty({},"passive",{get:function(){a=!0;}});k.addEventListener("test",ca,b);k.removeEventListener("test",ca,b);return a}();function D(a,b){this.type=a;this.b=this.target=b;this.Kb=!0;}D.prototype.preventDefault=function(){this.Kb=!1;};function fc(a,b){D.call(this,a?a.type:"");this.relatedTarget=this.b=this.target=null;this.button=this.screenY=this.screenX=this.clientY=this.clientX=0;this.key="";this.metaKey=this.shiftKey=this.altKey=this.ctrlKey=!1;this.pointerId=0;this.pointerType="";this.a=null;if(a){var c=this.type=a.type,d=a.changedTouches?a.changedTouches[0]:null;this.target=a.target||a.srcElement;this.b=b;if(b=a.relatedTarget){if(Sb){a:{try{Lb(b.nodeName);var e=!0;break a}catch(f){}e=!1;}e||(b=null);}}else"mouseover"==c?b=
+a.fromElement:"mouseout"==c&&(b=a.toElement);this.relatedTarget=b;null===d?(this.clientX=void 0!==a.clientX?a.clientX:a.pageX,this.clientY=void 0!==a.clientY?a.clientY:a.pageY,this.screenX=a.screenX||0,this.screenY=a.screenY||0):(this.clientX=void 0!==d.clientX?d.clientX:d.pageX,this.clientY=void 0!==d.clientY?d.clientY:d.pageY,this.screenX=d.screenX||0,this.screenY=d.screenY||0);this.button=a.button;this.key=a.key||"";this.ctrlKey=a.ctrlKey;this.altKey=a.altKey;this.shiftKey=a.shiftKey;this.metaKey=
+a.metaKey;this.pointerId=a.pointerId||0;this.pointerType=l(a.pointerType)?a.pointerType:gc[a.pointerType]||"";this.a=a;a.defaultPrevented&&this.preventDefault();}}t(fc,D);var gc=bc({2:"touch",3:"pen",4:"mouse"});fc.prototype.preventDefault=function(){fc.ob.preventDefault.call(this);var a=this.a;if(a.preventDefault)a.preventDefault();else if(a.returnValue=!1,dc)try{if(a.ctrlKey||112<=a.keyCode&&123>=a.keyCode)a.keyCode=-1;}catch(b){}};fc.prototype.f=function(){return this.a};var hc="closure_listenable_"+(1E6*Math.random()|0),ic=0;function jc(a,b,c,d,e){this.listener=a;this.proxy=null;this.src=b;this.type=c;this.capture=!!d;this.La=e;this.key=++ic;this.oa=this.Ia=!1;}function kc(a){a.oa=!0;a.listener=null;a.proxy=null;a.src=null;a.La=null;}function lc(a){this.src=a;this.a={};this.b=0;}lc.prototype.add=function(a,b,c,d,e){var f=a.toString();a=this.a[f];a||(a=this.a[f]=[],this.b++);var h=mc(a,b,d,e);-1<h?(b=a[h],c||(b.Ia=!1)):(b=new jc(b,this.src,f,!!d,e),b.Ia=c,a.push(b));return b};function nc(a,b){var c=b.type;c in a.a&&Ha(a.a[c],b)&&(kc(b),0==a.a[c].length&&(delete a.a[c],a.b--));}function mc(a,b,c,d){for(var e=0;e<a.length;++e){var f=a[e];if(!f.oa&&f.listener==b&&f.capture==!!c&&f.La==d)return e}return -1}var oc="closure_lm_"+(1E6*Math.random()|0),pc={};function rc(a,b,c,d,e){if(d&&d.once)sc(a,b,c,d,e);else if(fa(b))for(var f=0;f<b.length;f++)rc(a,b[f],c,d,e);else c=tc(c),a&&a[hc]?uc(a,b,c,q(d)?!!d.capture:!!d,e):vc(a,b,c,!1,d,e);}
+function vc(a,b,c,d,e,f){if(!b)throw Error("Invalid event type");var h=q(e)?!!e.capture:!!e,m=wc(a);m||(a[oc]=m=new lc(a));c=m.add(b,c,d,h,f);if(!c.proxy){d=xc();c.proxy=d;d.src=a;d.listener=c;if(a.addEventListener)ec||(e=h),void 0===e&&(e=!1),a.addEventListener(b.toString(),d,e);else if(a.attachEvent)a.attachEvent(yc(b.toString()),d);else if(a.addListener&&a.removeListener)a.addListener(d);else throw Error("addEventListener and attachEvent are unavailable.");}}
+function xc(){var a=zc,b=cc?function(c){return a.call(b.src,b.listener,c)}:function(c){c=a.call(b.src,b.listener,c);if(!c)return c};return b}function sc(a,b,c,d,e){if(fa(b))for(var f=0;f<b.length;f++)sc(a,b[f],c,d,e);else c=tc(c),a&&a[hc]?Ac(a,b,c,q(d)?!!d.capture:!!d,e):vc(a,b,c,!0,d,e);}
+function E(a,b,c,d,e){if(fa(b))for(var f=0;f<b.length;f++)E(a,b[f],c,d,e);else(d=q(d)?!!d.capture:!!d,c=tc(c),a&&a[hc])?(a=a.l,b=String(b).toString(),b in a.a&&(f=a.a[b],c=mc(f,c,d,e),-1<c&&(kc(f[c]),Array.prototype.splice.call(f,c,1),0==f.length&&(delete a.a[b],a.b--)))):a&&(a=wc(a))&&(b=a.a[b.toString()],a=-1,b&&(a=mc(b,c,d,e)),(c=-1<a?b[a]:null)&&Bc(c));}
+function Bc(a){if("number"!=typeof a&&a&&!a.oa){var b=a.src;if(b&&b[hc])nc(b.l,a);else{var c=a.type,d=a.proxy;b.removeEventListener?b.removeEventListener(c,d,a.capture):b.detachEvent?b.detachEvent(yc(c),d):b.addListener&&b.removeListener&&b.removeListener(d);(c=wc(b))?(nc(c,a),0==c.b&&(c.src=null,b[oc]=null)):kc(a);}}}function yc(a){return a in pc?pc[a]:pc[a]="on"+a}
+function Cc(a,b,c,d){var e=!0;if(a=wc(a))if(b=a.a[b.toString()])for(b=b.concat(),a=0;a<b.length;a++){var f=b[a];f&&f.capture==c&&!f.oa&&(f=Dc(f,d),e=e&&!1!==f);}return e}function Dc(a,b){var c=a.listener,d=a.La||a.src;a.Ia&&Bc(a);return c.call(d,b)}
+function zc(a,b){if(a.oa)return !0;if(!cc){if(!b)a:{b=["window","event"];for(var c=k,d=0;d<b.length;d++)if(c=c[b[d]],null==c){b=null;break a}b=c;}d=b;b=new fc(d,this);c=!0;if(!(0>d.keyCode||void 0!=d.returnValue)){a:{var e=!1;if(0==d.keyCode)try{d.keyCode=-1;break a}catch(h){e=!0;}if(e||void 0==d.returnValue)d.returnValue=!0;}d=[];for(e=b.b;e;e=e.parentNode)d.push(e);a=a.type;for(e=d.length-1;0<=e;e--){b.b=d[e];var f=Cc(d[e],a,!0,b);c=c&&f;}for(e=0;e<d.length;e++)b.b=d[e],f=Cc(d[e],a,!1,b),c=c&&f;}return c}return Dc(a,
+new fc(b,this))}function wc(a){a=a[oc];return a instanceof lc?a:null}var Ec="__closure_events_fn_"+(1E9*Math.random()>>>0);function tc(a){if(n(a))return a;a[Ec]||(a[Ec]=function(b){return a.handleEvent(b)});return a[Ec]}function F(){Hb.call(this);this.l=new lc(this);this.Rb=this;this.Va=null;}t(F,Hb);F.prototype[hc]=!0;F.prototype.addEventListener=function(a,b,c,d){rc(this,a,b,c,d);};F.prototype.removeEventListener=function(a,b,c,d){E(this,a,b,c,d);};
+F.prototype.dispatchEvent=function(a){var b,c=this.Va;if(c)for(b=[];c;c=c.Va)b.push(c);c=this.Rb;var d=a.type||a;if(l(a))a=new D(a,c);else if(a instanceof D)a.target=a.target||c;else{var e=a;a=new D(d,c);bb(a,e);}e=!0;if(b)for(var f=b.length-1;0<=f;f--){var h=a.b=b[f];e=Fc(h,d,!0,a)&&e;}h=a.b=c;e=Fc(h,d,!0,a)&&e;e=Fc(h,d,!1,a)&&e;if(b)for(f=0;f<b.length;f++)h=a.b=b[f],e=Fc(h,d,!1,a)&&e;return e};
+F.prototype.va=function(){F.ob.va.call(this);if(this.l){var a=this.l,c;for(c in a.a){for(var d=a.a[c],e=0;e<d.length;e++)kc(d[e]);delete a.a[c];a.b--;}}this.Va=null;};function uc(a,b,c,d,e){a.l.add(String(b),c,!1,d,e);}function Ac(a,b,c,d,e){a.l.add(String(b),c,!0,d,e);}
+function Fc(a,b,c,d){b=a.l.a[String(b)];if(!b)return !0;b=b.concat();for(var e=!0,f=0;f<b.length;++f){var h=b[f];if(h&&!h.oa&&h.capture==c){var m=h.listener,p=h.La||h.src;h.Ia&&nc(a.l,h);e=!1!==m.call(p,d)&&e;}}return e&&0!=d.Kb}function Gc(a,b,c){if(n(a))c&&(a=r(a,c));else if(a&&"function"==typeof a.handleEvent)a=r(a.handleEvent,a);else throw Error("Invalid listener argument");return 2147483647<Number(b)?-1:k.setTimeout(a,b||0)}function Hc(a){var b=null;return (new A(function(c,d){b=Gc(function(){c(void 0);},a);-1==b&&d(Error("Failed to schedule timer."));})).s(function(a){k.clearTimeout(b);throw a;})}function Ic(a){if(a.S&&"function"==typeof a.S)return a.S();if(l(a))return a.split("");if(ha(a)){for(var b=[],c=a.length,d=0;d<c;d++)b.push(a[d]);return b}b=[];c=0;for(d in a)b[c++]=a[d];return b}function Jc(a){if(a.U&&"function"==typeof a.U)return a.U();if(!a.S||"function"!=typeof a.S){if(ha(a)||l(a)){var b=[];a=a.length;for(var c=0;c<a;c++)b.push(c);return b}b=[];c=0;for(var d in a)b[c++]=d;return b}}
+function Kc(a,b){if(a.forEach&&"function"==typeof a.forEach)a.forEach(b,void 0);else if(ha(a)||l(a))v(a,b,void 0);else for(var c=Jc(a),d=Ic(a),e=d.length,f=0;f<e;f++)b.call(void 0,d[f],c&&c[f],a);}function Lc(a,b){this.b={};this.a=[];this.c=0;var c=arguments.length;if(1<c){if(c%2)throw Error("Uneven number of arguments");for(var d=0;d<c;d+=2)this.set(arguments[d],arguments[d+1]);}else if(a)if(a instanceof Lc)for(c=a.U(),d=0;d<c.length;d++)this.set(c[d],a.get(c[d]));else for(d in a)this.set(d,a[d]);}g=Lc.prototype;g.S=function(){Mc(this);for(var a=[],b=0;b<this.a.length;b++)a.push(this.b[this.a[b]]);return a};g.U=function(){Mc(this);return this.a.concat()};
+g.clear=function(){this.b={};this.c=this.a.length=0;};function Mc(a){if(a.c!=a.a.length){for(var b=0,c=0;b<a.a.length;){var d=a.a[b];Nc(a.b,d)&&(a.a[c++]=d);b++;}a.a.length=c;}if(a.c!=a.a.length){var e={};for(c=b=0;b<a.a.length;)d=a.a[b],Nc(e,d)||(a.a[c++]=d,e[d]=1),b++;a.a.length=c;}}g.get=function(a,b){return Nc(this.b,a)?this.b[a]:b};g.set=function(a,b){Nc(this.b,a)||(this.c++,this.a.push(a));this.b[a]=b;};
+g.forEach=function(a,b){for(var c=this.U(),d=0;d<c.length;d++){var e=c[d],f=this.get(e);a.call(b,f,e,this);}};function Nc(a,b){return Object.prototype.hasOwnProperty.call(a,b)}var Oc=/^(?:([^:/?#.]+):)?(?:\/\/(?:([^/?#]*)@)?([^/#?]*?)(?::([0-9]+))?(?=[/#?]|$))?([^?#]+)?(?:\?([^#]*))?(?:#([\s\S]*))?$/;function Pc(a,b){if(a){a=a.split("&");for(var c=0;c<a.length;c++){var d=a[c].indexOf("="),e=null;if(0<=d){var f=a[c].substring(0,d);e=a[c].substring(d+1);}else f=a[c];b(f,e?decodeURIComponent(e.replace(/\+/g," ")):"");}}}function Qc(a,b){this.b=this.l=this.c="";this.i=null;this.h=this.g="";this.f=!1;if(a instanceof Qc){this.f=void 0!==b?b:a.f;Rc(this,a.c);this.l=a.l;this.b=a.b;Sc(this,a.i);this.g=a.g;b=a.a;var c=new Tc;c.c=b.c;b.a&&(c.a=new Lc(b.a),c.b=b.b);Uc(this,c);this.h=a.h;}else a&&(c=String(a).match(Oc))?(this.f=!!b,Rc(this,c[1]||"",!0),this.l=Vc(c[2]||""),this.b=Vc(c[3]||"",!0),Sc(this,c[4]),this.g=Vc(c[5]||"",!0),Uc(this,c[6]||"",!0),this.h=Vc(c[7]||"")):(this.f=!!b,this.a=new Tc(null,this.f));}
+Qc.prototype.toString=function(){var a=[],b=this.c;b&&a.push(Wc(b,Xc,!0),":");var c=this.b;if(c||"file"==b)a.push("//"),(b=this.l)&&a.push(Wc(b,Xc,!0),"@"),a.push(encodeURIComponent(String(c)).replace(/%25([0-9a-fA-F]{2})/g,"%$1")),c=this.i,null!=c&&a.push(":",String(c));if(c=this.g)this.b&&"/"!=c.charAt(0)&&a.push("/"),a.push(Wc(c,"/"==c.charAt(0)?Yc:Zc,!0));(c=this.a.toString())&&a.push("?",c);(c=this.h)&&a.push("#",Wc(c,$c));return a.join("")};
+function Rc(a,b,c){a.c=c?Vc(b,!0):b;a.c&&(a.c=a.c.replace(/:$/,""));}function Sc(a,b){if(b){b=Number(b);if(isNaN(b)||0>b)throw Error("Bad port number "+b);a.i=b;}else a.i=null;}function Uc(a,b,c){b instanceof Tc?(a.a=b,ad(a.a,a.f)):(c||(b=Wc(b,bd)),a.a=new Tc(b,a.f));}function G(a,b,c){a.a.set(b,c);}function cd(a,b){return a.a.get(b)}function dd(a){return a instanceof Qc?new Qc(a):new Qc(a,void 0)}function ed(a,b){var c=new Qc(null,void 0);Rc(c,"https");a&&(c.b=a);b&&(c.g=b);return c}
+function Vc(a,b){return a?b?decodeURI(a.replace(/%25/g,"%2525")):decodeURIComponent(a):""}function Wc(a,b,c){return l(a)?(a=encodeURI(a).replace(b,fd),c&&(a=a.replace(/%25([0-9a-fA-F]{2})/g,"%$1")),a):null}function fd(a){a=a.charCodeAt(0);return "%"+(a>>4&15).toString(16)+(a&15).toString(16)}var Xc=/[#\/\?@]/g,Zc=/[#\?:]/g,Yc=/[#\?]/g,bd=/[#\?@]/g,$c=/#/g;function Tc(a,b){this.b=this.a=null;this.c=a||null;this.f=!!b;}
+function gd(a){a.a||(a.a=new Lc,a.b=0,a.c&&Pc(a.c,function(b,c){a.add(decodeURIComponent(b.replace(/\+/g," ")),c);}));}function hd(a){var b=Jc(a);if("undefined"==typeof b)throw Error("Keys are undefined");var c=new Tc(null,void 0);a=Ic(a);for(var d=0;d<b.length;d++){var e=b[d],f=a[d];fa(f)?id(c,e,f):c.add(e,f);}return c}g=Tc.prototype;g.add=function(a,b){gd(this);this.c=null;a=jd(this,a);var c=this.a.get(a);c||this.a.set(a,c=[]);c.push(b);this.b+=1;return this};
+function kd(a,b){gd(a);b=jd(a,b);Nc(a.a.b,b)&&(a.c=null,a.b-=a.a.get(b).length,a=a.a,Nc(a.b,b)&&(delete a.b[b],a.c--,a.a.length>2*a.c&&Mc(a)));}g.clear=function(){this.a=this.c=null;this.b=0;};function ld(a,b){gd(a);b=jd(a,b);return Nc(a.a.b,b)}g.forEach=function(a,b){gd(this);this.a.forEach(function(c,d){v(c,function(c){a.call(b,c,d,this);},this);},this);};g.U=function(){gd(this);for(var a=this.a.S(),b=this.a.U(),c=[],d=0;d<b.length;d++)for(var e=a[d],f=0;f<e.length;f++)c.push(b[d]);return c};
+g.S=function(a){gd(this);var b=[];if(l(a))ld(this,a)&&(b=Ia(b,this.a.get(jd(this,a))));else{a=this.a.S();for(var c=0;c<a.length;c++)b=Ia(b,a[c]);}return b};g.set=function(a,b){gd(this);this.c=null;a=jd(this,a);ld(this,a)&&(this.b-=this.a.get(a).length);this.a.set(a,[b]);this.b+=1;return this};g.get=function(a,b){a=a?this.S(a):[];return 0<a.length?String(a[0]):b};function id(a,b,c){kd(a,b);0<c.length&&(a.c=null,a.a.set(jd(a,b),Ja(c)),a.b+=c.length);}
+g.toString=function(){if(this.c)return this.c;if(!this.a)return "";for(var a=[],b=this.a.U(),c=0;c<b.length;c++){var d=b[c],e=encodeURIComponent(String(d));d=this.S(d);for(var f=0;f<d.length;f++){var h=e;""!==d[f]&&(h+="="+encodeURIComponent(String(d[f])));a.push(h);}}return this.c=a.join("&")};function jd(a,b){b=String(b);a.f&&(b=b.toLowerCase());return b}function ad(a,b){b&&!a.f&&(gd(a),a.c=null,a.a.forEach(function(a,b){var c=b.toLowerCase();b!=c&&(kd(this,b),id(this,c,a));},a));a.f=b;}var md=!Pb||9<=Number($b);function nd(){this.a="";this.b=od;}nd.prototype.na=!0;nd.prototype.ma=function(){return this.a};nd.prototype.toString=function(){return "Const{"+this.a+"}"};function pd(a){if(a instanceof nd&&a.constructor===nd&&a.b===od)return a.a;sa("expected object of type Const, got '"+a+"'");return "type_error:Const"}var od={};function qd(a){var b=new nd;b.a=a;return b}qd("");function rd(){this.a="";this.b=sd;}rd.prototype.na=!0;rd.prototype.ma=function(){return this.a};rd.prototype.toString=function(){return "TrustedResourceUrl{"+this.a+"}"};function td(a){if(a instanceof rd&&a.constructor===rd&&a.b===sd)return a.a;sa("expected object of type TrustedResourceUrl, got '"+a+"' of type "+da(a));return "type_error:TrustedResourceUrl"}
+function ud(a,b){var c=pd(a);if(!vd.test(c))throw Error("Invalid TrustedResourceUrl format: "+c);a=c.replace(wd,function(a,e){if(!Object.prototype.hasOwnProperty.call(b,e))throw Error('Found marker, "'+e+'", in format string, "'+c+'", but no valid label mapping found in args: '+JSON.stringify(b));a=b[e];return a instanceof nd?pd(a):encodeURIComponent(String(a))});return xd(a)}var wd=/%{(\w+)}/g,vd=/^(?:https:)?\/\/[0-9a-z.:[\]-]+\/|^\/[^\/\\]|^about:blank#/i,sd={};
+function xd(a){var b=new rd;b.a=a;return b}function yd(){this.a="";this.b=zd;}yd.prototype.na=!0;yd.prototype.ma=function(){return this.a};yd.prototype.toString=function(){return "SafeUrl{"+this.a+"}"};function Ad(a){if(a instanceof yd&&a.constructor===yd&&a.b===zd)return a.a;sa("expected object of type SafeUrl, got '"+a+"' of type "+da(a));return "type_error:SafeUrl"}var Bd=/^(?:(?:https?|mailto|ftp):|[^:/?#]*(?:[/?#]|$))/i;
+function Cd(a){if(a instanceof yd)return a;a=a.na?a.ma():String(a);Bd.test(a)||(a="about:invalid#zClosurez");return Dd(a)}var zd={};function Dd(a){var b=new yd;b.a=a;return b}Dd("about:blank");function Ed(){this.a="";this.b=Fd;}Ed.prototype.na=!0;Ed.prototype.ma=function(){return this.a};Ed.prototype.toString=function(){return "SafeHtml{"+this.a+"}"};function Gd(a){if(a instanceof Ed&&a.constructor===Ed&&a.b===Fd)return a.a;sa("expected object of type SafeHtml, got '"+a+"' of type "+da(a));return "type_error:SafeHtml"}var Fd={};function Hd(a){var b=new Ed;b.a=a;return b}Hd("<!DOCTYPE html>");Hd("");Hd("<br>");function Id(a){var b=document;return l(a)?b.getElementById(a):a}function Jd(a,b){Ya(b,function(b,d){b&&b.na&&(b=b.ma());"style"==d?a.style.cssText=b:"class"==d?a.className=b:"for"==d?a.htmlFor=b:Kd.hasOwnProperty(d)?a.setAttribute(Kd[d],b):0==d.lastIndexOf("aria-",0)||0==d.lastIndexOf("data-",0)?a.setAttribute(d,b):a[d]=b;});}
+var Kd={cellpadding:"cellPadding",cellspacing:"cellSpacing",colspan:"colSpan",frameborder:"frameBorder",height:"height",maxlength:"maxLength",nonce:"nonce",role:"role",rowspan:"rowSpan",type:"type",usemap:"useMap",valign:"vAlign",width:"width"};
+function Ld(a,b,c){var d=arguments,e=document,f=String(d[0]),h=d[1];if(!md&&h&&(h.name||h.type)){f=["<",f];h.name&&f.push(' name="',Ma(h.name),'"');if(h.type){f.push(' type="',Ma(h.type),'"');var m={};bb(m,h);delete m.type;h=m;}f.push(">");f=f.join("");}f=e.createElement(f);h&&(l(h)?f.className=h:fa(h)?f.className=h.join(" "):Jd(f,h));2<d.length&&Md(e,f,d);return f}
+function Md(a,b,c){function d(c){c&&b.appendChild(l(c)?a.createTextNode(c):c);}for(var e=2;e<c.length;e++){var f=c[e];!ha(f)||q(f)&&0<f.nodeType?d(f):v(Nd(f)?Ja(f):f,d);}}function Nd(a){if(a&&"number"==typeof a.length){if(q(a))return "function"==typeof a.item||"string"==typeof a.item;if(n(a))return "function"==typeof a.item}return !1}function Od(a){var b=[];Pd(new Qd,a,b);return b.join("")}function Qd(){}
+function Pd(a,b,c){if(null==b)c.push("null");else{if("object"==typeof b){if(fa(b)){var d=b;b=d.length;c.push("[");for(var e="",f=0;f<b;f++)c.push(e),Pd(a,d[f],c),e=",";c.push("]");return}if(b instanceof String||b instanceof Number||b instanceof Boolean)b=b.valueOf();else{c.push("{");e="";for(d in b)Object.prototype.hasOwnProperty.call(b,d)&&(f=b[d],"function"!=typeof f&&(c.push(e),Rd(d,c),c.push(":"),Pd(a,f,c),e=","));c.push("}");return}}switch(typeof b){case "string":Rd(b,c);break;case "number":c.push(isFinite(b)&&
+!isNaN(b)?String(b):"null");break;case "boolean":c.push(String(b));break;case "function":c.push("null");break;default:throw Error("Unknown type: "+typeof b);}}}var Sd={'"':'\\"',"\\":"\\\\","/":"\\/","\b":"\\b","\f":"\\f","\n":"\\n","\r":"\\r","\t":"\\t","\x0B":"\\u000b"},Td=/\uffff/.test("\uffff")?/[\\"\x00-\x1f\x7f-\uffff]/g:/[\\"\x00-\x1f\x7f-\xff]/g;
+function Rd(a,b){b.push('"',a.replace(Td,function(a){var b=Sd[a];b||(b="\\u"+(a.charCodeAt(0)|65536).toString(16).substr(1),Sd[a]=b);return b}),'"');}function Ud(){var a=H();return Pb&&!!$b&&11==$b||/Edge\/\d+/.test(a)}function Vd(){return k.window&&k.window.location.href||self&&self.location&&self.location.href||""}function Wd(a,b){b=b||k.window;var c="about:blank";a&&(c=Ad(Cd(a)));b.location.href=c;}function Xd(a,b){var c=[],d;for(d in a)d in b?typeof a[d]!=typeof b[d]?c.push(d):"object"==typeof a[d]&&null!=a[d]&&null!=b[d]?0<Xd(a[d],b[d]).length&&c.push(d):a[d]!==b[d]&&c.push(d):c.push(d);for(d in b)d in a||c.push(d);return c}
+function Yd(){var a=H();a=Zd(a)!=$d?null:(a=a.match(/\sChrome\/(\d+)/i))&&2==a.length?parseInt(a[1],10):null;return a&&30>a?!1:!Pb||!$b||9<$b}function ae(a){a=(a||H()).toLowerCase();return a.match(/android/)||a.match(/webos/)||a.match(/iphone|ipad|ipod/)||a.match(/blackberry/)||a.match(/windows phone/)||a.match(/iemobile/)?!0:!1}function be(a){a=a||k.window;try{a.close();}catch(b){}}
+function ce(a,b,c){var d=Math.floor(1E9*Math.random()).toString();b=b||500;c=c||600;var e=(window.screen.availHeight-c)/2,f=(window.screen.availWidth-b)/2;b={width:b,height:c,top:0<e?e:0,left:0<f?f:0,location:!0,resizable:!0,statusbar:!0,toolbar:!1};c=H().toLowerCase();d&&(b.target=d,y(c,"crios/")&&(b.target="_blank"));Zd(H())==de&&(a=a||"http://localhost",b.scrollbars=!0);c=a||"";(a=b)||(a={});d=window;b=c instanceof yd?c:Cd("undefined"!=typeof c.href?c.href:String(c));c=a.target||c.target;e=[];
+for(h in a)switch(h){case "width":case "height":case "top":case "left":e.push(h+"="+a[h]);break;case "target":case "noopener":case "noreferrer":break;default:e.push(h+"="+(a[h]?1:0));}var h=e.join(",");(z("iPhone")&&!z("iPod")&&!z("iPad")||z("iPad")||z("iPod"))&&d.navigator&&d.navigator.standalone&&c&&"_self"!=c?(h=d.document.createElement("A"),b instanceof yd||b instanceof yd||(b=b.na?b.ma():String(b),Bd.test(b)||(b="about:invalid#zClosurez"),b=Dd(b)),h.href=Ad(b),h.setAttribute("target",c),a.noreferrer&&
+h.setAttribute("rel","noreferrer"),a=document.createEvent("MouseEvent"),a.initMouseEvent("click",!0,!0,d,1),h.dispatchEvent(a),h={}):a.noreferrer?(h=d.open("",c,h),a=Ad(b),h&&(Rb&&y(a,";")&&(a="'"+a.replace(/'/g,"%27")+"'"),h.opener=null,qd("b/12014412, meta tag with sanitized URL"),a='<meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0; url='+Ma(a)+'">',a=Hd(a),h.document.write(Gd(a)),h.document.close())):(h=d.open(Ad(b),c,h))&&a.noopener&&(h.opener=null);if(h)try{h.focus();}catch(m){}return h}
+function ee(a){return new A(function(b){function c(){Hc(2E3).then(function(){if(!a||a.closed)b();else return c()});}return c()})}var fe=/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,ge=/^[^@]+@[^@]+$/;function he(){var a=null;return (new A(function(b){"complete"==k.document.readyState?b():(a=function(){b();},sc(window,"load",a));})).s(function(b){E(window,"load",a);throw b;})}
+function ie(){return je(void 0)?he().then(function(){return new A(function(a,b){var c=k.document,d=setTimeout(function(){b(Error("Cordova framework is not ready."));},1E3);c.addEventListener("deviceready",function(){clearTimeout(d);a();},!1);})}):C(Error("Cordova must run in an Android or iOS file scheme."))}function je(a){a=a||H();return !("file:"!==ke()||!a.toLowerCase().match(/iphone|ipad|ipod|android/))}function le(){var a=k.window;try{return !(!a||a==a.top)}catch(b){return !1}}
+function me(){return "object"!==typeof k.window&&"function"===typeof k.importScripts}function ne(){return firebase.INTERNAL.hasOwnProperty("reactNative")?"ReactNative":firebase.INTERNAL.hasOwnProperty("node")?"Node":me()?"Worker":"Browser"}function oe(){var a=ne();return "ReactNative"===a||"Node"===a}function pe(){for(var a=50,b=[];0<a;)b.push("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(Math.floor(62*Math.random()))),a--;return b.join("")}var de="Firefox",$d="Chrome";
+function Zd(a){var b=a.toLowerCase();if(y(b,"opera/")||y(b,"opr/")||y(b,"opios/"))return "Opera";if(y(b,"iemobile"))return "IEMobile";if(y(b,"msie")||y(b,"trident/"))return "IE";if(y(b,"edge/"))return "Edge";if(y(b,"firefox/"))return de;if(y(b,"silk/"))return "Silk";if(y(b,"blackberry"))return "Blackberry";if(y(b,"webos"))return "Webos";if(!y(b,"safari/")||y(b,"chrome/")||y(b,"crios/")||y(b,"android"))if(!y(b,"chrome/")&&!y(b,"crios/")||y(b,"edge/")){if(y(b,"android"))return "Android";if((a=a.match(/([a-zA-Z\d\.]+)\/[a-zA-Z\d\.]*$/))&&
+2==a.length)return a[1]}else return $d;else return "Safari";return "Other"}var qe={Uc:"FirebaseCore-web",Wc:"FirebaseUI-web"};function re(a,b){b=b||[];var c=[],d={},e;for(e in qe)d[qe[e]]=!0;for(e=0;e<b.length;e++)"undefined"!==typeof d[b[e]]&&(delete d[b[e]],c.push(b[e]));c.sort();b=c;b.length||(b=["FirebaseCore-web"]);c=ne();"Browser"===c?(d=H(),c=Zd(d)):"Worker"===c&&(d=H(),c=Zd(d)+"-"+c);return c+"/JsCore/"+a+"/"+b.join(",")}function H(){return k.navigator&&k.navigator.userAgent||""}
+function I(a,b){a=a.split(".");b=b||k;for(var c=0;c<a.length&&"object"==typeof b&&null!=b;c++)b=b[a[c]];c!=a.length&&(b=void 0);return b}function se(){try{var a=k.localStorage,b=te();if(a)return a.setItem(b,"1"),a.removeItem(b),Ud()?!!k.indexedDB:!0}catch(c){return me()&&!!k.indexedDB}return !1}function ue(){return (ve()||"chrome-extension:"===ke()||je())&&!oe()&&se()&&!me()}function ve(){return "http:"===ke()||"https:"===ke()}function ke(){return k.location&&k.location.protocol||null}
+function we(a){a=a||H();return ae(a)||Zd(a)==de?!1:!0}function xe(a){return "undefined"===typeof a?null:Od(a)}function ye(a){var b={},c;for(c in a)a.hasOwnProperty(c)&&null!==a[c]&&void 0!==a[c]&&(b[c]=a[c]);return b}function ze(a){if(null!==a)return JSON.parse(a)}function te(a){return a?a:Math.floor(1E9*Math.random()).toString()}function Ae(a){a=a||H();return "Safari"==Zd(a)||a.toLowerCase().match(/iphone|ipad|ipod/)?!1:!0}
+function Be(){var a=k.___jsl;if(a&&a.H)for(var b in a.H)if(a.H[b].r=a.H[b].r||[],a.H[b].L=a.H[b].L||[],a.H[b].r=a.H[b].L.concat(),a.CP)for(var c=0;c<a.CP.length;c++)a.CP[c]=null;}function Ce(a,b){if(a>b)throw Error("Short delay should be less than long delay!");this.a=a;this.c=b;a=H();b=ne();this.b=ae(a)||"ReactNative"===b;}
+Ce.prototype.get=function(){var a=k.navigator;return (a&&"boolean"===typeof a.onLine&&(ve()||"chrome-extension:"===ke()||"undefined"!==typeof a.connection)?a.onLine:1)?this.b?this.c:this.a:Math.min(5E3,this.a)};function De(){var a=k.document;return a&&"undefined"!==typeof a.visibilityState?"visible"==a.visibilityState:!0}
+function Ee(){var a=k.document,b=null;return De()||!a?B():(new A(function(c){b=function(){De()&&(a.removeEventListener("visibilitychange",b,!1),c());};a.addEventListener("visibilitychange",b,!1);})).s(function(c){a.removeEventListener("visibilitychange",b,!1);throw c;})}function Fe(a){try{var b=new Date(parseInt(a,10));if(!isNaN(b.getTime())&&!/[^0-9]/.test(a))return b.toUTCString()}catch(c){}return null}function Ge(){return !(!I("fireauth.oauthhelper",k)&&!I("fireauth.iframe",k))}
+function He(){var a=k.navigator;return a&&a.serviceWorker&&a.serviceWorker.controller||null}function Ie(){var a=k.navigator;return a&&a.serviceWorker?B().then(function(){return a.serviceWorker.ready}).then(function(a){return a.active||null}).s(function(){return null}):B(null)}var Je={};function Ke(a){Je[a]||(Je[a]=!0,"undefined"!==typeof console&&"function"===typeof console.warn&&console.warn(a));}var Le;try{var Me={};Object.defineProperty(Me,"abcd",{configurable:!0,enumerable:!0,value:1});Object.defineProperty(Me,"abcd",{configurable:!0,enumerable:!0,value:2});Le=2==Me.abcd;}catch(a){Le=!1;}function J(a,b,c){Le?Object.defineProperty(a,b,{configurable:!0,enumerable:!0,value:c}):a[b]=c;}function K(a,b){if(b)for(var c in b)b.hasOwnProperty(c)&&J(a,c,b[c]);}function Ne(a){var b={};K(b,a);return b}function Oe(a){var b={},c;for(c in a)a.hasOwnProperty(c)&&(b[c]=a[c]);return b}
+function Pe(a,b){if(!b||!b.length)return !0;if(!a)return !1;for(var c=0;c<b.length;c++){var d=a[b[c]];if(void 0===d||null===d||""===d)return !1}return !0}function Qe(a){var b=a;if("object"==typeof a&&null!=a){b="length"in a?[]:{};for(var c in a)J(b,c,Qe(a[c]));}return b}function Re(a){var b={},c=a[Se],d=a[Te];a=a[Ue];if(!a||a!=Ve&&!c)throw Error("Invalid provider user info!");b[We]=d||null;b[Xe]=c||null;J(this,Ye,a);J(this,Ze,Qe(b));}var Ve="EMAIL_SIGNIN",Se="email",Te="newEmail",Ue="requestType",Xe="email",We="fromEmail",Ze="data",Ye="operation";function L(a,b){this.code=$e+a;this.message=b||af[a]||"";}t(L,Error);L.prototype.C=function(){return {code:this.code,message:this.message}};L.prototype.toJSON=function(){return this.C()};function bf(a){var b=a&&a.code;return b?new L(b.substring($e.length),a.message):null}
+var $e="auth/",af={"argument-error":"","app-not-authorized":"This app, identified by the domain where it's hosted, is not authorized to use Firebase Authentication with the provided API key. Review your key configuration in the Google API console.","app-not-installed":"The requested mobile application corresponding to the identifier (Android package name or iOS bundle ID) provided is not installed on this device.","captcha-check-failed":"The reCAPTCHA response token provided is either invalid, expired, already used or the domain associated with it does not match the list of whitelisted domains.",
 "code-expired":"The SMS code has expired. Please re-send the verification code to try again.","cordova-not-ready":"Cordova framework is not ready.","cors-unsupported":"This browser is not supported.","credential-already-in-use":"This credential is already associated with a different user account.","custom-token-mismatch":"The custom token corresponds to a different audience.","requires-recent-login":"This operation is sensitive and requires recent authentication. Log in again before retrying this request.",
 "dynamic-link-not-activated":"Please activate Dynamic Links in the Firebase Console and agree to the terms and conditions.","email-already-in-use":"The email address is already in use by another account.","expired-action-code":"The action code has expired. ","cancelled-popup-request":"This operation has been cancelled due to another conflicting popup being opened.","internal-error":"An internal error has occurred.","invalid-app-credential":"The phone verification request contains an invalid application verifier. The reCAPTCHA token response is either invalid or expired.",
 "invalid-app-id":"The mobile app identifier is not registed for the current project.","invalid-user-token":"This user's credential isn't valid for this project. This can happen if the user's token has been tampered with, or if the user isn't for the project associated with this API key.","invalid-auth-event":"An internal error has occurred.","invalid-verification-code":"The SMS verification code used to create the phone auth credential is invalid. Please resend the verification code sms and be sure use the verification code provided by the user.",
@@ -9926,239 +9879,237 @@ var bf="auth/",cf={"argument-error":"","app-not-authorized":"This app, identifie
 "no-auth-event":"An internal error has occurred.","no-such-provider":"User was not linked to an account with the given provider.","null-user":"A null user object was provided as the argument for an operation which requires a non-null user object.","operation-not-allowed":"The given sign-in provider is disabled for this Firebase project. Enable it in the Firebase console, under the sign-in method tab of the Auth section.","operation-not-supported-in-this-environment":'This operation is not supported in the environment this application is running on. "location.protocol" must be http, https or chrome-extension and web storage must be enabled.',
 "popup-blocked":"Unable to establish a connection with the popup. It may have been blocked by the browser.","popup-closed-by-user":"The popup has been closed by the user before finalizing the operation.","provider-already-linked":"User can only be linked to one identity for the given provider.","quota-exceeded":"The project's quota for this operation has been exceeded.","redirect-cancelled-by-user":"The redirect operation has been cancelled by the user before finalizing.","redirect-operation-pending":"A redirect sign-in operation is already pending.",
 "rejected-credential":"The request contains malformed or mismatching credentials.",timeout:"The operation has timed out.","user-token-expired":"The user's credential is no longer valid. The user must sign in again.","too-many-requests":"We have blocked all requests from this device due to unusual activity. Try again later.","unauthorized-continue-uri":"The domain of the continue URL is not whitelisted.  Please whitelist the domain in the Firebase console.","unsupported-persistence-type":"The current environment does not support the specified persistence type.",
-"user-cancelled":"User did not grant your application the permissions it requested.","user-not-found":"There is no user record corresponding to this identifier. The user may have been deleted.","user-disabled":"The user account has been disabled by an administrator.","user-mismatch":"The supplied credentials do not correspond to the previously signed in user.","user-signed-out":"","weak-password":"The password must be 6 characters long or more.","web-storage-unsupported":"This browser is not supported or 3rd party cookies and data may be disabled."};function ef(a){var b=a[ff];if("undefined"===typeof b)throw new L("missing-continue-uri");if("string"!==typeof b||"string"===typeof b&&!b.length)throw new L("invalid-continue-uri");this.h=b;this.b=this.a=null;this.g=!1;var c=a[gf];if(c&&"object"===typeof c){b=c[hf];var d=c[jf];c=c[kf];if("string"===typeof b&&b.length){this.a=b;if("undefined"!==typeof d&&"boolean"!==typeof d)throw new L("argument-error",jf+" property must be a boolean when specified.");this.g=!!d;if("undefined"!==typeof c&&("string"!==
-typeof c||"string"===typeof c&&!c.length))throw new L("argument-error",kf+" property must be a non empty string when specified.");this.b=c||null;}else{if("undefined"!==typeof b)throw new L("argument-error",hf+" property must be a non empty string when specified.");if("undefined"!==typeof d||"undefined"!==typeof c)throw new L("missing-android-pkg-name");}}else if("undefined"!==typeof c)throw new L("argument-error",gf+" property must be a non null object when specified.");this.f=null;if((b=a[lf])&&"object"===
-typeof b)if(b=b[mf],"string"===typeof b&&b.length)this.f=b;else{if("undefined"!==typeof b)throw new L("argument-error",mf+" property must be a non empty string when specified.");}else if("undefined"!==typeof b)throw new L("argument-error",lf+" property must be a non null object when specified.");b=a[nf];if("undefined"!==typeof b&&"boolean"!==typeof b)throw new L("argument-error",nf+" property must be a boolean when specified.");this.c=!!b;a=a[of];if("undefined"!==typeof a&&("string"!==typeof a||"string"===
-typeof a&&!a.length))throw new L("argument-error",of+" property must be a non empty string when specified.");this.i=a||null;}var gf="android",of="dynamicLinkDomain",nf="handleCodeInApp",lf="iOS",ff="url",jf="installApp",kf="minimumVersion",hf="packageName",mf="bundleId";
-function pf(a){var b={};b.continueUrl=a.h;b.canHandleCodeInApp=a.c;if(b.androidPackageName=a.a)b.androidMinimumVersion=a.b,b.androidInstallApp=a.g;b.iOSBundleId=a.f;b.dynamicLinkDomain=a.i;for(var c in b)null===b[c]&&delete b[c];return b}function qf(a){return Da(a,function(a){a=a.toString(16);return 1<a.length?a:"0"+a}).join("")}var rf=null,sf=null;function tf(a){var b="";uf(a,function(a){b+=String.fromCharCode(a);});return b}function uf(a,b){function c(b){for(;d<a.length;){var c=a.charAt(d++),e=sf[c];if(null!=e)return e;if(!/^[\s\xa0]*$/.test(c))throw Error("Unknown base64 encoding at char: "+c);}return b}vf();for(var d=0;;){var e=c(-1),f=c(0),h=c(64),m=c(64);if(64===m&&-1===e)break;b(e<<2|f>>4);64!=h&&(b(f<<4&240|h>>2),64!=m&&b(h<<6&192|m));}}
-function vf(){if(!rf){rf={};sf={};for(var a=0;65>a;a++)rf[a]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=".charAt(a),sf[rf[a]]=a,62<=a&&(sf["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.".charAt(a)]=a);}}function wf(a){this.c=a.sub;this.a=a.provider_id||a.firebase&&a.firebase.sign_in_provider||null;this.b=!!a.is_anonymous||"anonymous"==this.a;}wf.prototype.f=function(){return this.b};function xf(a){return (a=yf(a))&&a.sub&&a.iss&&a.aud&&a.exp?new wf(a):null}function yf(a){if(!a)return null;a=a.split(".");if(3!=a.length)return null;a=a[1];for(var b=(4-a.length%4)%4,c=0;c<b;c++)a+=".";try{return JSON.parse(tf(a))}catch(d){}return null}var zf={bd:{bb:"https://www.googleapis.com/identitytoolkit/v3/relyingparty/",jb:"https://securetoken.googleapis.com/v1/token",id:"p"},dd:{bb:"https://staging-www.sandbox.googleapis.com/identitytoolkit/v3/relyingparty/",jb:"https://staging-securetoken.sandbox.googleapis.com/v1/token",id:"s"},ed:{bb:"https://www-googleapis-test.sandbox.google.com/identitytoolkit/v3/relyingparty/",jb:"https://test-securetoken.sandbox.googleapis.com/v1/token",id:"t"}};
-function Af(a){for(var b in zf)if(zf[b].id===a)return a=zf[b],{firebaseEndpoint:a.bb,secureTokenEndpoint:a.jb};return null}var Bf;Bf=Af("__EID__")?"__EID__":void 0;var Cf="oauth_consumer_key oauth_nonce oauth_signature oauth_signature_method oauth_timestamp oauth_token oauth_version".split(" "),Df=["client_id","response_type","scope","redirect_uri","state"],Ef={Xc:{Na:"locale",Ba:500,Aa:600,Oa:"facebook.com",ib:Df},Zc:{Na:null,Ba:500,Aa:620,Oa:"github.com",ib:Df},$c:{Na:"hl",Ba:515,Aa:680,Oa:"google.com",ib:Df},fd:{Na:"lang",Ba:485,Aa:705,Oa:"twitter.com",ib:Cf}};function Ff(a){for(var b in Ef)if(Ef[b].Oa==a)return Ef[b];return null}function Gf(a){var b={};b["facebook.com"]=Hf;b["google.com"]=If;b["github.com"]=Jf;b["twitter.com"]=Kf;var c=a&&a[Lf];try{if(c)return b[c]?new b[c](a):new Mf(a);if("undefined"!==typeof a[Nf])return new Of(a)}catch(d){}return null}var Nf="idToken",Lf="providerId";
-function Of(a){var b=a[Lf];if(!b&&a[Nf]){var c=xf(a[Nf]);c&&c.a&&(b=c.a);}if(!b)throw Error("Invalid additional user info!");if("anonymous"==b||"custom"==b)b=null;c=!1;"undefined"!==typeof a.isNewUser?c=!!a.isNewUser:"identitytoolkit#SignupNewUserResponse"===a.kind&&(c=!0);J(this,"providerId",b);J(this,"isNewUser",c);}function Mf(a){Of.call(this,a);a=Be(a.rawUserInfo||"{}");J(this,"profile",Se(a||{}));}t(Mf,Of);
-function Hf(a){Mf.call(this,a);if("facebook.com"!=this.providerId)throw Error("Invalid provider ID!");}t(Hf,Mf);function Jf(a){Mf.call(this,a);if("github.com"!=this.providerId)throw Error("Invalid provider ID!");J(this,"username",this.profile&&this.profile.login||null);}t(Jf,Mf);function If(a){Mf.call(this,a);if("google.com"!=this.providerId)throw Error("Invalid provider ID!");}t(If,Mf);
-function Kf(a){Mf.call(this,a);if("twitter.com"!=this.providerId)throw Error("Invalid provider ID!");J(this,"username",a.screenName||null);}t(Kf,Mf);function Pf(a){this.a=ed(a);}function Qf(a){var b=ed(a),c=dd(b,"link"),d=dd(ed(c),"link");b=dd(b,"deep_link_id");return dd(ed(b),"link")||b||d||c||a}function Rf(a,b){return a.then(function(a){if(a[M]){var c=xf(a[M]);if(!c||b!=c.c)throw new L("user-mismatch");return a}throw new L("user-mismatch");}).s(function(a){throw a&&a.code&&a.code==bf+"user-not-found"?new L("user-mismatch"):a;})}function Sf(a,b){if(b)this.a=b;else throw new L("internal-error","failed to construct a credential");J(this,"providerId",a);J(this,"signInMethod",a);}Sf.prototype.la=function(a){return Tf(a,Uf(this))};
-Sf.prototype.b=function(a,b){var c=Uf(this);c.idToken=b;return Vf(a,c)};Sf.prototype.f=function(a,b){return Rf(Wf(a,Uf(this)),b)};function Uf(a){return {pendingToken:a.a,requestUri:"http://localhost"}}Sf.prototype.C=function(){return {providerId:this.providerId,signInMethod:this.signInMethod,pendingToken:this.a}};
-function Xf(a,b,c){this.a=null;if(b.idToken||b.accessToken)b.idToken&&J(this,"idToken",b.idToken),b.accessToken&&J(this,"accessToken",b.accessToken),b.nonce&&!b.pendingToken&&J(this,"nonce",b.nonce),b.pendingToken&&(this.a=b.pendingToken);else if(b.oauthToken&&b.oauthTokenSecret)J(this,"accessToken",b.oauthToken),J(this,"secret",b.oauthTokenSecret);else throw new L("internal-error","failed to construct a credential");J(this,"providerId",a);J(this,"signInMethod",c);}
-Xf.prototype.la=function(a){return Tf(a,Yf(this))};Xf.prototype.b=function(a,b){var c=Yf(this);c.idToken=b;return Vf(a,c)};Xf.prototype.f=function(a,b){var c=Yf(this);return Rf(Wf(a,c),b)};
-function Yf(a){var b={};a.idToken&&(b.id_token=a.idToken);a.accessToken&&(b.access_token=a.accessToken);a.secret&&(b.oauth_token_secret=a.secret);b.providerId=a.providerId;a.nonce&&!a.a&&(b.nonce=a.nonce);b={postBody:id(b).toString(),requestUri:"http://localhost"};a.a&&(delete b.postBody,b.pendingToken=a.a);return b}
-Xf.prototype.C=function(){var a={providerId:this.providerId,signInMethod:this.signInMethod};this.idToken&&(a.oauthIdToken=this.idToken);this.accessToken&&(a.oauthAccessToken=this.accessToken);this.secret&&(a.oauthTokenSecret=this.secret);this.nonce&&(a.nonce=this.nonce);this.a&&(a.pendingToken=this.a);return a};function Zf(a,b){this.Fc=b||[];K(this,{providerId:a,isOAuthProvider:!0});this.zb={};this.eb=(Ff(a)||{}).Na||null;this.ab=null;}Zf.prototype.Da=function(a){this.zb=Za(a);return this};
-function $f(a){if("string"!==typeof a||0!=a.indexOf("saml."))throw new L("argument-error",'SAML provider IDs must be prefixed with "saml."');Zf.call(this,a,[]);}t($f,Zf);function N(a){Zf.call(this,a,Df);this.a=[];}t(N,Zf);N.prototype.ua=function(a){Ha(this.a,a)||this.a.push(a);return this};N.prototype.Fb=function(){return Ka(this.a)};
-N.prototype.credential=function(a,b,c){if(!a&&!b)throw new L("argument-error","credential failed: must provide the ID token and/or the access token.");return new Xf(this.providerId,{idToken:a||null,accessToken:b||null,nonce:c||null},this.providerId)};function ag(){N.call(this,"facebook.com");}t(ag,N);J(ag,"PROVIDER_ID","facebook.com");J(ag,"FACEBOOK_SIGN_IN_METHOD","facebook.com");
-function bg(a){if(!a)throw new L("argument-error","credential failed: expected 1 argument (the OAuth access token).");var b=a;q(a)&&(b=a.accessToken);return (new ag).credential(null,b)}function cg(){N.call(this,"github.com");}t(cg,N);J(cg,"PROVIDER_ID","github.com");J(cg,"GITHUB_SIGN_IN_METHOD","github.com");function dg(a){if(!a)throw new L("argument-error","credential failed: expected 1 argument (the OAuth access token).");var b=a;q(a)&&(b=a.accessToken);return (new cg).credential(null,b)}
-function eg(){N.call(this,"google.com");this.ua("profile");}t(eg,N);J(eg,"PROVIDER_ID","google.com");J(eg,"GOOGLE_SIGN_IN_METHOD","google.com");function fg(a,b){var c=a;q(a)&&(c=a.idToken,b=a.accessToken);return (new eg).credential(c,b)}function gg(){Zf.call(this,"twitter.com",Cf);}t(gg,Zf);J(gg,"PROVIDER_ID","twitter.com");J(gg,"TWITTER_SIGN_IN_METHOD","twitter.com");
-function hg(a,b){var c=a;q(c)||(c={oauthToken:a,oauthTokenSecret:b});if(!c.oauthToken||!c.oauthTokenSecret)throw new L("argument-error","credential failed: expected 2 arguments (the OAuth access token and secret).");return new Xf("twitter.com",c,"twitter.com")}function ig(a,b,c){this.a=a;this.c=b;J(this,"providerId","password");J(this,"signInMethod",c===O.EMAIL_LINK_SIGN_IN_METHOD?O.EMAIL_LINK_SIGN_IN_METHOD:O.EMAIL_PASSWORD_SIGN_IN_METHOD);}
-ig.prototype.la=function(a){return this.signInMethod==O.EMAIL_LINK_SIGN_IN_METHOD?P(a,jg,{email:this.a,oobCode:this.c}):P(a,kg,{email:this.a,password:this.c})};ig.prototype.b=function(a,b){return this.signInMethod==O.EMAIL_LINK_SIGN_IN_METHOD?P(a,lg,{idToken:b,email:this.a,oobCode:this.c}):P(a,mg,{idToken:b,email:this.a,password:this.c})};ig.prototype.f=function(a,b){return Rf(this.la(a),b)};ig.prototype.C=function(){return {email:this.a,password:this.c,signInMethod:this.signInMethod}};
-function O(){K(this,{providerId:"password",isOAuthProvider:!1});}function ng(a,b){b=og(b);if(!b)throw new L("argument-error","Invalid email link!");return new ig(a,b,O.EMAIL_LINK_SIGN_IN_METHOD)}function og(a){a=Qf(a);a=new Pf(a);var b=dd(a.a,"oobCode")||null;return "signIn"===(dd(a.a,"mode")||null)&&b?b:null}K(O,{PROVIDER_ID:"password"});K(O,{EMAIL_LINK_SIGN_IN_METHOD:"emailLink"});K(O,{EMAIL_PASSWORD_SIGN_IN_METHOD:"password"});
-function pg(a){if(!(a.Ua&&a.Ta||a.Fa&&a.$))throw new L("internal-error");this.a=a;J(this,"providerId","phone");J(this,"signInMethod","phone");}pg.prototype.la=function(a){return a.Va(qg(this))};pg.prototype.b=function(a,b){var c=qg(this);c.idToken=b;return P(a,rg,c)};pg.prototype.f=function(a,b){var c=qg(this);c.operation="REAUTH";a=P(a,sg,c);return Rf(a,b)};
-pg.prototype.C=function(){var a={providerId:"phone"};this.a.Ua&&(a.verificationId=this.a.Ua);this.a.Ta&&(a.verificationCode=this.a.Ta);this.a.Fa&&(a.temporaryProof=this.a.Fa);this.a.$&&(a.phoneNumber=this.a.$);return a};function qg(a){return a.a.Fa&&a.a.$?{temporaryProof:a.a.Fa,phoneNumber:a.a.$}:{sessionInfo:a.a.Ua,code:a.a.Ta}}
-function tg(a){try{this.a=a||firebase.auth();}catch(b){throw new L("argument-error","Either an instance of firebase.auth.Auth must be passed as an argument to the firebase.auth.PhoneAuthProvider constructor, or the default firebase App instance must be initialized via firebase.initializeApp().");}K(this,{providerId:"phone",isOAuthProvider:!1});}
-tg.prototype.Va=function(a,b){var c=this.a.b;return B(b.verify()).then(function(d){if(!l(d))throw new L("argument-error","An implementation of firebase.auth.ApplicationVerifier.prototype.verify() must return a firebase.Promise that resolves with a string.");switch(b.type){case "recaptcha":return ug(c,{phoneNumber:a,recaptchaToken:d}).then(function(a){"function"===typeof b.reset&&b.reset();return a},function(a){"function"===typeof b.reset&&b.reset();throw a;});default:throw new L("argument-error",
-'Only firebase.auth.ApplicationVerifiers with type="recaptcha" are currently supported.');}})};function vg(a,b){if(!a)throw new L("missing-verification-id");if(!b)throw new L("missing-verification-code");return new pg({Ua:a,Ta:b})}K(tg,{PROVIDER_ID:"phone"});K(tg,{PHONE_SIGN_IN_METHOD:"phone"});
-function wg(a){if(a.temporaryProof&&a.phoneNumber)return new pg({Fa:a.temporaryProof,$:a.phoneNumber});var b=a&&a.providerId;if(!b||"password"===b)return null;var c=a&&a.oauthAccessToken,d=a&&a.oauthTokenSecret,e=a&&a.nonce,f=a&&a.oauthIdToken,h=a&&a.pendingToken;try{switch(b){case "google.com":return fg(f,c);case "facebook.com":return bg(c);case "github.com":return dg(c);case "twitter.com":return hg(c,d);default:return c||d||f||h?h?0==b.indexOf("saml.")?new Sf(b,h):new Xf(b,{pendingToken:h,idToken:a.oauthIdToken,
-accessToken:a.oauthAccessToken},b):(new N(b)).credential(f,c,e):null}}catch(m){return null}}function xg(a){if(!a.isOAuthProvider)throw new L("invalid-oauth-provider");}function yg(a,b,c,d,e,f){this.b=a;this.c=b||null;this.f=c||null;this.g=d||null;this.h=f||null;this.a=e||null;if(this.f||this.a){if(this.f&&this.a)throw new L("invalid-auth-event");if(this.f&&!this.g)throw new L("invalid-auth-event");}else throw new L("invalid-auth-event");}yg.prototype.C=function(){return {type:this.b,eventId:this.c,urlResponse:this.f,sessionId:this.g,postBody:this.h,error:this.a&&this.a.C()}};
-function zg(a){a=a||{};return a.type?new yg(a.type,a.eventId,a.urlResponse,a.sessionId,a.error&&df(a.error),a.postBody):null}function Ag(){this.b=null;this.a=[];}var Bg=null;Ag.prototype.subscribe=function(a){var b=this;this.a.push(a);this.b||(this.b=function(a){for(var c=0;c<b.a.length;c++)b.a[c](a);},a=I("universalLinks.subscribe",k),"function"===typeof a&&a(null,this.b));};Ag.prototype.unsubscribe=function(a){w(this.a,function(b){return b==a});};function Cg(a){var b="unauthorized-domain",c=void 0,d=ed(a);a=d.b;d=d.c;"chrome-extension"==d?c=bb("This chrome extension ID (chrome-extension://%s) is not authorized to run this operation. Add it to the OAuth redirect domains list in the Firebase console -> Auth section -> Sign in method tab.",a):"http"==d||"https"==d?c=bb("This domain (%s) is not authorized to run this operation. Add it to the OAuth redirect domains list in the Firebase console -> Auth section -> Sign in method tab.",a):b="operation-not-supported-in-this-environment";
-L.call(this,b,c);}t(Cg,L);function Dg(a,b,c){L.call(this,a,c);a=b||{};a.Ab&&J(this,"email",a.Ab);a.$&&J(this,"phoneNumber",a.$);a.credential&&J(this,"credential",a.credential);}t(Dg,L);Dg.prototype.C=function(){var a={code:this.code,message:this.message};this.email&&(a.email=this.email);this.phoneNumber&&(a.phoneNumber=this.phoneNumber);var b=this.credential&&this.credential.C();b&&ab(a,b);return a};Dg.prototype.toJSON=function(){return this.C()};
-function Eg(a){if(a.code){var b=a.code||"";0==b.indexOf(bf)&&(b=b.substring(bf.length));var c={credential:wg(a)};if(a.email)c.Ab=a.email;else if(a.phoneNumber)c.$=a.phoneNumber;else if(!c.credential)return new L(b,a.message||void 0);return new Dg(b,c,a.message)}return null}function Fg(){}Fg.prototype.c=null;function Gg(a){return a.c||(a.c=a.b())}var Hg;function Ig(){}t(Ig,Fg);Ig.prototype.a=function(){var a=Jg(this);return a?new ActiveXObject(a):new XMLHttpRequest};Ig.prototype.b=function(){var a={};Jg(this)&&(a[0]=!0,a[1]=!0);return a};
-function Jg(a){if(!a.f&&"undefined"==typeof XMLHttpRequest&&"undefined"!=typeof ActiveXObject){for(var b=["MSXML2.XMLHTTP.6.0","MSXML2.XMLHTTP.3.0","MSXML2.XMLHTTP","Microsoft.XMLHTTP"],c=0;c<b.length;c++){var d=b[c];try{return new ActiveXObject(d),a.f=d}catch(e){}}throw Error("Could not create ActiveXObject. ActiveX might be disabled, or MSXML might not be installed");}return a.f}Hg=new Ig;function Kg(){}t(Kg,Fg);Kg.prototype.a=function(){var a=new XMLHttpRequest;if("withCredentials"in a)return a;if("undefined"!=typeof XDomainRequest)return new Lg;throw Error("Unsupported browser");};Kg.prototype.b=function(){return {}};
-function Lg(){this.a=new XDomainRequest;this.readyState=0;this.onreadystatechange=null;this.responseType=this.responseText=this.response="";this.status=-1;this.statusText="";this.a.onload=r(this.fc,this);this.a.onerror=r(this.Gb,this);this.a.onprogress=r(this.gc,this);this.a.ontimeout=r(this.kc,this);}g=Lg.prototype;g.open=function(a,b,c){if(null!=c&&!c)throw Error("Only async requests are supported.");this.a.open(a,b);};
-g.send=function(a){if(a)if("string"==typeof a)this.a.send(a);else throw Error("Only string data is supported");else this.a.send();};g.abort=function(){this.a.abort();};g.setRequestHeader=function(){};g.getResponseHeader=function(a){return "content-type"==a.toLowerCase()?this.a.contentType:""};g.fc=function(){this.status=200;this.response=this.responseText=this.a.responseText;Mg(this,4);};g.Gb=function(){this.status=500;this.response=this.responseText="";Mg(this,4);};g.kc=function(){this.Gb();};
-g.gc=function(){this.status=200;Mg(this,1);};function Mg(a,b){a.readyState=b;if(a.onreadystatechange)a.onreadystatechange();}g.getAllResponseHeaders=function(){return "content-type: "+this.a.contentType};function Ng(a,b,c){this.reset(a,b,c,void 0,void 0);}Ng.prototype.a=null;Ng.prototype.reset=function(a,b,c,d,e){delete this.a;};function Pg(a){this.f=a;this.b=this.c=this.a=null;}function Qg(a,b){this.name=a;this.value=b;}Qg.prototype.toString=function(){return this.name};var Rg=new Qg("SEVERE",1E3),Sg=new Qg("WARNING",900),Tg=new Qg("CONFIG",700),Ug=new Qg("FINE",500);function Vg(a){if(a.c)return a.c;if(a.a)return Vg(a.a);ta("Root logger has no level set.");return null}Pg.prototype.log=function(a,b,c){if(a.value>=Vg(this).value)for(n(b)&&(b=b()),a=new Ng(a,String(b),this.f),c&&(a.a=c),c=this;c;)c=c.a;};var Wg={},Xg=null;
-function Yg(a){Xg||(Xg=new Pg(""),Wg[""]=Xg,Xg.c=Tg);var b;if(!(b=Wg[a])){b=new Pg(a);var c=a.lastIndexOf("."),d=a.substr(c+1);c=Yg(a.substr(0,c));c.b||(c.b={});c.b[d]=b;b.a=c;Wg[a]=b;}return b}function Zg(a,b){a&&a.log(Ug,b,void 0);}function $g(a){this.f=a;}t($g,Fg);$g.prototype.a=function(){return new ah(this.f)};$g.prototype.b=function(a){return function(){return a}}({});function ah(a){F.call(this);this.u=a;this.readyState=bh;this.status=0;this.responseType=this.responseText=this.response=this.statusText="";this.onreadystatechange=null;this.i=new Headers;this.b=null;this.m="GET";this.g="";this.a=!1;this.h=Yg("goog.net.FetchXmlHttp");this.l=this.c=this.f=null;}t(ah,F);var bh=0;g=ah.prototype;
-g.open=function(a,b){if(this.readyState!=bh)throw this.abort(),Error("Error reopening a connection");this.m=a;this.g=b;this.readyState=1;ch(this);};g.send=function(a){if(1!=this.readyState)throw this.abort(),Error("need to call open() first. ");this.a=!0;var b={headers:this.i,method:this.m,credentials:void 0,cache:void 0};a&&(b.body=a);this.u.fetch(new Request(this.g,b)).then(this.jc.bind(this),this.La.bind(this));};
-g.abort=function(){this.response=this.responseText="";this.i=new Headers;this.status=0;this.c&&this.c.cancel("Request was aborted.");1<=this.readyState&&this.a&&4!=this.readyState&&(this.a=!1,dh(this,!1));this.readyState=bh;};
-g.jc=function(a){this.a&&(this.f=a,this.b||(this.b=a.headers,this.readyState=2,ch(this)),this.a&&(this.readyState=3,ch(this),this.a&&("arraybuffer"===this.responseType?a.arrayBuffer().then(this.hc.bind(this),this.La.bind(this)):"undefined"!==typeof k.ReadableStream&&"body"in a?(this.response=this.responseText="",this.c=a.body.getReader(),this.l=new TextDecoder,eh(this)):a.text().then(this.ic.bind(this),this.La.bind(this)))));};function eh(a){a.c.read().then(a.ec.bind(a)).catch(a.La.bind(a));}
-g.ec=function(a){if(this.a){var b=this.l.decode(a.value?a.value:new Uint8Array(0),{stream:!a.done});b&&(this.response=this.responseText+=b);a.done?dh(this,!0):ch(this);3==this.readyState&&eh(this);}};g.ic=function(a){this.a&&(this.response=this.responseText=a,dh(this,!0));};g.hc=function(a){this.a&&(this.response=a,dh(this,!0));};g.La=function(a){var b=this.h;b&&b.log(Sg,"Failed to fetch url "+this.g,a instanceof Error?a:Error(a));this.a&&dh(this,!0);};
-function dh(a,b){b&&a.f&&(a.status=a.f.status,a.statusText=a.f.statusText);a.readyState=4;a.f=null;a.c=null;a.l=null;ch(a);}g.setRequestHeader=function(a,b){this.i.append(a,b);};g.getResponseHeader=function(a){return this.b?this.b.get(a.toLowerCase())||"":((a=this.h)&&a.log(Sg,"Attempting to get response header but no headers have been received for url: "+this.g,void 0),"")};
-g.getAllResponseHeaders=function(){if(!this.b){var a=this.h;a&&a.log(Sg,"Attempting to get all response headers but no headers have been received for url: "+this.g,void 0);return ""}a=[];for(var b=this.b.entries(),c=b.next();!c.done;)c=c.value,a.push(c[0]+": "+c[1]),c=b.next();return a.join("\r\n")};function ch(a){a.onreadystatechange&&a.onreadystatechange.call(a);}function fh(a){F.call(this);this.headers=new Mc;this.D=a||null;this.c=!1;this.w=this.a=null;this.h=this.N=this.l="";this.f=this.I=this.i=this.G=!1;this.g=0;this.u=null;this.m=gh;this.v=this.O=!1;}t(fh,F);var gh="";fh.prototype.b=Yg("goog.net.XhrIo");var hh=/^https?$/i,ih=["POST","PUT"];
-function jh(a,b,c,d,e){if(a.a)throw Error("[goog.net.XhrIo] Object is active with another request="+a.l+"; newUri="+b);c=c?c.toUpperCase():"GET";a.l=b;a.h="";a.N=c;a.G=!1;a.c=!0;a.a=a.D?a.D.a():Hg.a();a.w=a.D?Gg(a.D):Gg(Hg);a.a.onreadystatechange=r(a.Jb,a);try{Zg(a.b,kh(a,"Opening Xhr")),a.I=!0,a.a.open(c,String(b),!0),a.I=!1;}catch(h){Zg(a.b,kh(a,"Error opening Xhr: "+h.message));lh(a,h);return}b=d||"";var f=new Mc(a.headers);e&&Lc(e,function(a,b){f.set(b,a);});e=Fa(f.U());d=k.FormData&&b instanceof
-k.FormData;!Ha(ih,c)||e||d||f.set("Content-Type","application/x-www-form-urlencoded;charset=utf-8");f.forEach(function(a,b){this.a.setRequestHeader(b,a);},a);a.m&&(a.a.responseType=a.m);"withCredentials"in a.a&&a.a.withCredentials!==a.O&&(a.a.withCredentials=a.O);try{mh(a),0<a.g&&(a.v=nh(a.a),Zg(a.b,kh(a,"Will abort after "+a.g+"ms if incomplete, xhr2 "+a.v)),a.v?(a.a.timeout=a.g,a.a.ontimeout=r(a.Ga,a)):a.u=Hc(a.Ga,a.g,a)),Zg(a.b,kh(a,"Sending request")),a.i=!0,a.a.send(b),a.i=!1;}catch(h){Zg(a.b,
-kh(a,"Send error: "+h.message)),lh(a,h);}}function nh(a){return Qb&&$b(9)&&"number"==typeof a.timeout&&void 0!==a.ontimeout}function Ga(a){return "content-type"==a.toLowerCase()}g=fh.prototype;g.Ga=function(){"undefined"!=typeof aa&&this.a&&(this.h="Timed out after "+this.g+"ms, aborting",Zg(this.b,kh(this,this.h)),this.dispatchEvent("timeout"),this.abort(8));};function lh(a,b){a.c=!1;a.a&&(a.f=!0,a.a.abort(),a.f=!1);a.h=b;oh(a);ph(a);}
-function oh(a){a.G||(a.G=!0,a.dispatchEvent("complete"),a.dispatchEvent("error"));}g.abort=function(){this.a&&this.c&&(Zg(this.b,kh(this,"Aborting")),this.c=!1,this.f=!0,this.a.abort(),this.f=!1,this.dispatchEvent("complete"),this.dispatchEvent("abort"),ph(this));};g.va=function(){this.a&&(this.c&&(this.c=!1,this.f=!0,this.a.abort(),this.f=!1),ph(this,!0));fh.pb.va.call(this);};g.Jb=function(){this.qa||(this.I||this.i||this.f?qh(this):this.yc());};g.yc=function(){qh(this);};
-function qh(a){if(a.c&&"undefined"!=typeof aa)if(a.w[1]&&4==rh(a)&&2==sh(a))Zg(a.b,kh(a,"Local request error detected and ignored"));else if(a.i&&4==rh(a))Hc(a.Jb,0,a);else if(a.dispatchEvent("readystatechange"),4==rh(a)){Zg(a.b,kh(a,"Request complete"));a.c=!1;try{var b=sh(a);a:switch(b){case 200:case 201:case 202:case 204:case 206:case 304:case 1223:var c=!0;break a;default:c=!1;}var d;if(!(d=c)){var e;if(e=0===b){var f=String(a.l).match(Pc)[1]||null;if(!f&&k.self&&k.self.location){var h=k.self.location.protocol;
-f=h.substr(0,h.length-1);}e=!hh.test(f?f.toLowerCase():"");}d=e;}if(d)a.dispatchEvent("complete"),a.dispatchEvent("success");else{try{var m=2<rh(a)?a.a.statusText:"";}catch(p){Zg(a.b,"Can not get status: "+p.message),m="";}a.h=m+" ["+sh(a)+"]";oh(a);}}finally{ph(a);}}}function ph(a,b){if(a.a){mh(a);var c=a.a,d=a.w[0]?ea:null;a.a=null;a.w=null;b||a.dispatchEvent("ready");try{c.onreadystatechange=d;}catch(e){(a=a.b)&&a.log(Rg,"Problem encountered resetting onreadystatechange: "+e.message,void 0);}}}
-function mh(a){a.a&&a.v&&(a.a.ontimeout=null);a.u&&(k.clearTimeout(a.u),a.u=null);}function rh(a){return a.a?a.a.readyState:0}function sh(a){try{return 2<rh(a)?a.a.status:-1}catch(b){return -1}}function th(a){try{return a.a?a.a.responseText:""}catch(b){return Zg(a.b,"Can not get responseText: "+b.message),""}}
-g.getResponse=function(){try{if(!this.a)return null;if("response"in this.a)return this.a.response;switch(this.m){case gh:case "text":return this.a.responseText;case "arraybuffer":if("mozResponseArrayBuffer"in this.a)return this.a.mozResponseArrayBuffer}var a=this.b;a&&a.log(Rg,"Response type "+this.m+" is not supported on this browser",void 0);return null}catch(b){return Zg(this.b,"Can not get response: "+b.message),null}};function kh(a,b){return b+" ["+a.N+" "+a.l+" "+sh(a)+"]"}function uh(a){var b=vh;this.g=[];this.v=b;this.u=a||null;this.f=this.a=!1;this.c=void 0;this.l=this.w=this.i=!1;this.h=0;this.b=null;this.o=0;}uh.prototype.cancel=function(a){if(this.a)this.c instanceof uh&&this.c.cancel();else{if(this.b){var b=this.b;delete this.b;a?b.cancel(a):(b.o--,0>=b.o&&b.cancel());}this.v?this.v.call(this.u,this):this.l=!0;this.a||(a=new wh(this),xh(this),yh(this,!1,a));}};uh.prototype.m=function(a,b){this.i=!1;yh(this,a,b);};function yh(a,b,c){a.a=!0;a.c=c;a.f=!b;zh(a);}
-function xh(a){if(a.a){if(!a.l)throw new Ah(a);a.l=!1;}}function Bh(a,b){Ch(a,null,b,void 0);}function Ch(a,b,c,d){a.g.push([b,c,d]);a.a&&zh(a);}uh.prototype.then=function(a,b,c){var d,e,f=new A(function(a,b){d=a;e=b;});Ch(this,d,function(a){a instanceof wh?f.cancel():e(a);});return f.then(a,b,c)};uh.prototype.$goog_Thenable=!0;function Dh(a){return Ea(a.g,function(a){return n(a[1])})}
-function zh(a){if(a.h&&a.a&&Dh(a)){var b=a.h,c=Eh[b];c&&(k.clearTimeout(c.a),delete Eh[b]);a.h=0;}a.b&&(a.b.o--,delete a.b);b=a.c;for(var d=c=!1;a.g.length&&!a.i;){var e=a.g.shift(),f=e[0],h=e[1];e=e[2];if(f=a.f?h:f)try{var m=f.call(e||a.u,b);void 0!==m&&(a.f=a.f&&(m==b||m instanceof Error),a.c=b=m);if(ra(b)||"function"===typeof k.Promise&&b instanceof k.Promise)d=!0,a.i=!0;}catch(p){b=p,a.f=!0,Dh(a)||(c=!0);}}a.c=b;d&&(m=r(a.m,a,!0),d=r(a.m,a,!1),b instanceof uh?(Ch(b,m,d),b.w=!0):b.then(m,d));c&&(b=
-new Fh(b),Eh[b.a]=b,a.h=b.a);}function Ah(){u.call(this);}t(Ah,u);Ah.prototype.message="Deferred has already fired";Ah.prototype.name="AlreadyCalledError";function wh(){u.call(this);}t(wh,u);wh.prototype.message="Deferred was canceled";wh.prototype.name="CanceledError";function Fh(a){this.a=k.setTimeout(r(this.c,this),0);this.b=a;}Fh.prototype.c=function(){delete Eh[this.a];throw this.b;};var Eh={};function Gh(a){var c=document,d=ud(a),e=document.createElement("SCRIPT"),f={Lb:e,Ga:void 0},h=new uh(f),m=null,p=5E3;(m=window.setTimeout(function(){Hh(e,!0);var a=new Ih(Jh,"Timeout reached for loading script "+d);xh(h);yh(h,!1,a);},p),f.Ga=m);e.onload=e.onreadystatechange=function(){e.readyState&&"loaded"!=e.readyState&&"complete"!=e.readyState||(Hh(e,!1,m),xh(h),yh(h,!0,null));};e.onerror=function(){Hh(e,!0,m);var a=new Ih(Kh,"Error while loading script "+
-d);xh(h);yh(h,!1,a);};f={};ab(f,{type:"text/javascript",charset:"UTF-8"});Ld(e,f);Jd(e,a);Lh(c).appendChild(e);return h}function Lh(a){var b;return (b=(a||document).getElementsByTagName("HEAD"))&&0!=b.length?b[0]:a.documentElement}function vh(){if(this&&this.Lb){var a=this.Lb;a&&"SCRIPT"==a.tagName&&Hh(a,!0,this.Ga);}}
-function Hh(a,b,c){null!=c&&k.clearTimeout(c);a.onload=ea;a.onerror=ea;a.onreadystatechange=ea;b&&window.setTimeout(function(){a&&a.parentNode&&a.parentNode.removeChild(a);},0);}var Kh=0,Jh=1;function Ih(a,b){var c="Jsloader error (code #"+a+")";b&&(c+=": "+b);u.call(this,c);this.code=a;}t(Ih,u);function Mh(a){this.f=a;}t(Mh,Fg);Mh.prototype.a=function(){return new this.f};Mh.prototype.b=function(){return {}};
-function Nh(a,b,c){this.b=a;a=b||{};this.i=a.secureTokenEndpoint||"https://securetoken.googleapis.com/v1/token";this.o=a.secureTokenTimeout||Oh;this.f=Za(a.secureTokenHeaders||Ph);this.g=a.firebaseEndpoint||"https://www.googleapis.com/identitytoolkit/v3/relyingparty/";this.h=a.firebaseTimeout||Qh;this.a=Za(a.firebaseHeaders||Rh);c&&(this.a["X-Client-Version"]=c,this.f["X-Client-Version"]=c);c="Node"==pe();c=k.XMLHttpRequest||c&&firebase.INTERNAL.node&&firebase.INTERNAL.node.XMLHttpRequest;if(!c&&
-!oe())throw new L("internal-error","The XMLHttpRequest compatibility library was not found.");this.c=void 0;oe()?this.c=new $g(self):qe()?this.c=new Mh(c):this.c=new Kg;}var Sh,M="idToken",Oh=new Ee(3E4,6E4),Ph={"Content-Type":"application/x-www-form-urlencoded"},Qh=new Ee(3E4,6E4),Rh={"Content-Type":"application/json"};function Th(a,b){b?a.a["X-Firebase-Locale"]=b:delete a.a["X-Firebase-Locale"];}
-function Uh(a,b){b?(a.a["X-Client-Version"]=b,a.f["X-Client-Version"]=b):(delete a.a["X-Client-Version"],delete a.f["X-Client-Version"]);}function Vh(a,b,c,d,e,f,h){$d()||oe()?a=r(a.m,a):(Sh||(Sh=new A(function(a,b){Wh(a,b);})),a=r(a.l,a));a(b,c,d,e,f,h);}
-Nh.prototype.m=function(a,b,c,d,e,f){if(oe()&&("undefined"===typeof k.fetch||"undefined"===typeof k.Headers||"undefined"===typeof k.Request))throw new L("operation-not-supported-in-this-environment","fetch, Headers and Request native APIs or equivalent Polyfills must be available to support HTTP requests from a Worker environment.");var h=new fh(this.c);if(f){h.g=Math.max(0,f);var m=setTimeout(function(){h.dispatchEvent("timeout");},f);}vc(h,"complete",function(){m&&clearTimeout(m);var a=null;try{a=
-JSON.parse(th(this))||null;}catch(x){a=null;}b&&b(a);});Bc(h,"ready",function(){m&&clearTimeout(m);Lb(this);});Bc(h,"timeout",function(){m&&clearTimeout(m);Lb(this);b&&b(null);});jh(h,a,c,d,e);};var Xh=new od(pd,"https://apis.google.com/js/client.js?onload=%{onload}"),Yh="__fcb"+Math.floor(1E6*Math.random()).toString();
-function Wh(a,b){if(((window.gapi||{}).client||{}).request)a();else{k[Yh]=function(){((window.gapi||{}).client||{}).request?a():b(Error("CORS_UNSUPPORTED"));};var c=vd(Xh,{onload:Yh});Bh(Gh(c),function(){b(Error("CORS_UNSUPPORTED"));});}}
-Nh.prototype.l=function(a,b,c,d,e){var f=this;Sh.then(function(){window.gapi.client.setApiKey(f.b);var h=window.gapi.auth.getToken();window.gapi.auth.setToken(null);window.gapi.client.request({path:a,method:c,body:d,headers:e,authType:"none",callback:function(a){window.gapi.auth.setToken(h);b&&b(a);}});}).s(function(a){b&&b({error:{message:a&&a.message||"CORS_UNSUPPORTED"}});});};
-function Zh(a,b){return new A(function(c,d){"refresh_token"==b.grant_type&&b.refresh_token||"authorization_code"==b.grant_type&&b.code?Vh(a,a.i+"?key="+encodeURIComponent(a.b),function(a){a?a.error?d($h(a)):a.access_token&&a.refresh_token?c(a):d(new L("internal-error")):d(new L("network-request-failed"));},"POST",id(b).toString(),a.f,a.o.get()):d(new L("internal-error"));})}
-function ai(a,b,c,d,e,f){var h=ed(a.g+b);G(h,"key",a.b);f&&G(h,"cb",qa().toString());var m="GET"==c;if(m)for(var p in d)d.hasOwnProperty(p)&&G(h,p,d[p]);return new A(function(b,f){Vh(a,h.toString(),function(a){a?a.error?f($h(a,e||{})):b(a):f(new L("network-request-failed"));},c,m?void 0:Qd(Ae(d)),a.a,a.h.get());})}function bi(a){a=a.email;if(!l(a)||!ie.test(a))throw new L("invalid-email");}function ci(a){"email"in a&&bi(a);}
-function di(a,b){return P(a,ei,{identifier:b,continueUri:xe()?Xd():"http://localhost"}).then(function(a){return a.allProviders||[]})}function fi(a,b){return P(a,ei,{identifier:b,continueUri:xe()?Xd():"http://localhost"}).then(function(a){return a.signinMethods||[]})}function gi(a){return P(a,hi,{}).then(function(a){return a.authorizedDomains||[]})}function ii(a){if(!a[M])throw new L("internal-error");}
-function ji(a){if(a.phoneNumber||a.temporaryProof){if(!a.phoneNumber||!a.temporaryProof)throw new L("internal-error");}else{if(!a.sessionInfo)throw new L("missing-verification-id");if(!a.code)throw new L("missing-verification-code");}}Nh.prototype.Ra=function(){return P(this,ki,{})};Nh.prototype.qb=function(a,b){return P(this,li,{idToken:a,email:b})};Nh.prototype.rb=function(a,b){return P(this,mg,{idToken:a,password:b})};var mi={displayName:"DISPLAY_NAME",photoUrl:"PHOTO_URL"};g=Nh.prototype;
-g.sb=function(a,b){var c={idToken:a},d=[];Xa(mi,function(a,f){var e=b[f];null===e?d.push(a):f in b&&(c[f]=e);});d.length&&(c.deleteAttribute=d);return P(this,li,c)};g.lb=function(a,b){a={requestType:"PASSWORD_RESET",email:a};ab(a,b);return P(this,ni,a)};g.mb=function(a,b){a={requestType:"EMAIL_SIGNIN",email:a};ab(a,b);return P(this,oi,a)};g.kb=function(a,b){a={requestType:"VERIFY_EMAIL",idToken:a};ab(a,b);return P(this,pi,a)};function ug(a,b){return P(a,qi,b)}g.Va=function(a){return P(this,ri,a)};
-function si(a,b,c){return P(a,ti,{idToken:b,deleteProvider:c})}function ui(a){if(!a.requestUri||!a.sessionId&&!a.postBody&&!a.pendingToken)throw new L("internal-error");}function vi(a,b){b.oauthIdToken&&b.providerId&&0==b.providerId.indexOf("oidc.")&&!b.pendingToken&&(a.sessionId?b.nonce=a.sessionId:a.postBody&&(a=new Uc(a.postBody),md(a,"nonce")&&(b.nonce=a.get("nonce"))));return b}
-function wi(a){var b=null;a.needConfirmation?(a.code="account-exists-with-different-credential",b=Eg(a)):"FEDERATED_USER_ID_ALREADY_LINKED"==a.errorMessage?(a.code="credential-already-in-use",b=Eg(a)):"EMAIL_EXISTS"==a.errorMessage?(a.code="email-already-in-use",b=Eg(a)):a.errorMessage&&(b=xi(a.errorMessage));if(b)throw b;if(!a[M])throw new L("internal-error");}function Tf(a,b){b.returnIdpCredential=!0;return P(a,yi,b)}function Vf(a,b){b.returnIdpCredential=!0;return P(a,zi,b)}
-function Wf(a,b){b.returnIdpCredential=!0;b.autoCreate=!1;return P(a,Ai,b)}function Bi(a){if(!a.oobCode)throw new L("invalid-action-code");}g.$a=function(a,b){return P(this,Ci,{oobCode:a,newPassword:b})};g.Ja=function(a){return P(this,Di,{oobCode:a})};g.Xa=function(a){return P(this,Ei,{oobCode:a})};
-var Ei={endpoint:"setAccountInfo",B:Bi,da:"email"},Di={endpoint:"resetPassword",B:Bi,J:function(a){var b=a.requestType;if(!b||!a.email&&"EMAIL_SIGNIN"!=b)throw new L("internal-error");}},Fi={endpoint:"signupNewUser",B:function(a){bi(a);if(!a.password)throw new L("weak-password");},J:ii,R:!0},ei={endpoint:"createAuthUri"},Gi={endpoint:"deleteAccount",T:["idToken"]},ti={endpoint:"setAccountInfo",T:["idToken","deleteProvider"],B:function(a){if(!ia(a.deleteProvider))throw new L("internal-error");}},jg=
-{endpoint:"emailLinkSignin",T:["email","oobCode"],B:bi,J:ii,R:!0},lg={endpoint:"emailLinkSignin",T:["idToken","email","oobCode"],B:bi,J:ii,R:!0},Hi={endpoint:"getAccountInfo"},oi={endpoint:"getOobConfirmationCode",T:["requestType"],B:function(a){if("EMAIL_SIGNIN"!=a.requestType)throw new L("internal-error");bi(a);},da:"email"},pi={endpoint:"getOobConfirmationCode",T:["idToken","requestType"],B:function(a){if("VERIFY_EMAIL"!=a.requestType)throw new L("internal-error");},da:"email"},ni={endpoint:"getOobConfirmationCode",
-T:["requestType"],B:function(a){if("PASSWORD_RESET"!=a.requestType)throw new L("internal-error");bi(a);},da:"email"},hi={vb:!0,endpoint:"getProjectConfig",Ib:"GET"},Ii={vb:!0,endpoint:"getRecaptchaParam",Ib:"GET",J:function(a){if(!a.recaptchaSiteKey)throw new L("internal-error");}},Ci={endpoint:"resetPassword",B:Bi,da:"email"},qi={endpoint:"sendVerificationCode",T:["phoneNumber","recaptchaToken"],da:"sessionInfo"},li={endpoint:"setAccountInfo",T:["idToken"],B:ci,R:!0},mg={endpoint:"setAccountInfo",
-T:["idToken"],B:function(a){ci(a);if(!a.password)throw new L("weak-password");},J:ii,R:!0},ki={endpoint:"signupNewUser",J:ii,R:!0},yi={endpoint:"verifyAssertion",B:ui,Pa:vi,J:wi,R:!0},Ai={endpoint:"verifyAssertion",B:ui,Pa:vi,J:function(a){if(a.errorMessage&&"USER_NOT_FOUND"==a.errorMessage)throw new L("user-not-found");if(a.errorMessage)throw xi(a.errorMessage);if(!a[M])throw new L("internal-error");},R:!0},zi={endpoint:"verifyAssertion",B:function(a){ui(a);if(!a.idToken)throw new L("internal-error");
-},Pa:vi,J:wi,R:!0},Ji={endpoint:"verifyCustomToken",B:function(a){if(!a.token)throw new L("invalid-custom-token");},J:ii,R:!0},kg={endpoint:"verifyPassword",B:function(a){bi(a);if(!a.password)throw new L("wrong-password");},J:ii,R:!0},ri={endpoint:"verifyPhoneNumber",B:ji,J:ii},rg={endpoint:"verifyPhoneNumber",B:function(a){if(!a.idToken)throw new L("internal-error");ji(a);},J:function(a){if(a.temporaryProof)throw a.code="credential-already-in-use",Eg(a);ii(a);}},sg={Xb:{USER_NOT_FOUND:"user-not-found"},
-endpoint:"verifyPhoneNumber",B:ji,J:ii};function P(a,b,c){if(!Re(c,b.T))return C(new L("internal-error"));var d=b.Ib||"POST",e;return B(c).then(b.B).then(function(){b.R&&(c.returnSecureToken=!0);return ai(a,b.endpoint,d,c,b.Xb,b.vb||!1)}).then(function(a){e=a;return b.Pa?b.Pa(c,e):e}).then(b.J).then(function(){if(!b.da)return e;if(!(b.da in e))throw new L("internal-error");return e[b.da]})}function xi(a){return $h({error:{errors:[{message:a}],code:400,message:a}})}
-function $h(a,b){var c=(a.error&&a.error.errors&&a.error.errors[0]||{}).reason||"";var d={keyInvalid:"invalid-api-key",ipRefererBlocked:"app-not-authorized"};if(c=d[c]?new L(d[c]):null)return c;c=a.error&&a.error.message||"";d={INVALID_CUSTOM_TOKEN:"invalid-custom-token",CREDENTIAL_MISMATCH:"custom-token-mismatch",MISSING_CUSTOM_TOKEN:"internal-error",INVALID_IDENTIFIER:"invalid-email",MISSING_CONTINUE_URI:"internal-error",INVALID_EMAIL:"invalid-email",INVALID_PASSWORD:"wrong-password",USER_DISABLED:"user-disabled",
+"user-cancelled":"User did not grant your application the permissions it requested.","user-not-found":"There is no user record corresponding to this identifier. The user may have been deleted.","user-disabled":"The user account has been disabled by an administrator.","user-mismatch":"The supplied credentials do not correspond to the previously signed in user.","user-signed-out":"","weak-password":"The password must be 6 characters long or more.","web-storage-unsupported":"This browser is not supported or 3rd party cookies and data may be disabled."};function cf(a){var b=a[df];if("undefined"===typeof b)throw new L("missing-continue-uri");if("string"!==typeof b||"string"===typeof b&&!b.length)throw new L("invalid-continue-uri");this.h=b;this.b=this.a=null;this.g=!1;var c=a[ef];if(c&&"object"===typeof c){b=c[ff];var d=c[gf];c=c[hf];if("string"===typeof b&&b.length){this.a=b;if("undefined"!==typeof d&&"boolean"!==typeof d)throw new L("argument-error",gf+" property must be a boolean when specified.");this.g=!!d;if("undefined"!==typeof c&&("string"!==
+typeof c||"string"===typeof c&&!c.length))throw new L("argument-error",hf+" property must be a non empty string when specified.");this.b=c||null;}else{if("undefined"!==typeof b)throw new L("argument-error",ff+" property must be a non empty string when specified.");if("undefined"!==typeof d||"undefined"!==typeof c)throw new L("missing-android-pkg-name");}}else if("undefined"!==typeof c)throw new L("argument-error",ef+" property must be a non null object when specified.");this.f=null;if((b=a[jf])&&"object"===
+typeof b)if(b=b[kf],"string"===typeof b&&b.length)this.f=b;else{if("undefined"!==typeof b)throw new L("argument-error",kf+" property must be a non empty string when specified.");}else if("undefined"!==typeof b)throw new L("argument-error",jf+" property must be a non null object when specified.");b=a[lf];if("undefined"!==typeof b&&"boolean"!==typeof b)throw new L("argument-error",lf+" property must be a boolean when specified.");this.c=!!b;a=a[mf];if("undefined"!==typeof a&&("string"!==typeof a||"string"===
+typeof a&&!a.length))throw new L("argument-error",mf+" property must be a non empty string when specified.");this.i=a||null;}var ef="android",mf="dynamicLinkDomain",lf="handleCodeInApp",jf="iOS",df="url",gf="installApp",hf="minimumVersion",ff="packageName",kf="bundleId";
+function nf(a){var b={};b.continueUrl=a.h;b.canHandleCodeInApp=a.c;if(b.androidPackageName=a.a)b.androidMinimumVersion=a.b,b.androidInstallApp=a.g;b.iOSBundleId=a.f;b.dynamicLinkDomain=a.i;for(var c in b)null===b[c]&&delete b[c];return b}function of(a){return Ca(a,function(a){a=a.toString(16);return 1<a.length?a:"0"+a}).join("")}var pf=null,qf=null;function rf(a){var b="";sf(a,function(a){b+=String.fromCharCode(a);});return b}function sf(a,b){function c(b){for(;d<a.length;){var c=a.charAt(d++),e=qf[c];if(null!=e)return e;if(!/^[\s\xa0]*$/.test(c))throw Error("Unknown base64 encoding at char: "+c);}return b}tf();for(var d=0;;){var e=c(-1),f=c(0),h=c(64),m=c(64);if(64===m&&-1===e)break;b(e<<2|f>>4);64!=h&&(b(f<<4&240|h>>2),64!=m&&b(h<<6&192|m));}}
+function tf(){if(!pf){pf={};qf={};for(var a=0;65>a;a++)pf[a]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=".charAt(a),qf[pf[a]]=a,62<=a&&(qf["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.".charAt(a)]=a);}}function uf(a){this.c=a.sub;this.a=a.provider_id||a.firebase&&a.firebase.sign_in_provider||null;this.b=!!a.is_anonymous||"anonymous"==this.a;}uf.prototype.f=function(){return this.b};function vf(a){return (a=wf(a))&&a.sub&&a.iss&&a.aud&&a.exp?new uf(a):null}function wf(a){if(!a)return null;a=a.split(".");if(3!=a.length)return null;a=a[1];for(var b=(4-a.length%4)%4,c=0;c<b;c++)a+=".";try{return JSON.parse(rf(a))}catch(d){}return null}var xf={$c:{ab:"https://www.googleapis.com/identitytoolkit/v3/relyingparty/",ib:"https://securetoken.googleapis.com/v1/token",id:"p"},bd:{ab:"https://staging-www.sandbox.googleapis.com/identitytoolkit/v3/relyingparty/",ib:"https://staging-securetoken.sandbox.googleapis.com/v1/token",id:"s"},cd:{ab:"https://www-googleapis-test.sandbox.google.com/identitytoolkit/v3/relyingparty/",ib:"https://test-securetoken.sandbox.googleapis.com/v1/token",id:"t"}};
+function yf(a){for(var b in xf)if(xf[b].id===a)return a=xf[b],{firebaseEndpoint:a.ab,secureTokenEndpoint:a.ib};return null}var zf;zf=yf("__EID__")?"__EID__":void 0;var Af="oauth_consumer_key oauth_nonce oauth_signature oauth_signature_method oauth_timestamp oauth_token oauth_version".split(" "),Bf=["client_id","response_type","scope","redirect_uri","state"],Cf={Vc:{Ma:"locale",Ba:500,Aa:600,Na:"facebook.com",hb:Bf},Xc:{Ma:null,Ba:500,Aa:620,Na:"github.com",hb:Bf},Yc:{Ma:"hl",Ba:515,Aa:680,Na:"google.com",hb:Bf},dd:{Ma:"lang",Ba:485,Aa:705,Na:"twitter.com",hb:Af}};function Df(a){for(var b in Cf)if(Cf[b].Na==a)return Cf[b];return null}function Ef(a){var b={};b["facebook.com"]=Ff;b["google.com"]=Gf;b["github.com"]=Hf;b["twitter.com"]=If;var c=a&&a[Jf];try{if(c)return b[c]?new b[c](a):new Kf(a);if("undefined"!==typeof a[Lf])return new Mf(a)}catch(d){}return null}var Lf="idToken",Jf="providerId";
+function Mf(a){var b=a[Jf];if(!b&&a[Lf]){var c=vf(a[Lf]);c&&c.a&&(b=c.a);}if(!b)throw Error("Invalid additional user info!");if("anonymous"==b||"custom"==b)b=null;c=!1;"undefined"!==typeof a.isNewUser?c=!!a.isNewUser:"identitytoolkit#SignupNewUserResponse"===a.kind&&(c=!0);J(this,"providerId",b);J(this,"isNewUser",c);}function Kf(a){Mf.call(this,a);a=ze(a.rawUserInfo||"{}");J(this,"profile",Qe(a||{}));}t(Kf,Mf);
+function Ff(a){Kf.call(this,a);if("facebook.com"!=this.providerId)throw Error("Invalid provider ID!");}t(Ff,Kf);function Hf(a){Kf.call(this,a);if("github.com"!=this.providerId)throw Error("Invalid provider ID!");J(this,"username",this.profile&&this.profile.login||null);}t(Hf,Kf);function Gf(a){Kf.call(this,a);if("google.com"!=this.providerId)throw Error("Invalid provider ID!");}t(Gf,Kf);
+function If(a){Kf.call(this,a);if("twitter.com"!=this.providerId)throw Error("Invalid provider ID!");J(this,"username",a.screenName||null);}t(If,Kf);function Nf(a){this.a=dd(a);}function Of(a){var b=dd(a),c=cd(b,"link"),d=cd(dd(c),"link");b=cd(b,"deep_link_id");return cd(dd(b),"link")||b||d||c||a}function Pf(a,b){return a.then(function(a){if(a[M]){var c=vf(a[M]);if(!c||b!=c.c)throw new L("user-mismatch");return a}throw new L("user-mismatch");}).s(function(a){throw a&&a.code&&a.code==$e+"user-not-found"?new L("user-mismatch"):a;})}function Qf(a,b){if(b)this.a=b;else throw new L("internal-error","failed to construct a credential");J(this,"providerId",a);J(this,"signInMethod",a);}Qf.prototype.la=function(a){return Rf(a,Sf(this))};
+Qf.prototype.b=function(a,b){var c=Sf(this);c.idToken=b;return Tf(a,c)};Qf.prototype.f=function(a,b){return Pf(Uf(a,Sf(this)),b)};function Sf(a){return {pendingToken:a.a,requestUri:"http://localhost"}}Qf.prototype.C=function(){return {providerId:this.providerId,signInMethod:this.signInMethod,pendingToken:this.a}};
+function Vf(a,b,c){this.a=null;if(b.idToken||b.accessToken)b.idToken&&J(this,"idToken",b.idToken),b.accessToken&&J(this,"accessToken",b.accessToken),b.nonce&&!b.pendingToken&&J(this,"nonce",b.nonce),b.pendingToken&&(this.a=b.pendingToken);else if(b.oauthToken&&b.oauthTokenSecret)J(this,"accessToken",b.oauthToken),J(this,"secret",b.oauthTokenSecret);else throw new L("internal-error","failed to construct a credential");J(this,"providerId",a);J(this,"signInMethod",c);}
+Vf.prototype.la=function(a){return Rf(a,Wf(this))};Vf.prototype.b=function(a,b){var c=Wf(this);c.idToken=b;return Tf(a,c)};Vf.prototype.f=function(a,b){var c=Wf(this);return Pf(Uf(a,c),b)};
+function Wf(a){var b={};a.idToken&&(b.id_token=a.idToken);a.accessToken&&(b.access_token=a.accessToken);a.secret&&(b.oauth_token_secret=a.secret);b.providerId=a.providerId;a.nonce&&!a.a&&(b.nonce=a.nonce);b={postBody:hd(b).toString(),requestUri:"http://localhost"};a.a&&(delete b.postBody,b.pendingToken=a.a);return b}
+Vf.prototype.C=function(){var a={providerId:this.providerId,signInMethod:this.signInMethod};this.idToken&&(a.oauthIdToken=this.idToken);this.accessToken&&(a.oauthAccessToken=this.accessToken);this.secret&&(a.oauthTokenSecret=this.secret);this.nonce&&(a.nonce=this.nonce);this.a&&(a.pendingToken=this.a);return a};function Xf(a,b){this.Dc=b||[];K(this,{providerId:a,isOAuthProvider:!0});this.yb={};this.cb=(Df(a)||{}).Ma||null;this.$a=null;}Xf.prototype.Da=function(a){this.yb=$a(a);return this};
+function Yf(a){if("string"!==typeof a||0!=a.indexOf("saml."))throw new L("argument-error",'SAML provider IDs must be prefixed with "saml."');Xf.call(this,a,[]);}t(Yf,Xf);function N(a){Xf.call(this,a,Bf);this.a=[];}t(N,Xf);N.prototype.ua=function(a){Ga(this.a,a)||this.a.push(a);return this};N.prototype.Eb=function(){return Ja(this.a)};
+N.prototype.credential=function(a,b,c){if(!a&&!b)throw new L("argument-error","credential failed: must provide the ID token and/or the access token.");return new Vf(this.providerId,{idToken:a||null,accessToken:b||null,nonce:c||null},this.providerId)};function Zf(){N.call(this,"facebook.com");}t(Zf,N);J(Zf,"PROVIDER_ID","facebook.com");J(Zf,"FACEBOOK_SIGN_IN_METHOD","facebook.com");
+function $f(a){if(!a)throw new L("argument-error","credential failed: expected 1 argument (the OAuth access token).");var b=a;q(a)&&(b=a.accessToken);return (new Zf).credential(null,b)}function ag(){N.call(this,"github.com");}t(ag,N);J(ag,"PROVIDER_ID","github.com");J(ag,"GITHUB_SIGN_IN_METHOD","github.com");function bg(a){if(!a)throw new L("argument-error","credential failed: expected 1 argument (the OAuth access token).");var b=a;q(a)&&(b=a.accessToken);return (new ag).credential(null,b)}
+function cg(){N.call(this,"google.com");this.ua("profile");}t(cg,N);J(cg,"PROVIDER_ID","google.com");J(cg,"GOOGLE_SIGN_IN_METHOD","google.com");function dg(a,b){var c=a;q(a)&&(c=a.idToken,b=a.accessToken);return (new cg).credential(c,b)}function eg(){Xf.call(this,"twitter.com",Af);}t(eg,Xf);J(eg,"PROVIDER_ID","twitter.com");J(eg,"TWITTER_SIGN_IN_METHOD","twitter.com");
+function fg(a,b){var c=a;q(c)||(c={oauthToken:a,oauthTokenSecret:b});if(!c.oauthToken||!c.oauthTokenSecret)throw new L("argument-error","credential failed: expected 2 arguments (the OAuth access token and secret).");return new Vf("twitter.com",c,"twitter.com")}function gg(a,b,c){this.a=a;this.c=b;J(this,"providerId","password");J(this,"signInMethod",c===O.EMAIL_LINK_SIGN_IN_METHOD?O.EMAIL_LINK_SIGN_IN_METHOD:O.EMAIL_PASSWORD_SIGN_IN_METHOD);}
+gg.prototype.la=function(a){return this.signInMethod==O.EMAIL_LINK_SIGN_IN_METHOD?P(a,hg,{email:this.a,oobCode:this.c}):P(a,ig,{email:this.a,password:this.c})};gg.prototype.b=function(a,b){return this.signInMethod==O.EMAIL_LINK_SIGN_IN_METHOD?P(a,jg,{idToken:b,email:this.a,oobCode:this.c}):P(a,kg,{idToken:b,email:this.a,password:this.c})};gg.prototype.f=function(a,b){return Pf(this.la(a),b)};gg.prototype.C=function(){return {email:this.a,password:this.c,signInMethod:this.signInMethod}};
+function O(){K(this,{providerId:"password",isOAuthProvider:!1});}function lg(a,b){b=mg(b);if(!b)throw new L("argument-error","Invalid email link!");return new gg(a,b,O.EMAIL_LINK_SIGN_IN_METHOD)}function mg(a){a=Of(a);a=new Nf(a);var b=cd(a.a,"oobCode")||null;return "signIn"===(cd(a.a,"mode")||null)&&b?b:null}K(O,{PROVIDER_ID:"password"});K(O,{EMAIL_LINK_SIGN_IN_METHOD:"emailLink"});K(O,{EMAIL_PASSWORD_SIGN_IN_METHOD:"password"});
+function ng(a){if(!(a.Ta&&a.Sa||a.Fa&&a.$))throw new L("internal-error");this.a=a;J(this,"providerId","phone");J(this,"signInMethod","phone");}ng.prototype.la=function(a){return a.Ua(og(this))};ng.prototype.b=function(a,b){var c=og(this);c.idToken=b;return P(a,pg,c)};ng.prototype.f=function(a,b){var c=og(this);c.operation="REAUTH";a=P(a,qg,c);return Pf(a,b)};
+ng.prototype.C=function(){var a={providerId:"phone"};this.a.Ta&&(a.verificationId=this.a.Ta);this.a.Sa&&(a.verificationCode=this.a.Sa);this.a.Fa&&(a.temporaryProof=this.a.Fa);this.a.$&&(a.phoneNumber=this.a.$);return a};function og(a){return a.a.Fa&&a.a.$?{temporaryProof:a.a.Fa,phoneNumber:a.a.$}:{sessionInfo:a.a.Ta,code:a.a.Sa}}
+function rg(a){try{this.a=a||firebase.auth();}catch(b){throw new L("argument-error","Either an instance of firebase.auth.Auth must be passed as an argument to the firebase.auth.PhoneAuthProvider constructor, or the default firebase App instance must be initialized via firebase.initializeApp().");}K(this,{providerId:"phone",isOAuthProvider:!1});}
+rg.prototype.Ua=function(a,b){var c=this.a.b;return B(b.verify()).then(function(d){if(!l(d))throw new L("argument-error","An implementation of firebase.auth.ApplicationVerifier.prototype.verify() must return a firebase.Promise that resolves with a string.");switch(b.type){case "recaptcha":return sg(c,{phoneNumber:a,recaptchaToken:d}).then(function(a){"function"===typeof b.reset&&b.reset();return a},function(a){"function"===typeof b.reset&&b.reset();throw a;});default:throw new L("argument-error",
+'Only firebase.auth.ApplicationVerifiers with type="recaptcha" are currently supported.');}})};function tg(a,b){if(!a)throw new L("missing-verification-id");if(!b)throw new L("missing-verification-code");return new ng({Ta:a,Sa:b})}K(rg,{PROVIDER_ID:"phone"});K(rg,{PHONE_SIGN_IN_METHOD:"phone"});
+function ug(a){if(a.temporaryProof&&a.phoneNumber)return new ng({Fa:a.temporaryProof,$:a.phoneNumber});var b=a&&a.providerId;if(!b||"password"===b)return null;var c=a&&a.oauthAccessToken,d=a&&a.oauthTokenSecret,e=a&&a.nonce,f=a&&a.oauthIdToken,h=a&&a.pendingToken;try{switch(b){case "google.com":return dg(f,c);case "facebook.com":return $f(c);case "github.com":return bg(c);case "twitter.com":return fg(c,d);default:return c||d||f||h?h?0==b.indexOf("saml.")?new Qf(b,h):new Vf(b,{pendingToken:h,idToken:a.oauthIdToken,
+accessToken:a.oauthAccessToken},b):(new N(b)).credential(f,c,e):null}}catch(m){return null}}function vg(a){if(!a.isOAuthProvider)throw new L("invalid-oauth-provider");}function wg(a,b,c,d,e,f){this.b=a;this.c=b||null;this.f=c||null;this.g=d||null;this.h=f||null;this.a=e||null;if(this.f||this.a){if(this.f&&this.a)throw new L("invalid-auth-event");if(this.f&&!this.g)throw new L("invalid-auth-event");}else throw new L("invalid-auth-event");}wg.prototype.C=function(){return {type:this.b,eventId:this.c,urlResponse:this.f,sessionId:this.g,postBody:this.h,error:this.a&&this.a.C()}};
+function xg(a){a=a||{};return a.type?new wg(a.type,a.eventId,a.urlResponse,a.sessionId,a.error&&bf(a.error),a.postBody):null}function yg(){this.b=null;this.a=[];}var zg=null;yg.prototype.subscribe=function(a){var b=this;this.a.push(a);this.b||(this.b=function(a){for(var c=0;c<b.a.length;c++)b.a[c](a);},a=I("universalLinks.subscribe",k),"function"===typeof a&&a(null,this.b));};yg.prototype.unsubscribe=function(a){w(this.a,function(b){return b==a});};function Ag(a){var b="unauthorized-domain",c=void 0,d=dd(a);a=d.b;d=d.c;"chrome-extension"==d?c=Ka("This chrome extension ID (chrome-extension://%s) is not authorized to run this operation. Add it to the OAuth redirect domains list in the Firebase console -> Auth section -> Sign in method tab.",a):"http"==d||"https"==d?c=Ka("This domain (%s) is not authorized to run this operation. Add it to the OAuth redirect domains list in the Firebase console -> Auth section -> Sign in method tab.",a):b="operation-not-supported-in-this-environment";
+L.call(this,b,c);}t(Ag,L);function Bg(a,b,c){L.call(this,a,c);a=b||{};a.zb&&J(this,"email",a.zb);a.$&&J(this,"phoneNumber",a.$);a.credential&&J(this,"credential",a.credential);}t(Bg,L);Bg.prototype.C=function(){var a={code:this.code,message:this.message};this.email&&(a.email=this.email);this.phoneNumber&&(a.phoneNumber=this.phoneNumber);var b=this.credential&&this.credential.C();b&&bb(a,b);return a};Bg.prototype.toJSON=function(){return this.C()};
+function Cg(a){if(a.code){var b=a.code||"";0==b.indexOf($e)&&(b=b.substring($e.length));var c={credential:ug(a)};if(a.email)c.zb=a.email;else if(a.phoneNumber)c.$=a.phoneNumber;else if(!c.credential)return new L(b,a.message||void 0);return new Bg(b,c,a.message)}return null}function Dg(){}Dg.prototype.c=null;function Eg(a){return a.c||(a.c=a.b())}var Fg;function Gg(){}t(Gg,Dg);Gg.prototype.a=function(){var a=Hg(this);return a?new ActiveXObject(a):new XMLHttpRequest};Gg.prototype.b=function(){var a={};Hg(this)&&(a[0]=!0,a[1]=!0);return a};
+function Hg(a){if(!a.f&&"undefined"==typeof XMLHttpRequest&&"undefined"!=typeof ActiveXObject){for(var b=["MSXML2.XMLHTTP.6.0","MSXML2.XMLHTTP.3.0","MSXML2.XMLHTTP","Microsoft.XMLHTTP"],c=0;c<b.length;c++){var d=b[c];try{return new ActiveXObject(d),a.f=d}catch(e){}}throw Error("Could not create ActiveXObject. ActiveX might be disabled, or MSXML might not be installed");}return a.f}Fg=new Gg;function Ig(){}t(Ig,Dg);Ig.prototype.a=function(){var a=new XMLHttpRequest;if("withCredentials"in a)return a;if("undefined"!=typeof XDomainRequest)return new Jg;throw Error("Unsupported browser");};Ig.prototype.b=function(){return {}};
+function Jg(){this.a=new XDomainRequest;this.readyState=0;this.onreadystatechange=null;this.responseText="";this.status=-1;this.statusText="";this.a.onload=r(this.ec,this);this.a.onerror=r(this.Fb,this);this.a.onprogress=r(this.fc,this);this.a.ontimeout=r(this.ic,this);}g=Jg.prototype;g.open=function(a,b,c){if(null!=c&&!c)throw Error("Only async requests are supported.");this.a.open(a,b);};
+g.send=function(a){if(a)if("string"==typeof a)this.a.send(a);else throw Error("Only string data is supported");else this.a.send();};g.abort=function(){this.a.abort();};g.setRequestHeader=function(){};g.getResponseHeader=function(a){return "content-type"==a.toLowerCase()?this.a.contentType:""};g.ec=function(){this.status=200;this.responseText=this.a.responseText;Kg(this,4);};g.Fb=function(){this.status=500;this.responseText="";Kg(this,4);};g.ic=function(){this.Fb();};
+g.fc=function(){this.status=200;Kg(this,1);};function Kg(a,b){a.readyState=b;if(a.onreadystatechange)a.onreadystatechange();}g.getAllResponseHeaders=function(){return "content-type: "+this.a.contentType};function Lg(a,b,c){this.reset(a,b,c,void 0,void 0);}Lg.prototype.a=null;Lg.prototype.reset=function(a,b,c,d,e){delete this.a;};function Ng(a){this.f=a;this.b=this.c=this.a=null;}function Og(a,b){this.name=a;this.value=b;}Og.prototype.toString=function(){return this.name};var Pg=new Og("SEVERE",1E3),Qg=new Og("WARNING",900),Rg=new Og("CONFIG",700),Sg=new Og("FINE",500);function Tg(a){if(a.c)return a.c;if(a.a)return Tg(a.a);sa("Root logger has no level set.");return null}Ng.prototype.log=function(a,b,c){if(a.value>=Tg(this).value)for(n(b)&&(b=b()),a=new Lg(a,String(b),this.f),c&&(a.a=c),c=this;c;)c=c.a;};var Ug={},Vg=null;
+function Wg(a){Vg||(Vg=new Ng(""),Ug[""]=Vg,Vg.c=Rg);var b;if(!(b=Ug[a])){b=new Ng(a);var c=a.lastIndexOf("."),d=a.substr(c+1);c=Wg(a.substr(0,c));c.b||(c.b={});c.b[d]=b;b.a=c;Ug[a]=b;}return b}function Xg(a,b){a&&a.log(Sg,b,void 0);}function Yg(a){this.f=a;}t(Yg,Dg);Yg.prototype.a=function(){return new Zg(this.f)};Yg.prototype.b=function(a){return function(){return a}}({});function Zg(a){F.call(this);this.i=a;this.readyState=$g;this.status=0;this.responseText=this.statusText="";this.onreadystatechange=null;this.g=new Headers;this.b=null;this.h="GET";this.c="";this.a=!1;this.f=Wg("goog.net.FetchXmlHttp");}t(Zg,F);var $g=0;g=Zg.prototype;
+g.open=function(a,b){if(this.readyState!=$g)throw this.abort(),Error("Error reopening a connection");this.h=a;this.c=b;this.readyState=1;ah(this);};g.send=function(a){if(1!=this.readyState)throw this.abort(),Error("need to call open() first. ");this.a=!0;var b={headers:this.g,method:this.h,credentials:void 0,cache:void 0};a&&(b.body=a);this.i.fetch(new Request(this.c,b)).then(this.hc.bind(this),this.Gb.bind(this));};
+g.abort=function(){this.responseText="";this.g=new Headers;this.status=0;1<=this.readyState&&this.a&&4!=this.readyState&&(this.readyState=4,this.a=!1,ah(this));this.readyState=$g;};g.hc=function(a){this.a&&(this.b||(this.b=a.headers,this.readyState=2,ah(this)),this.a&&(this.readyState=3,ah(this),this.a&&a.text().then(this.gc.bind(this,a),this.Gb.bind(this))));};g.gc=function(a,b){this.a&&(this.status=a.status,this.statusText=a.statusText,this.responseText=b,this.readyState=4,ah(this));};
+g.Gb=function(a){var b=this.f;b&&b.log(Qg,"Failed to fetch url "+this.c,a instanceof Error?a:Error(a));this.a&&(this.readyState=4,ah(this));};g.setRequestHeader=function(a,b){this.g.append(a,b);};g.getResponseHeader=function(a){return this.b?this.b.get(a.toLowerCase())||"":((a=this.f)&&a.log(Qg,"Attempting to get response header but no headers have been received for url: "+this.c,void 0),"")};
+g.getAllResponseHeaders=function(){if(!this.b){var a=this.f;a&&a.log(Qg,"Attempting to get all response headers but no headers have been received for url: "+this.c,void 0);return ""}a=[];for(var b=this.b.entries(),c=b.next();!c.done;)c=c.value,a.push(c[0]+": "+c[1]),c=b.next();return a.join("\r\n")};function ah(a){a.onreadystatechange&&a.onreadystatechange.call(a);}function bh(a){F.call(this);this.headers=new Lc;this.D=a||null;this.c=!1;this.w=this.a=null;this.h=this.N=this.m="";this.f=this.I=this.i=this.G=!1;this.g=0;this.u=null;this.o=ch;this.v=this.O=!1;}t(bh,F);var ch="";bh.prototype.b=Wg("goog.net.XhrIo");var dh=/^https?$/i,eh=["POST","PUT"];
+function fh(a,b,c,d,e){if(a.a)throw Error("[goog.net.XhrIo] Object is active with another request="+a.m+"; newUri="+b);c=c?c.toUpperCase():"GET";a.m=b;a.h="";a.N=c;a.G=!1;a.c=!0;a.a=a.D?a.D.a():Fg.a();a.w=a.D?Eg(a.D):Eg(Fg);a.a.onreadystatechange=r(a.Jb,a);try{Xg(a.b,gh(a,"Opening Xhr")),a.I=!0,a.a.open(c,String(b),!0),a.I=!1;}catch(h){Xg(a.b,gh(a,"Error opening Xhr: "+h.message));hh(a,h);return}b=d||"";var f=new Lc(a.headers);e&&Kc(e,function(a,b){f.set(b,a);});e=Ea(f.U());d=k.FormData&&b instanceof
+k.FormData;!Ga(eh,c)||e||d||f.set("Content-Type","application/x-www-form-urlencoded;charset=utf-8");f.forEach(function(a,b){this.a.setRequestHeader(b,a);},a);a.o&&(a.a.responseType=a.o);"withCredentials"in a.a&&a.a.withCredentials!==a.O&&(a.a.withCredentials=a.O);try{ih(a),0<a.g&&(a.v=jh(a.a),Xg(a.b,gh(a,"Will abort after "+a.g+"ms if incomplete, xhr2 "+a.v)),a.v?(a.a.timeout=a.g,a.a.ontimeout=r(a.Ga,a)):a.u=Gc(a.Ga,a.g,a)),Xg(a.b,gh(a,"Sending request")),a.i=!0,a.a.send(b),a.i=!1;}catch(h){Xg(a.b,
+gh(a,"Send error: "+h.message)),hh(a,h);}}function jh(a){return Pb&&Zb(9)&&"number"==typeof a.timeout&&void 0!==a.ontimeout}function Fa(a){return "content-type"==a.toLowerCase()}g=bh.prototype;g.Ga=function(){"undefined"!=typeof aa&&this.a&&(this.h="Timed out after "+this.g+"ms, aborting",Xg(this.b,gh(this,this.h)),this.dispatchEvent("timeout"),this.abort(8));};function hh(a,b){a.c=!1;a.a&&(a.f=!0,a.a.abort(),a.f=!1);a.h=b;kh(a);lh(a);}
+function kh(a){a.G||(a.G=!0,a.dispatchEvent("complete"),a.dispatchEvent("error"));}g.abort=function(){this.a&&this.c&&(Xg(this.b,gh(this,"Aborting")),this.c=!1,this.f=!0,this.a.abort(),this.f=!1,this.dispatchEvent("complete"),this.dispatchEvent("abort"),lh(this));};g.va=function(){this.a&&(this.c&&(this.c=!1,this.f=!0,this.a.abort(),this.f=!1),lh(this,!0));bh.ob.va.call(this);};g.Jb=function(){this.qa||(this.I||this.i||this.f?mh(this):this.wc());};g.wc=function(){mh(this);};
+function mh(a){if(a.c&&"undefined"!=typeof aa)if(a.w[1]&&4==nh(a)&&2==oh(a))Xg(a.b,gh(a,"Local request error detected and ignored"));else if(a.i&&4==nh(a))Gc(a.Jb,0,a);else if(a.dispatchEvent("readystatechange"),4==nh(a)){Xg(a.b,gh(a,"Request complete"));a.c=!1;try{var b=oh(a);a:switch(b){case 200:case 201:case 202:case 204:case 206:case 304:case 1223:var c=!0;break a;default:c=!1;}var d;if(!(d=c)){var e;if(e=0===b){var f=String(a.m).match(Oc)[1]||null;if(!f&&k.self&&k.self.location){var h=k.self.location.protocol;
+f=h.substr(0,h.length-1);}e=!dh.test(f?f.toLowerCase():"");}d=e;}if(d)a.dispatchEvent("complete"),a.dispatchEvent("success");else{try{var m=2<nh(a)?a.a.statusText:"";}catch(p){Xg(a.b,"Can not get status: "+p.message),m="";}a.h=m+" ["+oh(a)+"]";kh(a);}}finally{lh(a);}}}function lh(a,b){if(a.a){ih(a);var c=a.a,d=a.w[0]?ca:null;a.a=null;a.w=null;b||a.dispatchEvent("ready");try{c.onreadystatechange=d;}catch(e){(a=a.b)&&a.log(Pg,"Problem encountered resetting onreadystatechange: "+e.message,void 0);}}}
+function ih(a){a.a&&a.v&&(a.a.ontimeout=null);a.u&&(k.clearTimeout(a.u),a.u=null);}function nh(a){return a.a?a.a.readyState:0}function oh(a){try{return 2<nh(a)?a.a.status:-1}catch(b){return -1}}function ph(a){try{return a.a?a.a.responseText:""}catch(b){return Xg(a.b,"Can not get responseText: "+b.message),""}}
+g.getResponse=function(){try{if(!this.a)return null;if("response"in this.a)return this.a.response;switch(this.o){case ch:case "text":return this.a.responseText;case "arraybuffer":if("mozResponseArrayBuffer"in this.a)return this.a.mozResponseArrayBuffer}var a=this.b;a&&a.log(Pg,"Response type "+this.o+" is not supported on this browser",void 0);return null}catch(b){return Xg(this.b,"Can not get response: "+b.message),null}};function gh(a,b){return b+" ["+a.N+" "+a.m+" "+oh(a)+"]"}function qh(a,b){this.g=[];this.v=a;this.u=b||null;this.f=this.a=!1;this.c=void 0;this.m=this.w=this.i=!1;this.h=0;this.b=null;this.l=0;}qh.prototype.cancel=function(a){if(this.a)this.c instanceof qh&&this.c.cancel();else{if(this.b){var b=this.b;delete this.b;a?b.cancel(a):(b.l--,0>=b.l&&b.cancel());}this.v?this.v.call(this.u,this):this.m=!0;this.a||(a=new rh(this),sh(this),th(this,!1,a));}};qh.prototype.o=function(a,b){this.i=!1;th(this,a,b);};function th(a,b,c){a.a=!0;a.c=c;a.f=!b;uh(a);}
+function sh(a){if(a.a){if(!a.m)throw new vh(a);a.m=!1;}}qh.prototype.D=function(){sh(this);th(this,!0,null);};function wh(a,b){xh(a,null,b,void 0);}function xh(a,b,c,d){a.g.push([b,c,d]);a.a&&uh(a);}qh.prototype.then=function(a,b,c){var d,e,f=new A(function(a,b){d=a;e=b;});xh(this,d,function(a){a instanceof rh?f.cancel():e(a);});return f.then(a,b,c)};pa(qh);function yh(a){return Da(a.g,function(a){return n(a[1])})}
+function uh(a){if(a.h&&a.a&&yh(a)){var b=a.h,c=zh[b];c&&(k.clearTimeout(c.a),delete zh[b]);a.h=0;}a.b&&(a.b.l--,delete a.b);b=a.c;for(var d=c=!1;a.g.length&&!a.i;){var e=a.g.shift(),f=e[0],h=e[1];e=e[2];if(f=a.f?h:f)try{var m=f.call(e||a.u,b);void 0!==m&&(a.f=a.f&&(m==b||m instanceof Error),a.c=b=m);if(qa(b)||"function"===typeof k.Promise&&b instanceof k.Promise)d=!0,a.i=!0;}catch(p){b=p,a.f=!0,yh(a)||(c=!0);}}a.c=b;d&&(m=r(a.o,a,!0),d=r(a.o,a,!1),b instanceof qh?(xh(b,m,d),b.w=!0):b.then(m,d));c&&(b=
+new Ah(b),zh[b.a]=b,a.h=b.a);}function vh(){u.call(this);}t(vh,u);vh.prototype.message="Deferred has already fired";vh.prototype.name="AlreadyCalledError";function rh(){u.call(this);}t(rh,u);rh.prototype.message="Deferred was canceled";rh.prototype.name="CanceledError";function Ah(a){this.a=k.setTimeout(r(this.c,this),0);this.b=a;}Ah.prototype.c=function(){delete zh[this.a];throw this.b;};var zh={};function Bh(a){var c=document,d=td(a),e=document.createElement("SCRIPT"),f={Lb:e,Ga:void 0},h=new qh(Ch,f),m=null,p=5E3;(m=window.setTimeout(function(){Dh(e,!0);var a=new Eh(Fh,"Timeout reached for loading script "+d);sh(h);th(h,!1,a);},p),f.Ga=m);e.onload=e.onreadystatechange=function(){e.readyState&&"loaded"!=e.readyState&&"complete"!=e.readyState||(Dh(e,!1,m),h.D());};e.onerror=function(){Dh(e,!0,m);var a=new Eh(Gh,"Error while loading script "+
+d);sh(h);th(h,!1,a);};f={};bb(f,{type:"text/javascript",charset:"UTF-8"});Jd(e,f);e.src=td(a);Hh(c).appendChild(e);return h}function Hh(a){var b;return (b=(a||document).getElementsByTagName("HEAD"))&&0!=b.length?b[0]:a.documentElement}function Ch(){if(this&&this.Lb){var a=this.Lb;a&&"SCRIPT"==a.tagName&&Dh(a,!0,this.Ga);}}
+function Dh(a,b,c){null!=c&&k.clearTimeout(c);a.onload=ca;a.onerror=ca;a.onreadystatechange=ca;b&&window.setTimeout(function(){a&&a.parentNode&&a.parentNode.removeChild(a);},0);}var Gh=0,Fh=1;function Eh(a,b){var c="Jsloader error (code #"+a+")";b&&(c+=": "+b);u.call(this,c);this.code=a;}t(Eh,u);function Ih(a){this.f=a;}t(Ih,Dg);Ih.prototype.a=function(){return new this.f};Ih.prototype.b=function(){return {}};
+function Jh(a,b,c){this.b=a;a=b||{};this.i=a.secureTokenEndpoint||"https://securetoken.googleapis.com/v1/token";this.l=a.secureTokenTimeout||Kh;this.f=$a(a.secureTokenHeaders||Lh);this.g=a.firebaseEndpoint||"https://www.googleapis.com/identitytoolkit/v3/relyingparty/";this.h=a.firebaseTimeout||Mh;this.a=$a(a.firebaseHeaders||Nh);c&&(this.a["X-Client-Version"]=c,this.f["X-Client-Version"]=c);c="Node"==ne();c=k.XMLHttpRequest||c&&firebase.INTERNAL.node&&firebase.INTERNAL.node.XMLHttpRequest;if(!c&&
+!me())throw new L("internal-error","The XMLHttpRequest compatibility library was not found.");this.c=void 0;me()?this.c=new Yg(self):oe()?this.c=new Ih(c):this.c=new Ig;}var Oh,M="idToken",Kh=new Ce(3E4,6E4),Lh={"Content-Type":"application/x-www-form-urlencoded"},Mh=new Ce(3E4,6E4),Nh={"Content-Type":"application/json"};function Ph(a,b){b?a.a["X-Firebase-Locale"]=b:delete a.a["X-Firebase-Locale"];}
+function Qh(a,b){b?(a.a["X-Client-Version"]=b,a.f["X-Client-Version"]=b):(delete a.a["X-Client-Version"],delete a.f["X-Client-Version"]);}function Rh(a,b,c,d,e,f,h){Yd()||me()?a=r(a.o,a):(Oh||(Oh=new A(function(a,b){Sh(a,b);})),a=r(a.m,a));a(b,c,d,e,f,h);}
+Jh.prototype.o=function(a,b,c,d,e,f){if(me()&&("undefined"===typeof k.fetch||"undefined"===typeof k.Headers||"undefined"===typeof k.Request))throw new L("operation-not-supported-in-this-environment","fetch, Headers and Request native APIs or equivalent Polyfills must be available to support HTTP requests from a Worker environment.");var h=new bh(this.c);if(f){h.g=Math.max(0,f);var m=setTimeout(function(){h.dispatchEvent("timeout");},f);}uc(h,"complete",function(){m&&clearTimeout(m);var a=null;try{a=
+JSON.parse(ph(this))||null;}catch(x){a=null;}b&&b(a);});Ac(h,"ready",function(){m&&clearTimeout(m);Kb(this);});Ac(h,"timeout",function(){m&&clearTimeout(m);Kb(this);b&&b(null);});fh(h,a,c,d,e);};var Th=qd("https://apis.google.com/js/client.js?onload=%{onload}"),Uh="__fcb"+Math.floor(1E6*Math.random()).toString();
+function Sh(a,b){if(((window.gapi||{}).client||{}).request)a();else{k[Uh]=function(){((window.gapi||{}).client||{}).request?a():b(Error("CORS_UNSUPPORTED"));};var c=ud(Th,{onload:Uh});wh(Bh(c),function(){b(Error("CORS_UNSUPPORTED"));});}}
+Jh.prototype.m=function(a,b,c,d,e){var f=this;Oh.then(function(){window.gapi.client.setApiKey(f.b);var h=window.gapi.auth.getToken();window.gapi.auth.setToken(null);window.gapi.client.request({path:a,method:c,body:d,headers:e,authType:"none",callback:function(a){window.gapi.auth.setToken(h);b&&b(a);}});}).s(function(a){b&&b({error:{message:a&&a.message||"CORS_UNSUPPORTED"}});});};
+function Vh(a,b){return new A(function(c,d){"refresh_token"==b.grant_type&&b.refresh_token||"authorization_code"==b.grant_type&&b.code?Rh(a,a.i+"?key="+encodeURIComponent(a.b),function(a){a?a.error?d(Wh(a)):a.access_token&&a.refresh_token?c(a):d(new L("internal-error")):d(new L("network-request-failed"));},"POST",hd(b).toString(),a.f,a.l.get()):d(new L("internal-error"));})}
+function Xh(a,b,c,d,e,f){var h=dd(a.g+b);G(h,"key",a.b);f&&G(h,"cb",oa().toString());var m="GET"==c;if(m)for(var p in d)d.hasOwnProperty(p)&&G(h,p,d[p]);return new A(function(b,f){Rh(a,h.toString(),function(a){a?a.error?f(Wh(a,e||{})):b(a):f(new L("network-request-failed"));},c,m?void 0:Od(ye(d)),a.a,a.h.get());})}function Yh(a){a=a.email;if(!l(a)||!ge.test(a))throw new L("invalid-email");}function Zh(a){"email"in a&&Yh(a);}
+function $h(a,b){return P(a,ai,{identifier:b,continueUri:ve()?Vd():"http://localhost"}).then(function(a){return a.allProviders||[]})}function bi(a,b){return P(a,ai,{identifier:b,continueUri:ve()?Vd():"http://localhost"}).then(function(a){return a.signinMethods||[]})}function ci(a){return P(a,di,{}).then(function(a){return a.authorizedDomains||[]})}function ei(a){if(!a[M])throw new L("internal-error");}
+function fi(a){if(a.phoneNumber||a.temporaryProof){if(!a.phoneNumber||!a.temporaryProof)throw new L("internal-error");}else{if(!a.sessionInfo)throw new L("missing-verification-id");if(!a.code)throw new L("missing-verification-code");}}Jh.prototype.Qa=function(){return P(this,gi,{})};Jh.prototype.pb=function(a,b){return P(this,hi,{idToken:a,email:b})};Jh.prototype.qb=function(a,b){return P(this,kg,{idToken:a,password:b})};var ii={displayName:"DISPLAY_NAME",photoUrl:"PHOTO_URL"};g=Jh.prototype;
+g.rb=function(a,b){var c={idToken:a},d=[];Ya(ii,function(a,f){var e=b[f];null===e?d.push(a):f in b&&(c[f]=e);});d.length&&(c.deleteAttribute=d);return P(this,hi,c)};g.kb=function(a,b){a={requestType:"PASSWORD_RESET",email:a};bb(a,b);return P(this,ji,a)};g.lb=function(a,b){a={requestType:"EMAIL_SIGNIN",email:a};bb(a,b);return P(this,ki,a)};g.jb=function(a,b){a={requestType:"VERIFY_EMAIL",idToken:a};bb(a,b);return P(this,li,a)};function sg(a,b){return P(a,mi,b)}g.Ua=function(a){return P(this,ni,a)};
+function oi(a,b,c){return P(a,pi,{idToken:b,deleteProvider:c})}function qi(a){if(!a.requestUri||!a.sessionId&&!a.postBody&&!a.pendingToken)throw new L("internal-error");}function ri(a,b){b.oauthIdToken&&b.providerId&&0==b.providerId.indexOf("oidc.")&&!b.pendingToken&&(a.sessionId?b.nonce=a.sessionId:a.postBody&&(a=new Tc(a.postBody),ld(a,"nonce")&&(b.nonce=a.get("nonce"))));return b}
+function si(a){var b=null;a.needConfirmation?(a.code="account-exists-with-different-credential",b=Cg(a)):"FEDERATED_USER_ID_ALREADY_LINKED"==a.errorMessage?(a.code="credential-already-in-use",b=Cg(a)):"EMAIL_EXISTS"==a.errorMessage?(a.code="email-already-in-use",b=Cg(a)):a.errorMessage&&(b=ti(a.errorMessage));if(b)throw b;if(!a[M])throw new L("internal-error");}function Rf(a,b){b.returnIdpCredential=!0;return P(a,ui,b)}function Tf(a,b){b.returnIdpCredential=!0;return P(a,vi,b)}
+function Uf(a,b){b.returnIdpCredential=!0;b.autoCreate=!1;return P(a,wi,b)}function xi(a){if(!a.oobCode)throw new L("invalid-action-code");}g.Za=function(a,b){return P(this,yi,{oobCode:a,newPassword:b})};g.Ja=function(a){return P(this,zi,{oobCode:a})};g.Wa=function(a){return P(this,Ai,{oobCode:a})};
+var Ai={endpoint:"setAccountInfo",B:xi,da:"email"},zi={endpoint:"resetPassword",B:xi,J:function(a){var b=a.requestType;if(!b||!a.email&&"EMAIL_SIGNIN"!=b)throw new L("internal-error");}},Bi={endpoint:"signupNewUser",B:function(a){Yh(a);if(!a.password)throw new L("weak-password");},J:ei,R:!0},ai={endpoint:"createAuthUri"},Ci={endpoint:"deleteAccount",T:["idToken"]},pi={endpoint:"setAccountInfo",T:["idToken","deleteProvider"],B:function(a){if(!fa(a.deleteProvider))throw new L("internal-error");}},hg=
+{endpoint:"emailLinkSignin",T:["email","oobCode"],B:Yh,J:ei,R:!0},jg={endpoint:"emailLinkSignin",T:["idToken","email","oobCode"],B:Yh,J:ei,R:!0},Di={endpoint:"getAccountInfo"},ki={endpoint:"getOobConfirmationCode",T:["requestType"],B:function(a){if("EMAIL_SIGNIN"!=a.requestType)throw new L("internal-error");Yh(a);},da:"email"},li={endpoint:"getOobConfirmationCode",T:["idToken","requestType"],B:function(a){if("VERIFY_EMAIL"!=a.requestType)throw new L("internal-error");},da:"email"},ji={endpoint:"getOobConfirmationCode",
+T:["requestType"],B:function(a){if("PASSWORD_RESET"!=a.requestType)throw new L("internal-error");Yh(a);},da:"email"},di={ub:!0,endpoint:"getProjectConfig",Ib:"GET"},Ei={ub:!0,endpoint:"getRecaptchaParam",Ib:"GET",J:function(a){if(!a.recaptchaSiteKey)throw new L("internal-error");}},yi={endpoint:"resetPassword",B:xi,da:"email"},mi={endpoint:"sendVerificationCode",T:["phoneNumber","recaptchaToken"],da:"sessionInfo"},hi={endpoint:"setAccountInfo",T:["idToken"],B:Zh,R:!0},kg={endpoint:"setAccountInfo",
+T:["idToken"],B:function(a){Zh(a);if(!a.password)throw new L("weak-password");},J:ei,R:!0},gi={endpoint:"signupNewUser",J:ei,R:!0},ui={endpoint:"verifyAssertion",B:qi,Oa:ri,J:si,R:!0},wi={endpoint:"verifyAssertion",B:qi,Oa:ri,J:function(a){if(a.errorMessage&&"USER_NOT_FOUND"==a.errorMessage)throw new L("user-not-found");if(a.errorMessage)throw ti(a.errorMessage);if(!a[M])throw new L("internal-error");},R:!0},vi={endpoint:"verifyAssertion",B:function(a){qi(a);if(!a.idToken)throw new L("internal-error");
+},Oa:ri,J:si,R:!0},Fi={endpoint:"verifyCustomToken",B:function(a){if(!a.token)throw new L("invalid-custom-token");},J:ei,R:!0},ig={endpoint:"verifyPassword",B:function(a){Yh(a);if(!a.password)throw new L("wrong-password");},J:ei,R:!0},ni={endpoint:"verifyPhoneNumber",B:fi,J:ei},pg={endpoint:"verifyPhoneNumber",B:function(a){if(!a.idToken)throw new L("internal-error");fi(a);},J:function(a){if(a.temporaryProof)throw a.code="credential-already-in-use",Cg(a);ei(a);}},qg={Xb:{USER_NOT_FOUND:"user-not-found"},
+endpoint:"verifyPhoneNumber",B:fi,J:ei};function P(a,b,c){if(!Pe(c,b.T))return C(new L("internal-error"));var d=b.Ib||"POST",e;return B(c).then(b.B).then(function(){b.R&&(c.returnSecureToken=!0);return Xh(a,b.endpoint,d,c,b.Xb,b.ub||!1)}).then(function(a){e=a;return b.Oa?b.Oa(c,e):e}).then(b.J).then(function(){if(!b.da)return e;if(!(b.da in e))throw new L("internal-error");return e[b.da]})}function ti(a){return Wh({error:{errors:[{message:a}],code:400,message:a}})}
+function Wh(a,b){var c=(a.error&&a.error.errors&&a.error.errors[0]||{}).reason||"";var d={keyInvalid:"invalid-api-key",ipRefererBlocked:"app-not-authorized"};if(c=d[c]?new L(d[c]):null)return c;c=a.error&&a.error.message||"";d={INVALID_CUSTOM_TOKEN:"invalid-custom-token",CREDENTIAL_MISMATCH:"custom-token-mismatch",MISSING_CUSTOM_TOKEN:"internal-error",INVALID_IDENTIFIER:"invalid-email",MISSING_CONTINUE_URI:"internal-error",INVALID_EMAIL:"invalid-email",INVALID_PASSWORD:"wrong-password",USER_DISABLED:"user-disabled",
 MISSING_PASSWORD:"internal-error",EMAIL_EXISTS:"email-already-in-use",PASSWORD_LOGIN_DISABLED:"operation-not-allowed",INVALID_IDP_RESPONSE:"invalid-credential",INVALID_PENDING_TOKEN:"invalid-credential",FEDERATED_USER_ID_ALREADY_LINKED:"credential-already-in-use",MISSING_OR_INVALID_NONCE:"missing-or-invalid-nonce",INVALID_MESSAGE_PAYLOAD:"invalid-message-payload",INVALID_RECIPIENT_EMAIL:"invalid-recipient-email",INVALID_SENDER:"invalid-sender",EMAIL_NOT_FOUND:"user-not-found",RESET_PASSWORD_EXCEED_LIMIT:"too-many-requests",
 EXPIRED_OOB_CODE:"expired-action-code",INVALID_OOB_CODE:"invalid-action-code",MISSING_OOB_CODE:"internal-error",INVALID_PROVIDER_ID:"invalid-provider-id",CREDENTIAL_TOO_OLD_LOGIN_AGAIN:"requires-recent-login",INVALID_ID_TOKEN:"invalid-user-token",TOKEN_EXPIRED:"user-token-expired",USER_NOT_FOUND:"user-token-expired",CORS_UNSUPPORTED:"cors-unsupported",DYNAMIC_LINK_NOT_ACTIVATED:"dynamic-link-not-activated",INVALID_APP_ID:"invalid-app-id",TOO_MANY_ATTEMPTS_TRY_LATER:"too-many-requests",WEAK_PASSWORD:"weak-password",
 OPERATION_NOT_ALLOWED:"operation-not-allowed",USER_CANCELLED:"user-cancelled",CAPTCHA_CHECK_FAILED:"captcha-check-failed",INVALID_APP_CREDENTIAL:"invalid-app-credential",INVALID_CODE:"invalid-verification-code",INVALID_PHONE_NUMBER:"invalid-phone-number",INVALID_SESSION_INFO:"invalid-verification-id",INVALID_TEMPORARY_PROOF:"invalid-credential",MISSING_APP_CREDENTIAL:"missing-app-credential",MISSING_CODE:"missing-verification-code",MISSING_PHONE_NUMBER:"missing-phone-number",MISSING_SESSION_INFO:"missing-verification-id",
-QUOTA_EXCEEDED:"quota-exceeded",SESSION_EXPIRED:"code-expired",REJECTED_CREDENTIAL:"rejected-credential",INVALID_CONTINUE_URI:"invalid-continue-uri",MISSING_ANDROID_PACKAGE_NAME:"missing-android-pkg-name",MISSING_IOS_BUNDLE_ID:"missing-ios-bundle-id",UNAUTHORIZED_DOMAIN:"unauthorized-continue-uri",INVALID_DYNAMIC_LINK_DOMAIN:"invalid-dynamic-link-domain",INVALID_OAUTH_CLIENT_ID:"invalid-oauth-client-id",INVALID_CERT_HASH:"invalid-cert-hash"};ab(d,b||{});b=(b=c.match(/^[^\s]+\s*:\s*(.*)$/))&&1<b.length?
-b[1]:void 0;for(var e in d)if(0===c.indexOf(e))return new L(d[e],b);!b&&a&&(b=ze(a));return new L("internal-error",b)}function Ki(a){this.b=a;this.a=null;this.gb=Li(this);}
-function Li(a){return Mi().then(function(){return new A(function(b,c){I("gapi.iframes.getContext")().open({where:document.body,url:a.b,messageHandlersFilter:I("gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER"),attributes:{style:{position:"absolute",top:"-100px",width:"1px",height:"1px"}},dontclear:!0},function(d){function e(){clearTimeout(f);b();}a.a=d;a.a.restyle({setHideOnLeave:!1});var f=setTimeout(function(){c(Error("Network Error"));},Ni.get());d.ping(e).then(e,function(){c(Error("Network Error"));});});})})}
-function Oi(a,b){return a.gb.then(function(){return new A(function(c){a.a.send(b.type,b,c,I("gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER"));})})}function Pi(a,b){a.gb.then(function(){a.a.register("authEvent",b,I("gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER"));});}var Qi=new od(pd,"https://apis.google.com/js/api.js?onload=%{onload}"),Ri=new Ee(3E4,6E4),Ni=new Ee(5E3,15E3),Si=null;
-function Mi(){return Si?Si:Si=(new A(function(a,b){function c(){De();I("gapi.load")("gapi.iframes",{callback:a,ontimeout:function(){De();b(Error("Network Error"));},timeout:Ri.get()});}if(I("gapi.iframes.Iframe"))a();else if(I("gapi.load"))c();else{var d="__iframefcb"+Math.floor(1E6*Math.random()).toString();k[d]=function(){I("gapi.load")?c():b(Error("Network Error"));};d=vd(Qi,{onload:d});B(Gh(d)).s(function(){b(Error("Network Error"));});}})).s(function(a){Si=null;throw a;})}function Ti(a,b,c){this.i=a;this.g=b;this.h=c;this.f=null;this.a=fd(this.i,"/__/auth/iframe");G(this.a,"apiKey",this.g);G(this.a,"appName",this.h);this.b=null;this.c=[];}Ti.prototype.toString=function(){this.f?G(this.a,"v",this.f):ld(this.a.a,"v");this.b?G(this.a,"eid",this.b):ld(this.a.a,"eid");this.c.length?G(this.a,"fw",this.c.join(",")):ld(this.a.a,"fw");return this.a.toString()};function Ui(a,b,c,d,e){this.m=a;this.l=b;this.c=c;this.o=d;this.h=this.g=this.i=null;this.a=e;this.f=null;}
-Ui.prototype.toString=function(){var a=fd(this.m,"/__/auth/handler");G(a,"apiKey",this.l);G(a,"appName",this.c);G(a,"authType",this.o);if(this.a.isOAuthProvider){var b=this.a;try{var c=firebase.app(this.c).auth().ea();}catch(m){c=null;}b.ab=c;G(a,"providerId",this.a.providerId);b=this.a;c=Ae(b.zb);for(var d in c)c[d]=c[d].toString();d=b.Fc;c=Za(c);for(var e=0;e<d.length;e++){var f=d[e];f in c&&delete c[f];}b.eb&&b.ab&&!c[b.eb]&&(c[b.eb]=b.ab);Ya(c)||G(a,"customParameters",ze(c));}"function"===typeof this.a.Fb&&
-(b=this.a.Fb(),b.length&&G(a,"scopes",b.join(",")));this.i?G(a,"redirectUrl",this.i):ld(a.a,"redirectUrl");this.g?G(a,"eventId",this.g):ld(a.a,"eventId");this.h?G(a,"v",this.h):ld(a.a,"v");if(this.b)for(var h in this.b)this.b.hasOwnProperty(h)&&!dd(a,h)&&G(a,h,this.b[h]);this.f?G(a,"eid",this.f):ld(a.a,"eid");h=Vi(this.c);h.length&&G(a,"fw",h.join(","));return a.toString()};function Vi(a){try{return firebase.app(a).auth().ya()}catch(b){return []}}
-function Wi(a,b,c,d,e){this.l=a;this.f=b;this.b=c;this.c=d||null;this.h=e||null;this.m=this.u=this.v=null;this.g=[];this.o=this.a=null;}
-function Xi(a){var b=Xd();return gi(a).then(function(a){a:{var c=ed(b),e=c.c;c=c.b;for(var f=0;f<a.length;f++){var h=a[f];var m=c;var p=e;0==h.indexOf("chrome-extension://")?m=ed(h).b==m&&"chrome-extension"==p:"http"!=p&&"https"!=p?m=!1:he.test(h)?m=m==h:(h=h.split(".").join("\\."),m=(new RegExp("^(.+\\."+h+"|"+h+")$","i")).test(m));if(m){a=!0;break a}}a=!1;}if(!a)throw new Cg(Xd());})}
-function Yi(a){if(a.o)return a.o;a.o=je().then(function(){if(!a.u){var b=a.c,c=a.h,d=Vi(a.b),e=new Ti(a.l,a.f,a.b);e.f=b;e.b=c;e.c=Ka(d||[]);a.u=e.toString();}a.i=new Ki(a.u);Zi(a);});return a.o}g=Wi.prototype;g.Ea=function(a,b,c){var d=new L("popup-closed-by-user"),e=new L("web-storage-unsupported"),f=this,h=!1;return this.ga().then(function(){$i(f).then(function(c){c||(a&&de(a),b(e),h=!0);});}).s(function(){}).then(function(){if(!h)return ge(a)}).then(function(){if(!h)return Ic(c).then(function(){b(d);})})};
-g.Mb=function(){var a=H();return !ye(a)&&!Ce(a)};g.Hb=function(){return !1};
-g.Db=function(a,b,c,d,e,f,h){if(!a)return C(new L("popup-blocked"));if(h&&!ye())return this.ga().s(function(b){de(a);e(b);}),d(),B();this.a||(this.a=Xi(aj(this)));var m=this;return this.a.then(function(){var b=m.ga().s(function(b){de(a);e(b);throw b;});d();return b}).then(function(){xg(c);if(!h){var d=bj(m.l,m.f,m.b,b,c,null,f,m.c,void 0,m.h);Yd(d,a);}}).s(function(a){"auth/network-request-failed"==a.code&&(m.a=null);throw a;})};
-function aj(a){a.m||(a.v=a.c?te(a.c,Vi(a.b)):null,a.m=new Nh(a.f,Af(a.h),a.v));return a.m}g.Ca=function(a,b,c){this.a||(this.a=Xi(aj(this)));var d=this;return this.a.then(function(){xg(b);var e=bj(d.l,d.f,d.b,a,b,Xd(),c,d.c,void 0,d.h);Yd(e);}).s(function(a){"auth/network-request-failed"==a.code&&(d.a=null);throw a;})};g.ga=function(){var a=this;return Yi(this).then(function(){return a.i.gb}).s(function(){a.a=null;throw new L("network-request-failed");})};g.Qb=function(){return !0};
-function bj(a,b,c,d,e,f,h,m,p,x){a=new Ui(a,b,c,d,e);a.i=f;a.g=h;a.h=m;a.b=Za(p||null);a.f=x;return a.toString()}function Zi(a){if(!a.i)throw Error("IfcHandler must be initialized!");Pi(a.i,function(b){var c={};if(b&&b.authEvent){var d=!1;b=zg(b.authEvent);for(c=0;c<a.g.length;c++)d=a.g[c](b)||d;c={};c.status=d?"ACK":"ERROR";return B(c)}c.status="ERROR";return B(c)});}
-function $i(a){var b={type:"webStorageSupport"};return Yi(a).then(function(){return Oi(a.i,b)}).then(function(a){if(a&&a.length&&"undefined"!==typeof a[0].webStorageSupport)return a[0].webStorageSupport;throw Error();})}g.wa=function(a){this.g.push(a);};g.Ka=function(a){w(this.g,function(b){return b==a});};function cj(a){this.a=a||firebase.INTERNAL.reactNative&&firebase.INTERNAL.reactNative.AsyncStorage;if(!this.a)throw new L("internal-error","The React Native compatibility library was not found.");this.type="asyncStorage";}g=cj.prototype;g.get=function(a){return B(this.a.getItem(a)).then(function(a){return a&&Be(a)})};g.set=function(a,b){return B(this.a.setItem(a,ze(b)))};g.P=function(a){return B(this.a.removeItem(a))};g.Y=function(){};g.ca=function(){};function dj(a){this.b=a;this.a={};this.c=r(this.f,this);}var ej=[];function fj(){var a=oe()?self:null;v(ej,function(c){c.b==a&&(b=c);});if(!b){var b=new dj(a);ej.push(b);}return b}
-dj.prototype.f=function(a){var b=a.data.eventType,c=a.data.eventId,d=this.a[b];if(d&&0<d.length){a.ports[0].postMessage({status:"ack",eventId:c,eventType:b,response:null});var e=[];v(d,function(b){e.push(B().then(function(){return b(a.origin,a.data.data)}));});xb(e).then(function(d){var e=[];v(d,function(a){e.push({fulfilled:a.Eb,value:a.value,reason:a.reason?a.reason.message:void 0});});v(e,function(a){for(var b in a)"undefined"===typeof a[b]&&delete a[b];});a.ports[0].postMessage({status:"done",eventId:c,
-eventType:b,response:e});});}};dj.prototype.subscribe=function(a,b){Ya(this.a)&&this.b.addEventListener("message",this.c);"undefined"===typeof this.a[a]&&(this.a[a]=[]);this.a[a].push(b);};dj.prototype.unsubscribe=function(a,b){"undefined"!==typeof this.a[a]&&b?(w(this.a[a],function(a){return a==b}),0==this.a[a].length&&delete this.a[a]):b||delete this.a[a];Ya(this.a)&&this.b.removeEventListener("message",this.c);};function gj(a){this.a=a;}gj.prototype.postMessage=function(a,b){this.a.postMessage(a,b);};function hj(a){this.c=a;this.b=!1;this.a=[];}
-function ij(a,b,c,d){var e,f=c||{},h,m,p,x=null;if(a.b)return C(Error("connection_unavailable"));var gb=d?800:50,la="undefined"!==typeof MessageChannel?new MessageChannel:null;return (new A(function(c,d){la?(e=Math.floor(Math.random()*Math.pow(10,20)).toString(),la.port1.start(),m=setTimeout(function(){d(Error("unsupported_event"));},gb),h=function(a){a.data.eventId===e&&("ack"===a.data.status?(clearTimeout(m),p=setTimeout(function(){d(Error("timeout"));},3E3)):"done"===a.data.status?(clearTimeout(p),
-"undefined"!==typeof a.data.response?c(a.data.response):d(Error("unknown_error"))):(clearTimeout(m),clearTimeout(p),d(Error("invalid_response"))));},x={messageChannel:la,onMessage:h},a.a.push(x),la.port1.addEventListener("message",h),a.c.postMessage({eventType:b,eventId:e,data:f},[la.port2])):d(Error("connection_unavailable"));})).then(function(b){jj(a,x);return b}).s(function(b){jj(a,x);throw b;})}
-function jj(a,b){if(b){var c=b.messageChannel,d=b.onMessage;c&&(c.port1.removeEventListener("message",d),c.port1.close());w(a.a,function(a){return a==b});}}hj.prototype.close=function(){for(;0<this.a.length;)jj(this,this.a[0]);this.b=!0;};function kj(){if(!lj())throw new L("web-storage-unsupported");this.c={};this.a=[];this.b=0;this.l=k.indexedDB;this.type="indexedDB";this.g=this.o=this.f=this.i=null;this.u=!1;this.h=null;var a=this;oe()&&self?(this.o=fj(),this.o.subscribe("keyChanged",function(b,c){return mj(a).then(function(b){0<b.length&&v(a.a,function(a){a(b);});return {keyProcessed:Ha(b,c.key)}})}),this.o.subscribe("ping",function(){return B(["keyChanged"])})):Ke().then(function(b){if(a.h=b)a.g=new hj(new gj(b)),ij(a.g,"ping",null,
-!0).then(function(b){b[0].fulfilled&&Ha(b[0].value,"keyChanged")&&(a.u=!0);}).s(function(){});});}var nj;function oj(a){return new A(function(b,c){var d=a.l.deleteDatabase("firebaseLocalStorageDb");d.onsuccess=function(){b();};d.onerror=function(a){c(Error(a.target.error));};})}
-function pj(a){return new A(function(b,c){var d=a.l.open("firebaseLocalStorageDb",1);d.onerror=function(a){try{a.preventDefault();}catch(f){}c(Error(a.target.error));};d.onupgradeneeded=function(a){a=a.target.result;try{a.createObjectStore("firebaseLocalStorage",{keyPath:"fbase_key"});}catch(f){c(f);}};d.onsuccess=function(d){d=d.target.result;d.objectStoreNames.contains("firebaseLocalStorage")?b(d):oj(a).then(function(){return pj(a)}).then(function(a){b(a);}).s(function(a){c(a);});};})}
-function qj(a){a.m||(a.m=pj(a));return a.m}function lj(){try{return !!k.indexedDB}catch(a){return !1}}function rj(a){return a.objectStore("firebaseLocalStorage")}function sj(a,b){return a.transaction(["firebaseLocalStorage"],b?"readwrite":"readonly")}function tj(a){return new A(function(b,c){a.onsuccess=function(a){a&&a.target?b(a.target.result):b();};a.onerror=function(a){c(a.target.error);};})}g=kj.prototype;
-g.set=function(a,b){var c=!1,d,e=this;return qj(this).then(function(b){d=b;b=rj(sj(d,!0));return tj(b.get(a))}).then(function(f){var h=rj(sj(d,!0));if(f)return f.value=b,tj(h.put(f));e.b++;c=!0;f={};f.fbase_key=a;f.value=b;return tj(h.add(f))}).then(function(){e.c[a]=b;return uj(e,a)}).ia(function(){c&&e.b--;})};function uj(a,b){return a.g&&a.h&&Je()===a.h?ij(a.g,"keyChanged",{key:b},a.u).then(function(){}).s(function(){}):B()}
-g.get=function(a){return qj(this).then(function(b){return tj(rj(sj(b,!1)).get(a))}).then(function(a){return a&&a.value})};g.P=function(a){var b=!1,c=this;return qj(this).then(function(d){b=!0;c.b++;return tj(rj(sj(d,!0))["delete"](a))}).then(function(){delete c.c[a];return uj(c,a)}).ia(function(){b&&c.b--;})};
-function mj(a){return qj(a).then(function(a){var b=rj(sj(a,!1));return b.getAll?tj(b.getAll()):new A(function(a,c){var d=[],e=b.openCursor();e.onsuccess=function(b){(b=b.target.result)?(d.push(b.value),b["continue"]()):a(d);};e.onerror=function(a){c(a.target.error);};})}).then(function(b){var c={},d=[];if(0==a.b){for(d=0;d<b.length;d++)c[b[d].fbase_key]=b[d].value;d=Zd(a.c,c);a.c=c;}return d})}g.Y=function(a){0==this.a.length&&vj(this);this.a.push(a);};
-g.ca=function(a){w(this.a,function(b){return b==a});0==this.a.length&&wj(this);};function vj(a){function b(){a.f=setTimeout(function(){a.i=mj(a).then(function(b){0<b.length&&v(a.a,function(a){a(b);});}).then(function(){b();}).s(function(a){"STOP_EVENT"!=a.message&&b();});},800);}wj(a);b();}function wj(a){a.i&&a.i.cancel("STOP_EVENT");a.f&&(clearTimeout(a.f),a.f=null);}function xj(a){var b=this,c=null;this.a=[];this.type="indexedDB";this.c=a;this.b=B().then(function(){if(lj()){var a=ve(),e="__sak"+a;nj||(nj=new kj);c=nj;return c.set(e,a).then(function(){return c.get(e)}).then(function(b){if(b!==a)throw Error("indexedDB not supported!");return c.P(e)}).then(function(){return c}).s(function(){return b.c})}return b.c}).then(function(a){b.type=a.type;a.Y(function(a){v(b.a,function(b){b(a);});});return a});}g=xj.prototype;g.get=function(a){return this.b.then(function(b){return b.get(a)})};
-g.set=function(a,b){return this.b.then(function(c){return c.set(a,b)})};g.P=function(a){return this.b.then(function(b){return b.P(a)})};g.Y=function(a){this.a.push(a);};g.ca=function(a){w(this.a,function(b){return b==a});};function yj(){this.a={};this.type="inMemory";}g=yj.prototype;g.get=function(a){return B(this.a[a])};g.set=function(a,b){this.a[a]=b;return B()};g.P=function(a){delete this.a[a];return B()};g.Y=function(){};g.ca=function(){};function zj(){if(!Aj()){if("Node"==pe())throw new L("internal-error","The LocalStorage compatibility library was not found.");throw new L("web-storage-unsupported");}this.a=Bj()||firebase.INTERNAL.node.localStorage;this.type="localStorage";}function Bj(){try{var a=k.localStorage,b=ve();a&&(a.setItem(b,"1"),a.removeItem(b));return a}catch(c){return null}}
-function Aj(){var a="Node"==pe();a=Bj()||a&&firebase.INTERNAL.node&&firebase.INTERNAL.node.localStorage;if(!a)return !1;try{return a.setItem("__sak","1"),a.removeItem("__sak"),!0}catch(b){return !1}}g=zj.prototype;g.get=function(a){var b=this;return B().then(function(){var c=b.a.getItem(a);return Be(c)})};g.set=function(a,b){var c=this;return B().then(function(){var d=ze(b);null===d?c.P(a):c.a.setItem(a,d);})};g.P=function(a){var b=this;return B().then(function(){b.a.removeItem(a);})};
-g.Y=function(a){k.window&&sc(k.window,"storage",a);};g.ca=function(a){k.window&&E(k.window,"storage",a);};function Cj(){this.type="nullStorage";}g=Cj.prototype;g.get=function(){return B(null)};g.set=function(){return B()};g.P=function(){return B()};g.Y=function(){};g.ca=function(){};function Dj(){if(!Ej()){if("Node"==pe())throw new L("internal-error","The SessionStorage compatibility library was not found.");throw new L("web-storage-unsupported");}this.a=Fj()||firebase.INTERNAL.node.sessionStorage;this.type="sessionStorage";}function Fj(){try{var a=k.sessionStorage,b=ve();a&&(a.setItem(b,"1"),a.removeItem(b));return a}catch(c){return null}}
-function Ej(){var a="Node"==pe();a=Fj()||a&&firebase.INTERNAL.node&&firebase.INTERNAL.node.sessionStorage;if(!a)return !1;try{return a.setItem("__sak","1"),a.removeItem("__sak"),!0}catch(b){return !1}}g=Dj.prototype;g.get=function(a){var b=this;return B().then(function(){var c=b.a.getItem(a);return Be(c)})};g.set=function(a,b){var c=this;return B().then(function(){var d=ze(b);null===d?c.P(a):c.a.setItem(a,d);})};g.P=function(a){var b=this;return B().then(function(){b.a.removeItem(a);})};g.Y=function(){};
-g.ca=function(){};function Gj(){var a={};a.Browser=Hj;a.Node=Ij;a.ReactNative=Jj;a.Worker=Kj;this.a=a[pe()];}var Lj,Hj={A:zj,Sa:Dj},Ij={A:zj,Sa:Dj},Jj={A:cj,Sa:Cj},Kj={A:zj,Sa:Cj};var Mj={ad:"local",NONE:"none",cd:"session"};function Nj(a){var b=new L("invalid-persistence-type"),c=new L("unsupported-persistence-type");a:{for(d in Mj)if(Mj[d]==a){var d=!0;break a}d=!1;}if(!d||"string"!==typeof a)throw b;switch(pe()){case "ReactNative":if("session"===a)throw c;break;case "Node":if("none"!==a)throw c;break;default:if(!ue()&&"none"!==a)throw c;}}
-function Oj(){var a=!Ce(H())&&ne()?!0:!1,b=ye(),c=ue();this.m=a;this.h=b;this.o=c;this.a={};Lj||(Lj=new Gj);a=Lj;try{this.g=!Wd()&&Ie()||!k.indexedDB?new a.a.A:new xj(oe()?new yj:new a.a.A);}catch(d){this.g=new yj,this.h=!0;}try{this.i=new a.a.Sa;}catch(d){this.i=new yj;}this.l=new yj;this.f=r(this.Pb,this);this.b={};}var Pj;function Qj(){Pj||(Pj=new Oj);return Pj}function Rj(a,b){switch(b){case "session":return a.i;case "none":return a.l;default:return a.g}}
-function Sj(a,b){return "firebase:"+a.name+(b?":"+b:"")}function Tj(a,b,c){var d=Sj(b,c),e=Rj(a,b.A);return a.get(b,c).then(function(f){var h=null;try{h=Be(k.localStorage.getItem(d));}catch(m){}if(h&&!f)return k.localStorage.removeItem(d),a.set(b,h,c);h&&f&&"localStorage"!=e.type&&k.localStorage.removeItem(d);})}g=Oj.prototype;g.get=function(a,b){return Rj(this,a.A).get(Sj(a,b))};function Uj(a,b,c){c=Sj(b,c);"local"==b.A&&(a.b[c]=null);return Rj(a,b.A).P(c)}
-g.set=function(a,b,c){var d=Sj(a,c),e=this,f=Rj(this,a.A);return f.set(d,b).then(function(){return f.get(d)}).then(function(b){"local"==a.A&&(e.b[d]=b);})};g.addListener=function(a,b,c){a=Sj(a,b);this.o&&(this.b[a]=k.localStorage.getItem(a));Ya(this.a)&&(Rj(this,"local").Y(this.f),this.h||(Wd()||!Ie())&&k.indexedDB||!this.o||Vj(this));this.a[a]||(this.a[a]=[]);this.a[a].push(c);};
-g.removeListener=function(a,b,c){a=Sj(a,b);this.a[a]&&(w(this.a[a],function(a){return a==c}),0==this.a[a].length&&delete this.a[a]);Ya(this.a)&&(Rj(this,"local").ca(this.f),Wj(this));};function Vj(a){Wj(a);a.c=setInterval(function(){for(var b in a.a){var c=k.localStorage.getItem(b),d=a.b[b];c!=d&&(a.b[b]=c,c=new gc({type:"storage",key:b,target:window,oldValue:d,newValue:c,a:!0}),a.Pb(c));}},1E3);}function Wj(a){a.c&&(clearInterval(a.c),a.c=null);}
-g.Pb=function(a){if(a&&a.f){var b=a.a.key;if(null==b)for(var c in this.a){var d=this.b[c];"undefined"===typeof d&&(d=null);var e=k.localStorage.getItem(c);e!==d&&(this.b[c]=e,this.Ya(c));}else if(0==b.indexOf("firebase:")&&this.a[b]){"undefined"!==typeof a.a.a?Rj(this,"local").ca(this.f):Wj(this);if(this.m)if(c=k.localStorage.getItem(b),d=a.a.newValue,d!==c)null!==d?k.localStorage.setItem(b,d):k.localStorage.removeItem(b);else if(this.b[b]===d&&"undefined"===typeof a.a.a)return;var f=this;c=function(){if("undefined"!==
-typeof a.a.a||f.b[b]!==k.localStorage.getItem(b))f.b[b]=k.localStorage.getItem(b),f.Ya(b);};Qb&&ac&&10==ac&&k.localStorage.getItem(b)!==a.a.newValue&&a.a.newValue!==a.a.oldValue?setTimeout(c,10):c();}}else v(a,r(this.Ya,this));};g.Ya=function(a){this.a[a]&&v(this.a[a],function(a){a();});};function Xj(a){this.a=a;this.b=Qj();}var Yj={name:"authEvent",A:"local"};function Zj(a){return a.b.get(Yj,a.a).then(function(a){return zg(a)})}function ak(){this.a=Qj();}function bk(){this.b=-1;}function ck(a,b){this.b=dk;this.f=k.Uint8Array?new Uint8Array(this.b):Array(this.b);this.g=this.c=0;this.a=[];this.i=a;this.h=b;this.o=k.Int32Array?new Int32Array(64):Array(64);void 0!==ek||(k.Int32Array?ek=new Int32Array(fk):ek=fk);this.reset();}var ek;t(ck,bk);for(var dk=64,gk=dk-1,hk=[],ik=0;ik<gk;ik++)hk[ik]=0;var jk=Ja(128,hk);ck.prototype.reset=function(){this.g=this.c=0;this.a=k.Int32Array?new Int32Array(this.h):Ka(this.h);};
-function kk(a){for(var b=a.f,c=a.o,d=0,e=0;e<b.length;)c[d++]=b[e]<<24|b[e+1]<<16|b[e+2]<<8|b[e+3],e=4*d;for(b=16;64>b;b++){e=c[b-15]|0;d=c[b-2]|0;var f=(c[b-16]|0)+((e>>>7|e<<25)^(e>>>18|e<<14)^e>>>3)|0,h=(c[b-7]|0)+((d>>>17|d<<15)^(d>>>19|d<<13)^d>>>10)|0;c[b]=f+h|0;}d=a.a[0]|0;e=a.a[1]|0;var m=a.a[2]|0,p=a.a[3]|0,x=a.a[4]|0,gb=a.a[5]|0,la=a.a[6]|0;f=a.a[7]|0;for(b=0;64>b;b++){var Vl=((d>>>2|d<<30)^(d>>>13|d<<19)^(d>>>22|d<<10))+(d&e^d&m^e&m)|0;h=x&gb^~x&la;f=f+((x>>>6|x<<26)^(x>>>11|x<<21)^(x>>>
-25|x<<7))|0;h=h+(ek[b]|0)|0;h=f+(h+(c[b]|0)|0)|0;f=la;la=gb;gb=x;x=p+h|0;p=m;m=e;e=d;d=h+Vl|0;}a.a[0]=a.a[0]+d|0;a.a[1]=a.a[1]+e|0;a.a[2]=a.a[2]+m|0;a.a[3]=a.a[3]+p|0;a.a[4]=a.a[4]+x|0;a.a[5]=a.a[5]+gb|0;a.a[6]=a.a[6]+la|0;a.a[7]=a.a[7]+f|0;}
-function lk(a,b,c){void 0===c&&(c=b.length);var d=0,e=a.c;if(l(b))for(;d<c;)a.f[e++]=b.charCodeAt(d++),e==a.b&&(kk(a),e=0);else if(ja(b))for(;d<c;){var f=b[d++];if(!("number"==typeof f&&0<=f&&255>=f&&f==(f|0)))throw Error("message must be a byte array");a.f[e++]=f;e==a.b&&(kk(a),e=0);}else throw Error("message must be string or array");a.c=e;a.g+=c;}
-var fk=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,
-4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298];function mk(){ck.call(this,8,nk);}t(mk,ck);var nk=[1779033703,3144134277,1013904242,2773480762,1359893119,2600822924,528734635,1541459225];function ok(a,b,c,d,e){this.l=a;this.i=b;this.o=c;this.m=d||null;this.u=e||null;this.h=b+":"+c;this.v=new ak;this.g=new Xj(this.h);this.f=null;this.b=[];this.a=this.c=null;}function pk(a){return new L("invalid-cordova-configuration",a)}g=ok.prototype;
-g.ga=function(){return this.za?this.za:this.za=ke().then(function(){if("function"!==typeof I("universalLinks.subscribe",k))throw pk("cordova-universal-links-plugin-fix is not installed");if("undefined"===typeof I("BuildInfo.packageName",k))throw pk("cordova-plugin-buildinfo is not installed");if("function"!==typeof I("cordova.plugins.browsertab.openUrl",k))throw pk("cordova-plugin-browsertab is not installed");if("function"!==typeof I("cordova.InAppBrowser.open",k))throw pk("cordova-plugin-inappbrowser is not installed");
-},function(){throw new L("cordova-not-ready");})};function qk(){for(var a=20,b=[];0<a;)b.push("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(Math.floor(62*Math.random()))),a--;return b.join("")}function rk(a){var b=new mk;lk(b,a);a=[];var c=8*b.g;56>b.c?lk(b,jk,56-b.c):lk(b,jk,b.b-(b.c-56));for(var d=63;56<=d;d--)b.f[d]=c&255,c/=256;kk(b);for(d=c=0;d<b.i;d++)for(var e=24;0<=e;e-=8)a[c++]=b.a[d]>>e&255;return qf(a)}
-g.Ea=function(a,b){b(new L("operation-not-supported-in-this-environment"));return B()};g.Db=function(){return C(new L("operation-not-supported-in-this-environment"))};g.Qb=function(){return !1};g.Mb=function(){return !0};g.Hb=function(){return !0};
-g.Ca=function(a,b,c){if(this.c)return C(new L("redirect-operation-pending"));var d=this,e=k.document,f=null,h=null,m=null,p=null;return this.c=B().then(function(){xg(b);return sk(d)}).then(function(){return tk(d,a,b,c)}).then(function(){return (new A(function(a,b){h=function(){var b=I("cordova.plugins.browsertab.close",k);a();"function"===typeof b&&b();d.a&&"function"===typeof d.a.close&&(d.a.close(),d.a=null);return !1};d.wa(h);m=function(){f||(f=Ic(2E3).then(function(){b(new L("redirect-cancelled-by-user"));}));};
-p=function(){Fe()&&m();};e.addEventListener("resume",m,!1);H().toLowerCase().match(/android/)||e.addEventListener("visibilitychange",p,!1);})).s(function(a){return uk(d).then(function(){throw a;})})}).ia(function(){m&&e.removeEventListener("resume",m,!1);p&&e.removeEventListener("visibilitychange",p,!1);f&&f.cancel();h&&d.Ka(h);d.c=null;})};
-function tk(a,b,c,d){var e=qk(),f=new yg(b,d,null,e,new L("no-auth-event")),h=I("BuildInfo.packageName",k);if("string"!==typeof h)throw new L("invalid-cordova-configuration");var m=I("BuildInfo.displayName",k),p={};if(H().toLowerCase().match(/iphone|ipad|ipod/))p.ibi=h;else if(H().toLowerCase().match(/android/))p.apn=h;else return C(new L("operation-not-supported-in-this-environment"));m&&(p.appDisplayName=m);e=rk(e);p.sessionId=e;var x=bj(a.l,a.i,a.o,b,c,null,d,a.m,p,a.u);return a.ga().then(function(){var b=
-a.h;return a.v.a.set(Yj,f.C(),b)}).then(function(){var b=I("cordova.plugins.browsertab.isAvailable",k);if("function"!==typeof b)throw new L("invalid-cordova-configuration");var c=null;b(function(b){if(b){c=I("cordova.plugins.browsertab.openUrl",k);if("function"!==typeof c)throw new L("invalid-cordova-configuration");c(x);}else{c=I("cordova.InAppBrowser.open",k);if("function"!==typeof c)throw new L("invalid-cordova-configuration");b=H();b=!(!b.match(/(iPad|iPhone|iPod).*OS 7_\d/i)&&!b.match(/(iPad|iPhone|iPod).*OS 8_\d/i));
-a.a=c(x,b?"_blank":"_system","location=yes");}});})}function vk(a,b){for(var c=0;c<a.b.length;c++)try{a.b[c](b);}catch(d){}}function sk(a){a.f||(a.f=a.ga().then(function(){return new A(function(b){function c(d){b(d);a.Ka(c);return !1}a.wa(c);wk(a);})}));return a.f}function uk(a){var b=null;return Zj(a.g).then(function(c){b=c;c=a.g;return Uj(c.b,Yj,c.a)}).then(function(){return b})}
-function wk(a){function b(b){d=!0;e&&e.cancel();uk(a).then(function(d){var e=c;if(d&&b&&b.url){var f=null;e=Qf(b.url);-1!=e.indexOf("/__/auth/callback")&&(f=ed(e),f=Be(dd(f,"firebaseError")||null),f=(f="object"===typeof f?df(f):null)?new yg(d.b,d.c,null,null,f):new yg(d.b,d.c,e,d.g));e=f||c;}vk(a,e);});}var c=new yg("unknown",null,null,null,new L("no-auth-event")),d=!1,e=Ic(500).then(function(){return uk(a).then(function(){d||vk(a,c);})}),f=k.handleOpenURL;k.handleOpenURL=function(a){0==a.toLowerCase().indexOf(I("BuildInfo.packageName",
-k).toLowerCase()+"://")&&b({url:a});if("function"===typeof f)try{f(a);}catch(m){console.error(m);}};Bg||(Bg=new Ag);Bg.subscribe(b);}g.wa=function(a){this.b.push(a);sk(this).s(function(b){"auth/invalid-cordova-configuration"===b.code&&(b=new yg("unknown",null,null,null,new L("no-auth-event")),a(b));});};g.Ka=function(a){w(this.b,function(b){return b==a});};function xk(a){this.a=a;this.b=Qj();}var yk={name:"pendingRedirect",A:"session"};function zk(a){return a.b.set(yk,"pending",a.a)}function Ak(a){return Uj(a.b,yk,a.a)}function Bk(a){return a.b.get(yk,a.a).then(function(a){return "pending"==a})}function Ck(a,b,c){this.u=a;this.o=b;this.l=c;this.h=[];this.f=!1;this.i=r(this.cb,this);this.b=new Dk;this.m=new Ek;this.g=new xk(this.o+":"+this.l);this.c={};this.c.unknown=this.b;this.c.signInViaRedirect=this.b;this.c.linkViaRedirect=this.b;this.c.reauthViaRedirect=this.b;this.c.signInViaPopup=this.m;this.c.linkViaPopup=this.m;this.c.reauthViaPopup=this.m;this.a=Fk(this.u,this.o,this.l,Bf);}function Fk(a,b,c,d){var e=firebase.SDK_VERSION||null;return le()?new ok(a,b,c,e,d):new Wi(a,b,c,e,d)}g=Ck.prototype;
-g.reset=function(){this.f=!1;this.a.Ka(this.i);this.a=Fk(this.u,this.o,this.l);};g.Za=function(){this.b.Za();};function Gk(a){a.f||(a.f=!0,a.a.wa(a.i));var b=a.a;return a.a.ga().s(function(c){a.a==b&&a.reset();throw c;})}function Hk(a){a.a.Mb()&&Gk(a).s(function(b){var c=new yg("unknown",null,null,null,new L("operation-not-supported-in-this-environment"));Ik(b)&&a.cb(c);});a.a.Hb()||Jk(a.b);}
-g.subscribe=function(a){Ha(this.h,a)||this.h.push(a);if(!this.f){var b=this;Bk(this.g).then(function(a){a?Ak(b.g).then(function(){Gk(b).s(function(a){var c=new yg("unknown",null,null,null,new L("operation-not-supported-in-this-environment"));Ik(a)&&b.cb(c);});}):Hk(b);}).s(function(){Hk(b);});}};g.unsubscribe=function(a){w(this.h,function(b){return b==a});};
-g.cb=function(a){if(!a)throw new L("invalid-auth-event");for(var b=!1,c=0;c<this.h.length;c++){var d=this.h[c];if(d.wb(a.b,a.c)){(b=this.c[a.b])&&b.h(a,d);b=!0;break}}Jk(this.b);return b};var Kk=new Ee(2E3,1E4),Lk=new Ee(3E4,6E4);Ck.prototype.fa=function(){return this.b.fa()};function Mk(a,b,c,d,e,f){return a.a.Db(b,c,d,function(){a.f||(a.f=!0,a.a.wa(a.i));},function(){a.reset();},e,f)}function Ik(a){return a&&"auth/cordova-not-ready"==a.code?!0:!1}
-Ck.prototype.Ca=function(a,b,c){var d=this,e;return zk(this.g).then(function(){return d.a.Ca(a,b,c).s(function(a){if(Ik(a))throw new L("operation-not-supported-in-this-environment");e=a;return Ak(d.g).then(function(){throw e;})}).then(function(){return d.a.Qb()?new A(function(){}):Ak(d.g).then(function(){return d.fa()}).then(function(){}).s(function(){})})})};Ck.prototype.Ea=function(a,b,c,d){return this.a.Ea(c,function(c){a.ha(b,null,c,d);},Kk.get())};var Nk={};
-function Ok(a,b,c){var d=b+":"+c;Nk[d]||(Nk[d]=new Ck(a,b,c));return Nk[d]}function Dk(){this.b=null;this.f=[];this.c=[];this.a=null;this.i=this.g=!1;}Dk.prototype.reset=function(){this.b=null;this.a&&(this.a.cancel(),this.a=null);};
-Dk.prototype.h=function(a,b){if(a){this.reset();this.g=!0;var c=a.b,d=a.c,e=a.a&&"auth/web-storage-unsupported"==a.a.code,f=a.a&&"auth/operation-not-supported-in-this-environment"==a.a.code;this.i=!(!e&&!f);"unknown"!=c||e||f?a.a?(Pk(this,!0,null,a.a),B()):b.xa(c,d)?Qk(this,a,b):C(new L("invalid-auth-event")):(Pk(this,!1,null,null),B());}else C(new L("invalid-auth-event"));};function Jk(a){a.g||(a.g=!0,Pk(a,!1,null,null));}Dk.prototype.Za=function(){this.g&&!this.i&&Pk(this,!1,null,null);};
-function Qk(a,b,c){c=c.xa(b.b,b.c);var d=b.f,e=b.g,f=b.h,h=!!b.b.match(/Redirect$/);c(d,e,f).then(function(b){Pk(a,h,b,null);}).s(function(b){Pk(a,h,null,b);});}function Rk(a,b){a.b=function(){return C(b)};if(a.c.length)for(var c=0;c<a.c.length;c++)a.c[c](b);}function Sk(a,b){a.b=function(){return B(b)};if(a.f.length)for(var c=0;c<a.f.length;c++)a.f[c](b);}function Pk(a,b,c,d){b?d?Rk(a,d):Sk(a,c):Sk(a,{user:null});a.f=[];a.c=[];}
-Dk.prototype.fa=function(){var a=this;return new A(function(b,c){a.b?a.b().then(b,c):(a.f.push(b),a.c.push(c),Tk(a));})};function Tk(a){var b=new L("timeout");a.a&&a.a.cancel();a.a=Ic(Lk.get()).then(function(){a.b||(a.g=!0,Pk(a,!0,null,b));});}function Ek(){}Ek.prototype.h=function(a,b){if(a){var c=a.b,d=a.c;a.a?(b.ha(a.b,null,a.a,a.c),B()):b.xa(c,d)?Uk(a,b):C(new L("invalid-auth-event"));}else C(new L("invalid-auth-event"));};
-function Uk(a,b){var c=a.c,d=a.b;b.xa(d,c)(a.f,a.g,a.h).then(function(a){b.ha(d,a,null,c);}).s(function(a){b.ha(d,null,a,c);});}function Vk(){this.tb=!1;Object.defineProperty(this,"appVerificationDisabled",{get:function(){return this.tb},set:function(a){this.tb=a;},enumerable:!1});}function Wk(a,b){this.a=b;J(this,"verificationId",a);}Wk.prototype.confirm=function(a){a=vg(this.verificationId,a);return this.a(a)};function Xk(a,b,c,d){return (new tg(a)).Va(b,c).then(function(a){return new Wk(a,d)})}function Yk(a){var b=yf(a);if(!(b&&b.exp&&b.auth_time&&b.iat))throw new L("internal-error","An internal error occurred. The token obtained by Firebase appears to be malformed. Please retry the operation.");K(this,{token:a,expirationTime:He(1E3*b.exp),authTime:He(1E3*b.auth_time),issuedAtTime:He(1E3*b.iat),signInProvider:b.firebase&&b.firebase.sign_in_provider?b.firebase.sign_in_provider:null,claims:b});}function Zk(a,b,c){this.h=a;this.i=b;this.g=c;this.c=3E4;this.f=96E4;this.b=null;this.a=this.c;if(this.f<this.c)throw Error("Proactive refresh lower bound greater than upper bound!");}Zk.prototype.start=function(){this.a=this.c;$k(this,!0);};function al(a,b){if(b)return a.a=a.c,a.g();b=a.a;a.a*=2;a.a>a.f&&(a.a=a.f);return b}function $k(a,b){a.stop();a.b=Ic(al(a,b)).then(function(){return Ge()}).then(function(){return a.h()}).then(function(){$k(a,!0);}).s(function(b){a.i(b)&&$k(a,!1);});}
-Zk.prototype.stop=function(){this.b&&(this.b.cancel(),this.b=null);};function bl(a){this.f=a;this.b=this.a=null;this.c=0;}bl.prototype.C=function(){return {apiKey:this.f.b,refreshToken:this.a,accessToken:this.b,expirationTime:this.c}};function cl(a,b){var c=b[M],d=b.refreshToken;b=dl(b.expiresIn);a.b=c;a.c=b;a.a=d;}function el(a,b){a.b=b.b;a.a=b.a;a.c=b.c;}function dl(a){return qa()+1E3*parseInt(a,10)}
-function fl(a,b){return Zh(a.f,b).then(function(b){a.b=b.access_token;a.c=dl(b.expires_in);a.a=b.refresh_token;return {accessToken:a.b,expirationTime:a.c,refreshToken:a.a}}).s(function(b){"auth/user-token-expired"==b.code&&(a.a=null);throw b;})}bl.prototype.getToken=function(a){a=!!a;return this.b&&!this.a?C(new L("user-token-expired")):a||!this.b||qa()>this.c-3E4?this.a?fl(this,{grant_type:"refresh_token",refresh_token:this.a}):B(null):B({accessToken:this.b,expirationTime:this.c,refreshToken:this.a})};function gl(a,b){this.a=a||null;this.b=b||null;K(this,{lastSignInTime:He(b||null),creationTime:He(a||null)});}function hl(a){return new gl(a.a,a.b)}gl.prototype.C=function(){return {lastLoginAt:this.b,createdAt:this.a}};function il(a,b,c,d,e,f){K(this,{uid:a,displayName:d||null,photoURL:e||null,email:c||null,phoneNumber:f||null,providerId:b});}function jl(a,b){D.call(this,a);for(var c in b)this[c]=b[c];}t(jl,D);
-function Q(a,b,c){this.G=[];this.l=a.apiKey;this.m=a.appName;this.u=a.authDomain||null;a=firebase.SDK_VERSION?te(firebase.SDK_VERSION):null;this.b=new Nh(this.l,Af(Bf),a);this.h=new bl(this.b);kl(this,b[M]);cl(this.h,b);J(this,"refreshToken",this.h.a);ll(this,c||{});F.call(this);this.I=!1;this.u&&we()&&(this.a=Ok(this.u,this.l,this.m));this.N=[];this.i=null;this.w=ml(this);this.V=r(this.Ha,this);var d=this;this.ka=null;this.ta=function(a){d.pa(a.g);};this.X=null;this.O=[];this.sa=function(a){nl(d,
-a.c);};this.W=null;}t(Q,F);Q.prototype.pa=function(a){this.ka=a;Th(this.b,a);};Q.prototype.ea=function(){return this.ka};function ol(a,b){a.X&&E(a.X,"languageCodeChanged",a.ta);(a.X=b)&&sc(b,"languageCodeChanged",a.ta);}function nl(a,b){a.O=b;Uh(a.b,firebase.SDK_VERSION?te(firebase.SDK_VERSION,a.O):null);}Q.prototype.ya=function(){return Ka(this.O)};function pl(a,b){a.W&&E(a.W,"frameworkChanged",a.sa);(a.W=b)&&sc(b,"frameworkChanged",a.sa);}Q.prototype.Ha=function(){this.w.b&&(this.w.stop(),this.w.start());};
-function ql(a){try{return firebase.app(a.m).auth()}catch(b){throw new L("internal-error","No firebase.auth.Auth instance is available for the Firebase App '"+a.m+"'!");}}function ml(a){return new Zk(function(){return a.F(!0)},function(a){return a&&"auth/network-request-failed"==a.code?!0:!1},function(){var b=a.h.c-qa()-3E5;return 0<b?b:0})}function rl(a){a.D||a.w.b||(a.w.start(),E(a,"tokenChanged",a.V),sc(a,"tokenChanged",a.V));}function sl(a){E(a,"tokenChanged",a.V);a.w.stop();}
-function kl(a,b){a.ra=b;J(a,"_lat",b);}function tl(a,b){w(a.N,function(a){return a==b});}function ul(a){for(var b=[],c=0;c<a.N.length;c++)b.push(a.N[c](a));return xb(b).then(function(){return a})}function vl(a){a.a&&!a.I&&(a.I=!0,a.a.subscribe(a));}
-function ll(a,b){K(a,{uid:b.uid,displayName:b.displayName||null,photoURL:b.photoURL||null,email:b.email||null,emailVerified:b.emailVerified||!1,phoneNumber:b.phoneNumber||null,isAnonymous:b.isAnonymous||!1,metadata:new gl(b.createdAt,b.lastLoginAt),providerData:[]});}J(Q.prototype,"providerId","firebase");function wl(){}function xl(a){return B().then(function(){if(a.D)throw new L("app-deleted");})}function yl(a){return Da(a.providerData,function(a){return a.providerId})}
-function zl(a,b){b&&(Al(a,b.providerId),a.providerData.push(b));}function Al(a,b){w(a.providerData,function(a){return a.providerId==b});}function Bl(a,b,c){("uid"!=b||c)&&a.hasOwnProperty(b)&&J(a,b,c);}
-function Cl(a,b){a!=b&&(K(a,{uid:b.uid,displayName:b.displayName,photoURL:b.photoURL,email:b.email,emailVerified:b.emailVerified,phoneNumber:b.phoneNumber,isAnonymous:b.isAnonymous,providerData:[]}),b.metadata?J(a,"metadata",hl(b.metadata)):J(a,"metadata",new gl),v(b.providerData,function(b){zl(a,b);}),el(a.h,b.h),J(a,"refreshToken",a.h.a));}g=Q.prototype;g.reload=function(){var a=this;return R(this,xl(this).then(function(){return Dl(a).then(function(){return ul(a)}).then(wl)}))};
-function Dl(a){return a.F().then(function(b){var c=a.isAnonymous;return El(a,b).then(function(){c||Bl(a,"isAnonymous",!1);return b})})}g.dc=function(a){return this.F(a).then(function(a){return new Yk(a)})};g.F=function(a){var b=this;return R(this,xl(this).then(function(){return b.h.getToken(a)}).then(function(a){if(!a)throw new L("internal-error");a.accessToken!=b.ra&&(kl(b,a.accessToken),b.dispatchEvent(new jl("tokenChanged")));Bl(b,"refreshToken",a.refreshToken);return a.accessToken}))};
-function Fl(a,b){b[M]&&a.ra!=b[M]&&(cl(a.h,b),a.dispatchEvent(new jl("tokenChanged")),kl(a,b[M]),Bl(a,"refreshToken",a.h.a));}function El(a,b){return P(a.b,Hi,{idToken:b}).then(r(a.zc,a))}
-g.zc=function(a){a=a.users;if(!a||!a.length)throw new L("internal-error");a=a[0];ll(this,{uid:a.localId,displayName:a.displayName,photoURL:a.photoUrl,email:a.email,emailVerified:!!a.emailVerified,phoneNumber:a.phoneNumber,lastLoginAt:a.lastLoginAt,createdAt:a.createdAt});for(var b=Gl(a),c=0;c<b.length;c++)zl(this,b[c]);Bl(this,"isAnonymous",!(this.email&&a.passwordHash)&&!(this.providerData&&this.providerData.length));};
-function Gl(a){return (a=a.providerUserInfo)&&a.length?Da(a,function(a){return new il(a.rawId,a.providerId,a.email,a.displayName,a.photoUrl,a.phoneNumber)}):[]}g.hb=function(a){var b=this,c=null;return R(this,a.f(this.b,this.uid).then(function(a){Fl(b,a);c=Hl(b,a,"reauthenticate");b.i=null;return b.reload()}).then(function(){return c}),!0)};
-g.Ac=function(a){Me("firebase.User.prototype.reauthenticateWithCredential is deprecated. Please use firebase.User.prototype.reauthenticateAndRetrieveDataWithCredential instead.");return this.hb(a).then(function(){})};function Il(a,b){return Dl(a).then(function(){if(Ha(yl(a),b))return ul(a).then(function(){throw new L("provider-already-linked");})})}
-g.fb=function(a){var b=this,c=null;return R(this,Il(this,a.providerId).then(function(){return b.F()}).then(function(c){return a.b(b.b,c)}).then(function(a){c=Hl(b,a,"link");return Jl(b,a)}).then(function(){return c}))};g.rc=function(a){Me("firebase.User.prototype.linkWithCredential is deprecated. Please use firebase.User.prototype.linkAndRetrieveDataWithCredential instead.");return this.fb(a).then(function(a){return a.user})};
-g.sc=function(a,b){var c=this;return R(this,Il(this,"phone").then(function(){return Xk(ql(c),a,b,r(c.fb,c))}))};g.Bc=function(a,b){var c=this;return R(this,B().then(function(){return Xk(ql(c),a,b,r(c.hb,c))}),!0)};function Hl(a,b,c){var d=wg(b);b=Gf(b);return Pe({user:a,credential:d,additionalUserInfo:b,operationType:c})}function Jl(a,b){Fl(a,b);return a.reload().then(function(){return a})}
-g.qb=function(a){var b=this;return R(this,this.F().then(function(c){return b.b.qb(c,a)}).then(function(a){Fl(b,a);return b.reload()}))};g.Tc=function(a){var b=this;return R(this,this.F().then(function(c){return a.b(b.b,c)}).then(function(a){Fl(b,a);return b.reload()}))};g.rb=function(a){var b=this;return R(this,this.F().then(function(c){return b.b.rb(c,a)}).then(function(a){Fl(b,a);return b.reload()}))};
-g.sb=function(a){if(void 0===a.displayName&&void 0===a.photoURL)return xl(this);var b=this;return R(this,this.F().then(function(c){return b.b.sb(c,{displayName:a.displayName,photoUrl:a.photoURL})}).then(function(a){Fl(b,a);Bl(b,"displayName",a.displayName||null);Bl(b,"photoURL",a.photoUrl||null);v(b.providerData,function(a){"password"===a.providerId&&(J(a,"displayName",b.displayName),J(a,"photoURL",b.photoURL));});return ul(b)}).then(wl))};
-g.Rc=function(a){var b=this;return R(this,Dl(this).then(function(c){return Ha(yl(b),a)?si(b.b,c,[a]).then(function(a){var c={};v(a.providerUserInfo||[],function(a){c[a.providerId]=!0;});v(yl(b),function(a){c[a]||Al(b,a);});c[tg.PROVIDER_ID]||J(b,"phoneNumber",null);return ul(b)}):ul(b).then(function(){throw new L("no-such-provider");})}))};
-g.delete=function(){var a=this;return R(this,this.F().then(function(b){return P(a.b,Gi,{idToken:b})}).then(function(){a.dispatchEvent(new jl("userDeleted"));})).then(function(){for(var b=0;b<a.G.length;b++)a.G[b].cancel("app-deleted");ol(a,null);pl(a,null);a.G=[];a.D=!0;sl(a);J(a,"refreshToken",null);a.a&&a.a.unsubscribe(a);})};
-g.wb=function(a,b){return "linkViaPopup"==a&&(this.g||null)==b&&this.f||"reauthViaPopup"==a&&(this.g||null)==b&&this.f||"linkViaRedirect"==a&&(this.aa||null)==b||"reauthViaRedirect"==a&&(this.aa||null)==b?!0:!1};g.ha=function(a,b,c,d){"linkViaPopup"!=a&&"reauthViaPopup"!=a||d!=(this.g||null)||(c&&this.v?this.v(c):b&&!c&&this.f&&this.f(b),this.c&&(this.c.cancel(),this.c=null),delete this.f,delete this.v);};
-g.xa=function(a,b){return "linkViaPopup"==a&&b==(this.g||null)?r(this.Bb,this):"reauthViaPopup"==a&&b==(this.g||null)?r(this.Cb,this):"linkViaRedirect"==a&&(this.aa||null)==b?r(this.Bb,this):"reauthViaRedirect"==a&&(this.aa||null)==b?r(this.Cb,this):null};g.tc=function(a){var b=this;return Kl(this,"linkViaPopup",a,function(){return Il(b,a.providerId).then(function(){return ul(b)})},!1)};g.Cc=function(a){return Kl(this,"reauthViaPopup",a,function(){return B()},!0)};
-function Kl(a,b,c,d,e){if(!we())return C(new L("operation-not-supported-in-this-environment"));if(a.i&&!e)return C(a.i);var f=Ff(c.providerId),h=ve(a.uid+":::"),m=null;(!ye()||ne())&&a.u&&c.isOAuthProvider&&(m=bj(a.u,a.l,a.m,b,c,null,h,firebase.SDK_VERSION||null));var p=ee(m,f&&f.Ba,f&&f.Aa);d=d().then(function(){Ll(a);if(!e)return a.F().then(function(){})}).then(function(){return Mk(a.a,p,b,c,h,!!m)}).then(function(){return new A(function(c,d){a.ha(b,null,new L("cancelled-popup-request"),a.g||null);
-a.f=c;a.v=d;a.g=h;a.c=a.a.Ea(a,b,p,h);})}).then(function(a){p&&de(p);return a?Pe(a):null}).s(function(a){p&&de(p);throw a;});return R(a,d,e)}g.uc=function(a){var b=this;return Ml(this,"linkViaRedirect",a,function(){return Il(b,a.providerId)},!1)};g.Dc=function(a){return Ml(this,"reauthViaRedirect",a,function(){return B()},!0)};
-function Ml(a,b,c,d,e){if(!we())return C(new L("operation-not-supported-in-this-environment"));if(a.i&&!e)return C(a.i);var f=null,h=ve(a.uid+":::");d=d().then(function(){Ll(a);if(!e)return a.F().then(function(){})}).then(function(){a.aa=h;return ul(a)}).then(function(b){a.ba&&(b=a.ba,b=b.b.set(Nl,a.C(),b.a));return b}).then(function(){return a.a.Ca(b,c,h)}).s(function(b){f=b;if(a.ba)return Ol(a.ba);throw f;}).then(function(){if(f)throw f;});return R(a,d,e)}
-function Ll(a){if(!a.a||!a.I){if(a.a&&!a.I)throw new L("internal-error");throw new L("auth-domain-config-required");}}g.Bb=function(a,b,c){var d=this;this.c&&(this.c.cancel(),this.c=null);var e=null,f=this.F().then(function(e){return Vf(d.b,{requestUri:a,postBody:c,sessionId:b,idToken:e})}).then(function(a){e=Hl(d,a,"link");return Jl(d,a)}).then(function(){return e});return R(this,f)};
-g.Cb=function(a,b,c){var d=this;this.c&&(this.c.cancel(),this.c=null);var e=null,f=B().then(function(){return Rf(Wf(d.b,{requestUri:a,sessionId:b,postBody:c}),d.uid)}).then(function(a){e=Hl(d,a,"reauthenticate");Fl(d,a);d.i=null;return d.reload()}).then(function(){return e});return R(this,f,!0)};g.kb=function(a){var b=this,c=null;return R(this,this.F().then(function(b){c=b;return "undefined"===typeof a||Ya(a)?{}:pf(new ef(a))}).then(function(a){return b.b.kb(c,a)}).then(function(a){if(b.email!=a)return b.reload()}).then(function(){}))};
-function R(a,b,c){var d=Pl(a,b,c);a.G.push(d);d.ia(function(){Ia(a.G,d);});return d}function Pl(a,b,c){return a.i&&!c?(b.cancel(),C(a.i)):b.s(function(b){!b||"auth/user-disabled"!=b.code&&"auth/user-token-expired"!=b.code||(a.i||a.dispatchEvent(new jl("userInvalidated")),a.i=b);throw b;})}g.toJSON=function(){return this.C()};
-g.C=function(){var a={uid:this.uid,displayName:this.displayName,photoURL:this.photoURL,email:this.email,emailVerified:this.emailVerified,phoneNumber:this.phoneNumber,isAnonymous:this.isAnonymous,providerData:[],apiKey:this.l,appName:this.m,authDomain:this.u,stsTokenManager:this.h.C(),redirectEventId:this.aa||null};this.metadata&&ab(a,this.metadata.C());v(this.providerData,function(b){a.providerData.push(Qe(b));});return a};
-function Ql(a){if(!a.apiKey)return null;var b={apiKey:a.apiKey,authDomain:a.authDomain,appName:a.appName},c={};if(a.stsTokenManager&&a.stsTokenManager.accessToken&&a.stsTokenManager.expirationTime)c[M]=a.stsTokenManager.accessToken,c.refreshToken=a.stsTokenManager.refreshToken||null,c.expiresIn=(a.stsTokenManager.expirationTime-qa())/1E3;else return null;var d=new Q(b,c,a);a.providerData&&v(a.providerData,function(a){a&&zl(d,Pe(a));});a.redirectEventId&&(d.aa=a.redirectEventId);return d}
-function Rl(a,b,c,d){var e=new Q(a,b);c&&(e.ba=c);d&&nl(e,d);return e.reload().then(function(){return e})}function Sl(a,b,c,d){b=b||{apiKey:a.l,authDomain:a.u,appName:a.m};var e=a.h,f={};f[M]=e.b;f.refreshToken=e.a;f.expiresIn=(e.c-qa())/1E3;b=new Q(b,f);c&&(b.ba=c);d&&nl(b,d);Cl(b,a);return b}function Tl(a){this.a=a;this.b=Qj();}var Nl={name:"redirectUser",A:"session"};function Ol(a){return Uj(a.b,Nl,a.a)}function Ul(a,b){return a.b.get(Nl,a.a).then(function(a){a&&b&&(a.authDomain=b);return Ql(a||{})})}function Wl(a){this.a=a;this.b=Qj();this.c=null;this.f=Xl(this);this.b.addListener(Yl("local"),this.a,r(this.g,this));}Wl.prototype.g=function(){var a=this,b=Yl("local");Zl(this,function(){return B().then(function(){return a.c&&"local"!=a.c.A?a.b.get(b,a.a):null}).then(function(c){if(c)return $l(a,"local").then(function(){a.c=b;})})});};function $l(a,b){var c=[],d;for(d in Mj)Mj[d]!==b&&c.push(Uj(a.b,Yl(Mj[d]),a.a));c.push(Uj(a.b,am,a.a));return wb(c)}
-function Xl(a){var b=Yl("local"),c=Yl("session"),d=Yl("none");return Tj(a.b,b,a.a).then(function(){return a.b.get(c,a.a)}).then(function(e){return e?c:a.b.get(d,a.a).then(function(c){return c?d:a.b.get(b,a.a).then(function(c){return c?b:a.b.get(am,a.a).then(function(a){return a?Yl(a):b})})})}).then(function(b){a.c=b;return $l(a,b.A)}).s(function(){a.c||(a.c=b);})}var am={name:"persistence",A:"session"};function Yl(a){return {name:"authUser",A:a}}
-Wl.prototype.nb=function(a){var b=null,c=this;Nj(a);return Zl(this,function(){return a!=c.c.A?c.b.get(c.c,c.a).then(function(d){b=d;return $l(c,a)}).then(function(){c.c=Yl(a);if(b)return c.b.set(c.c,b,c.a)}):B()})};function bm(a){return Zl(a,function(){return a.b.set(am,a.c.A,a.a)})}function cm(a,b){return Zl(a,function(){return a.b.set(a.c,b.C(),a.a)})}function dm(a){return Zl(a,function(){return Uj(a.b,a.c,a.a)})}
-function em(a,b){return Zl(a,function(){return a.b.get(a.c,a.a).then(function(a){a&&b&&(a.authDomain=b);return Ql(a||{})})})}function Zl(a,b){a.f=a.f.then(b,b);return a.f}function fm(a){this.l=!1;J(this,"settings",new Vk);J(this,"app",a);if(S(this).options&&S(this).options.apiKey)a=firebase.SDK_VERSION?te(firebase.SDK_VERSION):null,this.b=new Nh(S(this).options&&S(this).options.apiKey,Af(Bf),a);else throw new L("invalid-api-key");this.N=[];this.m=[];this.I=[];this.Tb=firebase.INTERNAL.createSubscribe(r(this.oc,this));this.O=void 0;this.Ub=firebase.INTERNAL.createSubscribe(r(this.pc,this));gm(this,null);this.h=new Wl(S(this).options.apiKey+":"+S(this).name);this.w=
-new Tl(S(this).options.apiKey+":"+S(this).name);this.V=T(this,hm(this));this.i=T(this,im(this));this.X=!1;this.ka=r(this.Oc,this);this.Ha=r(this.Z,this);this.ra=r(this.bc,this);this.sa=r(this.mc,this);this.ta=r(this.nc,this);jm(this);this.INTERNAL={};this.INTERNAL["delete"]=r(this.delete,this);this.INTERNAL.logFramework=r(this.vc,this);this.u=0;F.call(this);km(this);this.G=[];}t(fm,F);function lm(a){D.call(this,"languageCodeChanged");this.g=a;}t(lm,D);
-function mm(a){D.call(this,"frameworkChanged");this.c=a;}t(mm,D);g=fm.prototype;g.nb=function(a){a=this.h.nb(a);return T(this,a)};g.pa=function(a){this.W===a||this.l||(this.W=a,Th(this.b,this.W),this.dispatchEvent(new lm(this.ea())));};g.ea=function(){return this.W};g.Uc=function(){var a=k.navigator;this.pa(a?a.languages&&a.languages[0]||a.language||a.userLanguage||null:null);};g.vc=function(a){this.G.push(a);Uh(this.b,firebase.SDK_VERSION?te(firebase.SDK_VERSION,this.G):null);this.dispatchEvent(new mm(this.G));};
-g.ya=function(){return Ka(this.G)};function km(a){Object.defineProperty(a,"lc",{get:function(){return this.ea()},set:function(a){this.pa(a);},enumerable:!1});a.W=null;}g.toJSON=function(){return {apiKey:S(this).options.apiKey,authDomain:S(this).options.authDomain,appName:S(this).name,currentUser:U(this)&&U(this).C()}};function nm(a){return a.Sb||C(new L("auth-domain-config-required"))}
-function jm(a){var b=S(a).options.authDomain,c=S(a).options.apiKey;b&&we()&&(a.Sb=a.V.then(function(){if(!a.l){a.a=Ok(b,c,S(a).name);a.a.subscribe(a);U(a)&&vl(U(a));if(a.D){vl(a.D);var d=a.D;d.pa(a.ea());ol(d,a);d=a.D;nl(d,a.G);pl(d,a);a.D=null;}return a.a}}));}g.wb=function(a,b){switch(a){case "unknown":case "signInViaRedirect":return !0;case "signInViaPopup":return this.g==b&&!!this.f;default:return !1}};
+QUOTA_EXCEEDED:"quota-exceeded",SESSION_EXPIRED:"code-expired",REJECTED_CREDENTIAL:"rejected-credential",INVALID_CONTINUE_URI:"invalid-continue-uri",MISSING_ANDROID_PACKAGE_NAME:"missing-android-pkg-name",MISSING_IOS_BUNDLE_ID:"missing-ios-bundle-id",UNAUTHORIZED_DOMAIN:"unauthorized-continue-uri",INVALID_DYNAMIC_LINK_DOMAIN:"invalid-dynamic-link-domain",INVALID_OAUTH_CLIENT_ID:"invalid-oauth-client-id",INVALID_CERT_HASH:"invalid-cert-hash"};bb(d,b||{});b=(b=c.match(/^[^\s]+\s*:\s*(.*)$/))&&1<b.length?
+b[1]:void 0;for(var e in d)if(0===c.indexOf(e))return new L(d[e],b);!b&&a&&(b=xe(a));return new L("internal-error",b)}function Gi(a){this.b=a;this.a=null;this.fb=Hi(this);}
+function Hi(a){return Ii().then(function(){return new A(function(b,c){I("gapi.iframes.getContext")().open({where:document.body,url:a.b,messageHandlersFilter:I("gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER"),attributes:{style:{position:"absolute",top:"-100px",width:"1px",height:"1px"}},dontclear:!0},function(d){function e(){clearTimeout(f);b();}a.a=d;a.a.restyle({setHideOnLeave:!1});var f=setTimeout(function(){c(Error("Network Error"));},Ji.get());d.ping(e).then(e,function(){c(Error("Network Error"));});});})})}
+function Ki(a,b){return a.fb.then(function(){return new A(function(c){a.a.send(b.type,b,c,I("gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER"));})})}function Li(a,b){a.fb.then(function(){a.a.register("authEvent",b,I("gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER"));});}var Mi=qd("https://apis.google.com/js/api.js?onload=%{onload}"),Ni=new Ce(3E4,6E4),Ji=new Ce(5E3,15E3),Oi=null;
+function Ii(){return Oi?Oi:Oi=(new A(function(a,b){function c(){Be();I("gapi.load")("gapi.iframes",{callback:a,ontimeout:function(){Be();b(Error("Network Error"));},timeout:Ni.get()});}if(I("gapi.iframes.Iframe"))a();else if(I("gapi.load"))c();else{var d="__iframefcb"+Math.floor(1E6*Math.random()).toString();k[d]=function(){I("gapi.load")?c():b(Error("Network Error"));};d=ud(Mi,{onload:d});B(Bh(d)).s(function(){b(Error("Network Error"));});}})).s(function(a){Oi=null;throw a;})}function Pi(a,b,c){this.i=a;this.g=b;this.h=c;this.f=null;this.a=ed(this.i,"/__/auth/iframe");G(this.a,"apiKey",this.g);G(this.a,"appName",this.h);this.b=null;this.c=[];}Pi.prototype.toString=function(){this.f?G(this.a,"v",this.f):kd(this.a.a,"v");this.b?G(this.a,"eid",this.b):kd(this.a.a,"eid");this.c.length?G(this.a,"fw",this.c.join(",")):kd(this.a.a,"fw");return this.a.toString()};function Qi(a,b,c,d,e){this.o=a;this.m=b;this.c=c;this.l=d;this.h=this.g=this.i=null;this.a=e;this.f=null;}
+Qi.prototype.toString=function(){var a=ed(this.o,"/__/auth/handler");G(a,"apiKey",this.m);G(a,"appName",this.c);G(a,"authType",this.l);if(this.a.isOAuthProvider){var b=this.a;try{var c=firebase.app(this.c).auth().ea();}catch(m){c=null;}b.$a=c;G(a,"providerId",this.a.providerId);b=this.a;c=ye(b.yb);for(var d in c)c[d]=c[d].toString();d=b.Dc;c=$a(c);for(var e=0;e<d.length;e++){var f=d[e];f in c&&delete c[f];}b.cb&&b.$a&&!c[b.cb]&&(c[b.cb]=b.$a);Za(c)||G(a,"customParameters",xe(c));}"function"===typeof this.a.Eb&&
+(b=this.a.Eb(),b.length&&G(a,"scopes",b.join(",")));this.i?G(a,"redirectUrl",this.i):kd(a.a,"redirectUrl");this.g?G(a,"eventId",this.g):kd(a.a,"eventId");this.h?G(a,"v",this.h):kd(a.a,"v");if(this.b)for(var h in this.b)this.b.hasOwnProperty(h)&&!cd(a,h)&&G(a,h,this.b[h]);this.f?G(a,"eid",this.f):kd(a.a,"eid");h=Ri(this.c);h.length&&G(a,"fw",h.join(","));return a.toString()};function Ri(a){try{return firebase.app(a).auth().ya()}catch(b){return []}}
+function Si(a,b,c,d,e){this.m=a;this.f=b;this.b=c;this.c=d||null;this.h=e||null;this.o=this.u=this.v=null;this.g=[];this.l=this.a=null;}
+function Ti(a){var b=Vd();return ci(a).then(function(a){a:{var c=dd(b),e=c.c;c=c.b;for(var f=0;f<a.length;f++){var h=a[f];var m=c;var p=e;0==h.indexOf("chrome-extension://")?m=dd(h).b==m&&"chrome-extension"==p:"http"!=p&&"https"!=p?m=!1:fe.test(h)?m=m==h:(h=h.split(".").join("\\."),m=(new RegExp("^(.+\\."+h+"|"+h+")$","i")).test(m));if(m){a=!0;break a}}a=!1;}if(!a)throw new Ag(Vd());})}
+function Ui(a){if(a.l)return a.l;a.l=he().then(function(){if(!a.u){var b=a.c,c=a.h,d=Ri(a.b),e=new Pi(a.m,a.f,a.b);e.f=b;e.b=c;e.c=Ja(d||[]);a.u=e.toString();}a.i=new Gi(a.u);Vi(a);});return a.l}g=Si.prototype;g.Ea=function(a,b,c){var d=new L("popup-closed-by-user"),e=new L("web-storage-unsupported"),f=this,h=!1;return this.ga().then(function(){Wi(f).then(function(c){c||(a&&be(a),b(e),h=!0);});}).s(function(){}).then(function(){if(!h)return ee(a)}).then(function(){if(!h)return Hc(c).then(function(){b(d);})})};
+g.Mb=function(){var a=H();return !we(a)&&!Ae(a)};g.Hb=function(){return !1};
+g.Cb=function(a,b,c,d,e,f,h){if(!a)return C(new L("popup-blocked"));if(h&&!we())return this.ga().s(function(b){be(a);e(b);}),d(),B();this.a||(this.a=Ti(Xi(this)));var m=this;return this.a.then(function(){var b=m.ga().s(function(b){be(a);e(b);throw b;});d();return b}).then(function(){vg(c);if(!h){var d=Yi(m.m,m.f,m.b,b,c,null,f,m.c,void 0,m.h);Wd(d,a);}}).s(function(a){"auth/network-request-failed"==a.code&&(m.a=null);throw a;})};
+function Xi(a){a.o||(a.v=a.c?re(a.c,Ri(a.b)):null,a.o=new Jh(a.f,yf(a.h),a.v));return a.o}g.Ca=function(a,b,c){this.a||(this.a=Ti(Xi(this)));var d=this;return this.a.then(function(){vg(b);var e=Yi(d.m,d.f,d.b,a,b,Vd(),c,d.c,void 0,d.h);Wd(e);}).s(function(a){"auth/network-request-failed"==a.code&&(d.a=null);throw a;})};g.ga=function(){var a=this;return Ui(this).then(function(){return a.i.fb}).s(function(){a.a=null;throw new L("network-request-failed");})};g.Qb=function(){return !0};
+function Yi(a,b,c,d,e,f,h,m,p,x){a=new Qi(a,b,c,d,e);a.i=f;a.g=h;a.h=m;a.b=$a(p||null);a.f=x;return a.toString()}function Vi(a){if(!a.i)throw Error("IfcHandler must be initialized!");Li(a.i,function(b){var c={};if(b&&b.authEvent){var d=!1;b=xg(b.authEvent);for(c=0;c<a.g.length;c++)d=a.g[c](b)||d;c={};c.status=d?"ACK":"ERROR";return B(c)}c.status="ERROR";return B(c)});}
+function Wi(a){var b={type:"webStorageSupport"};return Ui(a).then(function(){return Ki(a.i,b)}).then(function(a){if(a&&a.length&&"undefined"!==typeof a[0].webStorageSupport)return a[0].webStorageSupport;throw Error();})}g.wa=function(a){this.g.push(a);};g.Ka=function(a){w(this.g,function(b){return b==a});};function Zi(a){this.a=a||firebase.INTERNAL.reactNative&&firebase.INTERNAL.reactNative.AsyncStorage;if(!this.a)throw new L("internal-error","The React Native compatibility library was not found.");this.type="asyncStorage";}g=Zi.prototype;g.get=function(a){return B(this.a.getItem(a)).then(function(a){return a&&ze(a)})};g.set=function(a,b){return B(this.a.setItem(a,xe(b)))};g.P=function(a){return B(this.a.removeItem(a))};g.Y=function(){};g.ca=function(){};function $i(a){this.b=a;this.a={};this.c=r(this.f,this);}var aj=[];function bj(){var a=me()?self:null;v(aj,function(c){c.b==a&&(b=c);});if(!b){var b=new $i(a);aj.push(b);}return b}
+$i.prototype.f=function(a){var b=a.data.eventType,c=a.data.eventId,d=this.a[b];if(d&&0<d.length){a.ports[0].postMessage({status:"ack",eventId:c,eventType:b,response:null});var e=[];v(d,function(b){e.push(B().then(function(){return b(a.origin,a.data.data)}));});wb(e).then(function(d){var e=[];v(d,function(a){e.push({fulfilled:a.Db,value:a.value,reason:a.reason?a.reason.message:void 0});});v(e,function(a){for(var b in a)"undefined"===typeof a[b]&&delete a[b];});a.ports[0].postMessage({status:"done",eventId:c,
+eventType:b,response:e});});}};$i.prototype.subscribe=function(a,b){Za(this.a)&&this.b.addEventListener("message",this.c);"undefined"===typeof this.a[a]&&(this.a[a]=[]);this.a[a].push(b);};$i.prototype.unsubscribe=function(a,b){"undefined"!==typeof this.a[a]&&b?(w(this.a[a],function(a){return a==b}),0==this.a[a].length&&delete this.a[a]):b||delete this.a[a];Za(this.a)&&this.b.removeEventListener("message",this.c);};function cj(a){this.a=a;}cj.prototype.postMessage=function(a,b){this.a.postMessage(a,b);};function dj(a){this.c=a;this.b=!1;this.a=[];}
+function ej(a,b,c,d){var e,f=c||{},h,m,p,x=null;if(a.b)return C(Error("connection_unavailable"));var gb=d?800:50,la="undefined"!==typeof MessageChannel?new MessageChannel:null;return (new A(function(c,d){la?(e=Math.floor(Math.random()*Math.pow(10,20)).toString(),la.port1.start(),m=setTimeout(function(){d(Error("unsupported_event"));},gb),h=function(a){a.data.eventId===e&&("ack"===a.data.status?(clearTimeout(m),p=setTimeout(function(){d(Error("timeout"));},3E3)):"done"===a.data.status?(clearTimeout(p),
+"undefined"!==typeof a.data.response?c(a.data.response):d(Error("unknown_error"))):(clearTimeout(m),clearTimeout(p),d(Error("invalid_response"))));},x={messageChannel:la,onMessage:h},a.a.push(x),la.port1.addEventListener("message",h),a.c.postMessage({eventType:b,eventId:e,data:f},[la.port2])):d(Error("connection_unavailable"));})).then(function(b){fj(a,x);return b}).s(function(b){fj(a,x);throw b;})}
+function fj(a,b){if(b){var c=b.messageChannel,d=b.onMessage;c&&(c.port1.removeEventListener("message",d),c.port1.close());w(a.a,function(a){return a==b});}}dj.prototype.close=function(){for(;0<this.a.length;)fj(this,this.a[0]);this.b=!0;};function gj(){if(!hj())throw new L("web-storage-unsupported");this.c={};this.a=[];this.b=0;this.m=k.indexedDB;this.type="indexedDB";this.g=this.l=this.f=this.i=null;this.u=!1;this.h=null;var a=this;me()&&self?(this.l=bj(),this.l.subscribe("keyChanged",function(b,c){return ij(a).then(function(b){0<b.length&&v(a.a,function(a){a(b);});return {keyProcessed:Ga(b,c.key)}})}),this.l.subscribe("ping",function(){return B(["keyChanged"])})):Ie().then(function(b){if(a.h=b)a.g=new dj(new cj(b)),ej(a.g,"ping",null,
+!0).then(function(b){b[0].fulfilled&&Ga(b[0].value,"keyChanged")&&(a.u=!0);}).s(function(){});});}var jj;function kj(a){return new A(function(b,c){var d=a.m.deleteDatabase("firebaseLocalStorageDb");d.onsuccess=function(){b();};d.onerror=function(a){c(Error(a.target.error));};})}
+function lj(a){return new A(function(b,c){var d=a.m.open("firebaseLocalStorageDb",1);d.onerror=function(a){try{a.preventDefault();}catch(f){}c(Error(a.target.error));};d.onupgradeneeded=function(a){a=a.target.result;try{a.createObjectStore("firebaseLocalStorage",{keyPath:"fbase_key"});}catch(f){c(f);}};d.onsuccess=function(d){d=d.target.result;d.objectStoreNames.contains("firebaseLocalStorage")?b(d):kj(a).then(function(){return lj(a)}).then(function(a){b(a);}).s(function(a){c(a);});};})}
+function mj(a){a.o||(a.o=lj(a));return a.o}function hj(){try{return !!k.indexedDB}catch(a){return !1}}function nj(a){return a.objectStore("firebaseLocalStorage")}function oj(a,b){return a.transaction(["firebaseLocalStorage"],b?"readwrite":"readonly")}function pj(a){return new A(function(b,c){a.onsuccess=function(a){a&&a.target?b(a.target.result):b();};a.onerror=function(a){c(a.target.error);};})}g=gj.prototype;
+g.set=function(a,b){var c=!1,d,e=this;return mj(this).then(function(b){d=b;b=nj(oj(d,!0));return pj(b.get(a))}).then(function(f){var h=nj(oj(d,!0));if(f)return f.value=b,pj(h.put(f));e.b++;c=!0;f={};f.fbase_key=a;f.value=b;return pj(h.add(f))}).then(function(){e.c[a]=b;return qj(e,a)}).ia(function(){c&&e.b--;})};function qj(a,b){return a.g&&a.h&&He()===a.h?ej(a.g,"keyChanged",{key:b},a.u).then(function(){}).s(function(){}):B()}
+g.get=function(a){return mj(this).then(function(b){return pj(nj(oj(b,!1)).get(a))}).then(function(a){return a&&a.value})};g.P=function(a){var b=!1,c=this;return mj(this).then(function(d){b=!0;c.b++;return pj(nj(oj(d,!0))["delete"](a))}).then(function(){delete c.c[a];return qj(c,a)}).ia(function(){b&&c.b--;})};
+function ij(a){return mj(a).then(function(a){var b=nj(oj(a,!1));return b.getAll?pj(b.getAll()):new A(function(a,c){var d=[],e=b.openCursor();e.onsuccess=function(b){(b=b.target.result)?(d.push(b.value),b["continue"]()):a(d);};e.onerror=function(a){c(a.target.error);};})}).then(function(b){var c={},d=[];if(0==a.b){for(d=0;d<b.length;d++)c[b[d].fbase_key]=b[d].value;d=Xd(a.c,c);a.c=c;}return d})}g.Y=function(a){0==this.a.length&&rj(this);this.a.push(a);};
+g.ca=function(a){w(this.a,function(b){return b==a});0==this.a.length&&sj(this);};function rj(a){function b(){a.f=setTimeout(function(){a.i=ij(a).then(function(b){0<b.length&&v(a.a,function(a){a(b);});}).then(function(){b();}).s(function(a){"STOP_EVENT"!=a.message&&b();});},800);}sj(a);b();}function sj(a){a.i&&a.i.cancel("STOP_EVENT");a.f&&(clearTimeout(a.f),a.f=null);}function tj(a){var b=this,c=null;this.a=[];this.type="indexedDB";this.c=a;this.b=B().then(function(){if(hj()){var a=te(),e="__sak"+a;jj||(jj=new gj);c=jj;return c.set(e,a).then(function(){return c.get(e)}).then(function(b){if(b!==a)throw Error("indexedDB not supported!");return c.P(e)}).then(function(){return c}).s(function(){return b.c})}return b.c}).then(function(a){b.type=a.type;a.Y(function(a){v(b.a,function(b){b(a);});});return a});}g=tj.prototype;g.get=function(a){return this.b.then(function(b){return b.get(a)})};
+g.set=function(a,b){return this.b.then(function(c){return c.set(a,b)})};g.P=function(a){return this.b.then(function(b){return b.P(a)})};g.Y=function(a){this.a.push(a);};g.ca=function(a){w(this.a,function(b){return b==a});};function uj(){this.a={};this.type="inMemory";}g=uj.prototype;g.get=function(a){return B(this.a[a])};g.set=function(a,b){this.a[a]=b;return B()};g.P=function(a){delete this.a[a];return B()};g.Y=function(){};g.ca=function(){};function vj(){if(!wj()){if("Node"==ne())throw new L("internal-error","The LocalStorage compatibility library was not found.");throw new L("web-storage-unsupported");}this.a=xj()||firebase.INTERNAL.node.localStorage;this.type="localStorage";}function xj(){try{var a=k.localStorage,b=te();a&&(a.setItem(b,"1"),a.removeItem(b));return a}catch(c){return null}}
+function wj(){var a="Node"==ne();a=xj()||a&&firebase.INTERNAL.node&&firebase.INTERNAL.node.localStorage;if(!a)return !1;try{return a.setItem("__sak","1"),a.removeItem("__sak"),!0}catch(b){return !1}}g=vj.prototype;g.get=function(a){var b=this;return B().then(function(){var c=b.a.getItem(a);return ze(c)})};g.set=function(a,b){var c=this;return B().then(function(){var d=xe(b);null===d?c.P(a):c.a.setItem(a,d);})};g.P=function(a){var b=this;return B().then(function(){b.a.removeItem(a);})};
+g.Y=function(a){k.window&&rc(k.window,"storage",a);};g.ca=function(a){k.window&&E(k.window,"storage",a);};function yj(){this.type="nullStorage";}g=yj.prototype;g.get=function(){return B(null)};g.set=function(){return B()};g.P=function(){return B()};g.Y=function(){};g.ca=function(){};function zj(){if(!Aj()){if("Node"==ne())throw new L("internal-error","The SessionStorage compatibility library was not found.");throw new L("web-storage-unsupported");}this.a=Bj()||firebase.INTERNAL.node.sessionStorage;this.type="sessionStorage";}function Bj(){try{var a=k.sessionStorage,b=te();a&&(a.setItem(b,"1"),a.removeItem(b));return a}catch(c){return null}}
+function Aj(){var a="Node"==ne();a=Bj()||a&&firebase.INTERNAL.node&&firebase.INTERNAL.node.sessionStorage;if(!a)return !1;try{return a.setItem("__sak","1"),a.removeItem("__sak"),!0}catch(b){return !1}}g=zj.prototype;g.get=function(a){var b=this;return B().then(function(){var c=b.a.getItem(a);return ze(c)})};g.set=function(a,b){var c=this;return B().then(function(){var d=xe(b);null===d?c.P(a):c.a.setItem(a,d);})};g.P=function(a){var b=this;return B().then(function(){b.a.removeItem(a);})};g.Y=function(){};
+g.ca=function(){};function Cj(){var a={};a.Browser=Dj;a.Node=Ej;a.ReactNative=Fj;a.Worker=Gj;this.a=a[ne()];}var Hj,Dj={A:vj,Ra:zj},Ej={A:vj,Ra:zj},Fj={A:Zi,Ra:yj},Gj={A:vj,Ra:yj};var Ij={Zc:"local",NONE:"none",ad:"session"};function Jj(a){var b=new L("invalid-persistence-type"),c=new L("unsupported-persistence-type");a:{for(d in Ij)if(Ij[d]==a){var d=!0;break a}d=!1;}if(!d||"string"!==typeof a)throw b;switch(ne()){case "ReactNative":if("session"===a)throw c;break;case "Node":if("none"!==a)throw c;break;default:if(!se()&&"none"!==a)throw c;}}
+function Kj(){var a=!Ae(H())&&le()?!0:!1,b=we(),c=se();this.o=a;this.h=b;this.l=c;this.a={};Hj||(Hj=new Cj);a=Hj;try{this.g=!Ud()&&Ge()||!k.indexedDB?new a.a.A:new tj(me()?new uj:new a.a.A);}catch(d){this.g=new uj,this.h=!0;}try{this.i=new a.a.Ra;}catch(d){this.i=new uj;}this.m=new uj;this.f=r(this.Pb,this);this.b={};}var Lj;function Mj(){Lj||(Lj=new Kj);return Lj}function Nj(a,b){switch(b){case "session":return a.i;case "none":return a.m;default:return a.g}}
+function Oj(a,b){return "firebase:"+a.name+(b?":"+b:"")}function Pj(a,b,c){var d=Oj(b,c),e=Nj(a,b.A);return a.get(b,c).then(function(f){var h=null;try{h=ze(k.localStorage.getItem(d));}catch(m){}if(h&&!f)return k.localStorage.removeItem(d),a.set(b,h,c);h&&f&&"localStorage"!=e.type&&k.localStorage.removeItem(d);})}g=Kj.prototype;g.get=function(a,b){return Nj(this,a.A).get(Oj(a,b))};function Qj(a,b,c){c=Oj(b,c);"local"==b.A&&(a.b[c]=null);return Nj(a,b.A).P(c)}
+g.set=function(a,b,c){var d=Oj(a,c),e=this,f=Nj(this,a.A);return f.set(d,b).then(function(){return f.get(d)}).then(function(b){"local"==a.A&&(e.b[d]=b);})};g.addListener=function(a,b,c){a=Oj(a,b);this.l&&(this.b[a]=k.localStorage.getItem(a));Za(this.a)&&(Nj(this,"local").Y(this.f),this.h||(Ud()||!Ge())&&k.indexedDB||!this.l||Rj(this));this.a[a]||(this.a[a]=[]);this.a[a].push(c);};
+g.removeListener=function(a,b,c){a=Oj(a,b);this.a[a]&&(w(this.a[a],function(a){return a==c}),0==this.a[a].length&&delete this.a[a]);Za(this.a)&&(Nj(this,"local").ca(this.f),Sj(this));};function Rj(a){Sj(a);a.c=setInterval(function(){for(var b in a.a){var c=k.localStorage.getItem(b),d=a.b[b];c!=d&&(a.b[b]=c,c=new fc({type:"storage",key:b,target:window,oldValue:d,newValue:c,a:!0}),a.Pb(c));}},1E3);}function Sj(a){a.c&&(clearInterval(a.c),a.c=null);}
+g.Pb=function(a){if(a&&a.f){var b=a.a.key;if(null==b)for(var c in this.a){var d=this.b[c];"undefined"===typeof d&&(d=null);var e=k.localStorage.getItem(c);e!==d&&(this.b[c]=e,this.Xa(c));}else if(0==b.indexOf("firebase:")&&this.a[b]){"undefined"!==typeof a.a.a?Nj(this,"local").ca(this.f):Sj(this);if(this.o)if(c=k.localStorage.getItem(b),d=a.a.newValue,d!==c)null!==d?k.localStorage.setItem(b,d):k.localStorage.removeItem(b);else if(this.b[b]===d&&"undefined"===typeof a.a.a)return;var f=this;c=function(){if("undefined"!==
+typeof a.a.a||f.b[b]!==k.localStorage.getItem(b))f.b[b]=k.localStorage.getItem(b),f.Xa(b);};Pb&&$b&&10==$b&&k.localStorage.getItem(b)!==a.a.newValue&&a.a.newValue!==a.a.oldValue?setTimeout(c,10):c();}}else v(a,r(this.Xa,this));};g.Xa=function(a){this.a[a]&&v(this.a[a],function(a){a();});};function Tj(a){this.a=a;this.b=Mj();}var Uj={name:"authEvent",A:"local"};function Vj(a){return a.b.get(Uj,a.a).then(function(a){return xg(a)})}function Wj(){this.a=Mj();}function Xj(){this.b=-1;}function Yj(a,b){this.b=Zj;this.f=k.Uint8Array?new Uint8Array(this.b):Array(this.b);this.g=this.c=0;this.a=[];this.i=a;this.h=b;this.l=k.Int32Array?new Int32Array(64):Array(64);void 0!==ak||(k.Int32Array?ak=new Int32Array(bk):ak=bk);this.reset();}var ak;t(Yj,Xj);for(var Zj=64,ck=Zj-1,dk=[],ek=0;ek<ck;ek++)dk[ek]=0;var fk=Ia(128,dk);Yj.prototype.reset=function(){this.g=this.c=0;this.a=k.Int32Array?new Int32Array(this.h):Ja(this.h);};
+function gk(a){for(var b=a.f,c=a.l,d=0,e=0;e<b.length;)c[d++]=b[e]<<24|b[e+1]<<16|b[e+2]<<8|b[e+3],e=4*d;for(b=16;64>b;b++){e=c[b-15]|0;d=c[b-2]|0;var f=(c[b-16]|0)+((e>>>7|e<<25)^(e>>>18|e<<14)^e>>>3)|0,h=(c[b-7]|0)+((d>>>17|d<<15)^(d>>>19|d<<13)^d>>>10)|0;c[b]=f+h|0;}d=a.a[0]|0;e=a.a[1]|0;var m=a.a[2]|0,p=a.a[3]|0,x=a.a[4]|0,gb=a.a[5]|0,la=a.a[6]|0;f=a.a[7]|0;for(b=0;64>b;b++){var Rl=((d>>>2|d<<30)^(d>>>13|d<<19)^(d>>>22|d<<10))+(d&e^d&m^e&m)|0;h=x&gb^~x&la;f=f+((x>>>6|x<<26)^(x>>>11|x<<21)^(x>>>
+25|x<<7))|0;h=h+(ak[b]|0)|0;h=f+(h+(c[b]|0)|0)|0;f=la;la=gb;gb=x;x=p+h|0;p=m;m=e;e=d;d=h+Rl|0;}a.a[0]=a.a[0]+d|0;a.a[1]=a.a[1]+e|0;a.a[2]=a.a[2]+m|0;a.a[3]=a.a[3]+p|0;a.a[4]=a.a[4]+x|0;a.a[5]=a.a[5]+gb|0;a.a[6]=a.a[6]+la|0;a.a[7]=a.a[7]+f|0;}
+function hk(a,b,c){void 0===c&&(c=b.length);var d=0,e=a.c;if(l(b))for(;d<c;)a.f[e++]=b.charCodeAt(d++),e==a.b&&(gk(a),e=0);else if(ha(b))for(;d<c;){var f=b[d++];if(!("number"==typeof f&&0<=f&&255>=f&&f==(f|0)))throw Error("message must be a byte array");a.f[e++]=f;e==a.b&&(gk(a),e=0);}else throw Error("message must be string or array");a.c=e;a.g+=c;}
+var bk=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,
+4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298];function ik(){Yj.call(this,8,jk);}t(ik,Yj);var jk=[1779033703,3144134277,1013904242,2773480762,1359893119,2600822924,528734635,1541459225];function kk(a,b,c,d,e){this.m=a;this.i=b;this.l=c;this.o=d||null;this.u=e||null;this.h=b+":"+c;this.v=new Wj;this.g=new Tj(this.h);this.f=null;this.b=[];this.a=this.c=null;}function lk(a){return new L("invalid-cordova-configuration",a)}g=kk.prototype;
+g.ga=function(){return this.za?this.za:this.za=ie().then(function(){if("function"!==typeof I("universalLinks.subscribe",k))throw lk("cordova-universal-links-plugin-fix is not installed");if("undefined"===typeof I("BuildInfo.packageName",k))throw lk("cordova-plugin-buildinfo is not installed");if("function"!==typeof I("cordova.plugins.browsertab.openUrl",k))throw lk("cordova-plugin-browsertab is not installed");if("function"!==typeof I("cordova.InAppBrowser.open",k))throw lk("cordova-plugin-inappbrowser is not installed");
+},function(){throw new L("cordova-not-ready");})};function mk(){for(var a=20,b=[];0<a;)b.push("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(Math.floor(62*Math.random()))),a--;return b.join("")}function nk(a){var b=new ik;hk(b,a);a=[];var c=8*b.g;56>b.c?hk(b,fk,56-b.c):hk(b,fk,b.b-(b.c-56));for(var d=63;56<=d;d--)b.f[d]=c&255,c/=256;gk(b);for(d=c=0;d<b.i;d++)for(var e=24;0<=e;e-=8)a[c++]=b.a[d]>>e&255;return of(a)}
+g.Ea=function(a,b){b(new L("operation-not-supported-in-this-environment"));return B()};g.Cb=function(){return C(new L("operation-not-supported-in-this-environment"))};g.Qb=function(){return !1};g.Mb=function(){return !0};g.Hb=function(){return !0};
+g.Ca=function(a,b,c){if(this.c)return C(new L("redirect-operation-pending"));var d=this,e=k.document,f=null,h=null,m=null,p=null;return this.c=B().then(function(){vg(b);return ok(d)}).then(function(){return pk(d,a,b,c)}).then(function(){return (new A(function(a,b){h=function(){var b=I("cordova.plugins.browsertab.close",k);a();"function"===typeof b&&b();d.a&&"function"===typeof d.a.close&&(d.a.close(),d.a=null);return !1};d.wa(h);m=function(){f||(f=Hc(2E3).then(function(){b(new L("redirect-cancelled-by-user"));}));};
+p=function(){De()&&m();};e.addEventListener("resume",m,!1);H().toLowerCase().match(/android/)||e.addEventListener("visibilitychange",p,!1);})).s(function(a){return qk(d).then(function(){throw a;})})}).ia(function(){m&&e.removeEventListener("resume",m,!1);p&&e.removeEventListener("visibilitychange",p,!1);f&&f.cancel();h&&d.Ka(h);d.c=null;})};
+function pk(a,b,c,d){var e=mk(),f=new wg(b,d,null,e,new L("no-auth-event")),h=I("BuildInfo.packageName",k);if("string"!==typeof h)throw new L("invalid-cordova-configuration");var m=I("BuildInfo.displayName",k),p={};if(H().toLowerCase().match(/iphone|ipad|ipod/))p.ibi=h;else if(H().toLowerCase().match(/android/))p.apn=h;else return C(new L("operation-not-supported-in-this-environment"));m&&(p.appDisplayName=m);e=nk(e);p.sessionId=e;var x=Yi(a.m,a.i,a.l,b,c,null,d,a.o,p,a.u);return a.ga().then(function(){var b=
+a.h;return a.v.a.set(Uj,f.C(),b)}).then(function(){var b=I("cordova.plugins.browsertab.isAvailable",k);if("function"!==typeof b)throw new L("invalid-cordova-configuration");var c=null;b(function(b){if(b){c=I("cordova.plugins.browsertab.openUrl",k);if("function"!==typeof c)throw new L("invalid-cordova-configuration");c(x);}else{c=I("cordova.InAppBrowser.open",k);if("function"!==typeof c)throw new L("invalid-cordova-configuration");b=H();b=!(!b.match(/(iPad|iPhone|iPod).*OS 7_\d/i)&&!b.match(/(iPad|iPhone|iPod).*OS 8_\d/i));
+a.a=c(x,b?"_blank":"_system","location=yes");}});})}function rk(a,b){for(var c=0;c<a.b.length;c++)try{a.b[c](b);}catch(d){}}function ok(a){a.f||(a.f=a.ga().then(function(){return new A(function(b){function c(d){b(d);a.Ka(c);return !1}a.wa(c);sk(a);})}));return a.f}function qk(a){var b=null;return Vj(a.g).then(function(c){b=c;c=a.g;return Qj(c.b,Uj,c.a)}).then(function(){return b})}
+function sk(a){function b(b){d=!0;e&&e.cancel();qk(a).then(function(d){var e=c;if(d&&b&&b.url){var f=null;e=Of(b.url);-1!=e.indexOf("/__/auth/callback")&&(f=dd(e),f=ze(cd(f,"firebaseError")||null),f=(f="object"===typeof f?bf(f):null)?new wg(d.b,d.c,null,null,f):new wg(d.b,d.c,e,d.g));e=f||c;}rk(a,e);});}var c=new wg("unknown",null,null,null,new L("no-auth-event")),d=!1,e=Hc(500).then(function(){return qk(a).then(function(){d||rk(a,c);})}),f=k.handleOpenURL;k.handleOpenURL=function(a){0==a.toLowerCase().indexOf(I("BuildInfo.packageName",
+k).toLowerCase()+"://")&&b({url:a});if("function"===typeof f)try{f(a);}catch(m){console.error(m);}};zg||(zg=new yg);zg.subscribe(b);}g.wa=function(a){this.b.push(a);ok(this).s(function(b){"auth/invalid-cordova-configuration"===b.code&&(b=new wg("unknown",null,null,null,new L("no-auth-event")),a(b));});};g.Ka=function(a){w(this.b,function(b){return b==a});};function tk(a){this.a=a;this.b=Mj();}var uk={name:"pendingRedirect",A:"session"};function vk(a){return a.b.set(uk,"pending",a.a)}function wk(a){return Qj(a.b,uk,a.a)}function xk(a){return a.b.get(uk,a.a).then(function(a){return "pending"==a})}function yk(a,b,c){this.u=a;this.l=b;this.m=c;this.h=[];this.f=!1;this.i=r(this.bb,this);this.b=new zk;this.o=new Ak;this.g=new tk(this.l+":"+this.m);this.c={};this.c.unknown=this.b;this.c.signInViaRedirect=this.b;this.c.linkViaRedirect=this.b;this.c.reauthViaRedirect=this.b;this.c.signInViaPopup=this.o;this.c.linkViaPopup=this.o;this.c.reauthViaPopup=this.o;this.a=Bk(this.u,this.l,this.m,zf);}function Bk(a,b,c,d){var e=firebase.SDK_VERSION||null;return je()?new kk(a,b,c,e,d):new Si(a,b,c,e,d)}g=yk.prototype;
+g.reset=function(){this.f=!1;this.a.Ka(this.i);this.a=Bk(this.u,this.l,this.m);};g.Ya=function(){this.b.Ya();};function Ck(a){a.f||(a.f=!0,a.a.wa(a.i));var b=a.a;return a.a.ga().s(function(c){a.a==b&&a.reset();throw c;})}function Dk(a){a.a.Mb()&&Ck(a).s(function(b){var c=new wg("unknown",null,null,null,new L("operation-not-supported-in-this-environment"));Ek(b)&&a.bb(c);});a.a.Hb()||Fk(a.b);}
+g.subscribe=function(a){Ga(this.h,a)||this.h.push(a);if(!this.f){var b=this;xk(this.g).then(function(a){a?wk(b.g).then(function(){Ck(b).s(function(a){var c=new wg("unknown",null,null,null,new L("operation-not-supported-in-this-environment"));Ek(a)&&b.bb(c);});}):Dk(b);}).s(function(){Dk(b);});}};g.unsubscribe=function(a){w(this.h,function(b){return b==a});};
+g.bb=function(a){if(!a)throw new L("invalid-auth-event");for(var b=!1,c=0;c<this.h.length;c++){var d=this.h[c];if(d.vb(a.b,a.c)){(b=this.c[a.b])&&b.h(a,d);b=!0;break}}Fk(this.b);return b};var Gk=new Ce(2E3,1E4),Hk=new Ce(3E4,6E4);yk.prototype.fa=function(){return this.b.fa()};function Ik(a,b,c,d,e,f){return a.a.Cb(b,c,d,function(){a.f||(a.f=!0,a.a.wa(a.i));},function(){a.reset();},e,f)}function Ek(a){return a&&"auth/cordova-not-ready"==a.code?!0:!1}
+yk.prototype.Ca=function(a,b,c){var d=this,e;return vk(this.g).then(function(){return d.a.Ca(a,b,c).s(function(a){if(Ek(a))throw new L("operation-not-supported-in-this-environment");e=a;return wk(d.g).then(function(){throw e;})}).then(function(){return d.a.Qb()?new A(function(){}):wk(d.g).then(function(){return d.fa()}).then(function(){}).s(function(){})})})};yk.prototype.Ea=function(a,b,c,d){return this.a.Ea(c,function(c){a.ha(b,null,c,d);},Gk.get())};var Jk={};
+function Kk(a,b,c){var d=b+":"+c;Jk[d]||(Jk[d]=new yk(a,b,c));return Jk[d]}function zk(){this.b=null;this.f=[];this.c=[];this.a=null;this.i=this.g=!1;}zk.prototype.reset=function(){this.b=null;this.a&&(this.a.cancel(),this.a=null);};
+zk.prototype.h=function(a,b){if(a){this.reset();this.g=!0;var c=a.b,d=a.c,e=a.a&&"auth/web-storage-unsupported"==a.a.code,f=a.a&&"auth/operation-not-supported-in-this-environment"==a.a.code;this.i=!(!e&&!f);"unknown"!=c||e||f?a.a?(Lk(this,!0,null,a.a),B()):b.xa(c,d)?Mk(this,a,b):C(new L("invalid-auth-event")):(Lk(this,!1,null,null),B());}else C(new L("invalid-auth-event"));};function Fk(a){a.g||(a.g=!0,Lk(a,!1,null,null));}zk.prototype.Ya=function(){this.g&&!this.i&&Lk(this,!1,null,null);};
+function Mk(a,b,c){c=c.xa(b.b,b.c);var d=b.f,e=b.g,f=b.h,h=!!b.b.match(/Redirect$/);c(d,e,f).then(function(b){Lk(a,h,b,null);}).s(function(b){Lk(a,h,null,b);});}function Nk(a,b){a.b=function(){return C(b)};if(a.c.length)for(var c=0;c<a.c.length;c++)a.c[c](b);}function Ok(a,b){a.b=function(){return B(b)};if(a.f.length)for(var c=0;c<a.f.length;c++)a.f[c](b);}function Lk(a,b,c,d){b?d?Nk(a,d):Ok(a,c):Ok(a,{user:null});a.f=[];a.c=[];}
+zk.prototype.fa=function(){var a=this;return new A(function(b,c){a.b?a.b().then(b,c):(a.f.push(b),a.c.push(c),Pk(a));})};function Pk(a){var b=new L("timeout");a.a&&a.a.cancel();a.a=Hc(Hk.get()).then(function(){a.b||(a.g=!0,Lk(a,!0,null,b));});}function Ak(){}Ak.prototype.h=function(a,b){if(a){var c=a.b,d=a.c;a.a?(b.ha(a.b,null,a.a,a.c),B()):b.xa(c,d)?Qk(a,b):C(new L("invalid-auth-event"));}else C(new L("invalid-auth-event"));};
+function Qk(a,b){var c=a.c,d=a.b;b.xa(d,c)(a.f,a.g,a.h).then(function(a){b.ha(d,a,null,c);}).s(function(a){b.ha(d,null,a,c);});}function Rk(){this.sb=!1;Object.defineProperty(this,"appVerificationDisabled",{get:function(){return this.sb},set:function(a){this.sb=a;},enumerable:!1});}function Sk(a,b){this.a=b;J(this,"verificationId",a);}Sk.prototype.confirm=function(a){a=tg(this.verificationId,a);return this.a(a)};function Tk(a,b,c,d){return (new rg(a)).Ua(b,c).then(function(a){return new Sk(a,d)})}function Uk(a){var b=wf(a);if(!(b&&b.exp&&b.auth_time&&b.iat))throw new L("internal-error","An internal error occurred. The token obtained by Firebase appears to be malformed. Please retry the operation.");K(this,{token:a,expirationTime:Fe(1E3*b.exp),authTime:Fe(1E3*b.auth_time),issuedAtTime:Fe(1E3*b.iat),signInProvider:b.firebase&&b.firebase.sign_in_provider?b.firebase.sign_in_provider:null,claims:b});}function Vk(a,b,c){this.h=a;this.i=b;this.g=c;this.c=3E4;this.f=96E4;this.b=null;this.a=this.c;if(this.f<this.c)throw Error("Proactive refresh lower bound greater than upper bound!");}Vk.prototype.start=function(){this.a=this.c;Wk(this,!0);};function Xk(a,b){if(b)return a.a=a.c,a.g();b=a.a;a.a*=2;a.a>a.f&&(a.a=a.f);return b}function Wk(a,b){a.stop();a.b=Hc(Xk(a,b)).then(function(){return Ee()}).then(function(){return a.h()}).then(function(){Wk(a,!0);}).s(function(b){a.i(b)&&Wk(a,!1);});}
+Vk.prototype.stop=function(){this.b&&(this.b.cancel(),this.b=null);};function Yk(a){this.f=a;this.b=this.a=null;this.c=0;}Yk.prototype.C=function(){return {apiKey:this.f.b,refreshToken:this.a,accessToken:this.b,expirationTime:this.c}};function Zk(a,b){var c=b[M],d=b.refreshToken;b=$k(b.expiresIn);a.b=c;a.c=b;a.a=d;}function al(a,b){a.b=b.b;a.a=b.a;a.c=b.c;}function $k(a){return oa()+1E3*parseInt(a,10)}
+function bl(a,b){return Vh(a.f,b).then(function(b){a.b=b.access_token;a.c=$k(b.expires_in);a.a=b.refresh_token;return {accessToken:a.b,expirationTime:a.c,refreshToken:a.a}}).s(function(b){"auth/user-token-expired"==b.code&&(a.a=null);throw b;})}Yk.prototype.getToken=function(a){a=!!a;return this.b&&!this.a?C(new L("user-token-expired")):a||!this.b||oa()>this.c-3E4?this.a?bl(this,{grant_type:"refresh_token",refresh_token:this.a}):B(null):B({accessToken:this.b,expirationTime:this.c,refreshToken:this.a})};function cl(a,b){this.a=a||null;this.b=b||null;K(this,{lastSignInTime:Fe(b||null),creationTime:Fe(a||null)});}function dl(a){return new cl(a.a,a.b)}cl.prototype.C=function(){return {lastLoginAt:this.b,createdAt:this.a}};function el(a,b,c,d,e,f){K(this,{uid:a,displayName:d||null,photoURL:e||null,email:c||null,phoneNumber:f||null,providerId:b});}function fl(a,b){D.call(this,a);for(var c in b)this[c]=b[c];}t(fl,D);
+function Q(a,b,c){this.G=[];this.m=a.apiKey;this.o=a.appName;this.u=a.authDomain||null;a=firebase.SDK_VERSION?re(firebase.SDK_VERSION):null;this.b=new Jh(this.m,yf(zf),a);this.h=new Yk(this.b);gl(this,b[M]);Zk(this.h,b);J(this,"refreshToken",this.h.a);hl(this,c||{});F.call(this);this.I=!1;this.u&&ue()&&(this.a=Kk(this.u,this.m,this.o));this.N=[];this.i=null;this.w=il(this);this.V=r(this.Ha,this);var d=this;this.ka=null;this.ta=function(a){d.pa(a.g);};this.X=null;this.O=[];this.sa=function(a){jl(d,
+a.c);};this.W=null;}t(Q,F);Q.prototype.pa=function(a){this.ka=a;Ph(this.b,a);};Q.prototype.ea=function(){return this.ka};function kl(a,b){a.X&&E(a.X,"languageCodeChanged",a.ta);(a.X=b)&&rc(b,"languageCodeChanged",a.ta);}function jl(a,b){a.O=b;Qh(a.b,firebase.SDK_VERSION?re(firebase.SDK_VERSION,a.O):null);}Q.prototype.ya=function(){return Ja(this.O)};function ll(a,b){a.W&&E(a.W,"frameworkChanged",a.sa);(a.W=b)&&rc(b,"frameworkChanged",a.sa);}Q.prototype.Ha=function(){this.w.b&&(this.w.stop(),this.w.start());};
+function ml(a){try{return firebase.app(a.o).auth()}catch(b){throw new L("internal-error","No firebase.auth.Auth instance is available for the Firebase App '"+a.o+"'!");}}function il(a){return new Vk(function(){return a.F(!0)},function(a){return a&&"auth/network-request-failed"==a.code?!0:!1},function(){var b=a.h.c-oa()-3E5;return 0<b?b:0})}function nl(a){a.D||a.w.b||(a.w.start(),E(a,"tokenChanged",a.V),rc(a,"tokenChanged",a.V));}function ol(a){E(a,"tokenChanged",a.V);a.w.stop();}
+function gl(a,b){a.ra=b;J(a,"_lat",b);}function pl(a,b){w(a.N,function(a){return a==b});}function ql(a){for(var b=[],c=0;c<a.N.length;c++)b.push(a.N[c](a));return wb(b).then(function(){return a})}function rl(a){a.a&&!a.I&&(a.I=!0,a.a.subscribe(a));}
+function hl(a,b){K(a,{uid:b.uid,displayName:b.displayName||null,photoURL:b.photoURL||null,email:b.email||null,emailVerified:b.emailVerified||!1,phoneNumber:b.phoneNumber||null,isAnonymous:b.isAnonymous||!1,metadata:new cl(b.createdAt,b.lastLoginAt),providerData:[]});}J(Q.prototype,"providerId","firebase");function sl(){}function tl(a){return B().then(function(){if(a.D)throw new L("app-deleted");})}function ul(a){return Ca(a.providerData,function(a){return a.providerId})}
+function vl(a,b){b&&(wl(a,b.providerId),a.providerData.push(b));}function wl(a,b){w(a.providerData,function(a){return a.providerId==b});}function xl(a,b,c){("uid"!=b||c)&&a.hasOwnProperty(b)&&J(a,b,c);}
+function yl(a,b){a!=b&&(K(a,{uid:b.uid,displayName:b.displayName,photoURL:b.photoURL,email:b.email,emailVerified:b.emailVerified,phoneNumber:b.phoneNumber,isAnonymous:b.isAnonymous,providerData:[]}),b.metadata?J(a,"metadata",dl(b.metadata)):J(a,"metadata",new cl),v(b.providerData,function(b){vl(a,b);}),al(a.h,b.h),J(a,"refreshToken",a.h.a));}g=Q.prototype;g.reload=function(){var a=this;return R(this,tl(this).then(function(){return zl(a).then(function(){return ql(a)}).then(sl)}))};
+function zl(a){return a.F().then(function(b){var c=a.isAnonymous;return Al(a,b).then(function(){c||xl(a,"isAnonymous",!1);return b})})}g.dc=function(a){return this.F(a).then(function(a){return new Uk(a)})};g.F=function(a){var b=this;return R(this,tl(this).then(function(){return b.h.getToken(a)}).then(function(a){if(!a)throw new L("internal-error");a.accessToken!=b.ra&&(gl(b,a.accessToken),b.dispatchEvent(new fl("tokenChanged")));xl(b,"refreshToken",a.refreshToken);return a.accessToken}))};
+function Bl(a,b){b[M]&&a.ra!=b[M]&&(Zk(a.h,b),a.dispatchEvent(new fl("tokenChanged")),gl(a,b[M]),xl(a,"refreshToken",a.h.a));}function Al(a,b){return P(a.b,Di,{idToken:b}).then(r(a.xc,a))}
+g.xc=function(a){a=a.users;if(!a||!a.length)throw new L("internal-error");a=a[0];hl(this,{uid:a.localId,displayName:a.displayName,photoURL:a.photoUrl,email:a.email,emailVerified:!!a.emailVerified,phoneNumber:a.phoneNumber,lastLoginAt:a.lastLoginAt,createdAt:a.createdAt});for(var b=Cl(a),c=0;c<b.length;c++)vl(this,b[c]);xl(this,"isAnonymous",!(this.email&&a.passwordHash)&&!(this.providerData&&this.providerData.length));};
+function Cl(a){return (a=a.providerUserInfo)&&a.length?Ca(a,function(a){return new el(a.rawId,a.providerId,a.email,a.displayName,a.photoUrl,a.phoneNumber)}):[]}g.gb=function(a){var b=this,c=null;return R(this,a.f(this.b,this.uid).then(function(a){Bl(b,a);c=Dl(b,a,"reauthenticate");b.i=null;return b.reload()}).then(function(){return c}),!0)};
+g.yc=function(a){Ke("firebase.User.prototype.reauthenticateWithCredential is deprecated. Please use firebase.User.prototype.reauthenticateAndRetrieveDataWithCredential instead.");return this.gb(a).then(function(){})};function El(a,b){return zl(a).then(function(){if(Ga(ul(a),b))return ql(a).then(function(){throw new L("provider-already-linked");})})}
+g.eb=function(a){var b=this,c=null;return R(this,El(this,a.providerId).then(function(){return b.F()}).then(function(c){return a.b(b.b,c)}).then(function(a){c=Dl(b,a,"link");return Fl(b,a)}).then(function(){return c}))};g.pc=function(a){Ke("firebase.User.prototype.linkWithCredential is deprecated. Please use firebase.User.prototype.linkAndRetrieveDataWithCredential instead.");return this.eb(a).then(function(a){return a.user})};
+g.qc=function(a,b){var c=this;return R(this,El(this,"phone").then(function(){return Tk(ml(c),a,b,r(c.eb,c))}))};g.zc=function(a,b){var c=this;return R(this,B().then(function(){return Tk(ml(c),a,b,r(c.gb,c))}),!0)};function Dl(a,b,c){var d=ug(b);b=Ef(b);return Ne({user:a,credential:d,additionalUserInfo:b,operationType:c})}function Fl(a,b){Bl(a,b);return a.reload().then(function(){return a})}
+g.pb=function(a){var b=this;return R(this,this.F().then(function(c){return b.b.pb(c,a)}).then(function(a){Bl(b,a);return b.reload()}))};g.Rc=function(a){var b=this;return R(this,this.F().then(function(c){return a.b(b.b,c)}).then(function(a){Bl(b,a);return b.reload()}))};g.qb=function(a){var b=this;return R(this,this.F().then(function(c){return b.b.qb(c,a)}).then(function(a){Bl(b,a);return b.reload()}))};
+g.rb=function(a){if(void 0===a.displayName&&void 0===a.photoURL)return tl(this);var b=this;return R(this,this.F().then(function(c){return b.b.rb(c,{displayName:a.displayName,photoUrl:a.photoURL})}).then(function(a){Bl(b,a);xl(b,"displayName",a.displayName||null);xl(b,"photoURL",a.photoUrl||null);v(b.providerData,function(a){"password"===a.providerId&&(J(a,"displayName",b.displayName),J(a,"photoURL",b.photoURL));});return ql(b)}).then(sl))};
+g.Pc=function(a){var b=this;return R(this,zl(this).then(function(c){return Ga(ul(b),a)?oi(b.b,c,[a]).then(function(a){var c={};v(a.providerUserInfo||[],function(a){c[a.providerId]=!0;});v(ul(b),function(a){c[a]||wl(b,a);});c[rg.PROVIDER_ID]||J(b,"phoneNumber",null);return ql(b)}):ql(b).then(function(){throw new L("no-such-provider");})}))};
+g.delete=function(){var a=this;return R(this,this.F().then(function(b){return P(a.b,Ci,{idToken:b})}).then(function(){a.dispatchEvent(new fl("userDeleted"));})).then(function(){for(var b=0;b<a.G.length;b++)a.G[b].cancel("app-deleted");kl(a,null);ll(a,null);a.G=[];a.D=!0;ol(a);J(a,"refreshToken",null);a.a&&a.a.unsubscribe(a);})};
+g.vb=function(a,b){return "linkViaPopup"==a&&(this.g||null)==b&&this.f||"reauthViaPopup"==a&&(this.g||null)==b&&this.f||"linkViaRedirect"==a&&(this.aa||null)==b||"reauthViaRedirect"==a&&(this.aa||null)==b?!0:!1};g.ha=function(a,b,c,d){"linkViaPopup"!=a&&"reauthViaPopup"!=a||d!=(this.g||null)||(c&&this.v?this.v(c):b&&!c&&this.f&&this.f(b),this.c&&(this.c.cancel(),this.c=null),delete this.f,delete this.v);};
+g.xa=function(a,b){return "linkViaPopup"==a&&b==(this.g||null)?r(this.Ab,this):"reauthViaPopup"==a&&b==(this.g||null)?r(this.Bb,this):"linkViaRedirect"==a&&(this.aa||null)==b?r(this.Ab,this):"reauthViaRedirect"==a&&(this.aa||null)==b?r(this.Bb,this):null};g.rc=function(a){var b=this;return Gl(this,"linkViaPopup",a,function(){return El(b,a.providerId).then(function(){return ql(b)})},!1)};g.Ac=function(a){return Gl(this,"reauthViaPopup",a,function(){return B()},!0)};
+function Gl(a,b,c,d,e){if(!ue())return C(new L("operation-not-supported-in-this-environment"));if(a.i&&!e)return C(a.i);var f=Df(c.providerId),h=te(a.uid+":::"),m=null;(!we()||le())&&a.u&&c.isOAuthProvider&&(m=Yi(a.u,a.m,a.o,b,c,null,h,firebase.SDK_VERSION||null));var p=ce(m,f&&f.Ba,f&&f.Aa);d=d().then(function(){Hl(a);if(!e)return a.F().then(function(){})}).then(function(){return Ik(a.a,p,b,c,h,!!m)}).then(function(){return new A(function(c,d){a.ha(b,null,new L("cancelled-popup-request"),a.g||null);
+a.f=c;a.v=d;a.g=h;a.c=a.a.Ea(a,b,p,h);})}).then(function(a){p&&be(p);return a?Ne(a):null}).s(function(a){p&&be(p);throw a;});return R(a,d,e)}g.sc=function(a){var b=this;return Il(this,"linkViaRedirect",a,function(){return El(b,a.providerId)},!1)};g.Bc=function(a){return Il(this,"reauthViaRedirect",a,function(){return B()},!0)};
+function Il(a,b,c,d,e){if(!ue())return C(new L("operation-not-supported-in-this-environment"));if(a.i&&!e)return C(a.i);var f=null,h=te(a.uid+":::");d=d().then(function(){Hl(a);if(!e)return a.F().then(function(){})}).then(function(){a.aa=h;return ql(a)}).then(function(b){a.ba&&(b=a.ba,b=b.b.set(Jl,a.C(),b.a));return b}).then(function(){return a.a.Ca(b,c,h)}).s(function(b){f=b;if(a.ba)return Kl(a.ba);throw f;}).then(function(){if(f)throw f;});return R(a,d,e)}
+function Hl(a){if(!a.a||!a.I){if(a.a&&!a.I)throw new L("internal-error");throw new L("auth-domain-config-required");}}g.Ab=function(a,b,c){var d=this;this.c&&(this.c.cancel(),this.c=null);var e=null,f=this.F().then(function(e){return Tf(d.b,{requestUri:a,postBody:c,sessionId:b,idToken:e})}).then(function(a){e=Dl(d,a,"link");return Fl(d,a)}).then(function(){return e});return R(this,f)};
+g.Bb=function(a,b,c){var d=this;this.c&&(this.c.cancel(),this.c=null);var e=null,f=B().then(function(){return Pf(Uf(d.b,{requestUri:a,sessionId:b,postBody:c}),d.uid)}).then(function(a){e=Dl(d,a,"reauthenticate");Bl(d,a);d.i=null;return d.reload()}).then(function(){return e});return R(this,f,!0)};g.jb=function(a){var b=this,c=null;return R(this,this.F().then(function(b){c=b;return "undefined"===typeof a||Za(a)?{}:nf(new cf(a))}).then(function(a){return b.b.jb(c,a)}).then(function(a){if(b.email!=a)return b.reload()}).then(function(){}))};
+function R(a,b,c){var d=Ll(a,b,c);a.G.push(d);d.ia(function(){Ha(a.G,d);});return d}function Ll(a,b,c){return a.i&&!c?(b.cancel(),C(a.i)):b.s(function(b){!b||"auth/user-disabled"!=b.code&&"auth/user-token-expired"!=b.code||(a.i||a.dispatchEvent(new fl("userInvalidated")),a.i=b);throw b;})}g.toJSON=function(){return this.C()};
+g.C=function(){var a={uid:this.uid,displayName:this.displayName,photoURL:this.photoURL,email:this.email,emailVerified:this.emailVerified,phoneNumber:this.phoneNumber,isAnonymous:this.isAnonymous,providerData:[],apiKey:this.m,appName:this.o,authDomain:this.u,stsTokenManager:this.h.C(),redirectEventId:this.aa||null};this.metadata&&bb(a,this.metadata.C());v(this.providerData,function(b){a.providerData.push(Oe(b));});return a};
+function Ml(a){if(!a.apiKey)return null;var b={apiKey:a.apiKey,authDomain:a.authDomain,appName:a.appName},c={};if(a.stsTokenManager&&a.stsTokenManager.accessToken&&a.stsTokenManager.expirationTime)c[M]=a.stsTokenManager.accessToken,c.refreshToken=a.stsTokenManager.refreshToken||null,c.expiresIn=(a.stsTokenManager.expirationTime-oa())/1E3;else return null;var d=new Q(b,c,a);a.providerData&&v(a.providerData,function(a){a&&vl(d,Ne(a));});a.redirectEventId&&(d.aa=a.redirectEventId);return d}
+function Nl(a,b,c,d){var e=new Q(a,b);c&&(e.ba=c);d&&jl(e,d);return e.reload().then(function(){return e})}function Ol(a,b,c,d){b=b||{apiKey:a.m,authDomain:a.u,appName:a.o};var e=a.h,f={};f[M]=e.b;f.refreshToken=e.a;f.expiresIn=(e.c-oa())/1E3;b=new Q(b,f);c&&(b.ba=c);d&&jl(b,d);yl(b,a);return b}function Pl(a){this.a=a;this.b=Mj();}var Jl={name:"redirectUser",A:"session"};function Kl(a){return Qj(a.b,Jl,a.a)}function Ql(a,b){return a.b.get(Jl,a.a).then(function(a){a&&b&&(a.authDomain=b);return Ml(a||{})})}function Sl(a){this.a=a;this.b=Mj();this.c=null;this.f=Tl(this);this.b.addListener(Ul("local"),this.a,r(this.g,this));}Sl.prototype.g=function(){var a=this,b=Ul("local");Vl(this,function(){return B().then(function(){return a.c&&"local"!=a.c.A?a.b.get(b,a.a):null}).then(function(c){if(c)return Wl(a,"local").then(function(){a.c=b;})})});};function Wl(a,b){var c=[],d;for(d in Ij)Ij[d]!==b&&c.push(Qj(a.b,Ul(Ij[d]),a.a));c.push(Qj(a.b,Xl,a.a));return vb(c)}
+function Tl(a){var b=Ul("local"),c=Ul("session"),d=Ul("none");return Pj(a.b,b,a.a).then(function(){return a.b.get(c,a.a)}).then(function(e){return e?c:a.b.get(d,a.a).then(function(c){return c?d:a.b.get(b,a.a).then(function(c){return c?b:a.b.get(Xl,a.a).then(function(a){return a?Ul(a):b})})})}).then(function(b){a.c=b;return Wl(a,b.A)}).s(function(){a.c||(a.c=b);})}var Xl={name:"persistence",A:"session"};function Ul(a){return {name:"authUser",A:a}}
+Sl.prototype.mb=function(a){var b=null,c=this;Jj(a);return Vl(this,function(){return a!=c.c.A?c.b.get(c.c,c.a).then(function(d){b=d;return Wl(c,a)}).then(function(){c.c=Ul(a);if(b)return c.b.set(c.c,b,c.a)}):B()})};function Yl(a){return Vl(a,function(){return a.b.set(Xl,a.c.A,a.a)})}function Zl(a,b){return Vl(a,function(){return a.b.set(a.c,b.C(),a.a)})}function $l(a){return Vl(a,function(){return Qj(a.b,a.c,a.a)})}
+function am(a,b){return Vl(a,function(){return a.b.get(a.c,a.a).then(function(a){a&&b&&(a.authDomain=b);return Ml(a||{})})})}function Vl(a,b){a.f=a.f.then(b,b);return a.f}function bm(a){this.m=!1;J(this,"settings",new Rk);J(this,"app",a);if(S(this).options&&S(this).options.apiKey)a=firebase.SDK_VERSION?re(firebase.SDK_VERSION):null,this.b=new Jh(S(this).options&&S(this).options.apiKey,yf(zf),a);else throw new L("invalid-api-key");this.N=[];this.o=[];this.I=[];this.Tb=firebase.INTERNAL.createSubscribe(r(this.mc,this));this.O=void 0;this.Ub=firebase.INTERNAL.createSubscribe(r(this.nc,this));cm(this,null);this.h=new Sl(S(this).options.apiKey+":"+S(this).name);this.w=
+new Pl(S(this).options.apiKey+":"+S(this).name);this.V=T(this,dm(this));this.i=T(this,em(this));this.X=!1;this.ka=r(this.Mc,this);this.Ha=r(this.Z,this);this.ra=r(this.bc,this);this.sa=r(this.jc,this);this.ta=r(this.kc,this);fm(this);this.INTERNAL={};this.INTERNAL["delete"]=r(this.delete,this);this.INTERNAL.logFramework=r(this.tc,this);this.u=0;F.call(this);gm(this);this.G=[];}t(bm,F);function hm(a){D.call(this,"languageCodeChanged");this.g=a;}t(hm,D);
+function im(a){D.call(this,"frameworkChanged");this.c=a;}t(im,D);g=bm.prototype;g.mb=function(a){a=this.h.mb(a);return T(this,a)};g.pa=function(a){this.W===a||this.m||(this.W=a,Ph(this.b,this.W),this.dispatchEvent(new hm(this.ea())));};g.ea=function(){return this.W};g.Sc=function(){var a=k.navigator;this.pa(a?a.languages&&a.languages[0]||a.language||a.userLanguage||null:null);};g.tc=function(a){this.G.push(a);Qh(this.b,firebase.SDK_VERSION?re(firebase.SDK_VERSION,this.G):null);this.dispatchEvent(new im(this.G));};
+g.ya=function(){return Ja(this.G)};function gm(a){Object.defineProperty(a,"lc",{get:function(){return this.ea()},set:function(a){this.pa(a);},enumerable:!1});a.W=null;}g.toJSON=function(){return {apiKey:S(this).options.apiKey,authDomain:S(this).options.authDomain,appName:S(this).name,currentUser:U(this)&&U(this).C()}};function jm(a){return a.Sb||C(new L("auth-domain-config-required"))}
+function fm(a){var b=S(a).options.authDomain,c=S(a).options.apiKey;b&&ue()&&(a.Sb=a.V.then(function(){if(!a.m){a.a=Kk(b,c,S(a).name);a.a.subscribe(a);U(a)&&rl(U(a));if(a.D){rl(a.D);var d=a.D;d.pa(a.ea());kl(d,a);d=a.D;jl(d,a.G);ll(d,a);a.D=null;}return a.a}}));}g.vb=function(a,b){switch(a){case "unknown":case "signInViaRedirect":return !0;case "signInViaPopup":return this.g==b&&!!this.f;default:return !1}};
 g.ha=function(a,b,c,d){"signInViaPopup"==a&&this.g==d&&(c&&this.v?this.v(c):b&&!c&&this.f&&this.f(b),this.c&&(this.c.cancel(),this.c=null),delete this.f,delete this.v);};g.xa=function(a,b){return "signInViaRedirect"==a||"signInViaPopup"==a&&this.g==b&&this.f?r(this.ac,this):null};
-g.ac=function(a,b,c){var d=this;a={requestUri:a,postBody:c,sessionId:b};this.c&&(this.c.cancel(),this.c=null);var e=null,f=null,h=Tf(d.b,a).then(function(a){e=wg(a);f=Gf(a);return a});a=d.V.then(function(){return h}).then(function(a){return om(d,a)}).then(function(){return Pe({user:U(d),credential:e,additionalUserInfo:f,operationType:"signIn"})});return T(this,a)};
-g.Mc=function(a){if(!we())return C(new L("operation-not-supported-in-this-environment"));var b=this,c=Ff(a.providerId),d=ve(),e=null;(!ye()||ne())&&S(this).options.authDomain&&a.isOAuthProvider&&(e=bj(S(this).options.authDomain,S(this).options.apiKey,S(this).name,"signInViaPopup",a,null,d,firebase.SDK_VERSION||null));var f=ee(e,c&&c.Ba,c&&c.Aa);c=nm(this).then(function(b){return Mk(b,f,"signInViaPopup",a,d,!!e)}).then(function(){return new A(function(a,c){b.ha("signInViaPopup",null,new L("cancelled-popup-request"),
-b.g);b.f=a;b.v=c;b.g=d;b.c=b.a.Ea(b,"signInViaPopup",f,d);})}).then(function(a){f&&de(f);return a?Pe(a):null}).s(function(a){f&&de(f);throw a;});return T(this,c)};g.Nc=function(a){if(!we())return C(new L("operation-not-supported-in-this-environment"));var b=this,c=nm(this).then(function(){return bm(b.h)}).then(function(){return b.a.Ca("signInViaRedirect",a)});return T(this,c)};
-g.fa=function(){if(!we())return C(new L("operation-not-supported-in-this-environment"));var a=this,b=nm(this).then(function(){return a.a.fa()}).then(function(a){return a?Pe(a):null});return T(this,b)};
-g.Sc=function(a){if(!a)return C(new L("null-user"));var b=this,c={};c.apiKey=S(this).options.apiKey;c.authDomain=S(this).options.authDomain;c.appName=S(this).name;var d=Sl(a,c,b.w,b.ya());return T(this,this.i.then(function(){if(S(b).options.apiKey!=a.l)return d.reload()}).then(function(){if(U(b)&&a.uid==U(b).uid)return Cl(U(b),a),b.Z(a);gm(b,d);vl(d);return b.Z(d)}).then(function(){pm(b);}))};
-function om(a,b){var c={};c.apiKey=S(a).options.apiKey;c.authDomain=S(a).options.authDomain;c.appName=S(a).name;return a.V.then(function(){return Rl(c,b,a.w,a.ya())}).then(function(b){if(U(a)&&b.uid==U(a).uid)return Cl(U(a),b),a.Z(b);gm(a,b);vl(b);return a.Z(b)}).then(function(){pm(a);})}
-function gm(a,b){U(a)&&(tl(U(a),a.Ha),E(U(a),"tokenChanged",a.ra),E(U(a),"userDeleted",a.sa),E(U(a),"userInvalidated",a.ta),sl(U(a)));b&&(b.N.push(a.Ha),sc(b,"tokenChanged",a.ra),sc(b,"userDeleted",a.sa),sc(b,"userInvalidated",a.ta),0<a.u&&rl(b));J(a,"currentUser",b);b&&(b.pa(a.ea()),ol(b,a),nl(b,a.G),pl(b,a));}g.ob=function(){var a=this,b=this.i.then(function(){if(!U(a))return B();gm(a,null);return dm(a.h).then(function(){pm(a);})});return T(this,b)};
-function qm(a){var b=Ul(a.w,S(a).options.authDomain).then(function(b){if(a.D=b)b.ba=a.w;return Ol(a.w)});return T(a,b)}function hm(a){var b=S(a).options.authDomain,c=qm(a).then(function(){return em(a.h,b)}).then(function(b){return b?(b.ba=a.w,a.D&&(a.D.aa||null)==(b.aa||null)?b:b.reload().then(function(){return cm(a.h,b).then(function(){return b})}).s(function(c){return "auth/network-request-failed"==c.code?b:dm(a.h)})):null}).then(function(b){gm(a,b||null);});return T(a,c)}
-function im(a){return a.V.then(function(){return a.fa()}).s(function(){}).then(function(){if(!a.l)return a.ka()}).s(function(){}).then(function(){if(!a.l){a.X=!0;var b=a.h;b.b.addListener(Yl("local"),b.a,a.ka);}})}
-g.Oc=function(){var a=this;return em(this.h,S(this).options.authDomain).then(function(b){if(!a.l){var c;if(c=U(a)&&b){c=U(a).uid;var d=b.uid;c=void 0===c||null===c||""===c||void 0===d||null===d||""===d?!1:c==d;}if(c)return Cl(U(a),b),U(a).F();if(U(a)||b)gm(a,b),b&&(vl(b),b.ba=a.w),a.a&&a.a.subscribe(a),pm(a);}})};g.Z=function(a){return cm(this.h,a)};g.bc=function(){pm(this);this.Z(U(this));};g.mc=function(){this.ob();};g.nc=function(){this.ob();};
-function rm(a,b){var c=null,d=null;return T(a,b.then(function(b){c=wg(b);d=Gf(b);return om(a,b)}).then(function(){return Pe({user:U(a),credential:c,additionalUserInfo:d,operationType:"signIn"})}))}g.oc=function(a){var b=this;this.addAuthTokenListener(function(){a.next(U(b));});};g.pc=function(a){var b=this;sm(this,function(){a.next(U(b));});};g.xc=function(a,b,c){var d=this;this.X&&firebase.Promise.resolve().then(function(){n(a)?a(U(d)):n(a.next)&&a.next(U(d));});return this.Tb(a,b,c)};
-g.wc=function(a,b,c){var d=this;this.X&&firebase.Promise.resolve().then(function(){d.O=d.getUid();n(a)?a(U(d)):n(a.next)&&a.next(U(d));});return this.Ub(a,b,c)};g.cc=function(a){var b=this,c=this.i.then(function(){return U(b)?U(b).F(a).then(function(a){return {accessToken:a}}):null});return T(this,c)};g.Nb=function(a){var b=this;return this.i.then(function(){return rm(b,P(b.b,Ji,{token:a}))}).then(function(a){var c=a.user;Bl(c,"isAnonymous",!1);b.Z(c);return a})};
-g.Gc=function(a){Me("firebase.auth.Auth.prototype.signInAndRetrieveDataWithCustomToken is deprecated. Please use firebase.auth.Auth.prototype.signInWithCustomToken instead.");return this.Nb(a)};g.Hc=function(a,b){Me("firebase.auth.Auth.prototype.signInAndRetrieveDataWithEmailAndPassword is deprecated. Please use firebase.auth.Auth.prototype.signInWithEmailAndPassword instead.");return this.Ob(a,b)};g.Ob=function(a,b){var c=this;return this.i.then(function(){return rm(c,P(c.b,kg,{email:a,password:b}))})};
-g.yb=function(a,b){var c=this;return this.i.then(function(){return rm(c,P(c.b,Fi,{email:a,password:b}))})};g.Wb=function(a,b){Me("firebase.auth.Auth.prototype.createUserAndRetrieveDataWithEmailAndPassword is deprecated. Please use firebase.auth.Auth.prototype.createUserWithEmailAndPassword instead.");return this.yb(a,b)};g.Jc=function(a){Me("firebase.auth.Auth.prototype.signInWithCredential is deprecated. Please use firebase.auth.Auth.prototype.signInAndRetrieveDataWithCredential instead.");return this.Qa(a).then(function(a){return a.user})};
-g.Qa=function(a){var b=this;return this.i.then(function(){return rm(b,a.la(b.b))})};g.Ra=function(){var a=this;return this.i.then(function(){var b=U(a);if(b&&b.isAnonymous){var c=Pe({providerId:null,isNewUser:!1});return Pe({user:b,credential:null,additionalUserInfo:c,operationType:"signIn"})}return rm(a,a.b.Ra()).then(function(b){var c=b.user;Bl(c,"isAnonymous",!0);a.Z(c);return b})})};
-g.Ic=function(){Me("firebase.auth.Auth.prototype.signInAnonymouslyAndRetrieveData is deprecated. Please use firebase.auth.Auth.prototype.signInAnonymously instead.");return this.Ra()};function S(a){return a.app}function U(a){return a.currentUser}g.getUid=function(){return U(this)&&U(this).uid||null};function tm(a){return U(a)&&U(a)._lat||null}
-function pm(a){if(a.X){for(var b=0;b<a.m.length;b++)if(a.m[b])a.m[b](tm(a));if(a.O!==a.getUid()&&a.I.length)for(a.O=a.getUid(),b=0;b<a.I.length;b++)if(a.I[b])a.I[b](tm(a));}}g.Vb=function(a){this.addAuthTokenListener(a);this.u++;0<this.u&&U(this)&&rl(U(this));};g.Ec=function(a){var b=this;v(this.m,function(c){c==a&&b.u--;});0>this.u&&(this.u=0);0==this.u&&U(this)&&sl(U(this));this.removeAuthTokenListener(a);};
-g.addAuthTokenListener=function(a){var b=this;this.m.push(a);T(this,this.i.then(function(){b.l||Ha(b.m,a)&&a(tm(b));}));};g.removeAuthTokenListener=function(a){w(this.m,function(b){return b==a});};function sm(a,b){a.I.push(b);T(a,a.i.then(function(){!a.l&&Ha(a.I,b)&&a.O!==a.getUid()&&(a.O=a.getUid(),b(tm(a)));}));}
-g.delete=function(){this.l=!0;for(var a=0;a<this.N.length;a++)this.N[a].cancel("app-deleted");this.N=[];this.h&&(a=this.h,a.b.removeListener(Yl("local"),a.a,this.ka));this.a&&(this.a.unsubscribe(this),this.a.Za());return firebase.Promise.resolve()};function T(a,b){a.N.push(b);b.ia(function(){Ia(a.N,b);});return b}
-g.Zb=function(a){Me("firebase.auth.Auth.prototype.fetchProvidersForEmail is deprecated. Please use firebase.auth.Auth.prototype.fetchSignInMethodsForEmail instead.");return T(this,di(this.b,a))};g.$b=function(a){return T(this,fi(this.b,a))};g.qc=function(a){return !!og(a)};g.mb=function(a,b){var c=this;return T(this,B().then(function(){var a=new ef(b);if(!a.c)throw new L("argument-error",nf+" must be true when sending sign in link to email");return pf(a)}).then(function(b){return c.b.mb(a,b)}).then(function(){}))};
-g.Vc=function(a){return this.Ja(a).then(function(a){return a.data.email})};g.$a=function(a,b){return T(this,this.b.$a(a,b).then(function(){}))};g.Ja=function(a){return T(this,this.b.Ja(a).then(function(a){return new Te(a)}))};g.Xa=function(a){return T(this,this.b.Xa(a).then(function(){}))};g.lb=function(a,b){var c=this;return T(this,B().then(function(){return "undefined"===typeof b||Ya(b)?{}:pf(new ef(b))}).then(function(b){return c.b.lb(a,b)}).then(function(){}))};
-g.Lc=function(a,b){return T(this,Xk(this,a,b,r(this.Qa,this)))};g.Kc=function(a,b){var c=this;return T(this,B().then(function(){var d=ng(a,b||Xd());return c.Qa(d)}))};function um(){}um.prototype.render=function(){};um.prototype.reset=function(){};um.prototype.getResponse=function(){};um.prototype.execute=function(){};function vm(){this.a={};this.b=1E12;}var wm=null;vm.prototype.render=function(a,b){this.a[this.b.toString()]=new xm(a,b);return this.b++};vm.prototype.reset=function(a){var b=ym(this,a);a=zm(a);b&&a&&(b.delete(),delete this.a[a]);};vm.prototype.getResponse=function(a){return (a=ym(this,a))?a.getResponse():null};vm.prototype.execute=function(a){(a=ym(this,a))&&a.execute();};function ym(a,b){return (b=zm(b))?a.a[b]||null:null}function zm(a){return (a="undefined"===typeof a?1E12:a)?a.toString():null}
-function xm(a,b){this.g=!1;this.c=b;this.a=this.b=null;this.h="invisible"!==this.c.size;this.f=Kd(a);var c=this;this.i=function(){c.execute();};this.h?this.execute():sc(this.f,"click",this.i);}xm.prototype.getResponse=function(){Am(this);return this.b};
-xm.prototype.execute=function(){Am(this);var a=this;this.a||(this.a=setTimeout(function(){a.b=re();var b=a.c.callback,c=a.c["expired-callback"];if(b)try{b(a.b);}catch(d){}a.a=setTimeout(function(){a.a=null;a.b=null;if(c)try{c();}catch(d){}a.h&&a.execute();},6E4);},500));};xm.prototype.delete=function(){Am(this);this.g=!0;clearTimeout(this.a);this.a=null;E(this.f,"click",this.i);};function Am(a){if(a.g)throw Error("reCAPTCHA mock was already deleted!");}function Bm(){}Bm.prototype.g=function(){wm||(wm=new vm);return B(wm)};Bm.prototype.c=function(){};var Cm=null;function Dm(){this.b=k.grecaptcha?Infinity:0;this.f=null;this.a="__rcb"+Math.floor(1E6*Math.random()).toString();}var Em=new od(pd,"https://www.google.com/recaptcha/api.js?onload=%{onload}&render=explicit&hl=%{hl}"),Fm=new Ee(3E4,6E4);
-Dm.prototype.g=function(a){var b=this;return new A(function(c,d){var e=setTimeout(function(){d(new L("network-request-failed"));},Fm.get());if(!k.grecaptcha||a!==b.f&&!b.b){k[b.a]=function(){if(k.grecaptcha){b.f=a;var f=k.grecaptcha.render;k.grecaptcha.render=function(a,c){a=f(a,c);b.b++;return a};clearTimeout(e);c(k.grecaptcha);}else clearTimeout(e),d(new L("internal-error"));delete k[b.a];};var f=vd(Em,{onload:b.a,hl:a||""});B(Gh(f)).s(function(){clearTimeout(e);d(new L("internal-error","Unable to load external reCAPTCHA dependencies!"));});}else clearTimeout(e),
-c(k.grecaptcha);})};Dm.prototype.c=function(){this.b--;};var Gm=null;function Hm(a,b,c,d,e,f,h){J(this,"type","recaptcha");this.c=this.f=null;this.D=!1;this.l=b;this.g=null;h?(Cm||(Cm=new Bm),h=Cm):(Gm||(Gm=new Dm),h=Gm);this.m=h;this.a=c||{theme:"light",type:"image"};this.h=[];if(this.a[Im])throw new L("argument-error","sitekey should not be provided for reCAPTCHA as one is automatically provisioned for the current project.");this.i="invisible"===this.a[Jm];if(!k.document)throw new L("operation-not-supported-in-this-environment","RecaptchaVerifier is only supported in a browser HTTP/HTTPS environment with DOM support.");
-if(!Kd(b)||!this.i&&Kd(b).hasChildNodes())throw new L("argument-error","reCAPTCHA container is either not found or already contains inner elements!");this.u=new Nh(a,f||null,e||null);this.v=d||function(){return null};var m=this;this.o=[];var p=this.a[Km];this.a[Km]=function(a){Lm(m,a);if("function"===typeof p)p(a);else if("string"===typeof p){var b=I(p,k);"function"===typeof b&&b(a);}};var x=this.a[Mm];this.a[Mm]=function(){Lm(m,null);if("function"===typeof x)x();else if("string"===typeof x){var a=
-I(x,k);"function"===typeof a&&a();}};}var Km="callback",Mm="expired-callback",Im="sitekey",Jm="size";function Lm(a,b){for(var c=0;c<a.o.length;c++)try{a.o[c](b);}catch(d){}}function Nm(a,b){w(a.o,function(a){return a==b});}function Om(a,b){a.h.push(b);b.ia(function(){Ia(a.h,b);});return b}g=Hm.prototype;
-g.za=function(){var a=this;return this.f?this.f:this.f=Om(this,B().then(function(){if(xe()&&!oe())return je();throw new L("operation-not-supported-in-this-environment","RecaptchaVerifier is only supported in a browser HTTP/HTTPS environment.");}).then(function(){return a.m.g(a.v())}).then(function(b){a.g=b;return P(a.u,Ii,{})}).then(function(b){a.a[Im]=b.recaptchaSiteKey;}).s(function(b){a.f=null;throw b;}))};
-g.render=function(){Pm(this);var a=this;return Om(this,this.za().then(function(){if(null===a.c){var b=a.l;if(!a.i){var c=Kd(b);b=Nd("DIV");c.appendChild(b);}a.c=a.g.render(b,a.a);}return a.c}))};g.verify=function(){Pm(this);var a=this;return Om(this,this.render().then(function(b){return new A(function(c){var d=a.g.getResponse(b);if(d)c(d);else{var e=function(b){b&&(Nm(a,e),c(b));};a.o.push(e);a.i&&a.g.execute(a.c);}})}))};g.reset=function(){Pm(this);null!==this.c&&this.g.reset(this.c);};
-function Pm(a){if(a.D)throw new L("internal-error","RecaptchaVerifier instance has been destroyed.");}g.clear=function(){Pm(this);this.D=!0;this.m.c();for(var a=0;a<this.h.length;a++)this.h[a].cancel("RecaptchaVerifier instance has been destroyed.");if(!this.i){a=Kd(this.l);for(var b;b=a.firstChild;)a.removeChild(b);}};
-function Qm(a,b,c){var d=!1;try{this.b=c||firebase.app();}catch(h){throw new L("argument-error","No firebase.app.App instance is currently initialized.");}if(this.b.options&&this.b.options.apiKey)c=this.b.options.apiKey;else throw new L("invalid-api-key");var e=this,f=null;try{f=this.b.auth().ya();}catch(h){}try{d=this.b.auth().settings.appVerificationDisabledForTesting;}catch(h){}f=firebase.SDK_VERSION?te(firebase.SDK_VERSION,f):null;Hm.call(this,c,a,b,function(){try{var a=e.b.auth().ea();}catch(m){a=
-null;}return a},f,Af(Bf),d);}t(Qm,Hm);function Rm(a,b,c,d){a:{c=Array.prototype.slice.call(c);var e=0;for(var f=!1,h=0;h<b.length;h++)if(b[h].optional)f=!0;else{if(f)throw new L("internal-error","Argument validator encountered a required argument after an optional argument.");e++;}f=b.length;if(c.length<e||f<c.length)d="Expected "+(e==f?1==e?"1 argument":e+" arguments":e+"-"+f+" arguments")+" but got "+c.length+".";else{for(e=0;e<c.length;e++)if(f=b[e].optional&&void 0===c[e],!b[e].M(c[e])&&!f){b=b[e];if(0>e||e>=Sm.length)throw new L("internal-error",
-"Argument validator received an unsupported number of arguments.");c=Sm[e];d=(d?"":c+" argument ")+(b.name?'"'+b.name+'" ':"")+"must be "+b.K+".";break a}d=null;}}if(d)throw new L("argument-error",a+" failed: "+d);}var Sm="First Second Third Fourth Fifth Sixth Seventh Eighth Ninth".split(" ");function V(a,b){return {name:a||"",K:"a valid string",optional:!!b,M:l}}function Tm(a,b){return {name:a||"",K:"a boolean",optional:!!b,M:ba}}
-function W(a,b){return {name:a||"",K:"a valid object",optional:!!b,M:q}}function Um(a,b){return {name:a||"",K:"a function",optional:!!b,M:n}}function Vm(a,b){return {name:a||"",K:"null",optional:!!b,M:ha}}function Wm(){return {name:"",K:"an HTML element",optional:!1,M:function(a){return !!(a&&a instanceof Element)}}}function Xm(){return {name:"auth",K:"an instance of Firebase Auth",optional:!0,M:function(a){return !!(a&&a instanceof fm)}}}
-function Ym(){return {name:"app",K:"an instance of Firebase App",optional:!0,M:function(a){return !!(a&&a instanceof firebase.app.App)}}}function Zm(a){return {name:a?a+"Credential":"credential",K:a?"a valid "+a+" credential":"a valid credential",optional:!1,M:function(b){if(!b)return !1;var c=!a||b.providerId===a;return !(!b.la||!c)}}}
-function $m(){return {name:"authProvider",K:"a valid Auth provider",optional:!1,M:function(a){return !!(a&&a.providerId&&a.hasOwnProperty&&a.hasOwnProperty("isOAuthProvider"))}}}function an(){return {name:"applicationVerifier",K:"an implementation of firebase.auth.ApplicationVerifier",optional:!1,M:function(a){return !!(a&&l(a.type)&&n(a.verify))}}}function X(a,b,c,d){return {name:c||"",K:a.K+" or "+b.K,optional:!!d,M:function(c){return a.M(c)||b.M(c)}}}function Y(a,b){for(var c in b){var d=b[c].name;a[d]=bn(d,a[c],b[c].j);}}function cn(a,b){for(var c in b){var d=b[c].name;d!==c&&Object.defineProperty(a,d,{get:pa(function(a){return this[a]},c),set:pa(function(a,b,c,d){Rm(a,[c],[d],!0);this[b]=d;},d,c,b[c].ub),enumerable:!0});}}function Z(a,b,c,d){a[b]=bn(b,c,d);}
-function bn(a,b,c){function d(){var a=Array.prototype.slice.call(arguments);Rm(e,c,a);return b.apply(this,a)}if(!c)return b;var e=dn(a),f;for(f in b)d[f]=b[f];for(f in b.prototype)d.prototype[f]=b.prototype[f];return d}function dn(a){a=a.split(".");return a[a.length-1]}Y(fm.prototype,{Xa:{name:"applyActionCode",j:[V("code")]},Ja:{name:"checkActionCode",j:[V("code")]},$a:{name:"confirmPasswordReset",j:[V("code"),V("newPassword")]},yb:{name:"createUserWithEmailAndPassword",j:[V("email"),V("password")]},Wb:{name:"createUserAndRetrieveDataWithEmailAndPassword",j:[V("email"),V("password")]},Zb:{name:"fetchProvidersForEmail",j:[V("email")]},$b:{name:"fetchSignInMethodsForEmail",j:[V("email")]},fa:{name:"getRedirectResult",j:[]},qc:{name:"isSignInWithEmailLink",j:[V("emailLink")]},
-wc:{name:"onAuthStateChanged",j:[X(W(),Um(),"nextOrObserver"),Um("opt_error",!0),Um("opt_completed",!0)]},xc:{name:"onIdTokenChanged",j:[X(W(),Um(),"nextOrObserver"),Um("opt_error",!0),Um("opt_completed",!0)]},lb:{name:"sendPasswordResetEmail",j:[V("email"),X(W("opt_actionCodeSettings",!0),Vm(null,!0),"opt_actionCodeSettings",!0)]},mb:{name:"sendSignInLinkToEmail",j:[V("email"),W("actionCodeSettings")]},nb:{name:"setPersistence",j:[V("persistence")]},Qa:{name:"signInAndRetrieveDataWithCredential",
-j:[Zm()]},Ra:{name:"signInAnonymously",j:[]},Ic:{name:"signInAnonymouslyAndRetrieveData",j:[]},Jc:{name:"signInWithCredential",j:[Zm()]},Nb:{name:"signInWithCustomToken",j:[V("token")]},Gc:{name:"signInAndRetrieveDataWithCustomToken",j:[V("token")]},Ob:{name:"signInWithEmailAndPassword",j:[V("email"),V("password")]},Kc:{name:"signInWithEmailLink",j:[V("email"),V("emailLink",!0)]},Hc:{name:"signInAndRetrieveDataWithEmailAndPassword",j:[V("email"),V("password")]},Lc:{name:"signInWithPhoneNumber",j:[V("phoneNumber"),
-an()]},Mc:{name:"signInWithPopup",j:[$m()]},Nc:{name:"signInWithRedirect",j:[$m()]},Sc:{name:"updateCurrentUser",j:[X(function(a){return {name:"user",K:"an instance of Firebase User",optional:!!a,M:function(a){return !!(a&&a instanceof Q)}}}(),Vm(),"user")]},ob:{name:"signOut",j:[]},toJSON:{name:"toJSON",j:[V(null,!0)]},Uc:{name:"useDeviceLanguage",j:[]},Vc:{name:"verifyPasswordResetCode",j:[V("code")]}});cn(fm.prototype,{lc:{name:"languageCode",ub:X(V(),Vm(),"languageCode")}});fm.Persistence=Mj;
-fm.Persistence.LOCAL="local";fm.Persistence.SESSION="session";fm.Persistence.NONE="none";
-Y(Q.prototype,{"delete":{name:"delete",j:[]},dc:{name:"getIdTokenResult",j:[Tm("opt_forceRefresh",!0)]},F:{name:"getIdToken",j:[Tm("opt_forceRefresh",!0)]},fb:{name:"linkAndRetrieveDataWithCredential",j:[Zm()]},rc:{name:"linkWithCredential",j:[Zm()]},sc:{name:"linkWithPhoneNumber",j:[V("phoneNumber"),an()]},tc:{name:"linkWithPopup",j:[$m()]},uc:{name:"linkWithRedirect",j:[$m()]},hb:{name:"reauthenticateAndRetrieveDataWithCredential",j:[Zm()]},Ac:{name:"reauthenticateWithCredential",j:[Zm()]},Bc:{name:"reauthenticateWithPhoneNumber",
-j:[V("phoneNumber"),an()]},Cc:{name:"reauthenticateWithPopup",j:[$m()]},Dc:{name:"reauthenticateWithRedirect",j:[$m()]},reload:{name:"reload",j:[]},kb:{name:"sendEmailVerification",j:[X(W("opt_actionCodeSettings",!0),Vm(null,!0),"opt_actionCodeSettings",!0)]},toJSON:{name:"toJSON",j:[V(null,!0)]},Rc:{name:"unlink",j:[V("provider")]},qb:{name:"updateEmail",j:[V("email")]},rb:{name:"updatePassword",j:[V("password")]},Tc:{name:"updatePhoneNumber",j:[Zm("phone")]},sb:{name:"updateProfile",j:[W("profile")]}});
-Y(vm.prototype,{execute:{name:"execute"},render:{name:"render"},reset:{name:"reset"},getResponse:{name:"getResponse"}});Y(um.prototype,{execute:{name:"execute"},render:{name:"render"},reset:{name:"reset"},getResponse:{name:"getResponse"}});Y(A.prototype,{ia:{name:"finally"},s:{name:"catch"},then:{name:"then"}});cn(Vk.prototype,{appVerificationDisabled:{name:"appVerificationDisabledForTesting",ub:Tm("appVerificationDisabledForTesting")}});Y(Wk.prototype,{confirm:{name:"confirm",j:[V("verificationCode")]}});
-Z(O,"credential",function(a,b){return new ig(a,b)},[V("email"),V("password")]);Y(ag.prototype,{ua:{name:"addScope",j:[V("scope")]},Da:{name:"setCustomParameters",j:[W("customOAuthParameters")]}});Z(ag,"credential",bg,[X(V(),W(),"token")]);Z(O,"credentialWithLink",ng,[V("email"),V("emailLink")]);Y(cg.prototype,{ua:{name:"addScope",j:[V("scope")]},Da:{name:"setCustomParameters",j:[W("customOAuthParameters")]}});Z(cg,"credential",dg,[X(V(),W(),"token")]);
-Y(eg.prototype,{ua:{name:"addScope",j:[V("scope")]},Da:{name:"setCustomParameters",j:[W("customOAuthParameters")]}});Z(eg,"credential",fg,[X(V(),X(W(),Vm()),"idToken"),X(V(),Vm(),"accessToken",!0)]);Y(gg.prototype,{Da:{name:"setCustomParameters",j:[W("customOAuthParameters")]}});Z(gg,"credential",hg,[X(V(),W(),"token"),V("secret",!0)]);
-Y(N.prototype,{ua:{name:"addScope",j:[V("scope")]},credential:{name:"credential",j:[X(V(),Vm(),"idToken",!0),X(V(),Vm(),"accessToken",!0),X(V(),Vm(),"nonce",!0)]},Da:{name:"setCustomParameters",j:[W("customOAuthParameters")]}});Z(tg,"credential",vg,[V("verificationId"),V("verificationCode")]);Y(tg.prototype,{Va:{name:"verifyPhoneNumber",j:[V("phoneNumber"),an()]}});Y(L.prototype,{toJSON:{name:"toJSON",j:[V(null,!0)]}});Y(Dg.prototype,{toJSON:{name:"toJSON",j:[V(null,!0)]}});
-Y(Cg.prototype,{toJSON:{name:"toJSON",j:[V(null,!0)]}});Y(Qm.prototype,{clear:{name:"clear",j:[]},render:{name:"render",j:[]},verify:{name:"verify",j:[]}});
-(function(){if("undefined"!==typeof firebase&&firebase.INTERNAL&&firebase.INTERNAL.registerService){var a={Auth:fm,Error:L};Z(a,"EmailAuthProvider",O,[]);Z(a,"FacebookAuthProvider",ag,[]);Z(a,"GithubAuthProvider",cg,[]);Z(a,"GoogleAuthProvider",eg,[]);Z(a,"TwitterAuthProvider",gg,[]);Z(a,"OAuthProvider",N,[V("providerId")]);Z(a,"SAMLAuthProvider",$f,[V("providerId")]);Z(a,"PhoneAuthProvider",tg,[Xm()]);Z(a,"RecaptchaVerifier",Qm,[X(V(),Wm(),"recaptchaContainer"),W("recaptchaParameters",!0),Ym()]);
-firebase.INTERNAL.registerService("auth",function(a,c){a=new fm(a);c({INTERNAL:{getUid:r(a.getUid,a),getToken:r(a.cc,a),addAuthTokenListener:r(a.Vb,a),removeAuthTokenListener:r(a.Ec,a)}});return a},a,function(a,c){if("create"===a)try{c.auth();}catch(d){}});firebase.INTERNAL.extendNamespace({User:Q});}else throw Error("Cannot find the firebase namespace; be sure to include firebase-app.js before this library.");})();}).apply(typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : typeof window !== 'undefined' ? window : {});
+g.ac=function(a,b,c){var d=this;a={requestUri:a,postBody:c,sessionId:b};this.c&&(this.c.cancel(),this.c=null);var e=null,f=null,h=Rf(d.b,a).then(function(a){e=ug(a);f=Ef(a);return a});a=d.V.then(function(){return h}).then(function(a){return km(d,a)}).then(function(){return Ne({user:U(d),credential:e,additionalUserInfo:f,operationType:"signIn"})});return T(this,a)};
+g.Kc=function(a){if(!ue())return C(new L("operation-not-supported-in-this-environment"));var b=this,c=Df(a.providerId),d=te(),e=null;(!we()||le())&&S(this).options.authDomain&&a.isOAuthProvider&&(e=Yi(S(this).options.authDomain,S(this).options.apiKey,S(this).name,"signInViaPopup",a,null,d,firebase.SDK_VERSION||null));var f=ce(e,c&&c.Ba,c&&c.Aa);c=jm(this).then(function(b){return Ik(b,f,"signInViaPopup",a,d,!!e)}).then(function(){return new A(function(a,c){b.ha("signInViaPopup",null,new L("cancelled-popup-request"),
+b.g);b.f=a;b.v=c;b.g=d;b.c=b.a.Ea(b,"signInViaPopup",f,d);})}).then(function(a){f&&be(f);return a?Ne(a):null}).s(function(a){f&&be(f);throw a;});return T(this,c)};g.Lc=function(a){if(!ue())return C(new L("operation-not-supported-in-this-environment"));var b=this,c=jm(this).then(function(){return Yl(b.h)}).then(function(){return b.a.Ca("signInViaRedirect",a)});return T(this,c)};
+g.fa=function(){if(!ue())return C(new L("operation-not-supported-in-this-environment"));var a=this,b=jm(this).then(function(){return a.a.fa()}).then(function(a){return a?Ne(a):null});return T(this,b)};
+g.Qc=function(a){if(!a)return C(new L("null-user"));var b=this,c={};c.apiKey=S(this).options.apiKey;c.authDomain=S(this).options.authDomain;c.appName=S(this).name;var d=Ol(a,c,b.w,b.ya());return T(this,this.i.then(function(){if(S(b).options.apiKey!=a.m)return d.reload()}).then(function(){if(U(b)&&a.uid==U(b).uid)return yl(U(b),a),b.Z(a);cm(b,d);rl(d);return b.Z(d)}).then(function(){lm(b);}))};
+function km(a,b){var c={};c.apiKey=S(a).options.apiKey;c.authDomain=S(a).options.authDomain;c.appName=S(a).name;return a.V.then(function(){return Nl(c,b,a.w,a.ya())}).then(function(b){if(U(a)&&b.uid==U(a).uid)return yl(U(a),b),a.Z(b);cm(a,b);rl(b);return a.Z(b)}).then(function(){lm(a);})}
+function cm(a,b){U(a)&&(pl(U(a),a.Ha),E(U(a),"tokenChanged",a.ra),E(U(a),"userDeleted",a.sa),E(U(a),"userInvalidated",a.ta),ol(U(a)));b&&(b.N.push(a.Ha),rc(b,"tokenChanged",a.ra),rc(b,"userDeleted",a.sa),rc(b,"userInvalidated",a.ta),0<a.u&&nl(b));J(a,"currentUser",b);b&&(b.pa(a.ea()),kl(b,a),jl(b,a.G),ll(b,a));}g.nb=function(){var a=this,b=this.i.then(function(){if(!U(a))return B();cm(a,null);return $l(a.h).then(function(){lm(a);})});return T(this,b)};
+function mm(a){var b=Ql(a.w,S(a).options.authDomain).then(function(b){if(a.D=b)b.ba=a.w;return Kl(a.w)});return T(a,b)}function dm(a){var b=S(a).options.authDomain,c=mm(a).then(function(){return am(a.h,b)}).then(function(b){return b?(b.ba=a.w,a.D&&(a.D.aa||null)==(b.aa||null)?b:b.reload().then(function(){return Zl(a.h,b).then(function(){return b})}).s(function(c){return "auth/network-request-failed"==c.code?b:$l(a.h)})):null}).then(function(b){cm(a,b||null);});return T(a,c)}
+function em(a){return a.V.then(function(){return a.fa()}).s(function(){}).then(function(){if(!a.m)return a.ka()}).s(function(){}).then(function(){if(!a.m){a.X=!0;var b=a.h;b.b.addListener(Ul("local"),b.a,a.ka);}})}
+g.Mc=function(){var a=this;return am(this.h,S(this).options.authDomain).then(function(b){if(!a.m){var c;if(c=U(a)&&b){c=U(a).uid;var d=b.uid;c=void 0===c||null===c||""===c||void 0===d||null===d||""===d?!1:c==d;}if(c)return yl(U(a),b),U(a).F();if(U(a)||b)cm(a,b),b&&(rl(b),b.ba=a.w),a.a&&a.a.subscribe(a),lm(a);}})};g.Z=function(a){return Zl(this.h,a)};g.bc=function(){lm(this);this.Z(U(this));};g.jc=function(){this.nb();};g.kc=function(){this.nb();};
+function nm(a,b){var c=null,d=null;return T(a,b.then(function(b){c=ug(b);d=Ef(b);return km(a,b)}).then(function(){return Ne({user:U(a),credential:c,additionalUserInfo:d,operationType:"signIn"})}))}g.mc=function(a){var b=this;this.addAuthTokenListener(function(){a.next(U(b));});};g.nc=function(a){var b=this;om(this,function(){a.next(U(b));});};g.vc=function(a,b,c){var d=this;this.X&&firebase.Promise.resolve().then(function(){n(a)?a(U(d)):n(a.next)&&a.next(U(d));});return this.Tb(a,b,c)};
+g.uc=function(a,b,c){var d=this;this.X&&firebase.Promise.resolve().then(function(){d.O=d.getUid();n(a)?a(U(d)):n(a.next)&&a.next(U(d));});return this.Ub(a,b,c)};g.cc=function(a){var b=this,c=this.i.then(function(){return U(b)?U(b).F(a).then(function(a){return {accessToken:a}}):null});return T(this,c)};g.Nb=function(a){var b=this;return this.i.then(function(){return nm(b,P(b.b,Fi,{token:a}))}).then(function(a){var c=a.user;xl(c,"isAnonymous",!1);b.Z(c);return a})};
+g.Ec=function(a){Ke("firebase.auth.Auth.prototype.signInAndRetrieveDataWithCustomToken is deprecated. Please use firebase.auth.Auth.prototype.signInWithCustomToken instead.");return this.Nb(a)};g.Fc=function(a,b){Ke("firebase.auth.Auth.prototype.signInAndRetrieveDataWithEmailAndPassword is deprecated. Please use firebase.auth.Auth.prototype.signInWithEmailAndPassword instead.");return this.Ob(a,b)};g.Ob=function(a,b){var c=this;return this.i.then(function(){return nm(c,P(c.b,ig,{email:a,password:b}))})};
+g.xb=function(a,b){var c=this;return this.i.then(function(){return nm(c,P(c.b,Bi,{email:a,password:b}))})};g.Wb=function(a,b){Ke("firebase.auth.Auth.prototype.createUserAndRetrieveDataWithEmailAndPassword is deprecated. Please use firebase.auth.Auth.prototype.createUserWithEmailAndPassword instead.");return this.xb(a,b)};g.Hc=function(a){Ke("firebase.auth.Auth.prototype.signInWithCredential is deprecated. Please use firebase.auth.Auth.prototype.signInAndRetrieveDataWithCredential instead.");return this.Pa(a).then(function(a){return a.user})};
+g.Pa=function(a){var b=this;return this.i.then(function(){return nm(b,a.la(b.b))})};g.Qa=function(){var a=this;return this.i.then(function(){var b=U(a);if(b&&b.isAnonymous){var c=Ne({providerId:null,isNewUser:!1});return Ne({user:b,credential:null,additionalUserInfo:c,operationType:"signIn"})}return nm(a,a.b.Qa()).then(function(b){var c=b.user;xl(c,"isAnonymous",!0);a.Z(c);return b})})};
+g.Gc=function(){Ke("firebase.auth.Auth.prototype.signInAnonymouslyAndRetrieveData is deprecated. Please use firebase.auth.Auth.prototype.signInAnonymously instead.");return this.Qa()};function S(a){return a.app}function U(a){return a.currentUser}g.getUid=function(){return U(this)&&U(this).uid||null};function pm(a){return U(a)&&U(a)._lat||null}
+function lm(a){if(a.X){for(var b=0;b<a.o.length;b++)if(a.o[b])a.o[b](pm(a));if(a.O!==a.getUid()&&a.I.length)for(a.O=a.getUid(),b=0;b<a.I.length;b++)if(a.I[b])a.I[b](pm(a));}}g.Vb=function(a){this.addAuthTokenListener(a);this.u++;0<this.u&&U(this)&&nl(U(this));};g.Cc=function(a){var b=this;v(this.o,function(c){c==a&&b.u--;});0>this.u&&(this.u=0);0==this.u&&U(this)&&ol(U(this));this.removeAuthTokenListener(a);};
+g.addAuthTokenListener=function(a){var b=this;this.o.push(a);T(this,this.i.then(function(){b.m||Ga(b.o,a)&&a(pm(b));}));};g.removeAuthTokenListener=function(a){w(this.o,function(b){return b==a});};function om(a,b){a.I.push(b);T(a,a.i.then(function(){!a.m&&Ga(a.I,b)&&a.O!==a.getUid()&&(a.O=a.getUid(),b(pm(a)));}));}
+g.delete=function(){this.m=!0;for(var a=0;a<this.N.length;a++)this.N[a].cancel("app-deleted");this.N=[];this.h&&(a=this.h,a.b.removeListener(Ul("local"),a.a,this.ka));this.a&&(this.a.unsubscribe(this),this.a.Ya());return firebase.Promise.resolve()};function T(a,b){a.N.push(b);b.ia(function(){Ha(a.N,b);});return b}
+g.Zb=function(a){Ke("firebase.auth.Auth.prototype.fetchProvidersForEmail is deprecated. Please use firebase.auth.Auth.prototype.fetchSignInMethodsForEmail instead.");return T(this,$h(this.b,a))};g.$b=function(a){return T(this,bi(this.b,a))};g.oc=function(a){return !!mg(a)};g.lb=function(a,b){var c=this;return T(this,B().then(function(){var a=new cf(b);if(!a.c)throw new L("argument-error",lf+" must be true when sending sign in link to email");return nf(a)}).then(function(b){return c.b.lb(a,b)}).then(function(){}))};
+g.Tc=function(a){return this.Ja(a).then(function(a){return a.data.email})};g.Za=function(a,b){return T(this,this.b.Za(a,b).then(function(){}))};g.Ja=function(a){return T(this,this.b.Ja(a).then(function(a){return new Re(a)}))};g.Wa=function(a){return T(this,this.b.Wa(a).then(function(){}))};g.kb=function(a,b){var c=this;return T(this,B().then(function(){return "undefined"===typeof b||Za(b)?{}:nf(new cf(b))}).then(function(b){return c.b.kb(a,b)}).then(function(){}))};
+g.Jc=function(a,b){return T(this,Tk(this,a,b,r(this.Pa,this)))};g.Ic=function(a,b){var c=this;return T(this,B().then(function(){var d=lg(a,b||Vd());return c.Pa(d)}))};function qm(){}qm.prototype.render=function(){};qm.prototype.reset=function(){};qm.prototype.getResponse=function(){};qm.prototype.execute=function(){};function rm(){this.a={};this.b=1E12;}var sm=null;rm.prototype.render=function(a,b){this.a[this.b.toString()]=new tm(a,b);return this.b++};rm.prototype.reset=function(a){var b=um(this,a);a=vm(a);b&&a&&(b.delete(),delete this.a[a]);};rm.prototype.getResponse=function(a){return (a=um(this,a))?a.getResponse():null};rm.prototype.execute=function(a){(a=um(this,a))&&a.execute();};function um(a,b){return (b=vm(b))?a.a[b]||null:null}function vm(a){return (a="undefined"===typeof a?1E12:a)?a.toString():null}
+function tm(a,b){this.g=!1;this.c=b;this.a=this.b=null;this.h="invisible"!==this.c.size;this.f=Id(a);var c=this;this.i=function(){c.execute();};this.h?this.execute():rc(this.f,"click",this.i);}tm.prototype.getResponse=function(){wm(this);return this.b};
+tm.prototype.execute=function(){wm(this);var a=this;this.a||(this.a=setTimeout(function(){a.b=pe();var b=a.c.callback,c=a.c["expired-callback"];if(b)try{b(a.b);}catch(d){}a.a=setTimeout(function(){a.a=null;a.b=null;if(c)try{c();}catch(d){}a.h&&a.execute();},6E4);},500));};tm.prototype.delete=function(){wm(this);this.g=!0;clearTimeout(this.a);this.a=null;E(this.f,"click",this.i);};function wm(a){if(a.g)throw Error("reCAPTCHA mock was already deleted!");}function xm(){}xm.prototype.g=function(){sm||(sm=new rm);return B(sm)};xm.prototype.c=function(){};var ym=null;function zm(){this.b=k.grecaptcha?Infinity:0;this.f=null;this.a="__rcb"+Math.floor(1E6*Math.random()).toString();}var Am=qd("https://www.google.com/recaptcha/api.js?onload=%{onload}&render=explicit&hl=%{hl}"),Bm=new Ce(3E4,6E4);
+zm.prototype.g=function(a){var b=this;return new A(function(c,d){var e=setTimeout(function(){d(new L("network-request-failed"));},Bm.get());if(!k.grecaptcha||a!==b.f&&!b.b){k[b.a]=function(){if(k.grecaptcha){b.f=a;var f=k.grecaptcha.render;k.grecaptcha.render=function(a,c){a=f(a,c);b.b++;return a};clearTimeout(e);c(k.grecaptcha);}else clearTimeout(e),d(new L("internal-error"));delete k[b.a];};var f=ud(Am,{onload:b.a,hl:a||""});B(Bh(f)).s(function(){clearTimeout(e);d(new L("internal-error","Unable to load external reCAPTCHA dependencies!"));});}else clearTimeout(e),
+c(k.grecaptcha);})};zm.prototype.c=function(){this.b--;};var Cm=null;function Dm(a,b,c,d,e,f,h){J(this,"type","recaptcha");this.c=this.f=null;this.D=!1;this.m=b;this.g=null;h?(ym||(ym=new xm),h=ym):(Cm||(Cm=new zm),h=Cm);this.o=h;this.a=c||{theme:"light",type:"image"};this.h=[];if(this.a[Em])throw new L("argument-error","sitekey should not be provided for reCAPTCHA as one is automatically provisioned for the current project.");this.i="invisible"===this.a[Fm];if(!k.document)throw new L("operation-not-supported-in-this-environment","RecaptchaVerifier is only supported in a browser HTTP/HTTPS environment with DOM support.");
+if(!Id(b)||!this.i&&Id(b).hasChildNodes())throw new L("argument-error","reCAPTCHA container is either not found or already contains inner elements!");this.u=new Jh(a,f||null,e||null);this.v=d||function(){return null};var m=this;this.l=[];var p=this.a[Gm];this.a[Gm]=function(a){Hm(m,a);if("function"===typeof p)p(a);else if("string"===typeof p){var b=I(p,k);"function"===typeof b&&b(a);}};var x=this.a[Im];this.a[Im]=function(){Hm(m,null);if("function"===typeof x)x();else if("string"===typeof x){var a=
+I(x,k);"function"===typeof a&&a();}};}var Gm="callback",Im="expired-callback",Em="sitekey",Fm="size";function Hm(a,b){for(var c=0;c<a.l.length;c++)try{a.l[c](b);}catch(d){}}function Jm(a,b){w(a.l,function(a){return a==b});}function Km(a,b){a.h.push(b);b.ia(function(){Ha(a.h,b);});return b}g=Dm.prototype;
+g.za=function(){var a=this;return this.f?this.f:this.f=Km(this,B().then(function(){if(ve()&&!me())return he();throw new L("operation-not-supported-in-this-environment","RecaptchaVerifier is only supported in a browser HTTP/HTTPS environment.");}).then(function(){return a.o.g(a.v())}).then(function(b){a.g=b;return P(a.u,Ei,{})}).then(function(b){a.a[Em]=b.recaptchaSiteKey;}).s(function(b){a.f=null;throw b;}))};
+g.render=function(){Lm(this);var a=this;return Km(this,this.za().then(function(){if(null===a.c){var b=a.m;if(!a.i){var c=Id(b);b=Ld("DIV");c.appendChild(b);}a.c=a.g.render(b,a.a);}return a.c}))};g.verify=function(){Lm(this);var a=this;return Km(this,this.render().then(function(b){return new A(function(c){var d=a.g.getResponse(b);if(d)c(d);else{var e=function(b){b&&(Jm(a,e),c(b));};a.l.push(e);a.i&&a.g.execute(a.c);}})}))};g.reset=function(){Lm(this);null!==this.c&&this.g.reset(this.c);};
+function Lm(a){if(a.D)throw new L("internal-error","RecaptchaVerifier instance has been destroyed.");}g.clear=function(){Lm(this);this.D=!0;this.o.c();for(var a=0;a<this.h.length;a++)this.h[a].cancel("RecaptchaVerifier instance has been destroyed.");if(!this.i){a=Id(this.m);for(var b;b=a.firstChild;)a.removeChild(b);}};
+function Mm(a,b,c){var d=!1;try{this.b=c||firebase.app();}catch(h){throw new L("argument-error","No firebase.app.App instance is currently initialized.");}if(this.b.options&&this.b.options.apiKey)c=this.b.options.apiKey;else throw new L("invalid-api-key");var e=this,f=null;try{f=this.b.auth().ya();}catch(h){}try{d=this.b.auth().settings.appVerificationDisabledForTesting;}catch(h){}f=firebase.SDK_VERSION?re(firebase.SDK_VERSION,f):null;Dm.call(this,c,a,b,function(){try{var a=e.b.auth().ea();}catch(m){a=
+null;}return a},f,yf(zf),d);}t(Mm,Dm);function Nm(a,b,c,d){a:{c=Array.prototype.slice.call(c);var e=0;for(var f=!1,h=0;h<b.length;h++)if(b[h].optional)f=!0;else{if(f)throw new L("internal-error","Argument validator encountered a required argument after an optional argument.");e++;}f=b.length;if(c.length<e||f<c.length)d="Expected "+(e==f?1==e?"1 argument":e+" arguments":e+"-"+f+" arguments")+" but got "+c.length+".";else{for(e=0;e<c.length;e++)if(f=b[e].optional&&void 0===c[e],!b[e].M(c[e])&&!f){b=b[e];if(0>e||e>=Om.length)throw new L("internal-error",
+"Argument validator received an unsupported number of arguments.");c=Om[e];d=(d?"":c+" argument ")+(b.name?'"'+b.name+'" ':"")+"must be "+b.K+".";break a}d=null;}}if(d)throw new L("argument-error",a+" failed: "+d);}var Om="First Second Third Fourth Fifth Sixth Seventh Eighth Ninth".split(" ");function V(a,b){return {name:a||"",K:"a valid string",optional:!!b,M:l}}function Pm(a,b){return {name:a||"",K:"a boolean",optional:!!b,M:ba}}
+function W(a,b){return {name:a||"",K:"a valid object",optional:!!b,M:q}}function Qm(a,b){return {name:a||"",K:"a function",optional:!!b,M:n}}function Rm(a,b){return {name:a||"",K:"null",optional:!!b,M:ea}}function Sm(){return {name:"",K:"an HTML element",optional:!1,M:function(a){return !!(a&&a instanceof Element)}}}function Tm(){return {name:"auth",K:"an instance of Firebase Auth",optional:!0,M:function(a){return !!(a&&a instanceof bm)}}}
+function Um(){return {name:"app",K:"an instance of Firebase App",optional:!0,M:function(a){return !!(a&&a instanceof firebase.app.App)}}}function Vm(a){return {name:a?a+"Credential":"credential",K:a?"a valid "+a+" credential":"a valid credential",optional:!1,M:function(b){if(!b)return !1;var c=!a||b.providerId===a;return !(!b.la||!c)}}}
+function Wm(){return {name:"authProvider",K:"a valid Auth provider",optional:!1,M:function(a){return !!(a&&a.providerId&&a.hasOwnProperty&&a.hasOwnProperty("isOAuthProvider"))}}}function Xm(){return {name:"applicationVerifier",K:"an implementation of firebase.auth.ApplicationVerifier",optional:!1,M:function(a){return !!(a&&l(a.type)&&n(a.verify))}}}function X(a,b,c,d){return {name:c||"",K:a.K+" or "+b.K,optional:!!d,M:function(c){return a.M(c)||b.M(c)}}}function Y(a,b){for(var c in b){var d=b[c].name;a[d]=Ym(d,a[c],b[c].j);}}function Zm(a,b){for(var c in b){var d=b[c].name;d!==c&&Object.defineProperty(a,d,{get:na(function(a){return this[a]},c),set:na(function(a,b,c,d){Nm(a,[c],[d],!0);this[b]=d;},d,c,b[c].tb),enumerable:!0});}}function Z(a,b,c,d){a[b]=Ym(b,c,d);}
+function Ym(a,b,c){function d(){var a=Array.prototype.slice.call(arguments);Nm(e,c,a);return b.apply(this,a)}if(!c)return b;var e=$m(a),f;for(f in b)d[f]=b[f];for(f in b.prototype)d.prototype[f]=b.prototype[f];return d}function $m(a){a=a.split(".");return a[a.length-1]}Y(bm.prototype,{Wa:{name:"applyActionCode",j:[V("code")]},Ja:{name:"checkActionCode",j:[V("code")]},Za:{name:"confirmPasswordReset",j:[V("code"),V("newPassword")]},xb:{name:"createUserWithEmailAndPassword",j:[V("email"),V("password")]},Wb:{name:"createUserAndRetrieveDataWithEmailAndPassword",j:[V("email"),V("password")]},Zb:{name:"fetchProvidersForEmail",j:[V("email")]},$b:{name:"fetchSignInMethodsForEmail",j:[V("email")]},fa:{name:"getRedirectResult",j:[]},oc:{name:"isSignInWithEmailLink",j:[V("emailLink")]},
+uc:{name:"onAuthStateChanged",j:[X(W(),Qm(),"nextOrObserver"),Qm("opt_error",!0),Qm("opt_completed",!0)]},vc:{name:"onIdTokenChanged",j:[X(W(),Qm(),"nextOrObserver"),Qm("opt_error",!0),Qm("opt_completed",!0)]},kb:{name:"sendPasswordResetEmail",j:[V("email"),X(W("opt_actionCodeSettings",!0),Rm(null,!0),"opt_actionCodeSettings",!0)]},lb:{name:"sendSignInLinkToEmail",j:[V("email"),W("actionCodeSettings")]},mb:{name:"setPersistence",j:[V("persistence")]},Pa:{name:"signInAndRetrieveDataWithCredential",
+j:[Vm()]},Qa:{name:"signInAnonymously",j:[]},Gc:{name:"signInAnonymouslyAndRetrieveData",j:[]},Hc:{name:"signInWithCredential",j:[Vm()]},Nb:{name:"signInWithCustomToken",j:[V("token")]},Ec:{name:"signInAndRetrieveDataWithCustomToken",j:[V("token")]},Ob:{name:"signInWithEmailAndPassword",j:[V("email"),V("password")]},Ic:{name:"signInWithEmailLink",j:[V("email"),V("emailLink",!0)]},Fc:{name:"signInAndRetrieveDataWithEmailAndPassword",j:[V("email"),V("password")]},Jc:{name:"signInWithPhoneNumber",j:[V("phoneNumber"),
+Xm()]},Kc:{name:"signInWithPopup",j:[Wm()]},Lc:{name:"signInWithRedirect",j:[Wm()]},Qc:{name:"updateCurrentUser",j:[X(function(a){return {name:"user",K:"an instance of Firebase User",optional:!!a,M:function(a){return !!(a&&a instanceof Q)}}}(),Rm(),"user")]},nb:{name:"signOut",j:[]},toJSON:{name:"toJSON",j:[V(null,!0)]},Sc:{name:"useDeviceLanguage",j:[]},Tc:{name:"verifyPasswordResetCode",j:[V("code")]}});Zm(bm.prototype,{lc:{name:"languageCode",tb:X(V(),Rm(),"languageCode")}});bm.Persistence=Ij;
+bm.Persistence.LOCAL="local";bm.Persistence.SESSION="session";bm.Persistence.NONE="none";
+Y(Q.prototype,{"delete":{name:"delete",j:[]},dc:{name:"getIdTokenResult",j:[Pm("opt_forceRefresh",!0)]},F:{name:"getIdToken",j:[Pm("opt_forceRefresh",!0)]},eb:{name:"linkAndRetrieveDataWithCredential",j:[Vm()]},pc:{name:"linkWithCredential",j:[Vm()]},qc:{name:"linkWithPhoneNumber",j:[V("phoneNumber"),Xm()]},rc:{name:"linkWithPopup",j:[Wm()]},sc:{name:"linkWithRedirect",j:[Wm()]},gb:{name:"reauthenticateAndRetrieveDataWithCredential",j:[Vm()]},yc:{name:"reauthenticateWithCredential",j:[Vm()]},zc:{name:"reauthenticateWithPhoneNumber",
+j:[V("phoneNumber"),Xm()]},Ac:{name:"reauthenticateWithPopup",j:[Wm()]},Bc:{name:"reauthenticateWithRedirect",j:[Wm()]},reload:{name:"reload",j:[]},jb:{name:"sendEmailVerification",j:[X(W("opt_actionCodeSettings",!0),Rm(null,!0),"opt_actionCodeSettings",!0)]},toJSON:{name:"toJSON",j:[V(null,!0)]},Pc:{name:"unlink",j:[V("provider")]},pb:{name:"updateEmail",j:[V("email")]},qb:{name:"updatePassword",j:[V("password")]},Rc:{name:"updatePhoneNumber",j:[Vm("phone")]},rb:{name:"updateProfile",j:[W("profile")]}});
+Y(rm.prototype,{execute:{name:"execute"},render:{name:"render"},reset:{name:"reset"},getResponse:{name:"getResponse"}});Y(qm.prototype,{execute:{name:"execute"},render:{name:"render"},reset:{name:"reset"},getResponse:{name:"getResponse"}});Y(A.prototype,{ia:{name:"finally"},s:{name:"catch"},then:{name:"then"}});Zm(Rk.prototype,{appVerificationDisabled:{name:"appVerificationDisabledForTesting",tb:Pm("appVerificationDisabledForTesting")}});Y(Sk.prototype,{confirm:{name:"confirm",j:[V("verificationCode")]}});
+Z(O,"credential",function(a,b){return new gg(a,b)},[V("email"),V("password")]);Y(Zf.prototype,{ua:{name:"addScope",j:[V("scope")]},Da:{name:"setCustomParameters",j:[W("customOAuthParameters")]}});Z(Zf,"credential",$f,[X(V(),W(),"token")]);Z(O,"credentialWithLink",lg,[V("email"),V("emailLink")]);Y(ag.prototype,{ua:{name:"addScope",j:[V("scope")]},Da:{name:"setCustomParameters",j:[W("customOAuthParameters")]}});Z(ag,"credential",bg,[X(V(),W(),"token")]);
+Y(cg.prototype,{ua:{name:"addScope",j:[V("scope")]},Da:{name:"setCustomParameters",j:[W("customOAuthParameters")]}});Z(cg,"credential",dg,[X(V(),X(W(),Rm()),"idToken"),X(V(),Rm(),"accessToken",!0)]);Y(eg.prototype,{Da:{name:"setCustomParameters",j:[W("customOAuthParameters")]}});Z(eg,"credential",fg,[X(V(),W(),"token"),V("secret",!0)]);
+Y(N.prototype,{ua:{name:"addScope",j:[V("scope")]},credential:{name:"credential",j:[X(V(),Rm(),"idToken",!0),X(V(),Rm(),"accessToken",!0),X(V(),Rm(),"nonce",!0)]},Da:{name:"setCustomParameters",j:[W("customOAuthParameters")]}});Z(rg,"credential",tg,[V("verificationId"),V("verificationCode")]);Y(rg.prototype,{Ua:{name:"verifyPhoneNumber",j:[V("phoneNumber"),Xm()]}});Y(L.prototype,{toJSON:{name:"toJSON",j:[V(null,!0)]}});Y(Bg.prototype,{toJSON:{name:"toJSON",j:[V(null,!0)]}});
+Y(Ag.prototype,{toJSON:{name:"toJSON",j:[V(null,!0)]}});Y(Mm.prototype,{clear:{name:"clear",j:[]},render:{name:"render",j:[]},verify:{name:"verify",j:[]}});
+(function(){if("undefined"!==typeof firebase&&firebase.INTERNAL&&firebase.INTERNAL.registerService){var a={Auth:bm,Error:L};Z(a,"EmailAuthProvider",O,[]);Z(a,"FacebookAuthProvider",Zf,[]);Z(a,"GithubAuthProvider",ag,[]);Z(a,"GoogleAuthProvider",cg,[]);Z(a,"TwitterAuthProvider",eg,[]);Z(a,"OAuthProvider",N,[V("providerId")]);Z(a,"SAMLAuthProvider",Yf,[V("providerId")]);Z(a,"PhoneAuthProvider",rg,[Tm()]);Z(a,"RecaptchaVerifier",Mm,[X(V(),Sm(),"recaptchaContainer"),W("recaptchaParameters",!0),Um()]);
+firebase.INTERNAL.registerService("auth",function(a,c){a=new bm(a);c({INTERNAL:{getUid:r(a.getUid,a),getToken:r(a.cc,a),addAuthTokenListener:r(a.Vb,a),removeAuthTokenListener:r(a.Cc,a)}});return a},a,function(a,c){if("create"===a)try{c.auth();}catch(d){}});firebase.INTERNAL.extendNamespace({User:Q});}else throw Error("Cannot find the firebase namespace; be sure to include firebase-app.js before this library.");})();}).apply(typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : typeof window !== 'undefined' ? window : {});
 
 /**
  * @license
@@ -10366,10 +10317,10 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
+
+
+
 var firebase = _interopDefault(index_cjs$2);
-
-
-
 
 /**
  * @license
@@ -10616,7 +10567,7 @@ var buildLogMessage_ = function () {
  * Use this for all debug messages in Firebase.
  * @type {?function(string)}
  */
-var logger = null;
+var logger$1 = null;
 /**
  * Flag to check for log availability on first log message
  * @type {boolean}
@@ -10632,15 +10583,15 @@ var enableLogging = function (logger_, persistent) {
     index_cjs.assert(!persistent || (logger_ === true || logger_ === false), "Can't turn on custom loggers persistently.");
     if (logger_ === true) {
         logClient.logLevel = index_esm.LogLevel.VERBOSE;
-        logger = logClient.log.bind(logClient);
+        logger$1 = logClient.log.bind(logClient);
         if (persistent)
             SessionStorage.set('logging_enabled', true);
     }
     else if (typeof logger_ === 'function') {
-        logger = logger_;
+        logger$1 = logger_;
     }
     else {
-        logger = null;
+        logger$1 = null;
         SessionStorage.remove('logging_enabled');
     }
 };
@@ -10655,12 +10606,12 @@ var log = function () {
     }
     if (firstLog_ === true) {
         firstLog_ = false;
-        if (logger === null && SessionStorage.get('logging_enabled') === true)
+        if (logger$1 === null && SessionStorage.get('logging_enabled') === true)
             enableLogging(true);
     }
-    if (logger) {
+    if (logger$1) {
         var message = buildLogMessage_.apply(null, var_args);
-        logger(message);
+        logger$1(message);
     }
 };
 /**
@@ -15440,8 +15391,8 @@ var Query = /** @class */ (function () {
     Query.prototype.isEqual = function (other) {
         index_cjs.validateArgCount('Query.isEqual', 1, 1, arguments.length);
         if (!(other instanceof Query)) {
-            var error = 'Query.isEqual failed: First argument must be an instance of firebase.database.Query.';
-            throw new Error(error);
+            var error$$1 = 'Query.isEqual failed: First argument must be an instance of firebase.database.Query.';
+            throw new Error(error$$1);
         }
         var sameRepo = this.repo === other.repo;
         var samePath = this.path.equals(other.path);
@@ -19511,9 +19462,9 @@ var SyncTree = /** @class */ (function () {
                 else {
                     // If a listen failed, kill all of the listeners here, not just the one that triggered the error.
                     // Note that this may need to be scoped to just this listener if we change permissions on filtered children
-                    var error = errorForServerCode(status, query);
+                    var error$$1 = errorForServerCode(status, query);
                     return _this.removeEventRegistration(query, 
-                    /*eventRegistration*/ null, error);
+                    /*eventRegistration*/ null, error$$1);
                 }
             }
         };
@@ -19750,15 +19701,15 @@ var AuthTokenProvider = /** @class */ (function () {
     AuthTokenProvider.prototype.getToken = function (forceRefresh) {
         return this.app_['INTERNAL']['getToken'](forceRefresh).then(null, 
         // .catch
-        function (error) {
+        function (error$$1) {
             // TODO: Need to figure out all the cases this is raised and whether
             // this makes sense.
-            if (error && error.code === 'auth/token-not-initialized') {
+            if (error$$1 && error$$1.code === 'auth/token-not-initialized') {
                 log('Got auth/token-not-initialized error.  Treating as null token.');
                 return null;
             }
             else {
-                return Promise.reject(error);
+                return Promise.reject(error$$1);
             }
         });
     };
@@ -20127,7 +20078,7 @@ var EventList = /** @class */ (function () {
             if (eventData !== null) {
                 this.events_[i] = null;
                 var eventFn = eventData.getEventRunner();
-                if (logger) {
+                if (logger$1) {
                     log('event: ' + eventData.toString());
                 }
                 exceptionGuard(eventFn);
@@ -21177,9 +21128,9 @@ var WebSocketConnection = /** @class */ (function () {
         }
         catch (e) {
             this.log_('Error instantiating WebSocket.');
-            var error = e.message || e.data;
-            if (error) {
-                this.log_(error);
+            var error$$1 = e.message || e.data;
+            if (error$$1) {
+                this.log_(error$$1);
             }
             this.onClosed_();
             return;
@@ -21198,9 +21149,9 @@ var WebSocketConnection = /** @class */ (function () {
         };
         this.mySock.onerror = function (e) {
             _this.log_('WebSocket error.  Closing connection.');
-            var error = e.message || e.data;
-            if (error) {
-                _this.log_(error);
+            var error$$1 = e.message || e.data;
+            if (error$$1) {
+                _this.log_(error$$1);
             }
             _this.onClosed_();
         };
@@ -22634,14 +22585,14 @@ var PersistentConnection = /** @class */ (function (_super) {
                     log('getToken() completed but was canceled');
                 }
             })
-                .then(null, function (error) {
-                self_1.log_('Failed to get token: ' + error);
+                .then(null, function (error$$1) {
+                self_1.log_('Failed to get token: ' + error$$1);
                 if (!canceled_1) {
                     if (index_cjs.CONSTANTS.NODE_ADMIN) {
                         // This may be a critical error for the Admin Node.js SDK, so log a warning.
                         // But getToken() may also just have temporarily failed, so we still want to
                         // continue retrying.
-                        warn(error);
+                        warn(error$$1);
                     }
                     closeFn_1();
                 }
@@ -22905,25 +22856,25 @@ var ReadonlyRestClient = /** @class */ (function (_super) {
         var queryStringParameters = query
             .getQueryParams()
             .toRestQueryStringParameters();
-        this.restRequest_(pathString + '.json', queryStringParameters, function (error, result) {
+        this.restRequest_(pathString + '.json', queryStringParameters, function (error$$1, result) {
             var data = result;
-            if (error === 404) {
+            if (error$$1 === 404) {
                 data = null;
-                error = null;
+                error$$1 = null;
             }
-            if (error === null) {
+            if (error$$1 === null) {
                 _this.onDataUpdate_(pathString, data, /*isMerge=*/ false, tag);
             }
             if (index_cjs.safeGet(_this.listens_, listenId) === thisListen) {
                 var status_1;
-                if (!error) {
+                if (!error$$1) {
                     status_1 = 'ok';
                 }
-                else if (error == 401) {
+                else if (error$$1 == 401) {
                     status_1 = 'permission_denied';
                 }
                 else {
-                    status_1 = 'rest_error:' + error;
+                    status_1 = 'rest_error:' + error$$1;
                 }
                 onComplete(status_1, null);
             }
@@ -23494,9 +23445,9 @@ var Repo = /** @class */ (function () {
                     var message = code;
                     if (errorReason)
                         message += ': ' + errorReason;
-                    var error = new Error(message);
-                    error.code = code;
-                    callback(error);
+                    var error$$1 = new Error(message);
+                    error$$1.code = code;
+                    callback(error$$1);
                 }
             });
         }
@@ -24467,15 +24418,15 @@ var Reference = /** @class */ (function (_super) {
         if (typeof onComplete === 'function') {
             deferred.promise.catch(function () { });
         }
-        var promiseComplete = function (error, committed, snapshot) {
-            if (error) {
-                deferred.reject(error);
+        var promiseComplete = function (error$$1, committed, snapshot) {
+            if (error$$1) {
+                deferred.reject(error$$1);
             }
             else {
                 deferred.resolve(new TransactionResult(committed, snapshot));
             }
             if (typeof onComplete === 'function') {
-                onComplete(error, committed, snapshot);
+                onComplete(error$$1, committed, snapshot);
             }
         };
         this.repo.startTransaction(this.path, transactionUpdate, promiseComplete, applyLocally);
@@ -25780,7 +25731,6 @@ exports.enableLogging = enableLogging;
 exports.ServerValue = ServerValue;
 exports.DataSnapshot = DataSnapshot;
 exports.OnDisconnect = OnDisconnect;
-
 });
 
 unwrapExports(index_cjs$3);
@@ -25795,86 +25745,123 @@ var index_cjs_8$1 = index_cjs$3.OnDisconnect;
 
 var commonjsGlobal$1 = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
-var e,goog=goog||{},h=commonjsGlobal$1;function l(a){return "string"==typeof a}function n(a,b){a=a.split(".");b=b||h;for(var c=0;c<a.length;c++)if(b=b[a[c]],null==b)return null;return b}function p(){}
-function q(a){var b=typeof a;if("object"==b)if(a){if(a instanceof Array)return "array";if(a instanceof Object)return b;var c=Object.prototype.toString.call(a);if("[object Window]"==c)return "object";if("[object Array]"==c||"number"==typeof a.length&&"undefined"!=typeof a.splice&&"undefined"!=typeof a.propertyIsEnumerable&&!a.propertyIsEnumerable("splice"))return "array";if("[object Function]"==c||"undefined"!=typeof a.call&&"undefined"!=typeof a.propertyIsEnumerable&&!a.propertyIsEnumerable("call"))return "function"}else return "null";
-else if("function"==b&&"undefined"==typeof a.call)return "object";return b}function r(a){return "array"==q(a)}function aa(a){var b=q(a);return "array"==b||"object"==b&&"number"==typeof a.length}function t(a){var b=typeof a;return "object"==b&&null!=a||"function"==b}var u="closure_uid_"+(1E9*Math.random()>>>0),ba=0;function ca(a,b,c){return a.call.apply(a.bind,arguments)}
-function da(a,b,c){if(!a)throw Error();if(2<arguments.length){var d=Array.prototype.slice.call(arguments,2);return function(){var c=Array.prototype.slice.call(arguments);Array.prototype.unshift.apply(c,d);return a.apply(b,c)}}return function(){return a.apply(b,arguments)}}function v(a,b,c){Function.prototype.bind&&-1!=Function.prototype.bind.toString().indexOf("native code")?v=ca:v=da;return v.apply(null,arguments)}
-function w(a,b){var c=Array.prototype.slice.call(arguments,1);return function(){var b=c.slice();b.push.apply(b,arguments);return a.apply(this,b)}}var x=Date.now||function(){return +new Date};function y(a,b){function c(){}c.prototype=b.prototype;a.S=b.prototype;a.prototype=new c;a.prototype.constructor=a;a.re=function(a,c,g){for(var d=Array(arguments.length-2),f=2;f<arguments.length;f++)d[f-2]=arguments[f];return b.prototype[c].apply(a,d)};}function z(){this.i=this.i;this.j=this.j;}var ea=0;z.prototype.i=!1;z.prototype.La=function(){if(!this.i&&(this.i=!0,this.G(),0!=ea)){var a=this[u]||(this[u]=++ba);}};z.prototype.G=function(){if(this.j)for(;this.j.length;)this.j.shift()();};var ha=Array.prototype.indexOf?function(a,b){return Array.prototype.indexOf.call(a,b,void 0)}:function(a,b){if(l(a))return l(b)&&1==b.length?a.indexOf(b,0):-1;for(var c=0;c<a.length;c++)if(c in a&&a[c]===b)return c;return -1},A=Array.prototype.forEach?function(a,b,c){Array.prototype.forEach.call(a,b,c);}:function(a,b,c){for(var d=a.length,f=l(a)?a.split(""):a,g=0;g<d;g++)g in f&&b.call(c,f[g],g,a);};
-function ia(a){a:{var b=ja;for(var c=a.length,d=l(a)?a.split(""):a,f=0;f<c;f++)if(f in d&&b.call(void 0,d[f],f,a)){b=f;break a}b=-1;}return 0>b?null:l(a)?a.charAt(b):a[b]}function ka(a){return Array.prototype.concat.apply([],arguments)}function la(a){var b=a.length;if(0<b){for(var c=Array(b),d=0;d<b;d++)c[d]=a[d];return c}return []}function B(a){return /^[\s\xa0]*$/.test(a)}var ma=String.prototype.trim?function(a){return a.trim()}:function(a){return /^[\s\xa0]*([\s\S]*?)[\s\xa0]*$/.exec(a)[1]};function C(a,b){return -1!=a.indexOf(b)}function na(a,b){return a<b?-1:a>b?1:0}var D;a:{var oa=h.navigator;if(oa){var pa=oa.userAgent;if(pa){D=pa;break a}}D="";}function qa(a,b,c){for(var d in a)b.call(c,a[d],d,a);}function ra(a){var b={},c;for(c in a)b[c]=a[c];return b}var sa="constructor hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf".split(" ");function ta(a,b){for(var c,d,f=1;f<arguments.length;f++){d=arguments[f];for(c in d)a[c]=d[c];for(var g=0;g<sa.length;g++)c=sa[g],Object.prototype.hasOwnProperty.call(d,c)&&(a[c]=d[c]);}}function ua(a){ua[" "](a);return a}ua[" "]=p;function va(a,b){var c=wa;return Object.prototype.hasOwnProperty.call(c,a)?c[a]:c[a]=b(a)}var xa=C(D,"Opera"),E=C(D,"Trident")||C(D,"MSIE"),ya=C(D,"Edge"),za=ya||E,Aa=C(D,"Gecko")&&!(C(D.toLowerCase(),"webkit")&&!C(D,"Edge"))&&!(C(D,"Trident")||C(D,"MSIE"))&&!C(D,"Edge"),Ba=C(D.toLowerCase(),"webkit")&&!C(D,"Edge");function Ca(){var a=h.document;return a?a.documentMode:void 0}var Da;
-a:{var Ea="",Fa=function(){var a=D;if(Aa)return /rv:([^\);]+)(\)|;)/.exec(a);if(ya)return /Edge\/([\d\.]+)/.exec(a);if(E)return /\b(?:MSIE|rv)[: ]([^\);]+)(\)|;)/.exec(a);if(Ba)return /WebKit\/(\S+)/.exec(a);if(xa)return /(?:Version)[ \/]?(\S+)/.exec(a)}();Fa&&(Ea=Fa?Fa[1]:"");if(E){var Ga=Ca();if(null!=Ga&&Ga>parseFloat(Ea)){Da=String(Ga);break a}}Da=Ea;}var wa={};
-function Ha(a){return va(a,function(){for(var b=0,c=ma(String(Da)).split("."),d=ma(String(a)).split("."),f=Math.max(c.length,d.length),g=0;0==b&&g<f;g++){var k=c[g]||"",m=d[g]||"";do{k=/(\d*)(\D*)(.*)/.exec(k)||["","","",""];m=/(\d*)(\D*)(.*)/.exec(m)||["","","",""];if(0==k[0].length&&0==m[0].length)break;b=na(0==k[1].length?0:parseInt(k[1],10),0==m[1].length?0:parseInt(m[1],10))||na(0==k[2].length,0==m[2].length)||na(k[2],m[2]);k=k[3];m=m[3];}while(0==b)}return 0<=b})}var Ia;var Ka=h.document;
-Ia=Ka&&E?Ca()||("CSS1Compat"==Ka.compatMode?parseInt(Da,10):5):void 0;var La=!E||9<=Number(Ia),Ma=E&&!Ha("9"),Na=function(){if(!h.addEventListener||!Object.defineProperty)return !1;var a=!1,b=Object.defineProperty({},"passive",{get:function(){a=!0;}});try{h.addEventListener("test",p,b),h.removeEventListener("test",p,b);}catch(c){}return a}();function F(a,b){this.type=a;this.a=this.target=b;this.b=!1;this.hc=!0;}F.prototype.c=function(){this.hc=!1;};function G(a,b){F.call(this,a?a.type:"");this.relatedTarget=this.a=this.target=null;this.button=this.screenY=this.screenX=this.clientY=this.clientX=0;this.key="";this.metaKey=this.shiftKey=this.altKey=this.ctrlKey=!1;this.pointerId=0;this.pointerType="";this.f=null;a&&this.g(a,b);}y(G,F);var Oa={2:"touch",3:"pen",4:"mouse"};
-G.prototype.g=function(a,b){var c=this.type=a.type,d=a.changedTouches&&a.changedTouches.length?a.changedTouches[0]:null;this.target=a.target||a.srcElement;this.a=b;if(b=a.relatedTarget){if(Aa){a:{try{ua(b.nodeName);var f=!0;break a}catch(g){}f=!1;}f||(b=null);}}else"mouseover"==c?b=a.fromElement:"mouseout"==c&&(b=a.toElement);this.relatedTarget=b;d?(this.clientX=void 0!==d.clientX?d.clientX:d.pageX,this.clientY=void 0!==d.clientY?d.clientY:d.pageY,this.screenX=d.screenX||0,this.screenY=d.screenY||0):
-(this.clientX=void 0!==a.clientX?a.clientX:a.pageX,this.clientY=void 0!==a.clientY?a.clientY:a.pageY,this.screenX=a.screenX||0,this.screenY=a.screenY||0);this.button=a.button;this.key=a.key||"";this.ctrlKey=a.ctrlKey;this.altKey=a.altKey;this.shiftKey=a.shiftKey;this.metaKey=a.metaKey;this.pointerId=a.pointerId||0;this.pointerType=l(a.pointerType)?a.pointerType:Oa[a.pointerType]||"";this.f=a;a.defaultPrevented&&this.c();};
-G.prototype.c=function(){G.S.c.call(this);var a=this.f;if(a.preventDefault)a.preventDefault();else if(a.returnValue=!1,Ma)try{if(a.ctrlKey||112<=a.keyCode&&123>=a.keyCode)a.keyCode=-1;}catch(b){}};var H="closure_listenable_"+(1E6*Math.random()|0),Pa=0;function Qa(a,b,c,d,f){this.listener=a;this.proxy=null;this.src=b;this.type=c;this.capture=!!d;this.ya=f;this.key=++Pa;this.ja=this.oa=!1;}Qa.prototype.a=function(){this.ja=!0;this.ya=this.src=this.proxy=this.listener=null;};function Ra(a){this.src=a;this.a={};this.b=0;}e=Ra.prototype;e.add=function(a,b,c,d,f){var g=a.toString();a=this.a[g];a||(a=this.a[g]=[],this.b++);var k=Sa(a,b,d,f);-1<k?(b=a[k],c||(b.oa=!1)):(b=new Qa(b,this.src,g,!!d,f),b.oa=c,a.push(b));return b};e.Sc=function(a,b,c,d){a=a.toString();if(a in this.a){var f=this.a[a];b=Sa(f,b,c,d);-1<b&&(f[b].a(),Array.prototype.splice.call(f,b,1),0==f.length&&(delete this.a[a],this.b--));}};
-e.fc=function(a){var b=a.type;if(b in this.a){var c=this.a[b],d=ha(c,a),f;(f=0<=d)&&Array.prototype.splice.call(c,d,1);f&&(a.a(),0==this.a[b].length&&(delete this.a[b],this.b--));}};e.Tc=function(){var b;for(b in this.a){for(var c=this.a[b],d=0;d<c.length;d++)c[d].a();delete this.a[b];this.b--;}};e.Rc=function(a,b,c,d){a=this.a[a.toString()];var f=-1;a&&(f=Sa(a,b,c,d));return -1<f?a[f]:null};
-function Sa(a,b,c,d){for(var f=0;f<a.length;++f){var g=a[f];if(!g.ja&&g.listener==b&&g.capture==!!c&&g.ya==d)return f}return -1}var Ta="closure_lm_"+(1E6*Math.random()|0),Ua={};function Wa(a,b,c,d,f){if(d&&d.once)return Xa(a,b,c,d,f);if(r(b)){for(var g=0;g<b.length;g++)Wa(a,b[g],c,d,f);return null}c=Ya(c);return a&&a[H]?a.Lb(b,c,t(d)?!!d.capture:!!d,f):Za(a,b,c,!1,d,f)}
-function Za(a,b,c,d,f,g){if(!b)throw Error("Invalid event type");var k=t(f)?!!f.capture:!!f;if(k&&!La)return null;var m=$a(a);m||(a[Ta]=m=new Ra(a));c=m.add(b,c,d,k,g);if(c.proxy)return c;d=ab();c.proxy=d;d.src=a;d.listener=c;if(a.addEventListener)Na||(f=k),void 0===f&&(f=!1),a.addEventListener(b.toString(),d,f);else if(a.attachEvent)a.attachEvent(bb(b.toString()),d);else if(a.addListener&&a.removeListener)a.addListener(d);else throw Error("addEventListener and attachEvent are unavailable.");return c}function ab(){var a=cb,b=La?function(c){return a.call(b.src,b.listener,c)}:function(c){c=a.call(b.src,b.listener,c);if(!c)return c};return b}function Xa(a,b,c,d,f){if(r(b)){for(var g=0;g<b.length;g++)Xa(a,b[g],c,d,f);return null}c=Ya(c);return a&&a[H]?a.Mb(b,c,t(d)?!!d.capture:!!d,f):Za(a,b,c,!0,d,f)}function db(a,b,c,d,f){if(r(b))for(var g=0;g<b.length;g++)db(a,b[g],c,d,f);else d=t(d)?!!d.capture:!!d,c=Ya(c),a&&a[H]?a.Qc(b,c,d,f):a&&(a=$a(a))&&(b=a.Rc(b,c,d,f))&&eb(b);}
-function eb(a){if("number"!=typeof a&&a&&!a.ja){var b=a.src;if(b&&b[H])b.nc(a);else{var c=a.type,d=a.proxy;b.removeEventListener?b.removeEventListener(c,d,a.capture):b.detachEvent?b.detachEvent(bb(c),d):b.addListener&&b.removeListener&&b.removeListener(d);(c=$a(b))?(c.fc(a),0==c.b&&(c.src=null,b[Ta]=null)):a.a();}}}function bb(a){return a in Ua?Ua[a]:Ua[a]="on"+a}function fb(a,b){var c=a.listener,d=a.ya||a.src;a.oa&&eb(a);return c.call(d,b)}
-function cb(a,b){return a.ja?!0:La?fb(a,new G(b,this)):(b=new G(b||n("window.event"),this),fb(a,b))}function $a(a){a=a[Ta];return a instanceof Ra?a:null}var gb="__closure_events_fn_"+(1E9*Math.random()>>>0);function Ya(a){if("function"==q(a))return a;a[gb]||(a[gb]=function(b){return a.handleEvent(b)});return a[gb]}function I(){z.call(this);this.c=new Ra(this);this.K=this;this.F=null;}y(I,z);I.prototype[H]=!0;e=I.prototype;e.addEventListener=function(a,b,c,d){Wa(this,a,b,c,d);};e.removeEventListener=function(a,b,c,d){db(this,a,b,c,d);};
-e.dispatchEvent=function(a){var b,c=this.F;if(c)for(b=[];c;c=c.F)b.push(c);c=this.K;var d=a.type||a;if(l(a))a=new F(a,c);else if(a instanceof F)a.target=a.target||c;else{var f=a;a=new F(d,c);ta(a,f);}f=!0;if(b)for(var g=b.length-1;!a.b&&0<=g;g--){var k=a.a=b[g];f=k.ua(d,!0,a)&&f;}a.b||(k=a.a=c,f=k.ua(d,!0,a)&&f,a.b||(f=k.ua(d,!1,a)&&f));if(b)for(g=0;!a.b&&g<b.length;g++)k=a.a=b[g],f=k.ua(d,!1,a)&&f;return f};e.G=function(){I.S.G.call(this);this.Id();this.F=null;};
-e.Lb=function(a,b,c,d){return this.c.add(String(a),b,!1,c,d)};e.Mb=function(a,b,c,d){return this.c.add(String(a),b,!0,c,d)};e.Qc=function(a,b,c,d){this.c.Sc(String(a),b,c,d);};e.nc=function(a){this.c.fc(a);};e.Id=function(){this.c&&this.c.Tc();};e.ua=function(a,b,c){a=this.c.a[String(a)];if(!a)return !0;a=a.concat();for(var d=!0,f=0;f<a.length;++f){var g=a[f];if(g&&!g.ja&&g.capture==b){var k=g.listener,m=g.ya||g.src;g.oa&&this.nc(g);d=!1!==k.call(m,c)&&d;}}return d&&0!=c.hc};var hb=h.JSON.stringify;function ib(a,b){this.g=100;this.c=a;this.h=b;this.b=0;this.a=null;}ib.prototype.get=function(){if(0<this.b){this.b--;var a=this.a;this.a=a.next;a.next=null;}else a=this.c();return a};ib.prototype.f=function(a){this.h(a);this.b<this.g&&(this.b++,a.next=this.a,this.a=a);};function J(){this.b=this.a=null;}var kb=new ib(function(){return new jb},function(a){a.reset();});J.prototype.add=function(a,b){var c=this.c();c.set(a,b);this.b?this.b.next=c:this.a=c;this.b=c;};J.prototype.f=function(){var a=null;this.a&&(a=this.a,this.a=this.a.next,this.a||(this.b=null),a.next=null);return a};J.prototype.g=function(a){kb.f(a);};J.prototype.c=function(){return kb.get()};function jb(){this.next=this.b=this.a=null;}jb.prototype.set=function(a,b){this.a=a;this.b=b;this.next=null;};
-jb.prototype.reset=function(){this.next=this.b=this.a=null;};function lb(a){h.setTimeout(function(){throw a;},0);}var mb;function nb(){var a=h.Promise.resolve(void 0);mb=function(){a.then(ob);};}var pb=!1,qb=new J;function ob(){for(var a;a=qb.f();){try{a.a.call(a.b);}catch(b){lb(b);}qb.g(a);}pb=!1;}function rb(a,b){I.call(this);this.b=a||1;this.a=b||h;this.f=v(this.$d,this);this.g=x();}y(rb,I);e=rb.prototype;e.wa=!1;e.P=null;e.$d=function(){if(this.wa){var a=x()-this.g;0<a&&a<.8*this.b?this.P=this.a.setTimeout(this.f,this.b-a):(this.P&&(this.a.clearTimeout(this.P),this.P=null),this.Gc(),this.wa&&(this.Na(),this.start()));}};e.Gc=function(){this.dispatchEvent("tick");};e.start=function(){this.wa=!0;this.P||(this.P=this.a.setTimeout(this.f,this.b),this.g=x());};
-e.Na=function(){this.wa=!1;this.P&&(this.a.clearTimeout(this.P),this.P=null);};e.G=function(){rb.S.G.call(this);this.Na();delete this.a;};function sb(a,b,c){if("function"==q(a))c&&(a=v(a,c));else if(a&&"function"==typeof a.handleEvent)a=v(a.handleEvent,a);else throw Error("Invalid listener argument");return 2147483647<Number(b)?-1:h.setTimeout(a,b||0)}function tb(a,b,c){z.call(this);this.f=null!=c?v(a,c):a;this.c=b;this.b=v(this.Cd,this);this.a=[];}y(tb,z);e=tb.prototype;e.Ca=!1;e.ec=0;e.ba=null;e.Hc=function(a){this.a=arguments;this.ba||this.ec?this.Ca=!0:this.yb();};e.Pc=function(){this.ba&&(h.clearTimeout(this.ba),this.ba=null,this.Ca=!1,this.a=[]);};e.G=function(){tb.S.G.call(this);this.Pc();};e.Cd=function(){this.ba=null;this.Ca&&!this.ec&&(this.Ca=!1,this.yb());};e.yb=function(){this.ba=sb(this.b,this.c);this.f.apply(null,this.a);};function ub(a){z.call(this);this.b=a;this.a={};}y(ub,z);var vb=[];e=ub.prototype;e.Jb=function(a,b,c){this.wd(a,b,c);};e.wd=function(a,b,c){r(b)||(b&&(vb[0]=b.toString()),b=vb);for(var d=0;d<b.length;d++){var f=Wa(a,b[d],c||this.handleEvent,!1,this.b||this);if(!f)break;this.a[f.key]=f;}};e.Kb=function(){qa(this.a,function(a,b){this.a.hasOwnProperty(b)&&eb(a);},this);this.a={};};e.G=function(){ub.S.G.call(this);this.Kb();};
-e.handleEvent=function(){throw Error("EventHandler.handleEvent not implemented");};function wb(){}var K=new I;function xb(a){F.call(this,"serverreachability",a);}y(xb,F);function L(a){K.dispatchEvent(new xb(K,a));}function yb(a){F.call(this,"statevent",a);}y(yb,F);function M(a){K.dispatchEvent(new yb(K,a));}function zb(a){F.call(this,"timingevent",a);}y(zb,F);function N(a,b){if("function"!=q(a))throw Error("Fn must not be null and must be a function");return h.setTimeout(function(){a();},b)}var Ab={NO_ERROR:0,ae:1,he:2,ge:3,de:4,fe:5,ie:6,qc:7,TIMEOUT:8,le:9};var Bb={ce:"complete",pe:"success",rc:"error",qc:"abort",ne:"ready",oe:"readystatechange",TIMEOUT:"timeout",je:"incrementaldata",me:"progress",ee:"downloadprogress",qe:"uploadprogress"};function Cb(){}Cb.prototype.a=null;Cb.prototype.c=function(){return this.a||(this.a={})};function Db(){}var O={OPEN:"a",be:"b",rc:"c",ke:"d"};function Eb(){F.call(this,"d");}y(Eb,F);function Fb(){F.call(this,"c");}y(Fb,F);var Hb;function Ib(){}y(Ib,Cb);Ib.prototype.b=function(){return new XMLHttpRequest};Hb=new Ib;function P(a,b,c){this.g=a;this.da=b;this.ca=c||1;this.I=new ub(this);this.L=Jb;a=za?125:void 0;this.T=new rb(a);this.J=null;this.b=!1;this.i=this.C=this.f=this.F=this.u=this.U=this.h=null;this.j=[];this.a=null;this.A=0;this.c=this.v=null;this.o=-1;this.l=!1;this.K=0;this.B=null;this.s=this.Y=this.H=!1;}var Jb=45E3,Kb={},Lb={};e=P.prototype;e.ha=function(a){this.J=a;};e.setTimeout=function(a){this.L=a;};e.Xc=function(a){this.K=a;};e.Qd=function(a){this.j=a;};
-e.cb=function(a,b){this.F=1;this.f=a.N().za();this.i=b;this.H=!0;this.ic(null);};e.bb=function(a,b,c){this.F=1;this.f=a.N().za();this.i=null;this.H=b;this.ic(c);};
-e.ic=function(a){this.u=x();this.fa();this.C=this.f.N();this.C.Aa("t",this.ca);this.A=0;this.a=this.g.sa(this.g.Da()?a:null);0<this.K&&(this.B=new tb(v(this.oc,this,this.a),this.K));this.I.Jb(this.a,"readystatechange",this.Hd);a=this.J?ra(this.J):{};this.i?(this.v||(this.v="POST"),a["Content-Type"]="application/x-www-form-urlencoded",this.a.xa(this.C,this.v,this.i,a)):(this.v="GET",this.a.xa(this.C,this.v,null,a));L(1);};e.Hd=function(a){a=a.target;var b=this.B;b&&3==a.W()?b.Hc():this.oc(a);};
-e.oc=function(a){try{a==this.a&&this.Ed();}catch(b){}finally{}};
-e.Ed=function(){var a=this.a.W(),b=this.a.Db(),c=this.a.aa();if(!(3>a||3==a&&!za&&!this.a.va()))if(this.l||4!=a||7==b||(8==b||0>=c?L(3):L(2)),this.pa(),this.o=c=this.a.aa(),b=this.a.va(),this.b=200==c){if(this.Td())if(c=this.Kc())this.s=!0,this.Wa(c);else{this.b=!1;this.c=3;M(12);this.Z();this.ta();return}this.H?(this.vb(a,b),za&&this.b&&3==a&&this.Yd()):this.Wa(b);4==a&&this.Z();this.b&&!this.l&&(4==a?this.g.Va(this):(this.b=!1,this.fa()));}else 400==c&&0<b.indexOf("Unknown SID")?(this.c=3,M(12)):
-(this.c=0,M(13)),this.Z(),this.ta();};e.Td=function(){return this.Y&&!this.s};e.Kc=function(){if(this.a){var a=this.a.ga("X-HTTP-Initial-Response");if(a&&!B(a))return a}return null};e.Md=function(){this.Y=!0;};e.vb=function(a,b){for(var c=!0;!this.l&&this.A<b.length;){var d=this.Lc(b);if(d==Lb){4==a&&(this.c=4,M(14),c=!1);break}else if(d==Kb){this.c=4;M(15);c=!1;break}else this.Wa(d);}4==a&&0==b.length&&(this.c=1,M(16),c=!1);this.b=this.b&&c;c||(this.Z(),this.ta());};
-e.Gd=function(){if(this.a){var a=this.a.W(),b=this.a.va();this.A<b.length&&(this.pa(),this.vb(a,b),this.b&&4!=a&&this.fa());}};e.Yd=function(){this.I.Jb(this.T,"tick",this.Gd);this.T.start();};e.Lc=function(a){var b=this.A,c=a.indexOf("\n",b);if(-1==c)return Lb;b=Number(a.substring(b,c));if(isNaN(b))return Kb;c+=1;if(c+b>a.length)return Lb;a=a.substr(c,b);this.A=c+b;return a};
-e.Ld=function(a){this.F=2;this.f=a.N().za();a=!1;h.navigator&&h.navigator.sendBeacon&&(a=h.navigator.sendBeacon(this.f.toString(),""));!a&&h.Image&&((new Image).src=this.f,a=!0);a||(this.a=this.g.sa(null),this.a.xa(this.f));this.u=x();this.fa();};e.cancel=function(){this.l=!0;this.Z();};e.Kd=function(a){a&&this.setTimeout(a);this.h&&(this.pa(),this.fa());};e.fa=function(){this.U=x()+this.L;this.mc(this.L);};
-e.mc=function(a){if(null!=this.h)throw Error("WatchDog timer not null");this.h=N(v(this.Dd,this),a);};e.pa=function(){this.h&&(h.clearTimeout(this.h),this.h=null);};e.Dd=function(){this.h=null;var a=x();0<=a-this.U?this.md():this.mc(this.U-a);};e.md=function(){2!=this.F&&(L(3),M(17));this.Z();this.c=2;this.ta();};e.ta=function(){this.g.Tb()||this.l||this.g.Va(this);};
-e.Z=function(){this.pa();var a=this.B;a&&"function"==typeof a.La&&a.La();this.B=null;this.T.Na();this.I.Kb();this.a&&(a=this.a,this.a=null,a.abort(),a.La());};e.Wa=function(a){try{this.g.bc(this,a),L(4);}catch(b){}};function Mb(a){if(a.D&&"function"==typeof a.D)return a.D();if(l(a))return a.split("");if(aa(a)){for(var b=[],c=a.length,d=0;d<c;d++)b.push(a[d]);return b}b=[];c=0;for(d in a)b[c++]=a[d];return b}
-function Nb(a,b){if(a.forEach&&"function"==typeof a.forEach)a.forEach(b,void 0);else if(aa(a)||l(a))A(a,b,void 0);else{if(a.O&&"function"==typeof a.O)var c=a.O();else if(a.D&&"function"==typeof a.D)c=void 0;else if(aa(a)||l(a)){c=[];for(var d=a.length,f=0;f<d;f++)c.push(f);}else for(f in c=[],d=0,a)c[d++]=f;d=Mb(a);f=d.length;for(var g=0;g<f;g++)b.call(void 0,d[g],c&&c[g],a);}}function Q(a,b){this.b={};this.a=[];this.c=0;var c=arguments.length;if(1<c){if(c%2)throw Error("Uneven number of arguments");for(var d=0;d<c;d+=2)this.set(arguments[d],arguments[d+1]);}else a&&this.fd(a);}e=Q.prototype;e.D=function(){this.Ka();for(var a=[],b=0;b<this.a.length;b++)a.push(this.b[this.a[b]]);return a};e.O=function(){this.Ka();return this.a.concat()};e.Ra=function(a){return R(this.b,a)};e.hd=function(){return 0==this.c};e.gd=function(){this.b={};this.c=this.a.length=0;};
-e.Qb=function(a){R(this.b,a)&&(delete this.b[a],this.c--,this.a.length>2*this.c&&this.Ka());};e.Ka=function(){if(this.c!=this.a.length){for(var a=0,b=0;a<this.a.length;){var c=this.a[a];R(this.b,c)&&(this.a[b++]=c);a++;}this.a.length=b;}if(this.c!=this.a.length){var d={};for(b=a=0;a<this.a.length;)c=this.a[a],R(d,c)||(this.a[b++]=c,d[c]=1),a++;this.a.length=b;}};e.get=function(a,b){return R(this.b,a)?this.b[a]:b};e.set=function(a,b){R(this.b,a)||(this.c++,this.a.push(a));this.b[a]=b;};
-e.fd=function(a){if(a instanceof Q)for(var b=a.O(),c=0;c<b.length;c++)this.set(b[c],a.get(b[c]));else for(b in a)this.set(b,a[b]);};e.forEach=function(a,b){for(var c=this.O(),d=0;d<c.length;d++){var f=c[d],g=this.get(f);a.call(b,g,f,this);}};e.Pb=function(){return new Q(this)};function R(a,b){return Object.prototype.hasOwnProperty.call(a,b)}var Ob=/^(?:([^:/?#.]+):)?(?:\/\/(?:([^/?#]*)@)?([^/#?]*?)(?::([0-9]+))?(?=[/#?]|$))?([^?#]+)?(?:\?([^#]*))?(?:#([\s\S]*))?$/;function Pb(a,b){if(a){a=a.split("&");for(var c=0;c<a.length;c++){var d=a[c].indexOf("="),f=null;if(0<=d){var g=a[c].substring(0,d);f=a[c].substring(d+1);}else g=a[c];b(g,f?decodeURIComponent(f.replace(/\+/g," ")):"");}}}function S(a,b){this.c=this.i=this.b="";this.h=null;this.j=this.g="";this.f=this.l=!1;var c;a instanceof S?(this.f=void 0!==b?b:a.f,this.ma(a.b),this.$a(a.i),this.ka(a.c),this.la(a.h),this.Ba(a.g),this.Za(a.a.Gb()),this.Ya(a.j)):a&&(c=String(a).match(Ob))?(this.f=!!b,this.ma(c[1]||"",!0),this.$a(c[2]||"",!0),this.ka(c[3]||"",!0),this.la(c[4]),this.Ba(c[5]||"",!0),this.Za(c[6]||"",!0),this.Ya(c[7]||"",!0)):(this.f=!!b,this.a=new T(null,this.f));}e=S.prototype;
-e.toString=function(){var a=[],b=this.b;b&&a.push(U(b,Qb,!0),":");var c=this.c;if(c||"file"==b)a.push("//"),(b=this.i)&&a.push(U(b,Qb,!0),"@"),a.push(encodeURIComponent(String(c)).replace(/%25([0-9a-fA-F]{2})/g,"%$1")),c=this.h,null!=c&&a.push(":",String(c));if(c=this.g)this.Sa()&&"/"!=c.charAt(0)&&a.push("/"),a.push(U(c,"/"==c.charAt(0)?Rb:Sb,!0));(c=this.Ic())&&a.push("?",c);(c=this.j)&&a.push("#",U(c,Tb));return a.join("")};
-e.resolve=function(a){var b=this.N(),c=a.qd();c?b.ma(a.b):c=a.rd();c?b.$a(a.i):c=a.Sa();c?b.ka(a.c):c=a.od();var d=a.g;if(c)b.la(a.h);else if(c=a.Sb()){if("/"!=d.charAt(0))if(this.Sa()&&!this.Sb())d="/"+d;else{var f=b.g.lastIndexOf("/");-1!=f&&(d=b.g.substr(0,f+1)+d);}f=d;if(".."==f||"."==f)d="";else if(C(f,"./")||C(f,"/.")){d=0==f.lastIndexOf("/",0);f=f.split("/");for(var g=[],k=0;k<f.length;){var m=f[k++];"."==m?d&&k==f.length&&g.push(""):".."==m?((1<g.length||1==g.length&&""!=g[0])&&g.pop(),d&&
-k==f.length&&g.push("")):(g.push(m),d=!0);}d=g.join("/");}else d=f;}c?b.Ba(d):c=a.pd();c?b.Za(a.a.Gb()):c=a.nd();c&&b.Ya(a.j);return b};e.N=function(){return new S(this)};e.ma=function(a,b){this.M();if(this.b=b?V(a,!0):a)this.b=this.b.replace(/:$/,"");};e.qd=function(){return !!this.b};e.$a=function(a,b){this.M();this.i=b?V(a):a;};e.rd=function(){return !!this.i};e.ka=function(a,b){this.M();this.c=b?V(a,!0):a;};e.Sa=function(){return !!this.c};
-e.la=function(a){this.M();if(a){a=Number(a);if(isNaN(a)||0>a)throw Error("Bad port number "+a);this.h=a;}else this.h=null;};e.od=function(){return null!=this.h};e.Ba=function(a,b){this.M();this.g=b?V(a,!0):a;};e.Sb=function(){return !!this.g};e.pd=function(){return ""!==this.a.toString()};e.Za=function(a,b){this.M();a instanceof T?(this.a=a,this.a.Oc(this.f)):(b||(a=U(a,Ub)),this.a=new T(a,this.f));};e.Ic=function(){return this.a.toString()};e.m=function(a,b){this.M();this.a.set(a,b);};
-e.Aa=function(a,b){this.M();r(b)||(b=[String(b)]);this.a.lc(a,b);};e.Ya=function(a,b){this.M();this.j=b?V(a):a;};e.nd=function(){return !!this.j};e.za=function(){this.M();this.m("zx",Math.floor(2147483648*Math.random()).toString(36)+Math.abs(Math.floor(2147483648*Math.random())^x()).toString(36));return this};e.M=function(){if(this.l)throw Error("Tried to modify a read-only Uri");};function Vb(a){return a instanceof S?a.N():new S(a,void 0)}
-function Wb(a,b,c,d){var f=new S(null,void 0);a&&f.ma(a);b&&f.ka(b);c&&f.la(c);d&&f.Ba(d);return f}function V(a,b){return a?b?decodeURI(a.replace(/%25/g,"%2525")):decodeURIComponent(a):""}function U(a,b,c){return l(a)?(a=encodeURI(a).replace(b,Xb),c&&(a=a.replace(/%25([0-9a-fA-F]{2})/g,"%$1")),a):null}function Xb(a){a=a.charCodeAt(0);return "%"+(a>>4&15).toString(16)+(a&15).toString(16)}var Qb=/[#\/\?@]/g,Sb=/[#\?:]/g,Rb=/[#\?]/g,Ub=/[#\?@]/g,Tb=/#/g;
-function T(a,b){this.b=this.a=null;this.c=a||null;this.f=!!b;}e=T.prototype;e.V=function(){if(!this.a&&(this.a=new Q,this.b=0,this.c)){var a=this;Pb(this.c,function(b,c){a.add(decodeURIComponent(b.replace(/\+/g," ")),c);});}};e.add=function(a,b){this.V();this.ia();a=this.$(a);var c=this.a.get(a);c||this.a.set(a,c=[]);c.push(b);this.b+=1;return this};e.Ib=function(a){this.V();a=this.$(a);this.a.Ra(a)&&(this.ia(),this.b-=this.a.get(a).length,this.a.Qb(a));};e.Hb=function(a){this.V();a=this.$(a);return this.a.Ra(a)};
-e.forEach=function(a,b){this.V();this.a.forEach(function(c,d){A(c,function(c){a.call(b,c,d,this);},this);},this);};e.O=function(){this.V();for(var a=this.a.D(),b=this.a.O(),c=[],d=0;d<b.length;d++)for(var f=a[d],g=0;g<f.length;g++)c.push(b[d]);return c};e.D=function(a){this.V();var b=[];if(l(a))this.Hb(a)&&(b=ka(b,this.a.get(this.$(a))));else{a=this.a.D();for(var c=0;c<a.length;c++)b=ka(b,a[c]);}return b};
-e.set=function(a,b){this.V();this.ia();a=this.$(a);this.Hb(a)&&(this.b-=this.a.get(a).length);this.a.set(a,[b]);this.b+=1;return this};e.get=function(a,b){if(!a)return b;a=this.D(a);return 0<a.length?String(a[0]):b};e.lc=function(a,b){this.Ib(a);0<b.length&&(this.ia(),this.a.set(this.$(a),la(b)),this.b+=b.length);};
-e.toString=function(){if(this.c)return this.c;if(!this.a)return "";for(var a=[],b=this.a.O(),c=0;c<b.length;c++){var d=b[c],f=encodeURIComponent(String(d));d=this.D(d);for(var g=0;g<d.length;g++){var k=f;""!==d[g]&&(k+="="+encodeURIComponent(String(d[g])));a.push(k);}}return this.c=a.join("&")};e.ia=function(){this.c=null;};e.Gb=function(){var a=new T;a.c=this.c;this.a&&(a.a=this.a.Pb(),a.b=this.b);return a};e.$=function(a){a=String(a);this.f&&(a=a.toLowerCase());return a};
-e.Oc=function(a){a&&!this.f&&(this.V(),this.ia(),this.a.forEach(function(a,c){var b=c.toLowerCase();c!=b&&(this.Ib(c),this.lc(b,a));},this));this.f=a;};function Zb(){}function $b(){}y($b,Zb);function ac(a){this.a=a;this.b=this.h=null;this.g=!1;this.i=null;this.c=-1;this.l=this.f=null;}e=ac.prototype;e.R=null;e.Wc=function(a){this.h=a;};e.Vc=function(a){this.i=a;a=this.a.Cb(this.i);M(3);var b=this.a.H.b;null!=b?(this.f=this.a.Oa(b[0]),this.R=1,this.rb()):(a.Aa("MODE","init"),!this.a.o&&this.a.j&&a.Aa("X-HTTP-Session-Id",this.a.j),this.b=new P(this,void 0,void 0),this.b.ha(this.h),this.b.bb(a,!1,null),this.R=0);};
-e.rb=function(){var a=this.a.H.a;if(null!=a)M(4),a?(M(10),this.a.na(this,!1)):(M(11),this.a.na(this,!0));else{this.b=new P(this,void 0,void 0);this.b.ha(this.h);a=this.a.Bb(this.f,this.i);M(4);a.Aa("TYPE","xmlhttp");var b=this.a.j,c=this.a.Fa;b&&c&&a.m(b,c);this.b.bb(a,!1,this.f);}};e.sa=function(a){return this.a.sa(a)};e.abort=function(){this.b&&(this.b.cancel(),this.b=null);this.c=-1;};e.Tb=function(){return !1};
-e.bc=function(a,b){this.c=a.o;if(0==this.R)if(this.Uc(a),b){try{var c=this.a.U.a(b);}catch(d){this.a.ab(this);return}this.f=this.a.Oa(c[0]);}else this.a.ab(this);else 1==this.R&&(this.g?M(6):"11111"==b?(M(5),this.g=!0,this.Ac()&&(this.c=200,this.b.cancel(),M(11),this.a.na(this,!0))):(M(7),this.g=!1));};e.Va=function(){this.c=this.b.o;this.b.b?0==this.R?(this.R=1,this.rb()):1==this.R&&(this.g?(M(11),this.a.na(this,!0)):(M(10),this.a.na(this,!1))):(0==this.R?M(8):1==this.R&&M(9),this.a.ab(this));};
-e.Uc=function(a){if(!this.a.o&&(a=a.a)){var b=a.ga("X-Client-Wire-Protocol");this.l=b?b:null;this.a.j&&(a=a.ga("X-HTTP-Session-Id"))&&this.a.kc(a);}};e.Da=function(){return this.a.Da()};e.Pa=function(){return this.a.Pa()};e.Ac=function(){return !E||10<=Number(Ia)};function bc(){this.a=this.b=null;}function cc(){this.a=new Q;}function dc(a){var b=typeof a;return "object"==b&&a||"function"==b?"o"+(a[u]||(a[u]=++ba)):b.charAt(0)+a}e=cc.prototype;e.add=function(a){this.a.set(dc(a),a);};e.ed=function(a){this.a.Qb(dc(a));};e.jd=function(){this.a.gd();};e.Rb=function(){return this.a.hd()};e.Ob=function(a){return this.a.Ra(dc(a))};e.D=function(){return this.a.D()};function ec(a,b){this.a=a;this.b=b;}function fc(a){this.g=a||gc;h.PerformanceNavigationTiming?(a=h.performance.getEntriesByType("navigation"),a=0<a.length&&("hq"==a[0].nextHopProtocol||"h2"==a[0].nextHopProtocol)):a=!!(h.Ja&&h.Ja.Vb&&h.Ja.Vb()&&h.Ja.Vb().te);this.f=a?this.g:1;this.a=null;1<this.f&&(this.a=new cc);this.b=null;this.c=[];}var gc=10;e=fc.prototype;e.kb=function(a){!this.a&&(C(a,"spdy")||C(a,"quic")||C(a,"h2"))&&(this.f=this.g,this.a=new cc,this.b&&(this.Ha(this.b),this.b=null));};
-e.Ub=function(){return this.b?!0:this.a?this.a.a.c>=this.f:!1};e.Mc=function(){return this.b?1:this.a?this.a.a.c:0};e.Ta=function(a){return this.b?this.b==a:this.a?this.a.Ob(a):!1};e.Ha=function(a){this.a?this.a.add(a):this.b=a;};e.gc=function(a){this.b&&this.b==a?this.b=null:this.a&&this.a.Ob(a)&&this.a.ed(a);};e.cancel=function(){this.c=this.Xb();this.b?(this.b.cancel(),this.b=null):this.a&&!this.a.Rb()&&(A(this.a.D(),function(a){a.cancel();}),this.a.jd());};
-e.Xb=function(){if(null!=this.b)return this.c.concat(this.b.j);if(null!=this.a&&!this.a.Rb()){var a=this.c;A(this.a.D(),function(b){a=a.concat(b.j);});return a}return la(this.c)};e.wc=function(a){this.c=this.c.concat(a);};e.Bc=function(){this.c.length=0;};function hc(){this.b=this.a=void 0;}hc.prototype.stringify=function(a){return h.JSON.stringify(a,this.a)};hc.prototype.parse=function(a){return h.JSON.parse(a,this.b)};function ic(){this.f=new hc;}ic.prototype.b=function(a,b,c){var d=c||"";try{Nb(a,function(a,c){var f=a;t(a)&&(f=hb(a));b.push(d+c+"="+encodeURIComponent(f));});}catch(f){throw b.push(d+"type="+encodeURIComponent("_badmap")),f;}};ic.prototype.c=function(a,b,c){for(var d=-1;;){var f=["count="+b];-1==d?0<b?(d=a[0].a,f.push("ofs="+d)):d=0:f.push("ofs="+d);for(var g=!0,k=0;k<b;k++){var m=a[k].a,Gb=a[k].b;m-=d;if(0>m)d=Math.max(0,a[k].a-100),g=!1;else try{this.b(Gb,f,"req"+m+"_");}catch(Ac){c&&c(Gb);}}if(g)return f.join("&")}};
-ic.prototype.a=function(a){return this.f.parse(a)};function jc(a,b){var c=new wb,d=new Image;d.onload=w(kc,c,d,"TestLoadImage: loaded",!0,b);d.onerror=w(kc,c,d,"TestLoadImage: error",!1,b);d.onabort=w(kc,c,d,"TestLoadImage: abort",!1,b);d.ontimeout=w(kc,c,d,"TestLoadImage: timeout",!1,b);h.setTimeout(function(){if(d.ontimeout)d.ontimeout();},1E4);d.src=a;}function kc(a,b,c,d,f){try{b.onload=null,b.onerror=null,b.onabort=null,b.ontimeout=null,f(d);}catch(g){}}var lc=h.JSON.parse;function X(a){I.call(this);this.headers=new Q;this.l=a||null;this.b=!1;this.v=this.a=null;this.C="";this.h=0;this.f="";this.g=this.B=this.o=this.A=!1;this.u=0;this.s=null;this.J=mc;this.H=this.L=this.I=!1;}y(X,I);var mc="",nc=/^https?$/i,oc=["POST","PUT"];e=X.prototype;e.Sd=function(a){this.I=a;};
-e.xa=function(a,b,c,d){if(this.a)throw Error("[goog.net.XhrIo] Object is active with another request="+this.C+"; newUri="+a);b=b?b.toUpperCase():"GET";this.C=a;this.f="";this.h=0;this.A=!1;this.b=!0;this.a=this.Ec();this.v=this.l?this.l.c():Hb.c();this.a.onreadystatechange=v(this.ac,this);this.L&&"onprogress"in this.a&&(this.a.onprogress=v(function(a){this.Zb(a,!0);},this),this.a.upload&&(this.a.upload.onprogress=v(this.Zb,this)));try{this.B=!0,this.a.open(b,String(a),!0),this.B=!1;}catch(g){this.Ab(g);
-return}a=c||"";var f=this.headers.Pb();d&&Nb(d,function(a,b){f.set(b,a);});d=ia(f.O());c=h.FormData&&a instanceof h.FormData;!(0<=ha(oc,b))||d||c||f.set("Content-Type","application/x-www-form-urlencoded;charset=utf-8");f.forEach(function(a,b){this.a.setRequestHeader(b,a);},this);this.J&&(this.a.responseType=this.J);"withCredentials"in this.a&&this.a.withCredentials!==this.I&&(this.a.withCredentials=this.I);try{this.sb(),0<this.u&&((this.H=pc(this.a))?(this.a.timeout=this.u,this.a.ontimeout=v(this.Nb,
-this)):this.s=sb(this.Nb,this.u,this)),this.o=!0,this.a.send(a),this.o=!1;}catch(g){this.Ab(g);}};function pc(a){return E&&Ha(9)&&"number"==typeof a.timeout&&void 0!==a.ontimeout}function ja(a){return "content-type"==a.toLowerCase()}e.Ec=function(){return this.l?this.l.b():Hb.b()};e.Nb=function(){"undefined"!=typeof goog&&this.a&&(this.f="Timed out after "+this.u+"ms, aborting",this.h=8,this.dispatchEvent("timeout"),this.abort(8));};
-e.Ab=function(a){this.b=!1;this.a&&(this.g=!0,this.a.abort(),this.g=!1);this.f=a;this.h=5;this.xb();this.qa();};e.xb=function(){this.A||(this.A=!0,this.dispatchEvent("complete"),this.dispatchEvent("error"));};e.abort=function(a){this.a&&this.b&&(this.b=!1,this.g=!0,this.a.abort(),this.g=!1,this.h=a||7,this.dispatchEvent("complete"),this.dispatchEvent("abort"),this.qa());};e.G=function(){this.a&&(this.b&&(this.b=!1,this.g=!0,this.a.abort(),this.g=!1),this.qa(!0));X.S.G.call(this);};
-e.ac=function(){this.i||(this.B||this.o||this.g?this.$b():this.Bd());};e.Bd=function(){this.$b();};e.$b=function(){if(this.b&&"undefined"!=typeof goog&&(!this.v[1]||4!=this.W()||2!=this.aa()))if(this.o&&4==this.W())sb(this.ac,0,this);else if(this.dispatchEvent("readystatechange"),this.td()){this.b=!1;try{this.vd()?(this.dispatchEvent("complete"),this.dispatchEvent("success")):(this.h=6,this.f=this.Fb()+" ["+this.aa()+"]",this.xb());}finally{this.qa();}}};
-e.Zb=function(a,b){this.dispatchEvent(qc(a,"progress"));this.dispatchEvent(qc(a,b?"downloadprogress":"uploadprogress"));};function qc(a,b){return {type:b,lengthComputable:a.lengthComputable,loaded:a.loaded,total:a.total}}e.qa=function(a){if(this.a){this.sb();var b=this.a,c=this.v[0]?p:null;this.v=this.a=null;a||this.dispatchEvent("ready");try{b.onreadystatechange=c;}catch(d){}}};e.sb=function(){this.a&&this.H&&(this.a.ontimeout=null);this.s&&(h.clearTimeout(this.s),this.s=null);};
-e.td=function(){return 4==this.W()};e.vd=function(){var a=this.aa();a:switch(a){case 200:case 201:case 202:case 204:case 206:case 304:case 1223:var b=!0;break a;default:b=!1;}return b||0===a&&!this.ud()};e.ud=function(){var a=String(this.C).match(Ob)[1]||null;!a&&h.self&&h.self.location&&(a=h.self.location.protocol,a=a.substr(0,a.length-1));return nc.test(a?a.toLowerCase():"")};e.W=function(){return this.a?this.a.readyState:0};e.aa=function(){try{return 2<this.W()?this.a.status:-1}catch(a){return -1}};
-e.Fb=function(){try{return 2<this.W()?this.a.statusText:""}catch(a){return ""}};e.va=function(){try{return this.a?this.a.responseText:""}catch(a){return ""}};e.Nc=function(a){if(this.a){var b=this.a.responseText;a&&0==b.indexOf(a)&&(b=b.substring(a.length));return lc(b)}};e.ga=function(a){return this.a?this.a.getResponseHeader(a):null};e.Db=function(){return this.h};e.dd=function(){return l(this.f)?this.f:String(this.f)};function rc(a){var b="";qa(a,function(a,d){b+=d;b+=":";b+=a;b+="\r\n";});return b}function sc(a,b,c){a:{for(d in c){var d=!1;break a}d=!0;}if(d)return a;c=rc(c);if(l(a)){b=encodeURIComponent(String(b));c=null!=c?"="+encodeURIComponent(String(c)):"";if(b+=c){c=a.indexOf("#");0>c&&(c=a.length);d=a.indexOf("?");if(0>d||d>c){d=c;var f="";}else f=a.substring(d+1,c);a=[a.substr(0,d),f,a.substr(c)];c=a[1];a[1]=b?c?c+"&"+b:b:c;a=a[0]+(a[1]?"?"+a[1]:"")+a[2];}return a}a.m(b,c);return a}function tc(a){this.gb=22;this.g=[];this.H=new bc;this.da=this.fb=this.C=this.Ea=this.a=this.Fa=this.j=this.ca=this.f=this.J=this.h=null;this.sc=!0;this.zc=this.L=0;this.uc=!!n("internalChannelParams.failFast",a);this.Ga=this.v=this.s=this.l=this.i=this.b=null;this.eb=!0;this.B=this.jb=this.K=-1;this.Y=this.u=this.A=0;this.tc=n("internalChannelParams.baseRetryDelayMs",a)||5E3;this.Fc=n("internalChannelParams.retryDelaySeedMs",a)||1E4;this.pc=n("internalChannelParams.forwardChannelMaxRetries",a)||
-2;this.ib=n("internalChannelParams.forwardChannelRequestTimeoutMs",a)||2E4;this.xc=a&&a.ue||void 0;this.F=void 0;this.vc=0;this.T=a&&a.supportsCrossDomainXhr||!1;this.I="";this.c=new fc(a&&a.concurrentRequestLimit);this.U=new ic;this.o=a&&void 0!==a.backgroundChannelTest?a.backgroundChannelTest:!0;(this.hb=a&&a.fastHandshake||!1)&&!this.o&&(this.o=!0);a&&a.se&&(this.eb=!1);}e=tc.prototype;e.qb=8;e.w=1;e.bd=function(a,b,c){M(0);this.Ea=b;this.ca=c||{};this.o&&(this.H.b=[],this.H.a=!1);this.Dc(a);};
-e.Qa=function(){this.lb();if(3==this.w){var a=this.L++,b=this.C.N();b.m("SID",this.I);b.m("RID",a);b.m("TYPE","terminate");this.ea(b);(new P(this,a,void 0)).Ld(b);}this.Yb();};e.Dc=function(a){this.v=new ac(this);null===this.f&&this.v.Wc(this.h);var b=a;this.f&&this.h&&(b=sc(a,this.f,this.h));this.v.Vc(b);};e.Cc=function(){this.C=this.Cb(this.Ea);this.Ma();};
-e.lb=function(){this.v&&(this.v.abort(),this.v=null);this.a&&(this.a.cancel(),this.a=null);this.l&&(h.clearTimeout(this.l),this.l=null);this.ra();this.c.cancel();this.i&&(h.clearTimeout(this.i),this.i=null);};e.cd=function(a){this.h=a;};e.Pd=function(a){this.J=a;};e.Nd=function(a){this.f=a;};e.Od=function(a){this.j=a;};e.kc=function(a){this.Fa=a;};e.Rd=function(){this.T=!0;};e.jc=function(a){this.b=a;};e.sd=function(){return !this.Ga};e.Xa=function(a){this.g.push(new ec(this.zc++,a));3==this.w&&this.Ma();};
-e.Jc=function(){return this.uc?0:this.pc};e.Tb=function(){return 0==this.w};e.Ma=function(){this.c.Ub()||this.i||(this.i=N(v(this.dc,this),0),this.A=0);};e.xd=function(a){if(this.c.Mc()>=this.c.f-(this.i?1:0))return !1;if(this.i)return this.g=a.j.concat(this.g),!0;if(1==this.w||2==this.w||this.A>=this.Jc())return !1;this.i=N(v(this.dc,this,a),this.Eb(this.A));this.A++;return !0};e.dc=function(a){this.i=null;this.Xd(a);};
-e.Xd=function(a){1==this.w?a||(this.Fd(),this.w=2):3==this.w&&(a?this.Wb(a):0==this.g.length||this.c.Ub()||this.Wb());};
-e.Fd=function(){this.L=Math.floor(1E5*Math.random());var a=this.L++,b=new P(this,a,void 0),c=this.h;this.J&&(c?(c=ra(c),ta(c,this.J)):c=this.J);null===this.f&&b.ha(c);var d=this.wb(b),f=this.C.N();f.m("RID",a);0<this.gb&&f.m("CVER",this.gb);this.o&&this.j&&f.m("X-HTTP-Session-Id",this.j);this.ea(f);this.f&&c&&sc(f,this.f,c);this.c.Ha(b);this.hb?(f.m("$req",d),f.m("SID","null"),b.Md(),b.cb(f,null)):b.cb(f,d);};
-e.Wb=function(a){var b;a?b=a.da:b=this.L++;var c=this.C.N();c.m("SID",this.I);c.m("RID",b);c.m("AID",this.K);this.ea(c);this.f&&this.h&&sc(c,this.f,this.h);b=new P(this,b,this.A+1);null===this.f&&b.ha(this.h);a&&this.Jd(a);a=this.wb(b);b.setTimeout(Math.round(.5*this.ib)+Math.round(.5*this.ib*Math.random()));this.c.Ha(b);b.cb(c,a);};e.ea=function(a){this.b&&Nb({},function(b,c){a.m(c,b);});};
-e.wb=function(a){var b=Math.min(this.g.length,1E3),c=this.b?v(this.b.yc,this.b,this):null;c=this.U.c(this.g,b,c);a.Qd(this.g.splice(0,b));return c};e.Jd=function(a){this.g=a.j.concat(this.g);};e.zb=function(){if(!this.a&&!this.l){this.Y=1;var a=this.cc;mb||nb();pb||(mb(),pb=!0);qb.add(a,this);this.u=0;}};e.Ua=function(){if(this.a||this.l||3<=this.u)return !1;this.Y++;this.l=N(v(this.cc,this),this.Eb(this.u));this.u++;return !0};e.cc=function(){this.l=null;this.Vd();};
-e.Vd=function(){this.a=new P(this,"rpc",this.Y);null===this.f&&this.a.ha(this.h);this.a.Xc(this.vc);var a=this.fb.N();a.m("RID","rpc");a.m("SID",this.I);a.m("CI",this.Ga?"0":"1");a.m("AID",this.K);this.ea(a);a.m("TYPE","xmlhttp");this.f&&this.h&&sc(a,this.f,this.h);this.F&&this.a.setTimeout(this.F);this.a.bb(a,!0,this.da);};e.na=function(a,b){var c=a.l;c&&this.c.kb(c);this.Ga=this.eb&&b;this.B=a.c;this.Cc();};e.ab=function(a){this.B=a.c;this.X(2);};
-e.bc=function(a,b){if(0!=this.w&&(this.a==a||this.c.Ta(a)))if(this.B=a.o,!a.s&&this.c.Ta(a)&&3==this.w){try{var c=this.U.a(b);}catch(d){c=null;}r(c)&&3==c.length?this.ld(c,a):this.X(11);}else(a.s||this.a==a)&&this.ra(),B(b)||(c=this.U.a(b),this.Ad(c,a));};e.ld=function(a,b){0==a[0]?this.kd(b):(this.jb=a[1],0<this.jb-this.K&&this.Ud(a[2])&&!this.s&&(this.s=N(v(this.yd,this),6E3)));};e.kd=function(a){if(!this.l){if(this.a)if(this.a.u+3E3<a.u)this.ra(),this.a.cancel(),this.a=null;else return;this.Ua();M(18);}};
-e.Ud=function(a){return 37500>a&&!this.sd()&&0==this.u};e.Oa=function(a){return this.sc?this.b?this.b.$c(a):a:null};e.yd=function(){null!=this.s&&(this.s=null,this.a.cancel(),this.a=null,this.Ua(),M(19));};e.ra=function(){null!=this.s&&(h.clearTimeout(this.s),this.s=null);};
-e.Va=function(a){var b=null;if(this.a==a){this.ra();this.a=null;var c=2;}else if(this.c.Ta(a))b=a.j,this.c.gc(a),c=1;else return;this.B=a.o;if(0!=this.w)if(a.b)1==c?(c=x()-a.u,K.dispatchEvent(new zb(K,a.i?a.i.length:0,c,this.A)),this.Ma()):this.zb();else{var d=a.c;if(3==d||0==d&&0<this.B||!(1==c&&this.xd(a)||2==c&&this.Ua()))switch(b&&0<b.length&&this.c.wc(b),d){case 1:this.X(5);break;case 4:this.X(10);break;case 3:this.X(6);break;default:this.X(2);}}};
-e.Eb=function(a){var b=this.tc+Math.floor(Math.random()*this.Fc);this.Pa()||(b*=2);return b*a};e.ad=function(a){if(this.o&&(a=a.a)){var b=a.ga("X-Client-Wire-Protocol");b&&this.c.kb(b);this.j&&(a=a.ga("X-HTTP-Session-Id"))&&(this.kc(a),this.C.m(this.j,a));}};
-e.Ad=function(a,b){for(var c=this.b&&this.b.Ia?[]:null,d=0;d<a.length;d++){var f=a[d];this.K=f[0];f=f[1];if(2==this.w)if("c"==f[0]){this.I=f[1];this.da=this.Oa(f[2]);var g=f[3];null!=g&&(this.qb=g);f=f[5];null!=f&&"number"==typeof f&&0<f&&(this.F=1.5*f);this.ad(b);this.w=3;this.b&&this.b.pb();this.Wd(b);}else"stop"!=f[0]&&"close"!=f[0]||this.X(7);else 3==this.w&&("stop"==f[0]||"close"==f[0]?(c&&0!=c.length&&(this.b.Ia(this,c),c.length=0),"stop"==f[0]?this.X(7):this.Qa()):"noop"!=f[0]&&(c?c.push(f):
-this.b&&this.b.ob(f)),this.u=0);}c&&0!=c.length&&this.b.Ia(this,c);};e.Wd=function(a){this.fb=this.Bb(this.da,this.Ea);a.s?(this.c.gc(a),a.Kd(this.F),this.a=a):this.zb();};e.X=function(a){if(2==a){var b=null;this.b&&(b=null);var c=v(this.Zd,this);b||(b=new S("//www.google.com/images/cleardot.gif"),h.location&&"http"==h.location.protocol||b.ma("https"),b.za());jc(b.toString(),c);}else M(2);this.zd(a);};e.Zd=function(a){a?M(2):M(1);};e.zd=function(a){this.w=0;this.b&&this.b.nb(a);this.Yb();this.lb();};
-e.Yb=function(){this.w=0;this.B=-1;if(this.b){if(0!=this.c.Xb().length||0!=this.g.length)this.c.Bc(),la(this.g),this.g.length=0;this.b.mb();}};e.Cb=function(a){return this.ub(null,a)};e.Bb=function(a,b){return this.ub(this.Da()?a:null,b)};
-e.ub=function(a,b){var c=Vb(b);if(""!=c.c)a&&c.ka(a+"."+c.c),c.la(c.h);else{var d=h.location,f;a?f=a+"."+d.hostname:f=d.hostname;c=Wb(d.protocol,f,+d.port,b);}this.ca&&qa(this.ca,function(a,b){c.m(b,a);});a=this.j;b=this.Fa;a&&b&&c.m(a,b);c.m("VER",this.qb);this.ea(c);return c};e.sa=function(a){if(a&&!this.T)throw Error("Can't create secondary domain capable XhrIo object.");a=new X(this.xc);a.Sd(this.T);return a};e.Pa=function(){return !!this.b&&!0};e.Da=function(){return this.T};function uc(){}e=uc.prototype;e.Ia=null;e.pb=function(){};e.ob=function(){};e.nb=function(){};e.mb=function(){};e.yc=function(){};e.$c=function(a){return a};function vc(a){for(var b=arguments[0],c=1;c<arguments.length;c++){var d=arguments[c];if(0==d.lastIndexOf("/",0))b=d;else{var f;(f=""==b)||(f=b.length-1,f=0<=f&&b.indexOf("/",f)==f);f?b+=d:b+="/"+d;}}return b}function wc(){if(E&&!(10<=Number(Ia)))throw Error("Environmental error: no available transport.");}wc.prototype.a=function(a,b){return new Y(a,b)};
-function Y(a,b){I.call(this);this.a=new tc(b);this.g=a;this.o=b&&b.testUrl?b.testUrl:vc(this.g,"test");this.b=b&&b.messageUrlParams||null;a=b&&b.messageHeaders||null;b&&b.clientProtocolHeaderRequired&&(a?a["X-Client-Protocol"]="webchannel":a={"X-Client-Protocol":"webchannel"});this.a.cd(a);a=b&&b.initMessageHeaders||null;b&&b.messageContentType&&(a?a["X-WebChannel-Content-Type"]=b.messageContentType:a={"X-WebChannel-Content-Type":b.messageContentType});b&&b.tb&&(a?a["X-WebChannel-Client-Profile"]=
-b.tb:a={"X-WebChannel-Client-Profile":b.tb});this.a.Pd(a);(a=b&&b.httpHeadersOverwriteParam)&&!B(a)&&this.a.Nd(a);this.l=b&&b.supportsCrossDomainXhr||!1;this.h=b&&b.sendRawJson||!1;(b=b&&b.httpSessionIdParam)&&!B(b)&&(this.a.Od(b),a=this.b,null!==a&&b in a&&(a=this.b,b in a&&delete a[b]));this.f=new Z(this);}y(Y,I);e=Y.prototype;e.addEventListener=function(a,b,c,d){Y.S.addEventListener.call(this,a,b,c,d);};e.removeEventListener=function(a,b,c,d){Y.S.removeEventListener.call(this,a,b,c,d);};
-e.Yc=function(){this.a.jc(this.f);this.l&&this.a.Rd();this.a.bd(this.o,this.g,this.b||void 0);};e.close=function(){this.a.Qa();};e.Zc=function(a){if(l(a)){var b={};b.__data__=a;this.a.Xa(b);}else this.h?(b={},b.__data__=hb(a),this.a.Xa(b)):this.a.Xa(a);};e.G=function(){this.a.jc(null);delete this.f;this.a.Qa();delete this.a;Y.S.G.call(this);};
-function xc(a){Eb.call(this);var b=a.__sm__;if(b){a:{for(var c in b){a=c;break a}a=void 0;}(this.f=a)?(a=this.f,this.data=null!==b&&a in b?b[a]:void 0):this.data=b;}else this.data=a;}y(xc,Eb);function yc(){Fb.call(this);this.status=1;}y(yc,Fb);function Z(a){this.a=a;}y(Z,uc);Z.prototype.pb=function(){this.a.dispatchEvent("a");};Z.prototype.ob=function(a){this.a.dispatchEvent(new xc(a));};Z.prototype.nb=function(a){this.a.dispatchEvent(new yc(a));};Z.prototype.mb=function(){this.a.dispatchEvent("b");};var zc=w(function(a,b){function c(){}c.prototype=a.prototype;var d=new c;a.apply(d,Array.prototype.slice.call(arguments,1));return d},wc);/*
+var e,goog=goog||{},h=commonjsGlobal$1;function l(a){return "string"==typeof a}function m(a,b){a=a.split(".");b=b||h;for(var c=0;c<a.length;c++)if(b=b[a[c]], null==b)return null;return b}function aa(){}
+function ba(a){var b=typeof a;if("object"==b)if(a){if(a instanceof Array)return "array";if(a instanceof Object)return b;var c=Object.prototype.toString.call(a);if("[object Window]"==c)return "object";if("[object Array]"==c||"number"==typeof a.length&&"undefined"!=typeof a.splice&&"undefined"!=typeof a.propertyIsEnumerable&&!a.propertyIsEnumerable("splice"))return "array";if("[object Function]"==c||"undefined"!=typeof a.call&&"undefined"!=typeof a.propertyIsEnumerable&&!a.propertyIsEnumerable("call"))return "function"}else return "null";
+else if("function"==b&&"undefined"==typeof a.call)return "object";return b}function n(a){return "array"==ba(a)}function ca(a){var b=ba(a);return "array"==b||"object"==b&&"number"==typeof a.length}function q(a){return "function"==ba(a)}function r(a){var b=typeof a;return "object"==b&&null!=a||"function"==b}var t="closure_uid_"+(1E9*Math.random()>>>0),da=0;function ea(a,b,c){return a.call.apply(a.bind,arguments)}
+function fa(a,b,c){if(!a)throw Error();if(2<arguments.length){var d=Array.prototype.slice.call(arguments,2);return function(){var c=Array.prototype.slice.call(arguments);Array.prototype.unshift.apply(c,d);return a.apply(b,c)}}return function(){return a.apply(b,arguments)}}function u(a,b,c){u=Function.prototype.bind&&-1!=Function.prototype.bind.toString().indexOf("native code")?ea:fa;return u.apply(null,arguments)}
+function v(a,b){var c=Array.prototype.slice.call(arguments,1);return function(){var b=c.slice();b.push.apply(b,arguments);return a.apply(this,b)}}var w=Date.now||function(){return +new Date};function x(a,b){function c(){}c.prototype=b.prototype;a.L=b.prototype;a.prototype=new c;a.prototype.constructor=a;a.mh=function(a,c,g){for(var d=Array(arguments.length-2),f=2;f<arguments.length;f++)d[f-2]=arguments[f];return b.prototype[c].apply(a,d)};}function y(a){if(Error.captureStackTrace)Error.captureStackTrace(this,y);else{var b=Error().stack;b&&(this.stack=b);}a&&(this.message=String(a));}x(y,Error);y.prototype.name="CustomError";function ha(a,b){a=a.split("%s");for(var c="",d=a.length-1,f=0;f<d;f++)c+=a[f]+(f<b.length?b[f]:"%s");y.call(this,c+a[d]);}x(ha,y);ha.prototype.name="AssertionError";function ia(a,b){throw new ha("Failure"+(a?": "+a:""),Array.prototype.slice.call(arguments,1));}function z(){this.Ka=this.Ka;this.Qa=this.Qa;}var ja=0;z.prototype.Ka=!1;z.prototype.bb=function(){if(!this.Ka&&(this.Ka=!0, this.F(), 0!=ja)){var a=this[t]||(this[t]=++da);}};z.prototype.F=function(){if(this.Qa)for(;this.Qa.length;)this.Qa.shift()();};var la=Array.prototype.indexOf?function(a,b){return Array.prototype.indexOf.call(a,b,void 0)}:function(a,b){if(l(a))return l(b)&&1==b.length?a.indexOf(b,0):-1;for(var c=0;c<a.length;c++)if(c in a&&a[c]===b)return c;return -1},ma=Array.prototype.lastIndexOf?function(a,b){return Array.prototype.lastIndexOf.call(a,b,a.length-1)}:function(a,b){var c=a.length-1;0>c&&(c=Math.max(0,a.length+c));if(l(a))return l(b)&&1==b.length?a.lastIndexOf(b,c):-1;for(;0<=c;c--)if(c in a&&a[c]===b)return c;return -1},na=
+Array.prototype.forEach?function(a,b,c){Array.prototype.forEach.call(a,b,c);}:function(a,b,c){for(var d=a.length,f=l(a)?a.split(""):a,g=0;g<d;g++)g in f&&b.call(c,f[g],g,a);},oa=Array.prototype.some?function(a,b){return Array.prototype.some.call(a,b,void 0)}:function(a,b){for(var c=a.length,d=l(a)?a.split(""):a,f=0;f<c;f++)if(f in d&&b.call(void 0,d[f],f,a))return !0;return !1};
+function pa(a){a:{var b=qa;for(var c=a.length,d=l(a)?a.split(""):a,f=0;f<c;f++)if(f in d&&b.call(void 0,d[f],f,a)){b=f;break a}b=-1;}return 0>b?null:l(a)?a.charAt(b):a[b]}function ra(a){if(!n(a))for(var b=a.length-1;0<=b;b--)delete a[b];a.length=0;}function sa(a,b){b=la(a,b);var c;(c=0<=b)&&Array.prototype.splice.call(a,b,1);return c}function ta(a){return Array.prototype.concat.apply([],arguments)}function ua(a){var b=a.length;if(0<b){for(var c=Array(b),d=0;d<b;d++)c[d]=a[d];return c}return []}function va(a){return /^[\s\xa0]*$/.test(a)}var wa=String.prototype.trim?function(a){return a.trim()}:function(a){return /^[\s\xa0]*([\s\S]*?)[\s\xa0]*$/.exec(a)[1]};function xa(a,b){return a<b?-1:a>b?1:0}var A;a:{var ya=h.navigator;if(ya){var za=ya.userAgent;if(za){A=za;break a}}A="";}function B(a){return -1!=A.indexOf(a)}function Aa(a,b,c){for(var d in a)b.call(c,a[d],d,a);}function Ba(a){var b=[],c=0,d;for(d in a)b[c++]=a[d];return b}function Ca(a){var b=[],c=0,d;for(d in a)b[c++]=d;return b}function Da(a){var b={},c;for(c in a)b[c]=a[c];return b}var Ea="constructor hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf".split(" ");
+function Fa(a,b){for(var c,d,f=1;f<arguments.length;f++){d=arguments[f];for(c in d)a[c]=d[c];for(var g=0;g<Ea.length;g++)c=Ea[g], Object.prototype.hasOwnProperty.call(d,c)&&(a[c]=d[c]);}}function Ga(a){Ga[" "](a);return a}Ga[" "]=aa;function Ha(a,b){var c=Ia;return Object.prototype.hasOwnProperty.call(c,a)?c[a]:c[a]=b(a)}var Ja=B("Opera"),C=B("Trident")||B("MSIE"),Ka=B("Edge"),La=Ka||C,Ma=B("Gecko")&&!(-1!=A.toLowerCase().indexOf("webkit")&&!B("Edge"))&&!(B("Trident")||B("MSIE"))&&!B("Edge"),Na=-1!=A.toLowerCase().indexOf("webkit")&&!B("Edge");function Oa(){var a=h.document;return a?a.documentMode:void 0}var Pa;
+a:{var Qa="",Ra=function(){var a=A;if(Ma)return /rv:([^\);]+)(\)|;)/.exec(a);if(Ka)return /Edge\/([\d\.]+)/.exec(a);if(C)return /\b(?:MSIE|rv)[: ]([^\);]+)(\)|;)/.exec(a);if(Na)return /WebKit\/(\S+)/.exec(a);if(Ja)return /(?:Version)[ \/]?(\S+)/.exec(a)}();Ra&&(Qa=Ra?Ra[1]:"");if(C){var Sa=Oa();if(null!=Sa&&Sa>parseFloat(Qa)){Pa=String(Sa);break a}}Pa=Qa;}var Ia={};
+function Ta(a){return Ha(a,function(){for(var b=0,c=wa(String(Pa)).split("."),d=wa(String(a)).split("."),f=Math.max(c.length,d.length),g=0;0==b&&g<f;g++){var k=c[g]||"",p=d[g]||"";do{k=/(\d*)(\D*)(.*)/.exec(k)||["","","",""];p=/(\d*)(\D*)(.*)/.exec(p)||["","","",""];if(0==k[0].length&&0==p[0].length)break;b=xa(0==k[1].length?0:parseInt(k[1],10),0==p[1].length?0:parseInt(p[1],10))||xa(0==k[2].length,0==p[2].length)||xa(k[2],p[2]);k=k[3];p=p[3];}while(0==b)}return 0<=b})}var Ua;var Va=h.document;
+Ua=Va&&C?Oa()||("CSS1Compat"==Va.compatMode?parseInt(Pa,10):5):void 0;var Wa=Object.freeze||function(a){return a};var Xa=!C||9<=Number(Ua),Ya=C&&!Ta("9"),Za=function(){if(!h.addEventListener||!Object.defineProperty)return !1;var a=!1,b=Object.defineProperty({},"passive",{get:function(){a=!0;}});try{h.addEventListener("test",aa,b), h.removeEventListener("test",aa,b);}catch(c){}return a}();function D(a,b){this.type=a;this.currentTarget=this.target=b;this.defaultPrevented=this.Ea=!1;this.Be=!0;}D.prototype.stopPropagation=function(){this.Ea=!0;};D.prototype.preventDefault=function(){this.defaultPrevented=!0;this.Be=!1;};function E(a,b){D.call(this,a?a.type:"");this.relatedTarget=this.currentTarget=this.target=null;this.button=this.screenY=this.screenX=this.clientY=this.clientX=this.offsetY=this.offsetX=0;this.key="";this.charCode=this.keyCode=0;this.metaKey=this.shiftKey=this.altKey=this.ctrlKey=!1;this.state=null;this.pointerId=0;this.pointerType="";this.fb=null;a&&this.Kf(a,b);}x(E,D);var $a=Wa({2:"touch",3:"pen",4:"mouse"});
+E.prototype.Kf=function(a,b){var c=this.type=a.type,d=a.changedTouches?a.changedTouches[0]:null;this.target=a.target||a.srcElement;this.currentTarget=b;if(b=a.relatedTarget){if(Ma){a:{try{Ga(b.nodeName);var f=!0;break a}catch(g){}f=!1;}f||(b=null);}}else"mouseover"==c?b=a.fromElement:"mouseout"==c&&(b=a.toElement);this.relatedTarget=b;null===d?(this.offsetX=Na||void 0!==a.offsetX?a.offsetX:a.layerX, this.offsetY=Na||void 0!==a.offsetY?a.offsetY:a.layerY, this.clientX=void 0!==a.clientX?a.clientX:a.pageX, this.clientY=void 0!==a.clientY?a.clientY:a.pageY, this.screenX=a.screenX||0, this.screenY=a.screenY||0):(this.clientX=void 0!==d.clientX?d.clientX:d.pageX, this.clientY=void 0!==d.clientY?d.clientY:d.pageY, this.screenX=d.screenX||0, this.screenY=d.screenY||0);this.button=a.button;this.keyCode=a.keyCode||0;this.key=a.key||"";this.charCode=a.charCode||("keypress"==c?a.keyCode:0);this.ctrlKey=a.ctrlKey;this.altKey=a.altKey;this.shiftKey=a.shiftKey;this.metaKey=a.metaKey;this.pointerId=a.pointerId||0;this.pointerType=
+l(a.pointerType)?a.pointerType:$a[a.pointerType]||"";this.state=a.state;this.fb=a;a.defaultPrevented&&this.preventDefault();};E.prototype.stopPropagation=function(){E.L.stopPropagation.call(this);this.fb.stopPropagation?this.fb.stopPropagation():this.fb.cancelBubble=!0;};E.prototype.preventDefault=function(){E.L.preventDefault.call(this);var a=this.fb;if(a.preventDefault)a.preventDefault();else if(a.returnValue=!1, Ya)try{if(a.ctrlKey||112<=a.keyCode&&123>=a.keyCode)a.keyCode=-1;}catch(b){}};var ab="closure_listenable_"+(1E6*Math.random()|0);function F(a){return !(!a||!a[ab])}var bb=0;function cb(a,b,c,d,f){this.listener=a;this.proxy=null;this.src=b;this.type=c;this.capture=!!d;this.Ob=f;this.key=++bb;this.Sa=this.Eb=!1;}cb.prototype.Vb=function(){this.Sa=!0;this.Ob=this.src=this.proxy=this.listener=null;};function db(a){this.src=a;this.J={};this.xb=0;}e=db.prototype;e.add=function(a,b,c,d,f){var g=a.toString();a=this.J[g];a||(a=this.J[g]=[], this.xb++);var k=eb(a,b,d,f);-1<k?(b=a[k], c||(b.Eb=!1)):(b=new cb(b,this.src,g,!!d,f), b.Eb=c, a.push(b));return b};e.remove=function(a,b,c,d){a=a.toString();if(!(a in this.J))return !1;var f=this.J[a];b=eb(f,b,c,d);return -1<b?(f[b].Vb(), Array.prototype.splice.call(f,b,1), 0==f.length&&(delete this.J[a], this.xb--), !0):!1};
+e.ye=function(a){var b=a.type;b in this.J&&sa(this.J[b],a)&&(a.Vb(), 0==this.J[b].length&&(delete this.J[b], this.xb--));};e.pb=function(a){a=a&&a.toString();var c;for(c in this.J)if(!a||c==a){for(var d=this.J[c],f=0;f<d.length;f++)d[f].Vb();delete this.J[c];this.xb--;}};e.jb=function(a,b,c,d){a=this.J[a.toString()];var f=-1;a&&(f=eb(a,b,c,d));return -1<f?a[f]:null};function eb(a,b,c,d){for(var f=0;f<a.length;++f){var g=a[f];if(!g.Sa&&g.listener==b&&g.capture==!!c&&g.Ob==d)return f}return -1}var fb="closure_lm_"+(1E6*Math.random()|0),gb={};function ib(a,b,c,d,f){if(d&&d.once)return jb(a,b,c,d,f);if(n(b)){for(var g=0;g<b.length;g++)ib(a,b[g],c,d,f);return null}c=kb(c);return F(a)?a.nb(b,c,r(d)?!!d.capture:!!d,f):lb(a,b,c,!1,d,f)}
+function lb(a,b,c,d,f,g){if(!b)throw Error("Invalid event type");var k=r(f)?!!f.capture:!!f,p=G(a);p||(a[fb]=p=new db(a));c=p.add(b,c,d,k,g);if(c.proxy)return c;d=mb();c.proxy=d;d.src=a;d.listener=c;if(a.addEventListener)Za||(f=k), void 0===f&&(f=!1), a.addEventListener(b.toString(),d,f);else if(a.attachEvent)a.attachEvent(nb(b.toString()),d);else if(a.addListener&&a.removeListener)a.addListener(d);else throw Error("addEventListener and attachEvent are unavailable.");return c}
+function mb(){var a=ob,b=Xa?function(c){return a.call(b.src,b.listener,c)}:function(c){c=a.call(b.src,b.listener,c);if(!c)return c};return b}function jb(a,b,c,d,f){if(n(b)){for(var g=0;g<b.length;g++)jb(a,b[g],c,d,f);return null}c=kb(c);return F(a)?a.Oc(b,c,r(d)?!!d.capture:!!d,f):lb(a,b,c,!0,d,f)}function pb(a,b,c,d,f){if(n(b))for(var g=0;g<b.length;g++)pb(a,b[g],c,d,f);else d=r(d)?!!d.capture:!!d, c=kb(c), F(a)?a.ed(b,c,d,f):a&&(a=G(a))&&(b=a.jb(b,c,d,f))&&qb(b);}
+function qb(a){if("number"!=typeof a&&a&&!a.Sa){var b=a.src;if(F(b))b.Le(a);else{var c=a.type,d=a.proxy;b.removeEventListener?b.removeEventListener(c,d,a.capture):b.detachEvent?b.detachEvent(nb(c),d):b.addListener&&b.removeListener&&b.removeListener(d);(c=G(b))?(c.ye(a), 0==c.xb&&(c.src=null, b[fb]=null)):a.Vb();}}}function nb(a){return a in gb?gb[a]:gb[a]="on"+a}
+function rb(a,b,c,d){var f=!0;if(a=G(a))if(b=a.J[b.toString()])for(b=b.concat(), a=0;a<b.length;a++){var g=b[a];g&&g.capture==c&&!g.Sa&&(g=sb(g,d), f=f&&!1!==g);}return f}function sb(a,b){var c=a.listener,d=a.Ob||a.src;a.Eb&&qb(a);return c.call(d,b)}
+function ob(a,b){if(a.Sa)return !0;if(!Xa){var c=b||m("window.event");b=new E(c,this);var d=!0;if(!(0>c.keyCode||void 0!=c.returnValue)){a:{var f=!1;if(0==c.keyCode)try{c.keyCode=-1;break a}catch(k){f=!0;}if(f||void 0==c.returnValue)c.returnValue=!0;}c=[];for(f=b.currentTarget;f;f=f.parentNode)c.push(f);a=a.type;for(f=c.length-1;!b.Ea&&0<=f;f--){b.currentTarget=c[f];var g=rb(c[f],a,!0,b);d=d&&g;}for(f=0;!b.Ea&&f<c.length;f++)b.currentTarget=c[f], g=rb(c[f],a,!1,b), d=d&&g;}return d}return sb(a,new E(b,this))}
+function G(a){a=a[fb];return a instanceof db?a:null}var tb="__closure_events_fn_"+(1E9*Math.random()>>>0);function kb(a){if(q(a))return a;a[tb]||(a[tb]=function(b){return a.handleEvent(b)});return a[tb]}function H(){z.call(this);this.ka=new db(this);this.Pe=this;this.Uc=null;}x(H,z);H.prototype[ab]=!0;e=H.prototype;e.addEventListener=function(a,b,c,d){ib(this,a,b,c,d);};e.removeEventListener=function(a,b,c,d){pb(this,a,b,c,d);};
+e.dispatchEvent=function(a){var b,c=this.Uc;if(c)for(b=[];c;c=c.Uc)b.push(c);c=this.Pe;var d=a.type||a;if(l(a))a=new D(a,c);else if(a instanceof D)a.target=a.target||c;else{var f=a;a=new D(d,c);Fa(a,f);}f=!0;if(b)for(var g=b.length-1;!a.Ea&&0<=g;g--){var k=a.currentTarget=b[g];f=k.Lb(d,!0,a)&&f;}a.Ea||(k=a.currentTarget=c, f=k.Lb(d,!0,a)&&f, a.Ea||(f=k.Lb(d,!1,a)&&f));if(b)for(g=0;!a.Ea&&g<b.length;g++)k=a.currentTarget=b[g], f=k.Lb(d,!1,a)&&f;return f};
+e.F=function(){H.L.F.call(this);this.pg();this.Uc=null;};e.nb=function(a,b,c,d){return this.ka.add(String(a),b,!1,c,d)};e.Oc=function(a,b,c,d){return this.ka.add(String(a),b,!0,c,d)};e.ed=function(a,b,c,d){this.ka.remove(String(a),b,c,d);};e.Le=function(a){this.ka.ye(a);};e.pg=function(){this.ka&&this.ka.pb(void 0);};
+e.Lb=function(a,b,c){a=this.ka.J[String(a)];if(!a)return !0;a=a.concat();for(var d=!0,f=0;f<a.length;++f){var g=a[f];if(g&&!g.Sa&&g.capture==b){var k=g.listener,p=g.Ob||g.src;g.Eb&&this.Le(g);d=!1!==k.call(p,c)&&d;}}return d&&0!=c.Be};e.jb=function(a,b,c,d){return this.ka.jb(String(a),b,c,d)};var ub=h.JSON.stringify;function vb(a,b){this.Sf=100;this.ef=a;this.ug=b;this.Zb=0;this.Pb=null;}vb.prototype.get=function(){if(0<this.Zb){this.Zb--;var a=this.Pb;this.Pb=a.next;a.next=null;}else a=this.ef();return a};vb.prototype.put=function(a){this.ug(a);this.Zb<this.Sf&&(this.Zb++, a.next=this.Pb, this.Pb=a);};function I(){this.lc=this.Va=null;}var xb=new vb(function(){return new wb},function(a){a.reset();});I.prototype.add=function(a,b){var c=this.Af();c.set(a,b);this.lc?this.lc.next=c:this.Va=c;this.lc=c;};I.prototype.remove=function(){var a=null;this.Va&&(a=this.Va, this.Va=this.Va.next, this.Va||(this.lc=null), a.next=null);return a};I.prototype.wg=function(a){xb.put(a);};I.prototype.Af=function(){return xb.get()};function wb(){this.next=this.scope=this.Gc=null;}
+wb.prototype.set=function(a,b){this.Gc=a;this.scope=b;this.next=null;};wb.prototype.reset=function(){this.next=this.scope=this.Gc=null;};function yb(a){h.setTimeout(function(){throw a;},0);}var zb;
+function Ab(){var a=h.MessageChannel;"undefined"===typeof a&&"undefined"!==typeof window&&window.postMessage&&window.addEventListener&&!B("Presto")&&(a=function(){var a=document.createElement("IFRAME");a.style.display="none";a.src="";document.documentElement.appendChild(a);var b=a.contentWindow;a=b.document;a.open();a.write("");a.close();var c="callImmediate"+Math.random(),d="file:"==b.location.protocol?"*":b.location.protocol+"//"+b.location.host;a=u(function(a){if(("*"==d||a.origin==d)&&a.data==
+c)this.port1.onmessage();},this);b.addEventListener("message",a,!1);this.port1={};this.port2={postMessage:function(){b.postMessage(c,d);}};});if("undefined"!==typeof a&&!B("Trident")&&!B("MSIE")){var b=new a,c={},d=c;b.port1.onmessage=function(){if(void 0!==c.next){c=c.next;var a=c.rd;c.rd=null;a();}};return function(a){d.next={rd:a};d=d.next;b.port2.postMessage(0);}}return "undefined"!==typeof document&&"onreadystatechange"in document.createElement("SCRIPT")?function(a){var b=document.createElement("SCRIPT");
+b.onreadystatechange=function(){b.onreadystatechange=null;b.parentNode.removeChild(b);b=null;a();a=null;};document.documentElement.appendChild(b);}:function(a){h.setTimeout(a,0);}}var Bb;function Cb(){if(h.Promise&&h.Promise.resolve){var a=h.Promise.resolve(void 0);Bb=function(){a.then(Db);};}else Bb=function(){var a=Db;!q(h.setImmediate)||h.Window&&h.Window.prototype&&!B("Edge")&&h.Window.prototype.setImmediate==h.setImmediate?(zb||(zb=Ab()), zb(a)):h.setImmediate(a);};}var Eb=!1,Fb=new I;function Db(){for(var a;a=Fb.remove();){try{a.Gc.call(a.scope);}catch(b){yb(b);}Fb.wg(a);}Eb=!1;}function Gb(a,b){H.call(this);this.Na=a||1;this.wb=b||h;this.nd=u(this.Rg,this);this.ie=w();}x(Gb,H);e=Gb.prototype;e.enabled=!1;e.B=null;e.setInterval=function(a){this.Na=a;this.B&&this.enabled?(this.stop(), this.start()):this.B&&this.stop();};e.Rg=function(){if(this.enabled){var a=w()-this.ie;0<a&&a<.8*this.Na?this.B=this.wb.setTimeout(this.nd,this.Na-a):(this.B&&(this.wb.clearTimeout(this.B), this.B=null), this.ff(), this.enabled&&(this.stop(), this.start()));}};e.ff=function(){this.dispatchEvent("tick");};
+e.start=function(){this.enabled=!0;this.B||(this.B=this.wb.setTimeout(this.nd,this.Na), this.ie=w());};e.stop=function(){this.enabled=!1;this.B&&(this.wb.clearTimeout(this.B), this.B=null);};e.F=function(){Gb.L.F.call(this);this.stop();delete this.wb;};function Hb(a,b,c){if(q(a))c&&(a=u(a,c));else if(a&&"function"==typeof a.handleEvent)a=u(a.handleEvent,a);else throw Error("Invalid listener argument");return 2147483647<Number(b)?-1:h.setTimeout(a,b||0)}function Ib(a,b,c){z.call(this);this.Uf=null!=c?u(a,c):a;this.Na=b;this.Xe=u(this.fg,this);this.qc=[];}x(Ib,z);e=Ib.prototype;e.Ta=!1;e.ob=0;e.B=null;e.mf=function(a){this.qc=arguments;this.B||this.ob?this.Ta=!0:this.Cc();};e.stop=function(){this.B&&(h.clearTimeout(this.B), this.B=null, this.Ta=!1, this.qc=[]);};e.pause=function(){this.ob++;};e.resume=function(){this.ob--;this.ob||!this.Ta||this.B||(this.Ta=!1, this.Cc());};e.F=function(){Ib.L.F.call(this);this.stop();};
+e.fg=function(){this.B=null;this.Ta&&!this.ob&&(this.Ta=!1, this.Cc());};e.Cc=function(){this.B=Hb(this.Xe,this.Na);this.Uf.apply(null,this.qc);};function Jb(a){z.call(this);this.i=a;this.o={};}x(Jb,z);var Kb=[];e=Jb.prototype;e.nb=function(a,b,c,d){return this.Tf(a,b,c,d)};e.Tf=function(a,b,c,d){n(b)||(b&&(Kb[0]=b.toString()), b=Kb);for(var f=0;f<b.length;f++){var g=ib(a,b[f],c||this.handleEvent,d||!1,this.i||this);if(!g)break;this.o[g.key]=g;}return this};e.Oc=function(a,b,c,d){return this.je(a,b,c,d)};
+e.je=function(a,b,c,d,f){if(n(b))for(var g=0;g<b.length;g++)this.je(a,b[g],c,d,f);else{a=jb(a,b,c||this.handleEvent,d,f||this.i||this);if(!a)return this;this.o[a.key]=a;}return this};e.ed=function(a,b,c,d,f){if(n(b))for(var g=0;g<b.length;g++)this.ed(a,b[g],c,d,f);else c=c||this.handleEvent, d=r(d)?!!d.capture:!!d, f=f||this.i||this, c=kb(c), d=!!d, b=F(a)?a.jb(b,c,d,f):a?(a=G(a))?a.jb(b,c,d,f):null:null, b&&(qb(b), delete this.o[b.key]);};
+e.pb=function(){Aa(this.o,function(a,b){this.o.hasOwnProperty(b)&&qb(a);},this);this.o={};};e.F=function(){Jb.L.F.call(this);this.pb();};e.handleEvent=function(){throw Error("EventHandler.handleEvent not implemented");};function J(a,b,c){this.reset(a,b,c,void 0,void 0);}J.prototype.Md=null;J.prototype.reset=function(a,b,c,d,f){this.mb=a;delete this.Md;};J.prototype.Bg=function(a){this.Md=a;};J.prototype.Ge=function(a){this.mb=a;};function Mb(a){this.pe=a;this.Zd=this.uc=this.mb=this.$b=null;}function K(a,b){this.name=a;this.value=b;}K.prototype.toString=function(){return this.name};var Nb=new K("SEVERE",1E3),Ob=new K("WARNING",900),Pb=new K("INFO",800),Qb=new K("CONFIG",700),Rb=new K("FINE",500);e=Mb.prototype;e.getName=function(){return this.pe};e.getParent=function(){return this.$b};e.pf=function(){this.uc||(this.uc={});return this.uc};e.Ge=function(a){this.mb=a;};
+e.Qd=function(){if(this.mb)return this.mb;if(this.$b)return this.$b.Qd();ia("Root logger has no level set.");return null};e.Pf=function(a){return a.value>=this.Qd().value};e.log=function(a,b,c){this.Pf(a)&&(q(b)&&(b=b()), this.gf(this.uf(a,b,c)));};e.uf=function(a,b,c){a=new J(a,String(b),this.pe);c&&a.Bg(c);return a};e.ca=function(a,b){this.log(Nb,a,b);};e.T=function(a,b){this.log(Ob,a,b);};e.info=function(a,b){this.log(Pb,a,b);};e.lf=function(a){this.log(Rb,a,void 0);};
+e.gf=function(a){for(var b=this;b;)b.We(a), b=b.getParent();};e.We=function(a){if(this.Zd)for(var b=0,c;c=this.Zd[b];b++)c(a);};e.Fg=function(a){this.$b=a;};e.Qe=function(a,b){this.pf()[a]=b;};var Sb={},Tb=null;function Vb(a){Tb||(Tb=new Mb(""), Sb[""]=Tb, Tb.Ge(Qb));var b;if(!(b=Sb[a])){b=new Mb(a);var c=a.lastIndexOf("."),d=a.substr(c+1);c=Vb(a.substr(0,c));c.Qe(d,b);b.Fg(c);Sb[a]=b;}return b}function Wb(a,b){a&&a.info(b,void 0);}function L(a,b){a&&a.lf(b);}function Xb(){this.s=Vb("goog.labs.net.webChannel.WebChannelDebug");this.Wc=!0;}e=Xb.prototype;e.Id=function(){this.Wc=!1;};e.Tg=function(a,b,c,d,f){var g=this;this.info(function(){return "XMLHTTP REQ ("+c+") [attempt "+d+"]: "+a+"\n"+b+"\n"+g.Xf(f)});};e.Ug=function(a,b,c,d,f,g){this.info(function(){return "XMLHTTP RESP ("+c+") [ attempt "+d+"]: "+a+"\n"+b+"\n"+f+" "+g});};e.Wa=function(a,b,c){var d=this;this.info(function(){return "XMLHTTP TEXT ("+a+"): "+d.ng(b)+(c?" "+c:"")});};
+e.Sg=function(a){this.info(function(){return "TIMEOUT: "+a});};e.debug=function(a){L(this.s,a);};e.cb=function(a,b){var c=this.s;c&&c.ca(b||"Exception",a);};e.info=function(a){Wb(this.s,a);};e.T=function(a){var b=this.s;b&&b.T(a,void 0);};e.ca=function(a){var b=this.s;b&&b.ca(a,void 0);};
+e.ng=function(a){if(!this.Wc)return a;if(!a)return null;try{var b=JSON.parse(a);if(b)for(var c=0;c<b.length;c++)n(b[c])&&this.Wf(b[c]);return ub(b)}catch(d){return this.debug("Exception parsing expected JS array - probably was not JS"), a}};e.Wf=function(a){if(!(2>a.length||(a=a[1], !n(a)||1>a.length))){var b=a[0];if("noop"!=b&&"stop"!=b&&"close"!=b)for(b=1;b<a.length;b++)a[b]="";}};
+e.Xf=function(a){if(!this.Wc)return a;if(!a)return null;var b="";a=a.split("&");for(var c=0;c<a.length;c++){var d=a[c].split("=");if(1<d.length){var f=d[0];d=d[1];var g=f.split("_");b=2<=g.length&&"type"==g[1]?b+(f+"="+d+"&"):b+(f+"=redacted&");}}return b};var M=new H;function Yb(a){D.call(this,"serverreachability",a);}x(Yb,D);function N(a){M.dispatchEvent(new Yb(M,a));}function Zb(a,b){D.call(this,"statevent",a);this.stat=b;}x(Zb,D);function O(a){M.dispatchEvent(new Zb(M,a));}function $b(a,b,c){D.call(this,"timingevent",a);this.size=b;this.rtt=c;}x($b,D);function ac(a,b,c){M.dispatchEvent(new $b(M,a,b,c));}function P(a,b){if(!q(a))throw Error("Fn must not be null and must be a function");return h.setTimeout(function(){a();},b)}var bc={NO_ERROR:0,Vg:1,bh:2,ah:3,Yg:4,$g:5,dh:6,Ne:7,TIMEOUT:8,gh:9};var cc={Xg:"complete",kh:"success",Oe:"error",Ne:"abort",ih:"ready",jh:"readystatechange",TIMEOUT:"timeout",eh:"incrementaldata",hh:"progress",Zg:"downloadprogress",lh:"uploadprogress"};function dc(){}dc.prototype.pd=null;dc.prototype.Vd=function(){return this.pd||(this.pd=this.Mf())};function ec(){}var Q={OPEN:"a",Wg:"b",Oe:"c",fh:"d"};function fc(){D.call(this,"d");}x(fc,D);function gc(){D.call(this,"c");}x(gc,D);var hc;function ic(){}x(ic,dc);ic.prototype.Dd=function(){var a=this.Wd();return a?new ActiveXObject(a):new XMLHttpRequest};ic.prototype.Mf=function(){var a={};this.Wd()&&(a[0]=!0, a[1]=!0);return a};
+ic.prototype.Wd=function(){if(!this.be&&"undefined"==typeof XMLHttpRequest&&"undefined"!=typeof ActiveXObject){for(var a=["MSXML2.XMLHTTP.6.0","MSXML2.XMLHTTP.3.0","MSXML2.XMLHTTP","Microsoft.XMLHTTP"],b=0;b<a.length;b++){var c=a[b];try{return new ActiveXObject(c), this.be=c}catch(d){}}throw Error("Could not create ActiveXObject. ActiveX might be disabled, or MSXML might not be installed");}return this.be};hc=new ic;function R(a,b,c,d,f){this.b=a;this.a=b;this.ra=c;this.R=d;this.Xc=f||1;this.Fc=new Jb(this);this.Ua=jc;a=La?125:void 0;this.Vc=new Gb(a);this.A=null;this.S=!1;this.Da=this.pa=this.ua=this.ic=this.qb=this.hd=this.Ga=null;this.ba=[];this.h=null;this.Bb=0;this.I=this.Fa=null;this.w=-1;this.Za=!1;this.Ra=0;this.ac=null;this.lb=this.Ed=this.yc=!1;}var jc=45E3;
+function kc(a,b){switch(a){case 0:return "Non-200 return code ("+b+")";case 1:return "XMLHTTP failure (no data)";case 2:return "HttpConnection timeout";default:return "Unknown error"}}var lc={},mc={};e=R.prototype;e.ga=function(a){this.A=a;};e.setTimeout=function(a){this.Ua=a;};e.He=function(a){this.Ra=a;};e.Gg=function(a){this.ba=a;};e.la=function(){return this.ba};e.kd=function(a,b){this.ic=1;this.ua=a.clone().Ub();this.Da=b;this.yc=!0;this.Ce(null);};
+e.jd=function(a,b,c){this.ic=1;this.ua=a.clone().Ub();this.Da=null;this.yc=b;this.Ce(c);};
+e.Ce=function(a){this.qb=w();this.eb();this.pa=this.ua.clone();this.pa.dc("t",this.Xc);this.Bb=0;this.h=this.b.Jb(this.b.fc()?a:null);0<this.Ra&&(this.ac=new Ib(u(this.Me,this,this.h),this.Ra));this.Fc.nb(this.h,"readystatechange",this.mg);a=this.A?Da(this.A):{};this.Da?(this.Fa||(this.Fa="POST"), a["Content-Type"]="application/x-www-form-urlencoded", this.h.send(this.pa,this.Fa,this.Da,a)):(this.Fa="GET", this.h.send(this.pa,this.Fa,null,a));N(1);this.a.Tg(this.Fa,this.pa,this.R,this.Xc,this.Da);};
+e.mg=function(a){a=a.target;var b=this.ac;b&&3==a.ma()?(this.a.debug("Throttling readystatechange."), b.mf()):this.Me(a);};e.Me=function(a){try{a==this.h?this.hg():this.a.T("Called back with an unexpected xmlhttp");}catch(c){if(this.a.debug("Failed call to OnXmlHttpReadyStateChanged_"), this.h&&this.h.ya()){var b=this;this.a.cb(c,function(){return "ResponseText: "+b.h.ya()});}else this.a.cb(c,"No response text");}finally{}};
+e.hg=function(){var a=this.h.ma(),b=this.h.Ud(),c=this.h.za();if(!(3>a||3==a&&!La&&!this.h.ya())){this.Za||4!=a||7==b||(8==b||0>=c?N(3):N(2));this.Fb();var d=this.h.za();this.w=d;b=this.h.ya();if(!b){var f=this;this.a.debug(function(){return "No response text for uri "+f.pa+" status "+d});}this.S=200==d;this.a.Ug(this.Fa,this.pa,this.R,this.Xc,a,d);if(this.S){if(this.Ig())if(c=this.sf())this.a.Wa(this.R,c,"Initial handshake response via X-HTTP-Initial-Response"), this.lb=!0, this.Yc(c);else{this.S=!1;
+this.I=3;O(12);this.a.T("XMLHTTP Missing X_HTTP_INITIAL_RESPONSE ("+this.R+")");this.Ia();this.Kb();return}this.yc?(this.Fd(a,b), La&&this.S&&3==a&&this.Ng()):(this.a.Wa(this.R,b,null), this.Yc(b));4==a&&this.Ia();this.S&&!this.Za&&(4==a?this.b.Tc(this):(this.S=!1, this.eb()));}else 400==d&&0<b.indexOf("Unknown SID")?(this.I=3, O(12), this.a.T("XMLHTTP Unknown SID ("+this.R+")")):(this.I=0, O(13), this.a.T("XMLHTTP Bad status "+d+" ("+this.R+")")), this.Ia(), this.Kb();}};e.Ig=function(){return this.Ed&&!this.lb};
+e.sf=function(){if(this.h){var a=this.h.kb("X-HTTP-Initial-Response");if(a&&!va(a))return a}return null};e.Ag=function(){this.Ed=!0;};
+e.Fd=function(a,b){for(var c=!0;!this.Za&&this.Bb<b.length;){var d=this.vf(b);if(d==mc){4==a&&(this.I=4, O(14), c=!1);this.a.Wa(this.R,null,"[Incomplete Response]");break}else if(d==lc){this.I=4;O(15);this.a.Wa(this.R,b,"[Invalid Chunk]");c=!1;break}else this.a.Wa(this.R,d,null), this.Yc(d);}4==a&&0==b.length&&(this.I=1, O(16), c=!1);this.S=this.S&&c;c||(this.a.Wa(this.R,b,"[Invalid Chunked Response]"), this.Ia(), this.Kb());};
+e.kg=function(){if(this.h){var a=this.h.ma(),b=this.h.ya();this.Bb<b.length&&(this.Fb(), this.Fd(a,b), this.S&&4!=a&&this.eb());}};e.Ng=function(){this.Fc.nb(this.Vc,"tick",this.kg);this.Vc.start();};e.vf=function(a){var b=this.Bb,c=a.indexOf("\n",b);if(-1==c)return mc;b=Number(a.substring(b,c));if(isNaN(b))return lc;c+=1;if(c+b>a.length)return mc;a=a.substr(c,b);this.Bb=c+b;return a};
+e.yg=function(a){this.ic=2;this.ua=a.clone().Ub();a=!1;h.navigator&&h.navigator.sendBeacon&&(a=h.navigator.sendBeacon(this.ua.toString(),""));!a&&h.Image&&((new Image).src=this.ua, a=!0);a||(this.h=this.b.Jb(null), this.h.send(this.ua));this.qb=w();this.eb();};e.cancel=function(){this.Za=!0;this.Ia();};e.tg=function(a){a&&this.setTimeout(a);this.Ga&&(this.Fb(), this.eb());};e.eb=function(){this.hd=w()+this.Ua;this.Ke(this.Ua);};
+e.Ke=function(a){if(null!=this.Ga)throw Error("WatchDog timer not null");this.Ga=P(u(this.gg,this),a);};e.Fb=function(){this.Ga&&(h.clearTimeout(this.Ga), this.Ga=null);};e.gg=function(){this.Ga=null;var a=w();0<=a-this.hd?this.Df():(this.a.T("WatchDog timer called too early"), this.Ke(this.hd-a));};e.Df=function(){this.S&&this.a.ca("Received watchdog timeout even though request loaded successfully");this.a.Sg(this.pa);2!=this.ic&&(N(3), O(17));this.Ia();this.I=2;this.Kb();};
+e.Kb=function(){this.b.de()||this.Za||this.b.Tc(this);};e.Ia=function(){this.Fb();var a=this.ac;a&&"function"==typeof a.bb&&a.bb();this.ac=null;this.Vc.stop();this.Fc.pb();this.h&&(a=this.h, this.h=null, a.abort(), a.bb());};e.Hc=function(){return this.I};e.Yc=function(a){try{this.b.ue(this,a), N(4);}catch(b){this.a.cb(b,"Error in httprequest callback");}};function nc(a){if(a.H&&"function"==typeof a.H)return a.H();if(l(a))return a.split("");if(ca(a)){for(var b=[],c=a.length,d=0;d<c;d++)b.push(a[d]);return b}return Ba(a)}
+function oc(a,b,c){if(a.forEach&&"function"==typeof a.forEach)a.forEach(b,c);else if(ca(a)||l(a))na(a,b,c);else{if(a.W&&"function"==typeof a.W)var d=a.W();else if(a.H&&"function"==typeof a.H)d=void 0;else if(ca(a)||l(a)){d=[];for(var f=a.length,g=0;g<f;g++)d.push(g);}else d=Ca(a);f=nc(a);g=f.length;for(var k=0;k<g;k++)b.call(c,f[k],d&&d[k],a);}}function S(a,b){this.D={};this.o=[];this.j=0;var c=arguments.length;if(1<c){if(c%2)throw Error("Uneven number of arguments");for(var d=0;d<c;d+=2)this.set(arguments[d],arguments[d+1]);}else a&&this.addAll(a);}e=S.prototype;e.C=function(){return this.j};e.H=function(){this.wc();for(var a=[],b=0;b<this.o.length;b++)a.push(this.D[this.o[b]]);return a};e.W=function(){this.wc();return this.o.concat()};e.va=function(a){return T(this.D,a)};e.X=function(){return 0==this.j};
+e.clear=function(){this.D={};this.j=this.o.length=0;};e.remove=function(a){return T(this.D,a)?(delete this.D[a], this.j--, this.o.length>2*this.j&&this.wc(), !0):!1};e.wc=function(){if(this.j!=this.o.length){for(var a=0,b=0;a<this.o.length;){var c=this.o[a];T(this.D,c)&&(this.o[b++]=c);a++;}this.o.length=b;}if(this.j!=this.o.length){var d={};for(b=a=0;a<this.o.length;)c=this.o[a], T(d,c)||(this.o[b++]=c, d[c]=1), a++;this.o.length=b;}};e.get=function(a,b){return T(this.D,a)?this.D[a]:b};
+e.set=function(a,b){T(this.D,a)||(this.j++, this.o.push(a));this.D[a]=b;};e.addAll=function(a){if(a instanceof S)for(var b=a.W(),c=0;c<b.length;c++)this.set(b[c],a.get(b[c]));else for(b in a)this.set(b,a[b]);};e.forEach=function(a,b){for(var c=this.W(),d=0;d<c.length;d++){var f=c[d],g=this.get(f);a.call(b,g,f,this);}};e.clone=function(){return new S(this)};function T(a,b){return Object.prototype.hasOwnProperty.call(a,b)}var pc=/^(?:([^:/?#.]+):)?(?:\/\/(?:([^/?#]*)@)?([^/#?]*?)(?::([0-9]+))?(?=[/#?]|$))?([^?#]+)?(?:\?([^#]*))?(?:#([\s\S]*))?$/;function qc(a,b){if(a){a=a.split("&");for(var c=0;c<a.length;c++){var d=a[c].indexOf("="),f=null;if(0<=d){var g=a[c].substring(0,d);f=a[c].substring(d+1);}else g=a[c];b(g,f?decodeURIComponent(f.replace(/\+/g," ")):"");}}}function U(a,b){this.xa=this.zb=this.qa="";this.Ca=null;this.ib=this.K="";this.O=this.Qf=!1;var c;a instanceof U?(this.O=void 0!==b?b:a.O, this.tb(a.qa), this.cd(a.zb), this.rb(a.xa), this.sb(a.Ca), this.ec(a.K), this.bd(a.P.clone()), this.$c(a.ib)):a&&(c=String(a).match(pc))?(this.O=!!b, this.tb(c[1]||"",!0), this.cd(c[2]||"",!0), this.rb(c[3]||"",!0), this.sb(c[4]), this.ec(c[5]||"",!0), this.bd(c[6]||"",!0), this.$c(c[7]||"",!0)):(this.O=!!b, this.P=new rc(null,this.O));}e=U.prototype;
+e.toString=function(){var a=[],b=this.qa;b&&a.push(sc(b,tc,!0),":");var c=this.xa;if(c||"file"==b)a.push("//"), (b=this.zb)&&a.push(sc(b,tc,!0),"@"), a.push(encodeURIComponent(String(c)).replace(/%25([0-9a-fA-F]{2})/g,"%$1")), c=this.Ca, null!=c&&a.push(":",String(c));if(c=this.K)this.Ic()&&"/"!=c.charAt(0)&&a.push("/"), a.push(sc(c,"/"==c.charAt(0)?uc:wc,!0));(c=this.Rd())&&a.push("?",c);(c=this.ib)&&a.push("#",sc(c,xc));return a.join("")};
+e.resolve=function(a){var b=this.clone(),c=a.Hf();c?b.tb(a.qa):c=a.If();c?b.cd(a.zb):c=a.Ic();c?b.rb(a.xa):c=a.Ff();var d=a.K;if(c)b.sb(a.Ca);else if(c=a.ae()){if("/"!=d.charAt(0))if(this.Ic()&&!this.ae())d="/"+d;else{var f=b.K.lastIndexOf("/");-1!=f&&(d=b.K.substr(0,f+1)+d);}f=d;if(".."==f||"."==f)d="";else if(-1!=f.indexOf("./")||-1!=f.indexOf("/.")){d=0==f.lastIndexOf("/",0);f=f.split("/");for(var g=[],k=0;k<f.length;){var p=f[k++];"."==p?d&&k==f.length&&g.push(""):".."==p?((1<g.length||1==g.length&&
+""!=g[0])&&g.pop(), d&&k==f.length&&g.push("")):(g.push(p), d=!0);}d=g.join("/");}else d=f;}c?b.ec(d):c=a.Gf();c?b.bd(a.P.clone()):c=a.Ef();c&&b.$c(a.ib);return b};e.clone=function(){return new U(this)};e.tb=function(a,b){this.U();if(this.qa=b?yc(a,!0):a)this.qa=this.qa.replace(/:$/,"");};e.Hf=function(){return !!this.qa};e.cd=function(a,b){this.U();this.zb=b?yc(a):a;};e.If=function(){return !!this.zb};e.rb=function(a,b){this.U();this.xa=b?yc(a,!0):a;};e.Ic=function(){return !!this.xa};
+e.sb=function(a){this.U();if(a){a=Number(a);if(isNaN(a)||0>a)throw Error("Bad port number "+a);this.Ca=a;}else this.Ca=null;};e.Ff=function(){return null!=this.Ca};e.ec=function(a,b){this.U();this.K=b?yc(a,!0):a;};e.ae=function(){return !!this.K};e.Gf=function(){return ""!==this.P.toString()};e.bd=function(a,b){this.U();a instanceof rc?(this.P=a, this.P.ad(this.O)):(b||(a=sc(a,zc)), this.P=new rc(a,this.O));};e.Rd=function(){return this.P.toString()};e.getQuery=function(){return this.Rd()};
+e.l=function(a,b){this.U();this.P.set(a,b);};e.dc=function(a,b){this.U();n(b)||(b=[String(b)]);this.P.Ie(a,b);};e.$c=function(a,b){this.U();this.ib=b?yc(a):a;};e.Ef=function(){return !!this.ib};e.Ub=function(){this.U();this.l("zx",Math.floor(2147483648*Math.random()).toString(36)+Math.abs(Math.floor(2147483648*Math.random())^w()).toString(36));return this};e.removeParameter=function(a){this.U();this.P.remove(a);return this};e.U=function(){if(this.Qf)throw Error("Tried to modify a read-only Uri");};
+e.ad=function(a){this.O=a;this.P&&this.P.ad(a);};function Ac(a){return a instanceof U?a.clone():new U(a,void 0)}function Bc(a,b,c,d){var f=new U(null,void 0);a&&f.tb(a);b&&f.rb(b);c&&f.sb(c);d&&f.ec(d);return f}function yc(a,b){return a?b?decodeURI(a.replace(/%25/g,"%2525")):decodeURIComponent(a):""}function sc(a,b,c){return l(a)?(a=encodeURI(a).replace(b,Cc), c&&(a=a.replace(/%25([0-9a-fA-F]{2})/g,"%$1")), a):null}
+function Cc(a){a=a.charCodeAt(0);return "%"+(a>>4&15).toString(16)+(a&15).toString(16)}var tc=/[#\/\?@]/g,wc=/[#\?:]/g,uc=/[#\?]/g,zc=/[#\?@]/g,xc=/#/g;function rc(a,b){this.j=this.m=null;this.ja=a||null;this.O=!!b;}e=rc.prototype;e.$=function(){if(!this.m&&(this.m=new S, this.j=0, this.ja)){var a=this;qc(this.ja,function(b,c){a.add(decodeURIComponent(b.replace(/\+/g," ")),c);});}};e.C=function(){this.$();return this.j};
+e.add=function(a,b){this.$();this.Oa();a=this.Ma(a);var c=this.m.get(a);c||this.m.set(a,c=[]);c.push(b);this.j+=1;return this};e.remove=function(a){this.$();a=this.Ma(a);return this.m.va(a)?(this.Oa(), this.j-=this.m.get(a).length, this.m.remove(a)):!1};e.clear=function(){this.Oa();this.m=null;this.j=0;};e.X=function(){this.$();return 0==this.j};e.va=function(a){this.$();a=this.Ma(a);return this.m.va(a)};
+e.forEach=function(a,b){this.$();this.m.forEach(function(c,d){na(c,function(c){a.call(b,c,d,this);},this);},this);};e.W=function(){this.$();for(var a=this.m.H(),b=this.m.W(),c=[],d=0;d<b.length;d++)for(var f=a[d],g=0;g<f.length;g++)c.push(b[d]);return c};e.H=function(a){this.$();var b=[];if(l(a))this.va(a)&&(b=ta(b,this.m.get(this.Ma(a))));else{a=this.m.H();for(var c=0;c<a.length;c++)b=ta(b,a[c]);}return b};
+e.set=function(a,b){this.$();this.Oa();a=this.Ma(a);this.va(a)&&(this.j-=this.m.get(a).length);this.m.set(a,[b]);this.j+=1;return this};e.get=function(a,b){if(!a)return b;a=this.H(a);return 0<a.length?String(a[0]):b};e.Ie=function(a,b){this.remove(a);0<b.length&&(this.Oa(), this.m.set(this.Ma(a),ua(b)), this.j+=b.length);};
+e.toString=function(){if(this.ja)return this.ja;if(!this.m)return "";for(var a=[],b=this.m.W(),c=0;c<b.length;c++){var d=b[c],f=encodeURIComponent(String(d));d=this.H(d);for(var g=0;g<d.length;g++){var k=f;""!==d[g]&&(k+="="+encodeURIComponent(String(d[g])));a.push(k);}}return this.ja=a.join("&")};e.Oa=function(){this.ja=null;};e.clone=function(){var a=new rc;a.ja=this.ja;this.m&&(a.m=this.m.clone(), a.j=this.j);return a};e.Ma=function(a){a=String(a);this.O&&(a=a.toLowerCase());return a};
+e.ad=function(a){a&&!this.O&&(this.$(), this.Oa(), this.m.forEach(function(a,c){var b=c.toLowerCase();c!=b&&(this.remove(c), this.Ie(b,a));},this));this.O=a;};e.extend=function(a){for(var b=0;b<arguments.length;b++)oc(arguments[b],function(a,b){this.add(b,a);},this);};function Fc(){}function Gc(){}x(Gc,Fc);function Hc(a,b){this.b=a;this.a=b;this.f=this.A=null;this.bc=!1;this.K=null;this.w=-1;this.Ad=this.na=null;}e=Hc.prototype;e.g=null;e.ga=function(a){this.A=a;};e.connect=function(a){this.K=a;a=this.b.Sd(this.K);O(3);var b=this.b.Ib.$d;null!=b?(this.na=this.b.$a(b[0]), this.g=1, this.xd()):(a.dc("MODE","init"), !this.b.ta&&this.b.aa&&a.dc("X-HTTP-Session-Id",this.b.aa), this.f=new R(this,this.a,void 0,void 0,void 0), this.f.ga(this.A), this.f.jd(a,!1,null), this.g=0);};
+e.xd=function(){this.a.debug("TestConnection: starting stage 2");var a=this.b.Ib.od;if(null!=a)this.a.debug(function(){return "TestConnection: skipping stage 2, precomputed result is "+a?"Buffered":"Unbuffered"}), O(4), a?(O(10), this.b.ub(this,!1)):(O(11), this.b.ub(this,!0));else{this.f=new R(this,this.a,void 0,void 0,void 0);this.f.ga(this.A);var b=this.b.Pd(this.na,this.K);O(4);b.dc("TYPE","xmlhttp");var c=this.b.aa,d=this.b.Kc;c&&d&&b.l(c,d);this.f.jd(b,!1,this.na);}};e.Jb=function(a){return this.b.Jb(a)};
+e.abort=function(){this.f&&(this.f.cancel(), this.f=null);this.w=-1;};e.de=function(){return !1};
+e.ue=function(a,b){this.w=a.w;if(0==this.g)if(this.a.debug("TestConnection: Got data for stage 1"), this.pc(a), b){try{var c=this.b.kc.zc(b);}catch(d){this.a.cb(d);this.b.dd(this);return}this.na=this.b.$a(c[0]);}else this.a.debug("TestConnection: Null responseText"), this.b.dd(this);else 1==this.g&&(this.bc?O(6):"11111"==b?(O(5), this.bc=!0, this.Ze()&&(this.w=200, this.f.cancel(), this.a.debug("Test connection succeeded; using streaming connection"), O(11), this.b.ub(this,!0))):(O(7), this.bc=!1));};
+e.Tc=function(){this.w=this.f.w;this.f.S?0==this.g?(this.g=1, this.a.debug("TestConnection: request complete for initial check"), this.xd()):1==this.g&&(this.a.debug("TestConnection: request complete for stage 2"), this.bc?(this.a.debug("Test connection succeeded; using streaming connection"), O(11), this.b.ub(this,!0)):(this.a.debug("Test connection failed; not using streaming"), O(10), this.b.ub(this,!1))):(this.a.debug("TestConnection: request failed, in state "+this.g), 0==this.g?O(8):1==this.g&&O(9), this.b.dd(this));};e.pc=function(a){if(!this.b.ta&&(a=a.h)){var b=a.kb("X-Client-Wire-Protocol");this.Ad=b?b:null;this.b.aa&&((a=a.kb("X-HTTP-Session-Id"))?this.b.Fe(a):this.a.T("Missing X_HTTP_SESSION_ID in the handshake response"));}};e.fc=function(){return this.b.fc()};e.Ba=function(){return this.b.Ba()};e.Ze=function(){return !C||10<=Number(Ua)};function Ic(){this.od=this.$d=null;}function Jc(a){this.D=new S;a&&this.addAll(a);}function Kc(a){var b=typeof a;return "object"==b&&a||"function"==b?"o"+(a[t]||(a[t]=++da)):b.substr(0,1)+a}e=Jc.prototype;e.C=function(){return this.D.C()};e.add=function(a){this.D.set(Kc(a),a);};e.addAll=function(a){a=nc(a);for(var b=a.length,c=0;c<b;c++)this.add(a[c]);};e.pb=function(a){a=nc(a);for(var b=a.length,c=0;c<b;c++)this.remove(a[c]);};e.remove=function(a){return this.D.remove(Kc(a))};e.clear=function(){this.D.clear();};e.X=function(){return this.D.X()};
+e.contains=function(a){return this.D.va(Kc(a))};e.H=function(){return this.D.H()};e.clone=function(){return new Jc(this)};function Lc(a,b){this.Pc=a;this.map=b;this.context=null;}function Mc(a){this.me=a||Nc;h.PerformanceNavigationTiming?(a=h.performance.getEntriesByType("navigation"), a=0<a.length&&("hq"==a[0].nextHopProtocol||"h2"==a[0].nextHopProtocol)):a=!!(h.vc&&h.vc.ke&&h.vc.ke()&&h.vc.ke().nh);this.Xb=a?this.me:1;this.v=null;1<this.Xb&&(this.v=new Jc);this.f=null;this.ba=[];}var Nc=10;e=Mc.prototype;e.ld=function(a){this.v||-1==a.indexOf("spdy")&&-1==a.indexOf("quic")&&-1==a.indexOf("h2")||(this.Xb=this.me, this.v=new Jc, this.f&&(this.oc(this.f), this.f=null));};
+e.ee=function(){return this.f?!0:this.v?this.v.C()>=this.Xb:!1};e.xf=function(){return this.f?1:this.v?this.v.C():0};e.Jc=function(a){return this.f?this.f==a:this.v?this.v.contains(a):!1};e.oc=function(a){this.v?this.v.add(a):this.f=a;};e.ze=function(a){this.f&&this.f==a?this.f=null:this.v&&this.v.contains(a)&&this.v.remove(a);};e.cancel=function(){this.ba=this.la();this.f?(this.f.cancel(), this.f=null):this.v&&!this.v.X()&&(na(this.v.H(),function(a){a.cancel();}), this.v.clear());};
+e.la=function(){if(null!=this.f)return this.ba.concat(this.f.la());if(null!=this.v&&!this.v.X()){var a=this.ba;na(this.v.H(),function(b){a=a.concat(b.la());});return a}return ua(this.ba)};e.Re=function(a){this.ba=this.ba.concat(a);};e.$e=function(){this.ba.length=0;};function Oc(){this.xg=this.rg=void 0;}Oc.prototype.stringify=function(a){return h.JSON.stringify(a,this.rg)};Oc.prototype.parse=function(a){return h.JSON.parse(a,this.xg)};function Pc(){this.jg=new Oc;}Pc.prototype.hf=function(a,b,c){var d=c||"";try{oc(a,function(a,c){var f=a;r(a)&&(f=ub(a));b.push(d+c+"="+encodeURIComponent(f));});}catch(f){throw b.push(d+"type="+encodeURIComponent("_badmap")), f;}};Pc.prototype.jf=function(a,b,c){for(var d=-1;;){var f=["count="+b];-1==d?0<b?(d=a[0].Pc, f.push("ofs="+d)):d=0:f.push("ofs="+d);for(var g=!0,k=0;k<b;k++){var p=a[k].Pc,Ub=a[k].map;p-=d;if(0>p)d=Math.max(0,a[k].Pc-100), g=!1;else try{this.hf(Ub,f,"req"+p+"_");}catch(md){c&&c(Ub);}}if(g)return f.join("&")}};
+Pc.prototype.zc=function(a){return this.jg.parse(a)};function Qc(a,b){var c=new Xb;c.debug("TestLoadImage: loading "+a);var d=new Image;d.onload=v(Rc,c,d,"TestLoadImage: loaded",!0,b);d.onerror=v(Rc,c,d,"TestLoadImage: error",!1,b);d.onabort=v(Rc,c,d,"TestLoadImage: abort",!1,b);d.ontimeout=v(Rc,c,d,"TestLoadImage: timeout",!1,b);h.setTimeout(function(){if(d.ontimeout)d.ontimeout();},1E4);d.src=a;}function Rc(a,b,c,d,f){try{a.debug(c), b.onload=null, b.onerror=null, b.onabort=null, b.ontimeout=null, f(d);}catch(g){a.cb(g);}}var Sc=h.JSON.parse;function V(a){H.call(this);this.headers=new S;this.Xa=a||null;this.ha=!1;this.mc=this.c=null;this.ge=this.Tb="";this.Pa=0;this.I="";this.Aa=this.Lc=this.Qb=this.Ec=!1;this.vb=0;this.hc=null;this.Ae=Tc;this.jc=this.lg=this.Ab=!1;}x(V,H);var Tc="";V.prototype.s=Vb("goog.net.XhrIo");var Uc=/^https?$/i,Vc=["POST","PUT"];e=V.prototype;e.Je=function(a){this.Ab=a;};
+e.send=function(a,b,c,d){if(this.c)throw Error("[goog.net.XhrIo] Object is active with another request="+this.Tb+"; newUri="+a);b=b?b.toUpperCase():"GET";this.Tb=a;this.I="";this.Pa=0;this.ge=b;this.Ec=!1;this.ha=!0;this.c=this.df();this.mc=this.Xa?this.Xa.Vd():hc.Vd();this.c.onreadystatechange=u(this.te,this);this.lg&&"onprogress"in this.c&&(this.c.onprogress=u(function(a){this.re(a,!0);},this), this.c.upload&&(this.c.upload.onprogress=u(this.re,this)));try{L(this.s,this.da("Opening Xhr")), this.Lc=
+!0, this.c.open(b,String(a),!0), this.Lc=!1;}catch(g){L(this.s,this.da("Error opening Xhr: "+g.message));this.Ld(g);return}a=c||"";var f=this.headers.clone();d&&oc(d,function(a,b){f.set(b,a);});d=pa(f.W());c=h.FormData&&a instanceof h.FormData;!(0<=la(Vc,b))||d||c||f.set("Content-Type","application/x-www-form-urlencoded;charset=utf-8");f.forEach(function(a,b){this.c.setRequestHeader(b,a);},this);this.Ae&&(this.c.responseType=this.Ae);"withCredentials"in this.c&&this.c.withCredentials!==this.Ab&&(this.c.withCredentials=
+this.Ab);try{this.yd(), 0<this.vb&&(this.jc=Wc(this.c), L(this.s,this.da("Will abort after "+this.vb+"ms if incomplete, xhr2 "+this.jc)), this.jc?(this.c.timeout=this.vb, this.c.ontimeout=u(this.Ua,this)):this.hc=Hb(this.Ua,this.vb,this)), L(this.s,this.da("Sending request")), this.Qb=!0, this.c.send(a), this.Qb=!1;}catch(g){L(this.s,this.da("Send error: "+g.message)), this.Ld(g);}};function Wc(a){return C&&Ta(9)&&"number"==typeof a.timeout&&void 0!==a.ontimeout}
+function qa(a){return "content-type"==a.toLowerCase()}e.df=function(){return this.Xa?this.Xa.Dd():hc.Dd()};e.Ua=function(){"undefined"!=typeof goog&&this.c&&(this.I="Timed out after "+this.vb+"ms, aborting", this.Pa=8, L(this.s,this.da(this.I)), this.dispatchEvent("timeout"), this.abort(8));};e.Ld=function(a){this.ha=!1;this.c&&(this.Aa=!0, this.c.abort(), this.Aa=!1);this.I=a;this.Pa=5;this.Jd();this.Gb();};e.Jd=function(){this.Ec||(this.Ec=!0, this.dispatchEvent("complete"), this.dispatchEvent("error"));};
+e.abort=function(a){this.c&&this.ha&&(L(this.s,this.da("Aborting")), this.ha=!1, this.Aa=!0, this.c.abort(), this.Aa=!1, this.Pa=a||7, this.dispatchEvent("complete"), this.dispatchEvent("abort"), this.Gb());};e.F=function(){this.c&&(this.ha&&(this.ha=!1, this.Aa=!0, this.c.abort(), this.Aa=!1), this.Gb(!0));V.L.F.call(this);};e.te=function(){this.Ka||(this.Lc||this.Qb||this.Aa?this.se():this.eg());};e.eg=function(){this.se();};
+e.se=function(){if(this.ha&&"undefined"!=typeof goog)if(this.mc[1]&&4==this.ma()&&2==this.za())L(this.s,this.da("Local request error detected and ignored"));else if(this.Qb&&4==this.ma())Hb(this.te,0,this);else if(this.dispatchEvent("readystatechange"), this.Mc()){L(this.s,this.da("Request complete"));this.ha=!1;try{this.Rf()?(this.dispatchEvent("complete"), this.dispatchEvent("success")):(this.Pa=6, this.I=this.Yd()+" ["+this.za()+"]", this.Jd());}finally{this.Gb();}}};
+e.re=function(a,b){this.dispatchEvent(Xc(a,"progress"));this.dispatchEvent(Xc(a,b?"downloadprogress":"uploadprogress"));};function Xc(a,b){return {type:b,lengthComputable:a.lengthComputable,loaded:a.loaded,total:a.total}}e.Gb=function(a){if(this.c){this.yd();var b=this.c,c=this.mc[0]?aa:null;this.mc=this.c=null;a||this.dispatchEvent("ready");try{b.onreadystatechange=c;}catch(d){(a=this.s)&&a.ca("Problem encountered resetting onreadystatechange: "+d.message,void 0);}}};
+e.yd=function(){this.c&&this.jc&&(this.c.ontimeout=null);this.hc&&(h.clearTimeout(this.hc), this.hc=null);};e.Ba=function(){return !!this.c};e.Mc=function(){return 4==this.ma()};e.Rf=function(){var a=this.za();a:switch(a){case 200:case 201:case 202:case 204:case 206:case 304:case 1223:var b=!0;break a;default:b=!1;}return b||0===a&&!this.Of()};
+e.Of=function(){var a=String(this.Tb).match(pc)[1]||null;!a&&h.self&&h.self.location&&(a=h.self.location.protocol, a=a.substr(0,a.length-1));return Uc.test(a?a.toLowerCase():"")};e.ma=function(){return this.c?this.c.readyState:0};e.za=function(){try{return 2<this.ma()?this.c.status:-1}catch(a){return -1}};e.Yd=function(){try{return 2<this.ma()?this.c.statusText:""}catch(a){return L(this.s,"Can not get status: "+a.message), ""}};
+e.ya=function(){try{return this.c?this.c.responseText:""}catch(a){return L(this.s,"Can not get responseText: "+a.message), ""}};e.yf=function(a){if(this.c){var b=this.c.responseText;a&&0==b.indexOf(a)&&(b=b.substring(a.length));return Sc(b)}};e.getResponseHeader=function(a){if(this.c&&this.Mc())return a=this.c.getResponseHeader(a), null===a?void 0:a};e.getAllResponseHeaders=function(){return this.c&&this.Mc()?this.c.getAllResponseHeaders()||"":""};
+e.kb=function(a){return this.c?this.c.getResponseHeader(a):null};e.Ud=function(){return this.Pa};e.Hc=function(){return l(this.I)?this.I:String(this.I)};e.da=function(a){return a+" ["+this.ge+" "+this.Tb+" "+this.za()+"]"};function Yc(a){var b="";Aa(a,function(a,d){b+=d;b+=":";b+=a;b+="\r\n";});return b}function Zc(a,b,c){a:{for(d in c){var d=!1;break a}d=!0;}if(d)return a;c=Yc(c);if(l(a)){b=encodeURIComponent(String(b));c=null!=c?"="+encodeURIComponent(String(c)):"";if(b+=c){c=a.indexOf("#");0>c&&(c=a.length);d=a.indexOf("?");if(0>d||d>c){d=c;var f="";}else f=a.substring(d+1,c);a=[a.substr(0,d),f,a.substr(c)];c=a[1];a[1]=b?c?c+"&"+b:b:c;a=a[0]+(a[1]?"?"+a[1]:"")+a[2];}return a}a.l(b,c);return a}function $c(a){this.Bd=22;this.De=0;this.M=[];this.a=new Xb;this.Ib=new Ic;this.na=this.md=this.hb=this.K=this.u=this.Kc=this.aa=this.gb=this.N=this.Rb=this.A=null;this.Te=!0;this.ag=this.Yb=0;this.kf=!!m("internalChannelParams.failFast",a);this.fd=this.Ja=this.wa=this.ia=this.ea=this.i=null;this.Se=!0;this.w=this.he=this.Sb=-1;this.rc=this.Ha=this.La=0;this.Ve=m("internalChannelParams.baseRetryDelayMs",a)||5E3;this.vg=m("internalChannelParams.retryDelaySeedMs",a)||1E4;this.nf=m("internalChannelParams.forwardChannelMaxRetries",
+a)||2;this.Od=m("internalChannelParams.forwardChannelRequestTimeoutMs",a)||2E4;this.Xa=a&&a.oh||void 0;this.Db=void 0;this.Ra=0;this.gc=a&&a.supportsCrossDomainXhr||!1;this.ra="";this.G=new Mc(a&&a.concurrentRequestLimit);this.kc=new Pc;this.ta=a&&void 0!==a.backgroundChannelTest?a.backgroundChannelTest:!0;(this.Nd=a&&a.fastHandshake||!1)&&!this.ta&&(this.a.T("Force backgroundChannelTest when fastHandshake is enabled."), this.ta=!0);a&&a.Id&&this.a.Id();}e=$c.prototype;e.tc=8;e.g=1;
+e.connect=function(a,b,c,d,f){this.a.debug("connect()");O(0);this.K=b;this.gb=c||{};d&&void 0!==f&&(this.gb.OSID=d, this.gb.OAID=f);this.ta&&(this.a.debug("connect() bypassed channel-test."), this.Ib.$d=[], this.Ib.od=!1);this.bf(a);};e.disconnect=function(){this.a.debug("disconnect()");this.qd();if(3==this.g){var a=this.Yb++,b=this.hb.clone();b.l("SID",this.ra);b.l("RID",a);b.l("TYPE","terminate");this.Ya(b);(new R(this,this.a,this.ra,a,void 0)).yg(b);}this.qe();};
+e.bf=function(a){this.a.debug("connectTest_()");this.Ja=new Hc(this,this.a);null===this.N&&this.Ja.ga(this.A);var b=a;this.N&&this.A&&(b=Zc(a,this.N,this.A));this.Ja.connect(b);};e.af=function(){this.a.debug("connectChannel_()");this.hb=this.Sd(this.K);this.Dc();};e.qd=function(){this.Ja&&(this.Ja.abort(), this.Ja=null);this.u&&(this.u.cancel(), this.u=null);this.ia&&(h.clearTimeout(this.ia), this.ia=null);this.Hb();this.G.cancel();this.ea&&(h.clearTimeout(this.ea), this.ea=null);};
+e.ga=function(a){this.A=a;};e.Eg=function(a){this.Rb=a;};e.Cg=function(a){this.N=a;};e.Dg=function(a){this.aa=a;};e.Fe=function(a){this.Kc=a;};e.He=function(a){this.Ra=a;};e.Hg=function(){this.gc=!0;};e.Ee=function(a){this.i=a;};e.Nf=function(){return !this.fd};e.Zc=function(a){1E3==this.M.length&&this.a.ca(function(){return "Already have 1000 queued maps upon queueing "+ub(a)});this.M.push(new Lc(this.ag++,a));3==this.g&&this.Dc();};e.qf=function(){return this.kf?0:this.nf};e.de=function(){return 0==this.g};
+e.getState=function(){return this.g};e.Dc=function(){this.G.ee()||this.ea||(this.ea=P(u(this.we,this),0), this.La=0);};e.Yf=function(a){if(this.G.xf()>=this.G.Xb-(this.ea?1:0))return this.a.ca("Unexpected retry request is scheduled."), !1;if(this.ea)return this.a.debug("Use the retry request that is already scheduled."), this.M=a.la().concat(this.M), !0;if(1==this.g||2==this.g||this.La>=this.qf())return !1;this.a.debug("Going to retry POST");this.ea=P(u(this.we,this,a),this.Xd(this.La));this.La++;return !0};
+e.we=function(a){this.ea=null;this.Mg(a);};e.Mg=function(a){this.a.debug("startForwardChannel_");1==this.g?a?this.a.ca("Not supposed to retry the open"):(this.ig(), this.g=2):3==this.g&&(a?this.le(a):0==this.M.length?this.a.debug("startForwardChannel_ returned: nothing to send"):this.G.ee()?this.a.ca("startForwardChannel_ returned: connection already in progress"):(this.le(), this.a.debug("startForwardChannel_ finished, sent request")));};
+e.ig=function(){this.a.debug("open_()");this.Yb=Math.floor(1E5*Math.random());var a=this.Yb++,b=new R(this,this.a,"",a,void 0),c=this.A;this.Rb&&(c?(c=Da(c), Fa(c,this.Rb)):c=this.Rb);null===this.N&&b.ga(c);var d=this.Hd(b),f=this.hb.clone();f.l("RID",a);0<this.Bd&&f.l("CVER",this.Bd);this.ta&&this.aa&&f.l("X-HTTP-Session-Id",this.aa);this.Ya(f);this.N&&c&&Zc(f,this.N,c);this.G.oc(b);this.Nd?(f.l("$req",d), f.l("SID","null"), b.Ag(), b.kd(f,null)):b.kd(f,d);};
+e.le=function(a){var b=a?a.R:this.Yb++;var c=this.hb.clone();c.l("SID",this.ra);c.l("RID",b);c.l("AID",this.Sb);this.Ya(c);this.N&&this.A&&Zc(c,this.N,this.A);b=new R(this,this.a,this.ra,b,this.La+1);null===this.N&&b.ga(this.A);a&&this.sg(a);a=this.Hd(b);b.setTimeout(Math.round(.5*this.Od)+Math.round(.5*this.Od*Math.random()));this.G.oc(b);b.kd(c,a);};e.Ya=function(a){this.i&&oc({},function(b,c){a.l(c,b);});};
+e.Hd=function(a){var b=Math.min(this.M.length,1E3),c=this.i?u(this.i.Ue,this.i,this):null;c=this.kc.jf(this.M,b,c);a.Gg(this.M.splice(0,b));return c};e.sg=function(a){this.M=a.la().concat(this.M);};e.Kd=function(){if(!this.u&&!this.ia){this.rc=1;var a=this.ve;Bb||Cb();Eb||(Bb(), Eb=!0);Fb.add(a,this);this.Ha=0;}};
+e.Qc=function(){if(this.u||this.ia)return this.a.ca("Request already in progress"), !1;if(3<=this.Ha)return !1;this.a.debug("Going to retry GET");this.rc++;this.ia=P(u(this.ve,this),this.Xd(this.Ha));this.Ha++;return !0};e.ve=function(){this.ia=null;this.Kg();};
+e.Kg=function(){this.a.debug("Creating new HttpRequest");this.u=new R(this,this.a,this.ra,"rpc",this.rc);null===this.N&&this.u.ga(this.A);this.u.He(this.Ra);var a=this.md.clone();a.l("RID","rpc");a.l("SID",this.ra);a.l("CI",this.fd?"0":"1");a.l("AID",this.Sb);this.Ya(a);a.l("TYPE","xmlhttp");this.N&&this.A&&Zc(a,this.N,this.A);this.Db&&this.u.setTimeout(this.Db);this.u.jd(a,!0,this.na);this.a.debug("New Request created");};
+e.ub=function(a,b){this.a.debug("Test Connection Finished");var c=a.Ad;c&&this.G.ld(c);this.fd=this.Se&&b;this.w=a.w;this.af();};e.dd=function(a){this.a.debug("Test Connection Failed");this.w=a.w;this.sa(2);};
+e.ue=function(a,b){if(0!=this.g&&(this.u==a||this.G.Jc(a)))if(this.w=a.w, !a.lb&&this.G.Jc(a)&&3==this.g){try{var c=this.kc.zc(b);}catch(d){c=null;}n(c)&&3==c.length?this.Cf(c,a):(this.a.debug("Bad POST response data returned"), this.sa(11));}else(a.lb||this.u==a)&&this.Hb(), va(b)||(c=this.kc.zc(b), this.dg(c,a));};
+e.Cf=function(a,b){0==a[0]?this.Bf(b):(this.he=a[1], b=this.he-this.Sb, 0<b&&(a=a[2], this.a.debug(a+" bytes (in "+b+" arrays) are outstanding on the BackChannel"), this.Jg(a)&&!this.wa&&(this.wa=P(u(this.bg,this),6E3))));};
+e.Bf=function(a){this.a.debug("Server claims our backchannel is missing.");if(this.ia)this.a.debug("But we are currently starting the request.");else{if(this.u)if(this.u.qb+3E3<a.qb)this.Hb(), this.u.cancel(), this.u=null;else return;else this.a.T("We do not have a BackChannel established");this.Qc();O(18);}};e.Jg=function(a){return 37500>a&&!this.Nf()&&0==this.Ha};e.$a=function(a){return this.Te?this.i?this.i.$a(a):a:null};
+e.bg=function(){null!=this.wa&&(this.wa=null, this.u.cancel(), this.u=null, this.Qc(), O(19));};e.Hb=function(){null!=this.wa&&(h.clearTimeout(this.wa), this.wa=null);};
+e.Tc=function(a){this.a.debug("Request complete");var b=null;if(this.u==a){this.Hb();this.u=null;var c=2;}else if(this.G.Jc(a))b=a.la(), this.G.ze(a), c=1;else return;this.w=a.w;if(0!=this.g)if(a.S)1==c?(ac(a.Da?a.Da.length:0,w()-a.qb,this.La), this.Dc()):this.Kd();else{var d=a.Hc();if(3==d||0==d&&0<this.w)this.a.debug("Not retrying due to error type");else{var f=this;this.a.debug(function(){return "Maybe retrying, last error: "+kc(d,f.w)});if(1==c&&this.Yf(a)||2==c&&this.Qc())return;this.a.debug("Exceeded max number of retries");}b&&
+0<b.length&&this.G.Re(b);this.a.debug("Error: HTTP request failed");switch(d){case 1:this.sa(5);break;case 4:this.sa(10);break;case 3:this.sa(6);break;default:this.sa(2);}}};e.Xd=function(a){var b=this.Ve+Math.floor(Math.random()*this.vg);this.Ba()||(this.a.debug("Inactive channel"), b*=2);return b*a};e.pc=function(a){if(this.ta&&(a=a.h)){var b=a.kb("X-Client-Wire-Protocol");b&&this.G.ld(b);this.aa&&((a=a.kb("X-HTTP-Session-Id"))?(this.Fe(a), this.hb.l(this.aa,a)):this.a.T("Missing X_HTTP_SESSION_ID in the handshake response"));}};
+e.dg=function(a,b){for(var c=this.i&&this.i.sc?[]:null,d=0;d<a.length;d++){var f=a[d];this.Sb=f[0];f=f[1];if(2==this.g)if("c"==f[0]){this.ra=f[1];this.na=this.$a(f[2]);var g=f[3];null!=g&&(this.tc=g, this.a.info("VER="+this.tc));g=f[4];null!=g&&(this.De=g, this.a.info("SVER="+this.De));f=f[5];null!=f&&"number"==typeof f&&0<f&&(this.Db=f*=1.5, this.a.info("backChannelRequestTimeoutMs_="+f));this.pc(b);this.g=3;this.i&&this.i.wd();this.Lg(b);}else"stop"!=f[0]&&"close"!=f[0]||this.sa(7);else 3==this.g&&
+("stop"==f[0]||"close"==f[0]?(c&&0!=c.length&&(this.i.sc(this,c), c.length=0), "stop"==f[0]?this.sa(7):this.disconnect()):"noop"!=f[0]&&(c?c.push(f):this.i&&this.i.ud(f)), this.Ha=0);}c&&0!=c.length&&this.i.sc(this,c);};e.Lg=function(a){this.md=this.Pd(this.na,this.K);a.lb?(this.a.debug("Upgrade the handshake request to a backchannel."), this.G.ze(a), a.tg(this.Db), this.u=a):this.Kd();};
+e.sa=function(a){this.a.info("Error code "+a);if(2==a){var b=null;this.i&&(b=null);var c=u(this.Pg,this);b||(b=new U("//www.google.com/images/cleardot.gif"), h.location&&"http"==h.location.protocol||b.tb("https"), b.Ub());Qc(b.toString(),c);}else O(2);this.cg(a);};e.Pg=function(a){a?(this.a.info("Successfully pinged google.com"), O(2)):(this.a.info("Failed to ping google.com"), O(1));};e.cg=function(a){this.a.debug("HttpChannel: error - "+a);this.g=0;this.i&&this.i.td(a);this.qe();this.qd();};
+e.qe=function(){this.g=0;this.w=-1;if(this.i){var a=this.G.la();if(0!=a.length||0!=this.M.length){var b=this;this.a.debug(function(){return "Number of undelivered maps, pending: "+a.length+", outgoing: "+b.M.length});this.G.$e();ua(this.M);this.M.length=0;}this.i.sd();}};e.Sd=function(a){a=this.Cd(null,a);this.a.debug("GetForwardChannelUri: "+a);return a};e.Pd=function(a,b){a=this.Cd(this.fc()?a:null,b);this.a.debug("GetBackChannelUri: "+a);return a};
+e.Cd=function(a,b){var c=Ac(b);if(""!=c.xa)a&&c.rb(a+"."+c.xa), c.sb(c.Ca);else{var d=h.location;c=Bc(d.protocol,a?a+"."+d.hostname:d.hostname,+d.port,b);}this.gb&&Aa(this.gb,function(a,b){c.l(b,a);});a=this.aa;b=this.Kc;a&&b&&c.l(a,b);c.l("VER",this.tc);this.Ya(c);return c};e.Jb=function(a){if(a&&!this.gc)throw Error("Can't create secondary domain capable XhrIo object.");a=new V(this.Xa);a.Je(this.gc);return a};e.Ba=function(){return !!this.i&&this.i.Ba()};e.fc=function(){return this.gc};function ad(){}e=ad.prototype;e.sc=null;e.wd=function(){};e.ud=function(){};e.td=function(){};e.sd=function(){};e.Ba=function(){return !0};e.Ue=function(){};e.$a=function(a){return a};function bd(a){for(var b=arguments[0],c=1;c<arguments.length;c++){var d=arguments[c];if(0==d.lastIndexOf("/",0))b=d;else{var f;(f=""==b)||(f=b.length-1, f=0<=f&&b.indexOf("/",f)==f);b=f?b+d:b+("/"+d);}}return b}function cd(){if(C&&!(10<=Number(Ua)))throw Error("Environmental error: no available transport.");}cd.prototype.cf=function(a,b){return new W(a,b)};
+function W(a,b){H.call(this);this.b=new $c(b);this.yb=a;this.Qg=b&&b.testUrl?b.testUrl:bd(this.yb,"test");this.s=Vb("goog.labs.net.webChannel.WebChannelBaseTransport");this.Rc=b&&b.messageUrlParams||null;a=b&&b.messageHeaders||null;b&&b.clientProtocolHeaderRequired&&(a?a["X-Client-Protocol"]="webchannel":a={"X-Client-Protocol":"webchannel"});this.b.ga(a);a=b&&b.initMessageHeaders||null;b&&b.messageContentType&&(a?a["X-WebChannel-Content-Type"]=b.messageContentType:a={"X-WebChannel-Content-Type":b.messageContentType});
+b&&b.zd&&(a?a["X-WebChannel-Client-Profile"]=b.zd:a={"X-WebChannel-Client-Profile":b.zd});this.b.Eg(a);(a=b&&b.httpHeadersOverwriteParam)&&!va(a)&&this.b.Cg(a);this.Og=b&&b.supportsCrossDomainXhr||!1;this.zg=b&&b.sendRawJson||!1;(b=b&&b.httpSessionIdParam)&&!va(b)&&(this.b.Dg(b), a=this.Rc, null!==a&&b in a&&(a=this.Rc, b in a&&delete a[b], (a=this.s)&&a.T("Ignore httpSessionIdParam also specified with messageUrlParams: "+b,void 0)));this.vd=new X(this);}x(W,H);e=W.prototype;
+e.addEventListener=function(a,b,c,d){W.L.addEventListener.call(this,a,b,c,d);};e.removeEventListener=function(a,b,c,d){W.L.removeEventListener.call(this,a,b,c,d);};e.open=function(){this.b.Ee(this.vd);this.Og&&this.b.Hg();this.b.connect(this.Qg,this.yb,this.Rc||void 0);};e.close=function(){this.b.disconnect();};e.send=function(a){if(l(a)){var b={};b.__data__=a;this.b.Zc(b);}else this.zg?(b={}, b.__data__=ub(a), this.b.Zc(b)):this.b.Zc(a);};
+e.F=function(){this.b.Ee(null);delete this.vd;this.b.disconnect();delete this.b;W.L.F.call(this);};function dd(a){fc.call(this);var b=a.__sm__;if(b){a:{for(var c in b){a=c;break a}a=void 0;}if(this.ne=a)a=this.ne, b=null!==b&&a in b?b[a]:void 0;this.data=b;}else this.data=a;}x(dd,fc);function ed(a){gc.call(this);this.status=1;this.errorCode=a;}x(ed,gc);function X(a){this.b=a;}x(X,ad);X.prototype.wd=function(){Wb(this.b.s,"WebChannel opened on "+this.b.yb);this.b.dispatchEvent("a");};X.prototype.ud=function(a){this.b.dispatchEvent(new dd(a));};
+X.prototype.td=function(a){Wb(this.b.s,"WebChannel aborted on "+this.b.yb+" due to channel error: "+a);this.b.dispatchEvent(new ed(a));};X.prototype.sd=function(){Wb(this.b.s,"WebChannel closed on "+this.b.yb);this.b.dispatchEvent("b");};var fd=v(function(a,b){function c(){}c.prototype=a.prototype;var d=new c;a.apply(d,Array.prototype.slice.call(arguments,1));return d},cd);function gd(){this.V=[];this.Z=[];}e=gd.prototype;e.Vf=function(){0==this.V.length&&(this.V=this.Z, this.V.reverse(), this.Z=[]);};e.enqueue=function(a){this.Z.push(a);};e.ab=function(){this.Vf();return this.V.pop()};e.C=function(){return this.V.length+this.Z.length};e.X=function(){return 0==this.V.length&&0==this.Z.length};e.clear=function(){this.V=[];this.Z=[];};e.contains=function(a){return 0<=la(this.V,a)||0<=la(this.Z,a)};
+e.remove=function(a){var b=this.V;var c=ma(b,a);0<=c?(Array.prototype.splice.call(b,c,1), b=!0):b=!1;return b||sa(this.Z,a)};e.H=function(){for(var a=[],b=this.V.length-1;0<=b;--b)a.push(this.V[b]);var c=this.Z.length;for(b=0;b<c;++b)a.push(this.Z[b]);return a};function hd(a,b){z.call(this);this.oe=a||0;this.Wb=b||10;if(this.oe>this.Wb)throw Error(id$1);this.fa=new gd;this.oa=new Jc;this.Ac=0;this.Nc=null;this.Cb();}x(hd,z);var id$1="[goog.structs.Pool] Min can not be greater than max";e=hd.prototype;e.Mb=function(){var a=w();if(!(null!=this.Nc&&a-this.Nc<this.Ac)){var b=this.qg();b&&(this.Nc=a, this.oa.add(b));return b}};e.og=function(a){return this.oa.remove(a)?(this.nc(a), !0):!1};
+e.qg=function(){for(var a;0<this.Td()&&(a=this.fa.ab(), !this.Sc(a));)this.Cb();!a&&this.C()<this.Wb&&(a=this.xc());return a};e.nc=function(a){this.oa.remove(a);this.Sc(a)&&this.C()<this.Wb?this.fa.enqueue(a):this.Bc(a);};e.Cb=function(){for(var a=this.fa;this.C()<this.oe;)a.enqueue(this.xc());for(;this.C()>this.Wb&&0<this.Td();)this.Bc(a.ab());};e.xc=function(){return {}};e.Bc=function(a){if("function"==typeof a.bb)a.bb();else for(var b in a)a[b]=null;};
+e.Sc=function(a){return "function"==typeof a.Ye?a.Ye():!0};e.contains=function(a){return this.fa.contains(a)||this.oa.contains(a)};e.C=function(){return this.fa.C()+this.oa.C()};e.rf=function(){return this.oa.C()};e.Td=function(){return this.fa.C()};e.X=function(){return this.fa.X()&&this.oa.X()};e.F=function(){hd.L.F.call(this);if(0<this.rf())throw Error("[goog.structs.Pool] Objects not released");delete this.oa;for(var a=this.fa;!a.X();)this.Bc(a.ab());delete this.fa;};function jd(a,b){this.fe=a;this.gd=b;}jd.prototype.getKey=function(){return this.fe};jd.prototype.clone=function(){return new jd(this.fe,this.gd)};function kd(a){this.Y=[];a&&this.Lf(a);}e=kd.prototype;e.ce=function(a,b){var c=this.Y;c.push(new jd(a,b));this.$f(c.length-1);};e.Lf=function(a){if(a instanceof kd){var b=a.W();a=a.H();if(0>=this.C()){for(var c=this.Y,d=0;d<b.length;d++)c.push(new jd(b[d],a[d]));return}}else b=Ca(a), a=Ba(a);for(d=0;d<b.length;d++)this.ce(b[d],a[d]);};e.remove=function(){var a=this.Y,b=a.length,c=a[0];if(!(0>=b))return 1==b?ra(a):(a[0]=a.pop(), this.Zf()), c.gd};
+e.Zf=function(){for(var a=0,b=this.Y,c=b.length,d=b[a];a<c>>1;){var f=this.tf(a),g=this.zf(a);f=g<c&&b[g].getKey()<b[f].getKey()?g:f;if(b[f].getKey()>d.getKey())break;b[a]=b[f];a=f;}b[a]=d;};e.$f=function(a){for(var b=this.Y,c=b[a];0<a;){var d=this.wf(a);if(b[d].getKey()>c.getKey())b[a]=b[d], a=d;else break}b[a]=c;};e.tf=function(a){return 2*a+1};e.zf=function(a){return 2*a+2};e.wf=function(a){return a-1>>1};e.H=function(){for(var a=this.Y,b=[],c=a.length,d=0;d<c;d++)b.push(a[d].gd);return b};
+e.W=function(){for(var a=this.Y,b=[],c=a.length,d=0;d<c;d++)b.push(a[d].getKey());return b};e.va=function(a){return oa(this.Y,function(b){return b.getKey()==a})};e.clone=function(){return new kd(this)};e.C=function(){return this.Y.length};e.X=function(){return 0==this.Y.length};e.clear=function(){ra(this.Y);};function ld(){kd.call(this);}x(ld,kd);ld.prototype.enqueue=function(a,b){this.ce(a,b);};ld.prototype.ab=function(){return this.remove()};function Y(a,b){this.Gd=void 0;this.cc=new ld;hd.call(this,a,b);}x(Y,hd);e=Y.prototype;e.Mb=function(a,b){if(!a)return (a=Y.L.Mb.call(this))&&this.Ac&&(this.Gd=h.setTimeout(u(this.Nb,this),this.Ac)), a;this.cc.enqueue(void 0!==b?b:100,a);this.Nb();};e.Nb=function(){for(var a=this.cc;0<a.C();){var b=this.Mb();if(b)a.ab().apply(this,[b]);else break}};e.nc=function(a){Y.L.nc.call(this,a);this.Nb();};e.Cb=function(){Y.L.Cb.call(this);this.Nb();};
+e.F=function(){Y.L.F.call(this);h.clearTimeout(this.Gd);this.cc.clear();this.cc=null;};function Z(a,b,c,d){this.Jf=a;this.Ab=!!d;Y.call(this,b,c);}x(Z,Y);Z.prototype.xc=function(){var a=new V,b=this.Jf;b&&b.forEach(function(b,d){a.headers.set(d,b);});this.Ab&&a.Je(!0);return a};Z.prototype.Sc=function(a){return !a.Ka&&!a.Ba()};/*
 
  Copyright 2017 Google Inc.
 
@@ -25890,8 +25877,8 @@ function xc(a){Eb.call(this);var b=a.__sm__;if(b){a:{for(var c in b){a=c;break a
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-wc.prototype.createWebChannel=wc.prototype.a;Y.prototype.send=Y.prototype.Zc;Y.prototype.open=Y.prototype.Yc;Y.prototype.close=Y.prototype.close;Ab.NO_ERROR=0;Ab.TIMEOUT=8;Ab.HTTP_ERROR=6;Bb.COMPLETE="complete";Db.EventType=O;O.OPEN="a";O.CLOSE="b";O.ERROR="c";O.MESSAGE="d";I.prototype.listen=I.prototype.Lb;X.prototype.listenOnce=X.prototype.Mb;X.prototype.getLastError=X.prototype.dd;X.prototype.getLastErrorCode=X.prototype.Db;X.prototype.getStatus=X.prototype.aa;X.prototype.getStatusText=X.prototype.Fb;
-X.prototype.getResponseJson=X.prototype.Nc;X.prototype.getResponseText=X.prototype.va;X.prototype.send=X.prototype.xa;var tmp={createWebChannelTransport:zc,ErrorCode:Ab,EventType:Bb,WebChannel:Db,XhrIo:X};
+cd.prototype.createWebChannel=cd.prototype.cf;W.prototype.send=W.prototype.send;W.prototype.open=W.prototype.open;W.prototype.close=W.prototype.close;bc.NO_ERROR=0;bc.TIMEOUT=8;bc.HTTP_ERROR=6;cc.COMPLETE="complete";ec.EventType=Q;Q.OPEN="a";Q.CLOSE="b";Q.ERROR="c";Q.MESSAGE="d";H.prototype.listen=H.prototype.nb;Z.prototype.getObject=Z.prototype.Mb;Z.prototype.releaseObject=Z.prototype.og;V.prototype.listenOnce=V.prototype.Oc;V.prototype.getLastError=V.prototype.Hc;V.prototype.getLastErrorCode=V.prototype.Ud;
+V.prototype.getStatus=V.prototype.za;V.prototype.getStatusText=V.prototype.Yd;V.prototype.getResponseJson=V.prototype.yf;V.prototype.getResponseText=V.prototype.ya;V.prototype.getResponseText=V.prototype.ya;V.prototype.send=V.prototype.send;var src={createWebChannelTransport:fd,ErrorCode:bc,EventType:cc,WebChannel:ec,XhrIoPool:Z};
 
 var index_cjs$5 = createCommonjsModule(function (module, exports) {
 
@@ -26386,21 +26373,6 @@ function shallowCopy(obj) {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Validates that no arguments were passed in the invocation of functionName.
- *
- * Forward the magic "arguments" variable as second parameter on which the
- * parameter validation is performed:
- * validateNoArgs('myFunction', arguments);
- */
-function validateNoArgs(functionName, args) {
-    if (args.length !== 0) {
-        throw new FirestoreError(Code.INVALID_ARGUMENT, "Function " + functionName + "() does not support arguments, " +
-            'but was called with ' +
-            formatPlural(args.length, 'argument') +
-            '.');
-    }
-}
 /**
  * Validates the invocation of functionName has the exact number of arguments.
  *
@@ -27140,7 +27112,8 @@ var Path = /** @class */ (function () {
         return this.segments[this.offset];
     };
     Path.prototype.lastSegment = function () {
-        return this.get(this.length - 1);
+        assert(!this.isEmpty(), "Can't call lastSegment() on empty path");
+        return this.segments[this.limit() - 1];
     };
     Path.prototype.get = function (index) {
         assert(index < this.length, 'Index out of range');
@@ -27354,11 +27327,6 @@ var DocumentKey = /** @class */ (function () {
         assert(DocumentKey.isDocumentKey(path), 'Invalid DocumentKey with an odd number of segments: ' +
             path.toArray().join('/'));
     }
-    /** Returns true if the document is in the specified collectionId. */
-    DocumentKey.prototype.hasCollectionId = function (collectionId) {
-        return (this.path.length >= 2 &&
-            this.path.get(this.path.length - 2) === collectionId);
-    };
     DocumentKey.prototype.isEqual = function (other) {
         return (other !== null && ResourcePath.comparator(this.path, other.path) === 0);
     };
@@ -28625,19 +28593,13 @@ function isSafeInteger(value) {
  * limitations under the License.
  */
 var Query = /** @class */ (function () {
-    /**
-     * Initializes a Query with a path and optional additional query constraints.
-     * Path must currently be empty if this is a collection group query.
-     */
-    function Query(path, collectionGroup, explicitOrderBy, filters, limit, startAt, endAt) {
-        if (collectionGroup === void 0) { collectionGroup = null; }
+    function Query(path, explicitOrderBy, filters, limit, startAt, endAt) {
         if (explicitOrderBy === void 0) { explicitOrderBy = []; }
         if (filters === void 0) { filters = []; }
         if (limit === void 0) { limit = null; }
         if (startAt === void 0) { startAt = null; }
         if (endAt === void 0) { endAt = null; }
         this.path = path;
-        this.collectionGroup = collectionGroup;
         this.explicitOrderBy = explicitOrderBy;
         this.filters = filters;
         this.limit = limit;
@@ -28709,34 +28671,25 @@ var Query = /** @class */ (function () {
             !(filter instanceof RelationFilter) ||
             !filter.isInequality() ||
             filter.field.isEqual(this.getInequalityFilterField()), 'Query must only have one inequality field.');
-        assert(!this.isDocumentQuery(), 'No filtering allowed for document query');
+        assert(!DocumentKey.isDocumentKey(this.path), 'No filtering allowed for document query');
         var newFilters = this.filters.concat([filter]);
-        return new Query(this.path, this.collectionGroup, this.explicitOrderBy.slice(), newFilters, this.limit, this.startAt, this.endAt);
+        return new Query(this.path, this.explicitOrderBy.slice(), newFilters, this.limit, this.startAt, this.endAt);
     };
     Query.prototype.addOrderBy = function (orderBy) {
+        assert(!DocumentKey.isDocumentKey(this.path), 'No ordering allowed for document query');
         assert(!this.startAt && !this.endAt, 'Bounds must be set after orderBy');
         // TODO(dimond): validate that orderBy does not list the same key twice.
         var newOrderBy = this.explicitOrderBy.concat([orderBy]);
-        return new Query(this.path, this.collectionGroup, newOrderBy, this.filters.slice(), this.limit, this.startAt, this.endAt);
+        return new Query(this.path, newOrderBy, this.filters.slice(), this.limit, this.startAt, this.endAt);
     };
     Query.prototype.withLimit = function (limit) {
-        return new Query(this.path, this.collectionGroup, this.explicitOrderBy.slice(), this.filters.slice(), limit, this.startAt, this.endAt);
+        return new Query(this.path, this.explicitOrderBy.slice(), this.filters.slice(), limit, this.startAt, this.endAt);
     };
     Query.prototype.withStartAt = function (bound) {
-        return new Query(this.path, this.collectionGroup, this.explicitOrderBy.slice(), this.filters.slice(), this.limit, bound, this.endAt);
+        return new Query(this.path, this.explicitOrderBy.slice(), this.filters.slice(), this.limit, bound, this.endAt);
     };
     Query.prototype.withEndAt = function (bound) {
-        return new Query(this.path, this.collectionGroup, this.explicitOrderBy.slice(), this.filters.slice(), this.limit, this.startAt, bound);
-    };
-    /**
-     * Helper to convert a collection group query into a collection query at a
-     * specific path. This is used when executing collection group queries, since
-     * we have to split the query into a set of collection queries at multiple
-     * paths.
-     */
-    Query.prototype.asCollectionQueryAtPath = function (path) {
-        return new Query(path, 
-        /*collectionGroup=*/ null, this.explicitOrderBy.slice(), this.filters.slice(), this.limit, this.startAt, this.endAt);
+        return new Query(this.path, this.explicitOrderBy.slice(), this.filters.slice(), this.limit, this.startAt, bound);
     };
     // TODO(b/29183165): This is used to get a unique string from a query to, for
     // example, use as a dictionary key, but the implementation is subject to
@@ -28744,9 +28697,6 @@ var Query = /** @class */ (function () {
     Query.prototype.canonicalId = function () {
         if (this.memoizedCanonicalId === null) {
             var canonicalId = this.path.canonicalString();
-            if (this.isCollectionGroupQuery()) {
-                canonicalId += '|cg:' + this.collectionGroup;
-            }
             canonicalId += '|f:';
             for (var _i = 0, _a = this.filters; _i < _a.length; _i++) {
                 var filter = _a[_i];
@@ -28778,9 +28728,6 @@ var Query = /** @class */ (function () {
     };
     Query.prototype.toString = function () {
         var str = 'Query(' + this.path.canonicalString();
-        if (this.isCollectionGroupQuery()) {
-            str += ' collectionGroup=' + this.collectionGroup;
-        }
         if (this.filters.length > 0) {
             str += ", filters: [" + this.filters.join(', ') + "]";
         }
@@ -28818,9 +28765,6 @@ var Query = /** @class */ (function () {
                 return false;
             }
         }
-        if (this.collectionGroup !== other.collectionGroup) {
-            return false;
-        }
         if (!this.path.isEqual(other.path)) {
             return false;
         }
@@ -28847,7 +28791,7 @@ var Query = /** @class */ (function () {
         return 0;
     };
     Query.prototype.matches = function (doc) {
-        return (this.matchesPathAndCollectionGroup(doc) &&
+        return (this.matchesAncestor(doc) &&
             this.matchesOrderBy(doc) &&
             this.matchesFilters(doc) &&
             this.matchesBounds(doc));
@@ -28876,28 +28820,17 @@ var Query = /** @class */ (function () {
         }) !== undefined);
     };
     Query.prototype.isDocumentQuery = function () {
-        return (DocumentKey.isDocumentKey(this.path) &&
-            this.collectionGroup === null &&
-            this.filters.length === 0);
+        return DocumentKey.isDocumentKey(this.path) && this.filters.length === 0;
     };
-    Query.prototype.isCollectionGroupQuery = function () {
-        return this.collectionGroup !== null;
-    };
-    Query.prototype.matchesPathAndCollectionGroup = function (doc) {
+    Query.prototype.matchesAncestor = function (doc) {
         var docPath = doc.key.path;
-        if (this.collectionGroup !== null) {
-            // NOTE: this.path is currently always empty since we don't expose Collection
-            // Group queries rooted at a document path yet.
-            return (doc.key.hasCollectionId(this.collectionGroup) &&
-                this.path.isPrefixOf(docPath));
-        }
-        else if (DocumentKey.isDocumentKey(this.path)) {
+        if (DocumentKey.isDocumentKey(this.path)) {
             // exact match for document queries
             return this.path.isEqual(docPath);
         }
         else {
             // shallow ancestor queries by default
-            return this.path.isImmediateParentOf(docPath);
+            return (this.path.isPrefixOf(docPath) && this.path.length === docPath.length - 1);
         }
     };
     /**
@@ -29634,26 +29567,6 @@ var FieldMask = /** @class */ (function () {
         });
         return found;
     };
-    /**
-     * Applies this field mask to the provided object value and returns an object
-     * that only contains fields that are specified in both the input object and
-     * this field mask.
-     */
-    FieldMask.prototype.applyTo = function (data) {
-        var filteredObject = ObjectValue.EMPTY;
-        this.fields.forEach(function (fieldMaskPath) {
-            if (fieldMaskPath.isEmpty()) {
-                return data;
-            }
-            else {
-                var newValue = data.field(fieldMaskPath);
-                if (newValue !== undefined) {
-                    filteredObject = filteredObject.set(fieldMaskPath, newValue);
-                }
-            }
-        });
-        return filteredObject;
-    };
     FieldMask.prototype.isEqual = function (other) {
         return this.fields.isEqual(other.fields);
     };
@@ -29665,14 +29578,6 @@ var FieldTransform = /** @class */ (function () {
         this.field = field;
         this.transform = transform;
     }
-    Object.defineProperty(FieldTransform.prototype, "isIdempotent", {
-        /** Whether this field transform is idempotent. */
-        get: function () {
-            return this.transform.isIdempotent;
-        },
-        enumerable: true,
-        configurable: true
-    });
     FieldTransform.prototype.isEqual = function (other) {
         return (this.field.isEqual(other.field) && this.transform.isEqual(other.transform));
     };
@@ -29871,20 +29776,6 @@ var SetMutation = /** @class */ (function (_super) {
             hasLocalMutations: true
         });
     };
-    Object.defineProperty(SetMutation.prototype, "isIdempotent", {
-        get: function () {
-            return true;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(SetMutation.prototype, "fieldMask", {
-        get: function () {
-            return null;
-        },
-        enumerable: true,
-        configurable: true
-    });
     SetMutation.prototype.isEqual = function (other) {
         return (other instanceof SetMutation &&
             this.key.isEqual(other.key) &&
@@ -29943,13 +29834,6 @@ var PatchMutation = /** @class */ (function (_super) {
             hasLocalMutations: true
         });
     };
-    Object.defineProperty(PatchMutation.prototype, "isIdempotent", {
-        get: function () {
-            return true;
-        },
-        enumerable: true,
-        configurable: true
-    });
     PatchMutation.prototype.isEqual = function (other) {
         return (other instanceof PatchMutation &&
             this.key.isEqual(other.key) &&
@@ -30040,28 +29924,6 @@ var TransformMutation = /** @class */ (function (_super) {
             hasLocalMutations: true
         });
     };
-    Object.defineProperty(TransformMutation.prototype, "isIdempotent", {
-        get: function () {
-            for (var _i = 0, _a = this.fieldTransforms; _i < _a.length; _i++) {
-                var fieldTransform = _a[_i];
-                if (!fieldTransform.isIdempotent) {
-                    return false;
-                }
-            }
-            return true;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(TransformMutation.prototype, "fieldMask", {
-        get: function () {
-            var fieldMask = new SortedSet(FieldPath.comparator);
-            this.fieldTransforms.forEach(function (transform) { return (fieldMask = fieldMask.add(transform.field)); });
-            return new FieldMask(fieldMask);
-        },
-        enumerable: true,
-        configurable: true
-    });
     TransformMutation.prototype.isEqual = function (other) {
         return (other instanceof TransformMutation &&
             this.key.isEqual(other.key) &&
@@ -30173,20 +30035,6 @@ var DeleteMutation = /** @class */ (function (_super) {
             this.key.isEqual(other.key) &&
             this.precondition.isEqual(other.precondition));
     };
-    Object.defineProperty(DeleteMutation.prototype, "isIdempotent", {
-        get: function () {
-            return true;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(DeleteMutation.prototype, "fieldMask", {
-        get: function () {
-            return null;
-        },
-        enumerable: true,
-        configurable: true
-    });
     return DeleteMutation;
 }(Mutation));
 
@@ -30209,7 +30057,6 @@ var DeleteMutation = /** @class */ (function (_super) {
 /** Transforms a value into a server-generated timestamp. */
 var ServerTimestampTransform = /** @class */ (function () {
     function ServerTimestampTransform() {
-        this.isIdempotent = true;
     }
     ServerTimestampTransform.prototype.applyToLocalView = function (previousValue, localWriteTime) {
         return new ServerTimestampValue(localWriteTime, previousValue);
@@ -30227,7 +30074,6 @@ var ServerTimestampTransform = /** @class */ (function () {
 var ArrayUnionTransformOperation = /** @class */ (function () {
     function ArrayUnionTransformOperation(elements) {
         this.elements = elements;
-        this.isIdempotent = true;
     }
     ArrayUnionTransformOperation.prototype.applyToLocalView = function (previousValue, localWriteTime) {
         return this.apply(previousValue);
@@ -30261,7 +30107,6 @@ var ArrayUnionTransformOperation = /** @class */ (function () {
 var ArrayRemoveTransformOperation = /** @class */ (function () {
     function ArrayRemoveTransformOperation(elements) {
         this.elements = elements;
-        this.isIdempotent = true;
     }
     ArrayRemoveTransformOperation.prototype.applyToLocalView = function (previousValue, localWriteTime) {
         return this.apply(previousValue);
@@ -30288,48 +30133,6 @@ var ArrayRemoveTransformOperation = /** @class */ (function () {
             arrayEquals(other.elements, this.elements));
     };
     return ArrayRemoveTransformOperation;
-}());
-/**
- * Implements the backend semantics for locally computed NUMERIC_ADD (increment)
- * transforms. Converts all field values to integers or doubles, but unlike the
- * backend does not cap integer values at 2^63. Instead, JavaScript number
- * arithmetic is used and precision loss can occur for values greater than 2^53.
- */
-var NumericIncrementTransformOperation = /** @class */ (function () {
-    function NumericIncrementTransformOperation(operand) {
-        this.operand = operand;
-        this.isIdempotent = false;
-    }
-    NumericIncrementTransformOperation.prototype.applyToLocalView = function (previousValue, localWriteTime) {
-        // PORTING NOTE: Since JavaScript's integer arithmetic is limited to 53 bit
-        // precision and resolves overflows by reducing precision, we do not
-        // manually cap overflows at 2^63.
-        // Return an integer value iff the previous value and the operand is an
-        // integer.
-        if (previousValue instanceof IntegerValue &&
-            this.operand instanceof IntegerValue) {
-            var sum = previousValue.internalValue + this.operand.internalValue;
-            return new IntegerValue(sum);
-        }
-        else if (previousValue instanceof NumberValue) {
-            var sum = previousValue.internalValue + this.operand.internalValue;
-            return new DoubleValue(sum);
-        }
-        else {
-            // If the existing value is not a number, use the value of the transform as
-            // the new base value.
-            return this.operand;
-        }
-    };
-    NumericIncrementTransformOperation.prototype.applyToRemoteDocument = function (previousValue, transformResult) {
-        assert(transformResult !== null, "Didn't receive transformResult for NUMERIC_ADD transform");
-        return transformResult;
-    };
-    NumericIncrementTransformOperation.prototype.isEqual = function (other) {
-        return (other instanceof NumericIncrementTransformOperation &&
-            this.operand.isEqual(other.operand));
-    };
-    return NumericIncrementTransformOperation;
 }());
 function coercedFieldValuesArray(value) {
     if (value instanceof ArrayValue) {
@@ -31044,11 +30847,9 @@ var RemoteEvent = /** @class */ (function () {
      */
     // PORTING NOTE: Multi-tab only
     RemoteEvent.createSynthesizedRemoteEventForCurrentChange = function (targetId, current) {
-        var _a;
-        var targetChanges = (_a = {},
-            _a[targetId] = TargetChange.createSynthesizedTargetChangeForCurrentChange(targetId, current),
-            _a);
+        var targetChanges = (_a = {}, _a[targetId] = TargetChange.createSynthesizedTargetChangeForCurrentChange(targetId, current), _a);
         return new RemoteEvent(SnapshotVersion.MIN, targetChanges, targetIdSet(), maybeDocumentMap(), documentKeySet());
+        var _a;
     };
     return RemoteEvent;
 }());
@@ -32029,8 +31830,8 @@ var JsonProtoSerializer = /** @class */ (function () {
         else if (hasTag(obj, type, 'arrayValue')) {
             // "values" is not present if the array is empty
             assertPresent(obj.arrayValue, 'arrayValue');
-            var values = obj.arrayValue.values || [];
-            return new ArrayValue(values.map(function (v) { return _this.fromValue(v); }));
+            var values$$1 = obj.arrayValue.values || [];
+            return new ArrayValue(values$$1.map(function (v) { return _this.fromValue(v); }));
         }
         else if (hasTag(obj, type, 'timestampValue')) {
             assertPresent(obj.timestampValue, 'timestampValue');
@@ -32458,12 +32259,6 @@ var JsonProtoSerializer = /** @class */ (function () {
                 }
             };
         }
-        else if (transform instanceof NumericIncrementTransformOperation) {
-            return {
-                fieldPath: fieldTransform.field.canonicalString(),
-                increment: this.toValue(transform.operand)
-            };
-        }
         else {
             throw fail('Unknown transform: ' + fieldTransform.transform);
         }
@@ -32478,17 +32273,12 @@ var JsonProtoSerializer = /** @class */ (function () {
             transform = ServerTimestampTransform.instance;
         }
         else if (hasTag(proto, type, 'appendMissingElements')) {
-            var values = proto.appendMissingElements.values || [];
-            transform = new ArrayUnionTransformOperation(values.map(function (v) { return _this.fromValue(v); }));
+            var values$$1 = proto.appendMissingElements.values || [];
+            transform = new ArrayUnionTransformOperation(values$$1.map(function (v) { return _this.fromValue(v); }));
         }
         else if (hasTag(proto, type, 'removeAllFromArray')) {
-            var values = proto.removeAllFromArray.values || [];
-            transform = new ArrayRemoveTransformOperation(values.map(function (v) { return _this.fromValue(v); }));
-        }
-        else if (hasTag(proto, type, 'increment')) {
-            var operand = this.fromValue(proto.increment);
-            assert(operand instanceof NumberValue, 'NUMERIC_ADD transform requires a NumberValue');
-            transform = new NumericIncrementTransformOperation(operand);
+            var values$$1 = proto.removeAllFromArray.values || [];
+            transform = new ArrayRemoveTransformOperation(values$$1.map(function (v) { return _this.fromValue(v); }));
         }
         else {
             fail('Unknown transform proto: ' + JSON.stringify(proto));
@@ -32508,18 +32298,11 @@ var JsonProtoSerializer = /** @class */ (function () {
     JsonProtoSerializer.prototype.toQueryTarget = function (query) {
         // Dissect the path into parent, collectionId, and optional key filter.
         var result = { structuredQuery: {} };
-        var path = query.path;
-        if (query.collectionGroup !== null) {
-            assert(path.length % 2 === 0, 'Collection Group queries should be within a document path or root.');
-            result.parent = this.toQueryPath(path);
-            result.structuredQuery.from = [
-                {
-                    collectionId: query.collectionGroup,
-                    allDescendants: true
-                }
-            ];
+        if (query.path.isEmpty()) {
+            result.parent = this.toQueryPath(ResourcePath.EMPTY_PATH);
         }
         else {
+            var path = query.path;
             assert(path.length % 2 !== 0, 'Document queries with filters are not supported.');
             result.parent = this.toQueryPath(path.popLast());
             result.structuredQuery.from = [{ collectionId: path.lastSegment() }];
@@ -32548,16 +32331,10 @@ var JsonProtoSerializer = /** @class */ (function () {
         var path = this.fromQueryPath(target.parent);
         var query = target.structuredQuery;
         var fromCount = query.from ? query.from.length : 0;
-        var collectionGroup = null;
         if (fromCount > 0) {
             assert(fromCount === 1, 'StructuredQuery.from with more than one collection is not supported.');
             var from = query.from[0];
-            if (from.allDescendants) {
-                collectionGroup = from.collectionId;
-            }
-            else {
-                path = path.child(from.collectionId);
-            }
+            path = path.child(from.collectionId);
         }
         var filterBy = [];
         if (query.where) {
@@ -32579,7 +32356,7 @@ var JsonProtoSerializer = /** @class */ (function () {
         if (query.endAt) {
             endAt = this.fromCursor(query.endAt);
         }
-        return new Query(path, collectionGroup, orderBy, filterBy, limit, startAt, endAt);
+        return new Query(path, orderBy, filterBy, limit, startAt, endAt);
     };
     JsonProtoSerializer.prototype.toListenRequestLabels = function (queryData) {
         var value = this.toLabel(queryData.purpose);
@@ -32924,6 +32701,7 @@ var XHR_TIMEOUT_SECS = 15;
 var WebChannelConnection = /** @class */ (function () {
     function WebChannelConnection(info) {
         this.databaseId = info.databaseId;
+        this.pool = new src.XhrIoPool();
         var proto = info.ssl ? 'https' : 'http';
         this.baseUrl = proto + '://' + info.host;
     }
@@ -32945,58 +32723,60 @@ var WebChannelConnection = /** @class */ (function () {
         var _this = this;
         var url = this.makeUrl(rpcName);
         return new Promise(function (resolve, reject) {
-            // tslint:disable-next-line:no-any XhrIo doesn't have TS typings.
-            var xhr = new tmp.XhrIo();
-            xhr.listenOnce(tmp.EventType.COMPLETE, function () {
-                try {
-                    switch (xhr.getLastErrorCode()) {
-                        case tmp.ErrorCode.NO_ERROR:
-                            var json = xhr.getResponseJson();
-                            debug(LOG_TAG, 'XHR received:', JSON.stringify(json));
-                            resolve(json);
-                            break;
-                        case tmp.ErrorCode.TIMEOUT:
-                            debug(LOG_TAG, 'RPC "' + rpcName + '" timed out');
-                            reject(new FirestoreError(Code.DEADLINE_EXCEEDED, 'Request time out'));
-                            break;
-                        case tmp.ErrorCode.HTTP_ERROR:
-                            var status_1 = xhr.getStatus();
-                            debug(LOG_TAG, 'RPC "' + rpcName + '" failed with status:', status_1, 'response text:', xhr.getResponseText());
-                            if (status_1 > 0) {
-                                reject(new FirestoreError(mapCodeFromHttpStatus(status_1), 'Server responded with status ' + xhr.getStatusText()));
-                            }
-                            else {
-                                // If we received an HTTP_ERROR but there's no status code,
-                                // it's most probably a connection issue
-                                debug(LOG_TAG, 'RPC "' + rpcName + '" failed');
-                                reject(new FirestoreError(Code.UNAVAILABLE, 'Connection failed.'));
-                            }
-                            break;
-                        default:
-                            fail('RPC "' +
-                                rpcName +
-                                '" failed with unanticipated ' +
-                                'webchannel error ' +
-                                xhr.getLastErrorCode() +
-                                ': ' +
-                                xhr.getLastError() +
-                                ', giving up.');
+            // tslint:disable-next-line:no-any XhrIoPool doesn't have TS typings.
+            _this.pool.getObject(function (xhr) {
+                xhr.listenOnce(src.EventType.COMPLETE, function () {
+                    try {
+                        switch (xhr.getLastErrorCode()) {
+                            case src.ErrorCode.NO_ERROR:
+                                var json = xhr.getResponseJson();
+                                debug(LOG_TAG, 'XHR received:', JSON.stringify(json));
+                                resolve(json);
+                                break;
+                            case src.ErrorCode.TIMEOUT:
+                                debug(LOG_TAG, 'RPC "' + rpcName + '" timed out');
+                                reject(new FirestoreError(Code.DEADLINE_EXCEEDED, 'Request time out'));
+                                break;
+                            case src.ErrorCode.HTTP_ERROR:
+                                var status_1 = xhr.getStatus();
+                                debug(LOG_TAG, 'RPC "' + rpcName + '" failed with status:', status_1, 'response text:', xhr.getResponseText());
+                                if (status_1 > 0) {
+                                    reject(new FirestoreError(mapCodeFromHttpStatus(status_1), 'Server responded with status ' + xhr.getStatusText()));
+                                }
+                                else {
+                                    // If we received an HTTP_ERROR but there's no status code,
+                                    // it's most probably a connection issue
+                                    debug(LOG_TAG, 'RPC "' + rpcName + '" failed');
+                                    reject(new FirestoreError(Code.UNAVAILABLE, 'Connection failed.'));
+                                }
+                                break;
+                            default:
+                                fail('RPC "' +
+                                    rpcName +
+                                    '" failed with unanticipated ' +
+                                    'webchannel error ' +
+                                    xhr.getLastErrorCode() +
+                                    ': ' +
+                                    xhr.getLastError() +
+                                    ', giving up.');
+                        }
                     }
-                }
-                finally {
-                    debug(LOG_TAG, 'RPC "' + rpcName + '" completed.');
-                }
+                    finally {
+                        debug(LOG_TAG, 'RPC "' + rpcName + '" completed.');
+                        _this.pool.releaseObject(xhr);
+                    }
+                });
+                var requestString = JSON.stringify(request);
+                debug(LOG_TAG, 'XHR sending: ', url + ' ' + requestString);
+                // Content-Type: text/plain will avoid preflight requests which might
+                // mess with CORS and redirects by proxies. If we add custom headers
+                // we will need to change this code to potentially use the
+                // $httpOverwrite parameter supported by ESF to avoid
+                // triggering preflight requests.
+                var headers = { 'Content-Type': 'text/plain' };
+                _this.modifyHeadersForRequest(headers, token);
+                xhr.send(url, 'POST', requestString, headers, XHR_TIMEOUT_SECS);
             });
-            var requestString = JSON.stringify(request);
-            debug(LOG_TAG, 'XHR sending: ', url + ' ' + requestString);
-            // Content-Type: text/plain will avoid preflight requests which might
-            // mess with CORS and redirects by proxies. If we add custom headers
-            // we will need to change this code to potentially use the
-            // $httpOverwrite parameter supported by ESF to avoid
-            // triggering preflight requests.
-            var headers = { 'Content-Type': 'text/plain' };
-            _this.modifyHeadersForRequest(headers, token);
-            xhr.send(url, 'POST', requestString, headers, XHR_TIMEOUT_SECS);
         });
     };
     WebChannelConnection.prototype.invokeStreamingRPC = function (rpcName, request, token) {
@@ -33013,7 +32793,7 @@ var WebChannelConnection = /** @class */ (function () {
             rpcName,
             '/channel'
         ];
-        var webchannelTransport = tmp.createWebChannelTransport();
+        var webchannelTransport = src.createWebChannelTransport();
         var request = {
             // Background channel test avoids the initial two test calls and decreases
             // initial cold start time.
@@ -33102,26 +32882,26 @@ var WebChannelConnection = /** @class */ (function () {
                 }
             });
         };
-        unguardedEventListen(tmp.WebChannel.EventType.OPEN, function () {
+        unguardedEventListen(src.WebChannel.EventType.OPEN, function () {
             if (!closed) {
                 debug(LOG_TAG, 'WebChannel transport opened.');
             }
         });
-        unguardedEventListen(tmp.WebChannel.EventType.CLOSE, function () {
+        unguardedEventListen(src.WebChannel.EventType.CLOSE, function () {
             if (!closed) {
                 closed = true;
                 debug(LOG_TAG, 'WebChannel transport closed');
                 streamBridge.callOnClose();
             }
         });
-        unguardedEventListen(tmp.WebChannel.EventType.ERROR, function (err) {
+        unguardedEventListen(src.WebChannel.EventType.ERROR, function (err) {
             if (!closed) {
                 closed = true;
                 debug(LOG_TAG, 'WebChannel transport errored:', err);
                 streamBridge.callOnClose(new FirestoreError(Code.UNAVAILABLE, 'The operation could not be completed'));
             }
         });
-        unguardedEventListen(tmp.WebChannel.EventType.MESSAGE, function (msg) {
+        unguardedEventListen(src.WebChannel.EventType.MESSAGE, function (msg) {
             if (!closed) {
                 var msgData = msg.data[0];
                 assert(!!msgData, 'Got a webchannel message without data.');
@@ -33129,22 +32909,22 @@ var WebChannelConnection = /** @class */ (function () {
                 // (and only errors) to be wrapped in an extra array. To be forward
                 // compatible with the bug we need to check either condition. The latter
                 // can be removed once the fix has been rolled out.
-                var error = 
+                var error$$1 = 
                 // tslint:disable-next-line:no-any msgData.error is not typed.
                 msgData.error || (msgData[0] && msgData[0].error);
-                if (error) {
-                    debug(LOG_TAG, 'WebChannel received error:', error);
+                if (error$$1) {
+                    debug(LOG_TAG, 'WebChannel received error:', error$$1);
                     // error.status will be a string like 'OK' or 'NOT_FOUND'.
-                    var status_2 = error.status;
+                    var status_2 = error$$1.status;
                     var code = mapCodeFromRpcStatus(status_2);
-                    var message = error.message;
+                    var message = error$$1.message;
                     if (code === undefined) {
                         code = Code.INTERNAL;
                         message =
                             'Unknown error status: ' +
                                 status_2 +
                                 ' with message ' +
-                                error.message;
+                                error$$1.message;
                     }
                     // Mark closed so no further events are propagated
                     closed = true;
@@ -33511,23 +33291,23 @@ var AsyncQueue = /** @class */ (function () {
         var newTail = this.tail.then(function () {
             _this.operationInProgress = true;
             return op()
-                .catch(function (error$1) {
-                _this.failure = error$1;
+                .catch(function (error$$1) {
+                _this.failure = error$$1;
                 _this.operationInProgress = false;
-                var message = error$1.stack || error$1.message || '';
+                var message = error$$1.stack || error$$1.message || '';
                 error('INTERNAL UNHANDLED ERROR: ', message);
                 // Escape the promise chain and throw the error globally so that
                 // e.g. any global crash reporting library detects and reports it.
                 // (but not for simulated errors in our tests since this breaks mocha)
                 if (message.indexOf('Firestore Test Simulated Error') < 0) {
                     setTimeout(function () {
-                        throw error$1;
+                        throw error$$1;
                     }, 0);
                 }
                 // Re-throw the error so that this.tail becomes a rejected Promise and
                 // all further attempts to chain (via .then) will just short-circuit
                 // and return the rejected Promise.
-                throw error$1;
+                throw error$$1;
             })
                 .then(function (result) {
                 _this.operationInProgress = false;
@@ -33761,21 +33541,9 @@ var BATCHID_UNKNOWN = -1;
  * A batch of mutations that will be sent as one unit to the backend.
  */
 var MutationBatch = /** @class */ (function () {
-    /**
-     * @param batchId The unique ID of this mutation batch.
-     * @param localWriteTime The original write time of this mutation.
-     * @param baseMutations Mutations that are used to populate the base
-     * values when this mutation is applied locally. This can be used to locally
-     * overwrite values that are persisted in the remote document cache. Base
-     * mutations are never sent to the backend.
-     * @param mutations The user-provided mutations in this mutation batch.
-     * User-provided mutations are applied both locally and remotely on the
-     * backend.
-     */
-    function MutationBatch(batchId, localWriteTime, baseMutations, mutations) {
+    function MutationBatch(batchId, localWriteTime, mutations) {
         this.batchId = batchId;
         this.localWriteTime = localWriteTime;
-        this.baseMutations = baseMutations;
         this.mutations = mutations;
         assert(mutations.length > 0, 'Cannot create an empty mutation batch');
     }
@@ -33814,49 +33582,26 @@ var MutationBatch = /** @class */ (function () {
         if (maybeDoc) {
             assert(maybeDoc.key.isEqual(docKey), "applyToLocalDocument: key " + docKey + " should match maybeDoc key\n        " + maybeDoc.key);
         }
-        // First, apply the base state. This allows us to apply non-idempotent
-        // transform against a consistent set of values.
-        for (var _i = 0, _a = this.baseMutations; _i < _a.length; _i++) {
-            var mutation = _a[_i];
-            if (mutation.key.isEqual(docKey)) {
-                maybeDoc = mutation.applyToLocalView(maybeDoc, maybeDoc, this.localWriteTime);
-            }
-        }
         var baseDoc = maybeDoc;
-        // Second, apply all user-provided mutations.
-        for (var _b = 0, _c = this.mutations; _b < _c.length; _b++) {
-            var mutation = _c[_b];
+        for (var i = 0; i < this.mutations.length; i++) {
+            var mutation = this.mutations[i];
             if (mutation.key.isEqual(docKey)) {
                 maybeDoc = mutation.applyToLocalView(maybeDoc, baseDoc, this.localWriteTime);
             }
         }
         return maybeDoc;
     };
-    /**
-     * Computes the local view for all provided documents given the mutations in
-     * this batch.
-     */
-    MutationBatch.prototype.applyToLocalDocumentSet = function (maybeDocs) {
-        var _this = this;
-        // TODO(mrschmidt): This implementation is O(n^2). If we apply the mutations
-        // directly (as done in `applyToLocalView()`), we can reduce the complexity
-        // to O(n).
-        var mutatedDocuments = maybeDocs;
-        this.mutations.forEach(function (m) {
-            var mutatedDocument = _this.applyToLocalView(m.key, maybeDocs.get(m.key));
-            if (mutatedDocument) {
-                mutatedDocuments = mutatedDocuments.insert(m.key, mutatedDocument);
-            }
-        });
-        return mutatedDocuments;
-    };
     MutationBatch.prototype.keys = function () {
-        return this.mutations.reduce(function (keys, m) { return keys.add(m.key); }, documentKeySet());
+        var keySet = documentKeySet();
+        for (var _i = 0, _a = this.mutations; _i < _a.length; _i++) {
+            var mutation = _a[_i];
+            keySet = keySet.add(mutation.key);
+        }
+        return keySet;
     };
     MutationBatch.prototype.isEqual = function (other) {
         return (this.batchId === other.batchId &&
-            arrayEquals(this.mutations, other.mutations) &&
-            arrayEquals(this.baseMutations, other.baseMutations));
+            arrayEquals(this.mutations, other.mutations));
     };
     return MutationBatch;
 }());
@@ -33892,6 +33637,87 @@ var MutationBatchResult = /** @class */ (function () {
         return new MutationBatchResult(batch, commitVersion, results, streamToken, versionMap);
     };
     return MutationBatchResult;
+}());
+
+/**
+ * @license
+ * Copyright 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+var RESERVED_BITS = 1;
+var GeneratorIds;
+(function (GeneratorIds) {
+    GeneratorIds[GeneratorIds["QueryCache"] = 0] = "QueryCache";
+    GeneratorIds[GeneratorIds["SyncEngine"] = 1] = "SyncEngine"; // The target IDs for limbo detection are odd (end in 1).
+})(GeneratorIds || (GeneratorIds = {}));
+/**
+ * Generates monotonically increasing target IDs for sending targets to the
+ * watch stream.
+ *
+ * The client constructs two generators, one for the query cache (via
+ * forQueryCache()), and one for limbo documents (via forSyncEngine()). These
+ * two generators produce non-overlapping IDs (by using even and odd IDs
+ * respectively).
+ *
+ * By separating the target ID space, the query cache can generate target IDs
+ * that persist across client restarts, while sync engine can independently
+ * generate in-memory target IDs that are transient and can be reused after a
+ * restart.
+ */
+// TODO(mrschmidt): Explore removing this class in favor of generating these IDs
+// directly in SyncEngine and LocalStore.
+var TargetIdGenerator = /** @class */ (function () {
+    /**
+     * Instantiates a new TargetIdGenerator. If a seed is provided, the generator
+     * will use the seed value as the next target ID.
+     */
+    function TargetIdGenerator(generatorId, seed) {
+        this.generatorId = generatorId;
+        assert((generatorId & RESERVED_BITS) === generatorId, "Generator ID " + generatorId + " contains more than " + RESERVED_BITS + " reserved bits");
+        this.seek(seed !== undefined ? seed : this.generatorId);
+    }
+    TargetIdGenerator.prototype.next = function () {
+        var nextId = this.nextId;
+        this.nextId += 1 << RESERVED_BITS;
+        return nextId;
+    };
+    /**
+     * Returns the ID that follows the given ID. Subsequent calls to `next()`
+     * use the newly returned target ID as their base.
+     */
+    // PORTING NOTE: Multi-tab only.
+    TargetIdGenerator.prototype.after = function (targetId) {
+        this.seek(targetId + (1 << RESERVED_BITS));
+        return this.next();
+    };
+    TargetIdGenerator.prototype.seek = function (targetId) {
+        assert((targetId & RESERVED_BITS) === this.generatorId, 'Cannot supply target ID from different generator ID');
+        this.nextId = targetId;
+    };
+    TargetIdGenerator.forQueryCache = function () {
+        // We seed the query cache generator to return '2' as its first ID, as there
+        // is no differentiation in the protocol layer between an unset number and
+        // the number '0'. If we were to sent a target with target ID '0', the
+        // backend would consider it unset and replace it with its own ID.
+        var targetIdGenerator = new TargetIdGenerator(GeneratorIds.QueryCache, 2);
+        return targetIdGenerator;
+    };
+    TargetIdGenerator.forSyncEngine = function () {
+        // Sync engine assigns target IDs for limbo document detection.
+        return new TargetIdGenerator(GeneratorIds.SyncEngine);
+    };
+    return TargetIdGenerator;
 }());
 
 /**
@@ -34110,529 +33936,6 @@ var PersistencePromise = /** @class */ (function () {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/** A mutation queue for a specific user, backed by IndexedDB. */
-var IndexedDbMutationQueue = /** @class */ (function () {
-    function IndexedDbMutationQueue(
-    /**
-     * The normalized userId (e.g. null UID => "" userId) used to store /
-     * retrieve mutations.
-     */
-    userId, serializer, indexManager, referenceDelegate) {
-        this.userId = userId;
-        this.serializer = serializer;
-        this.indexManager = indexManager;
-        this.referenceDelegate = referenceDelegate;
-        /**
-         * Caches the document keys for pending mutation batches. If the mutation
-         * has been removed from IndexedDb, the cached value may continue to
-         * be used to retrieve the batch's document keys. To remove a cached value
-         * locally, `removeCachedMutationKeys()` should be invoked either directly
-         * or through `removeMutationBatches()`.
-         *
-         * With multi-tab, when the primary client acknowledges or rejects a mutation,
-         * this cache is used by secondary clients to invalidate the local
-         * view of the documents that were previously affected by the mutation.
-         */
-        // PORTING NOTE: Multi-tab only.
-        this.documentKeysByBatchId = {};
-    }
-    /**
-     * Creates a new mutation queue for the given user.
-     * @param user The user for which to create a mutation queue.
-     * @param serializer The serializer to use when persisting to IndexedDb.
-     */
-    IndexedDbMutationQueue.forUser = function (user, serializer, indexManager, referenceDelegate) {
-        // TODO(mcg): Figure out what constraints there are on userIDs
-        // In particular, are there any reserved characters? are empty ids allowed?
-        // For the moment store these together in the same mutations table assuming
-        // that empty userIDs aren't allowed.
-        assert(user.uid !== '', 'UserID must not be an empty string.');
-        var userId = user.isAuthenticated() ? user.uid : '';
-        return new IndexedDbMutationQueue(userId, serializer, indexManager, referenceDelegate);
-    };
-    IndexedDbMutationQueue.prototype.checkEmpty = function (transaction) {
-        var empty = true;
-        var range = IDBKeyRange.bound([this.userId, Number.NEGATIVE_INFINITY], [this.userId, Number.POSITIVE_INFINITY]);
-        return mutationsStore(transaction)
-            .iterate({ index: DbMutationBatch.userMutationsIndex, range: range }, function (key, value, control) {
-            empty = false;
-            control.done();
-        })
-            .next(function () { return empty; });
-    };
-    IndexedDbMutationQueue.prototype.acknowledgeBatch = function (transaction, batch, streamToken) {
-        return this.getMutationQueueMetadata(transaction).next(function (metadata) {
-            metadata.lastStreamToken = convertStreamToken(streamToken);
-            return mutationQueuesStore(transaction).put(metadata);
-        });
-    };
-    IndexedDbMutationQueue.prototype.getLastStreamToken = function (transaction) {
-        return this.getMutationQueueMetadata(transaction).next(function (metadata) { return metadata.lastStreamToken; });
-    };
-    IndexedDbMutationQueue.prototype.setLastStreamToken = function (transaction, streamToken) {
-        return this.getMutationQueueMetadata(transaction).next(function (metadata) {
-            metadata.lastStreamToken = convertStreamToken(streamToken);
-            return mutationQueuesStore(transaction).put(metadata);
-        });
-    };
-    IndexedDbMutationQueue.prototype.addMutationBatch = function (transaction, localWriteTime, baseMutations, mutations) {
-        var _this = this;
-        var documentStore = documentMutationsStore(transaction);
-        var mutationStore = mutationsStore(transaction);
-        // The IndexedDb implementation in Chrome (and Firefox) does not handle
-        // compound indices that include auto-generated keys correctly. To ensure
-        // that the index entry is added correctly in all browsers, we perform two
-        // writes: The first write is used to retrieve the next auto-generated Batch
-        // ID, and the second write populates the index and stores the actual
-        // mutation batch.
-        // See: https://bugs.chromium.org/p/chromium/issues/detail?id=701972
-        // tslint:disable-next-line:no-any We write an empty object to obtain key
-        return mutationStore.add({}).next(function (batchId) {
-            assert(typeof batchId === 'number', 'Auto-generated key is not a number');
-            var batch = new MutationBatch(batchId, localWriteTime, baseMutations, mutations);
-            var dbBatch = _this.serializer.toDbMutationBatch(_this.userId, batch);
-            _this.documentKeysByBatchId[batchId] = batch.keys();
-            var promises = [];
-            for (var _i = 0, mutations_1 = mutations; _i < mutations_1.length; _i++) {
-                var mutation = mutations_1[_i];
-                var indexKey = DbDocumentMutation.key(_this.userId, mutation.key.path, batchId);
-                promises.push(mutationStore.put(dbBatch));
-                promises.push(documentStore.put(indexKey, DbDocumentMutation.PLACEHOLDER));
-                promises.push(_this.indexManager.addToCollectionParentIndex(transaction, mutation.key.path.popLast()));
-            }
-            return PersistencePromise.waitFor(promises).next(function () { return batch; });
-        });
-    };
-    IndexedDbMutationQueue.prototype.lookupMutationBatch = function (transaction, batchId) {
-        var _this = this;
-        return mutationsStore(transaction)
-            .get(batchId)
-            .next(function (dbBatch) {
-            if (dbBatch) {
-                assert(dbBatch.userId === _this.userId, "Unexpected user '" + dbBatch.userId + "' for mutation batch " + batchId);
-                return _this.serializer.fromDbMutationBatch(dbBatch);
-            }
-            return null;
-        });
-    };
-    IndexedDbMutationQueue.prototype.lookupMutationKeys = function (transaction, batchId) {
-        var _this = this;
-        if (this.documentKeysByBatchId[batchId]) {
-            return PersistencePromise.resolve(this.documentKeysByBatchId[batchId]);
-        }
-        else {
-            return this.lookupMutationBatch(transaction, batchId).next(function (batch) {
-                if (batch) {
-                    var keys = batch.keys();
-                    _this.documentKeysByBatchId[batchId] = keys;
-                    return keys;
-                }
-                else {
-                    return null;
-                }
-            });
-        }
-    };
-    IndexedDbMutationQueue.prototype.getNextMutationBatchAfterBatchId = function (transaction, batchId) {
-        var _this = this;
-        return this.getMutationQueueMetadata(transaction).next(function (metadata) {
-            var nextBatchId = batchId + 1;
-            var range = IDBKeyRange.lowerBound([_this.userId, nextBatchId]);
-            var foundBatch = null;
-            return mutationsStore(transaction)
-                .iterate({ index: DbMutationBatch.userMutationsIndex, range: range }, function (key, dbBatch, control) {
-                if (dbBatch.userId === _this.userId) {
-                    assert(dbBatch.batchId >= nextBatchId, 'Should have found mutation after ' + nextBatchId);
-                    foundBatch = _this.serializer.fromDbMutationBatch(dbBatch);
-                }
-                control.done();
-            })
-                .next(function () { return foundBatch; });
-        });
-    };
-    IndexedDbMutationQueue.prototype.getAllMutationBatches = function (transaction) {
-        var _this = this;
-        var range = IDBKeyRange.bound([this.userId, BATCHID_UNKNOWN], [this.userId, Number.POSITIVE_INFINITY]);
-        return mutationsStore(transaction)
-            .loadAll(DbMutationBatch.userMutationsIndex, range)
-            .next(function (dbBatches) {
-            return dbBatches.map(function (dbBatch) { return _this.serializer.fromDbMutationBatch(dbBatch); });
-        });
-    };
-    IndexedDbMutationQueue.prototype.getAllMutationBatchesAffectingDocumentKey = function (transaction, documentKey) {
-        var _this = this;
-        // Scan the document-mutation index starting with a prefix starting with
-        // the given documentKey.
-        var indexPrefix = DbDocumentMutation.prefixForPath(this.userId, documentKey.path);
-        var indexStart = IDBKeyRange.lowerBound(indexPrefix);
-        var results = [];
-        return documentMutationsStore(transaction)
-            .iterate({ range: indexStart }, function (indexKey, _, control) {
-            var userID = indexKey[0], encodedPath = indexKey[1], batchId = indexKey[2];
-            // Only consider rows matching exactly the specific key of
-            // interest. Note that because we order by path first, and we
-            // order terminators before path separators, we'll encounter all
-            // the index rows for documentKey contiguously. In particular, all
-            // the rows for documentKey will occur before any rows for
-            // documents nested in a subcollection beneath documentKey so we
-            // can stop as soon as we hit any such row.
-            var path = decode(encodedPath);
-            if (userID !== _this.userId || !documentKey.path.isEqual(path)) {
-                control.done();
-                return;
-            }
-            // Look up the mutation batch in the store.
-            return mutationsStore(transaction)
-                .get(batchId)
-                .next(function (mutation) {
-                if (!mutation) {
-                    throw fail('Dangling document-mutation reference found: ' +
-                        indexKey +
-                        ' which points to ' +
-                        batchId);
-                }
-                assert(mutation.userId === _this.userId, "Unexpected user '" + mutation.userId + "' for mutation batch " + batchId);
-                results.push(_this.serializer.fromDbMutationBatch(mutation));
-            });
-        })
-            .next(function () { return results; });
-    };
-    IndexedDbMutationQueue.prototype.getAllMutationBatchesAffectingDocumentKeys = function (transaction, documentKeys) {
-        var _this = this;
-        var uniqueBatchIDs = new SortedSet(primitiveComparator);
-        var promises = [];
-        documentKeys.forEach(function (documentKey) {
-            var indexStart = DbDocumentMutation.prefixForPath(_this.userId, documentKey.path);
-            var range = IDBKeyRange.lowerBound(indexStart);
-            var promise = documentMutationsStore(transaction).iterate({ range: range }, function (indexKey, _, control) {
-                var userID = indexKey[0], encodedPath = indexKey[1], batchID = indexKey[2];
-                // Only consider rows matching exactly the specific key of
-                // interest. Note that because we order by path first, and we
-                // order terminators before path separators, we'll encounter all
-                // the index rows for documentKey contiguously. In particular, all
-                // the rows for documentKey will occur before any rows for
-                // documents nested in a subcollection beneath documentKey so we
-                // can stop as soon as we hit any such row.
-                var path = decode(encodedPath);
-                if (userID !== _this.userId || !documentKey.path.isEqual(path)) {
-                    control.done();
-                    return;
-                }
-                uniqueBatchIDs = uniqueBatchIDs.add(batchID);
-            });
-            promises.push(promise);
-        });
-        return PersistencePromise.waitFor(promises).next(function () {
-            return _this.lookupMutationBatches(transaction, uniqueBatchIDs);
-        });
-    };
-    IndexedDbMutationQueue.prototype.getAllMutationBatchesAffectingQuery = function (transaction, query) {
-        var _this = this;
-        assert(!query.isDocumentQuery(), "Document queries shouldn't go down this path");
-        assert(!query.isCollectionGroupQuery(), 'CollectionGroup queries should be handled in LocalDocumentsView');
-        var queryPath = query.path;
-        var immediateChildrenLength = queryPath.length + 1;
-        // TODO(mcg): Actually implement a single-collection query
-        //
-        // This is actually executing an ancestor query, traversing the whole
-        // subtree below the collection which can be horrifically inefficient for
-        // some structures. The right way to solve this is to implement the full
-        // value index, but that's not in the cards in the near future so this is
-        // the best we can do for the moment.
-        //
-        // Since we don't yet index the actual properties in the mutations, our
-        // current approach is to just return all mutation batches that affect
-        // documents in the collection being queried.
-        var indexPrefix = DbDocumentMutation.prefixForPath(this.userId, queryPath);
-        var indexStart = IDBKeyRange.lowerBound(indexPrefix);
-        // Collect up unique batchIDs encountered during a scan of the index. Use a
-        // SortedSet to accumulate batch IDs so they can be traversed in order in a
-        // scan of the main table.
-        var uniqueBatchIDs = new SortedSet(primitiveComparator);
-        return documentMutationsStore(transaction)
-            .iterate({ range: indexStart }, function (indexKey, _, control) {
-            var userID = indexKey[0], encodedPath = indexKey[1], batchID = indexKey[2];
-            var path = decode(encodedPath);
-            if (userID !== _this.userId || !queryPath.isPrefixOf(path)) {
-                control.done();
-                return;
-            }
-            // Rows with document keys more than one segment longer than the
-            // query path can't be matches. For example, a query on 'rooms'
-            // can't match the document /rooms/abc/messages/xyx.
-            // TODO(mcg): we'll need a different scanner when we implement
-            // ancestor queries.
-            if (path.length !== immediateChildrenLength) {
-                return;
-            }
-            uniqueBatchIDs = uniqueBatchIDs.add(batchID);
-        })
-            .next(function () { return _this.lookupMutationBatches(transaction, uniqueBatchIDs); });
-    };
-    IndexedDbMutationQueue.prototype.lookupMutationBatches = function (transaction, batchIDs) {
-        var _this = this;
-        var results = [];
-        var promises = [];
-        // TODO(rockwood): Implement this using iterate.
-        batchIDs.forEach(function (batchId) {
-            promises.push(mutationsStore(transaction)
-                .get(batchId)
-                .next(function (mutation) {
-                if (mutation === null) {
-                    throw fail('Dangling document-mutation reference found, ' +
-                        'which points to ' +
-                        batchId);
-                }
-                assert(mutation.userId === _this.userId, "Unexpected user '" + mutation.userId + "' for mutation batch " + batchId);
-                results.push(_this.serializer.fromDbMutationBatch(mutation));
-            }));
-        });
-        return PersistencePromise.waitFor(promises).next(function () { return results; });
-    };
-    IndexedDbMutationQueue.prototype.removeMutationBatch = function (transaction, batch) {
-        var _this = this;
-        return removeMutationBatch(transaction.simpleDbTransaction, this.userId, batch).next(function (removedDocuments) {
-            _this.removeCachedMutationKeys(batch.batchId);
-            return PersistencePromise.forEach(removedDocuments, function (key) {
-                return _this.referenceDelegate.removeMutationReference(transaction, key);
-            });
-        });
-    };
-    IndexedDbMutationQueue.prototype.removeCachedMutationKeys = function (batchId) {
-        delete this.documentKeysByBatchId[batchId];
-    };
-    IndexedDbMutationQueue.prototype.performConsistencyCheck = function (txn) {
-        var _this = this;
-        return this.checkEmpty(txn).next(function (empty) {
-            if (!empty) {
-                return PersistencePromise.resolve();
-            }
-            // Verify that there are no entries in the documentMutations index if
-            // the queue is empty.
-            var startRange = IDBKeyRange.lowerBound(DbDocumentMutation.prefixForUser(_this.userId));
-            var danglingMutationReferences = [];
-            return documentMutationsStore(txn)
-                .iterate({ range: startRange }, function (key, _, control) {
-                var userID = key[0];
-                if (userID !== _this.userId) {
-                    control.done();
-                    return;
-                }
-                else {
-                    var path = decode(key[1]);
-                    danglingMutationReferences.push(path);
-                }
-            })
-                .next(function () {
-                assert(danglingMutationReferences.length === 0, 'Document leak -- detected dangling mutation references when queue is empty. ' +
-                    'Dangling keys: ' +
-                    danglingMutationReferences.map(function (p) { return p.canonicalString(); }));
-            });
-        });
-    };
-    IndexedDbMutationQueue.prototype.containsKey = function (txn, key) {
-        return mutationQueueContainsKey(txn, this.userId, key);
-    };
-    // PORTING NOTE: Multi-tab only (state is held in memory in other clients).
-    /** Returns the mutation queue's metadata from IndexedDb. */
-    IndexedDbMutationQueue.prototype.getMutationQueueMetadata = function (transaction) {
-        var _this = this;
-        return mutationQueuesStore(transaction)
-            .get(this.userId)
-            .next(function (metadata) {
-            return (metadata ||
-                new DbMutationQueue(_this.userId, BATCHID_UNKNOWN, 
-                /*lastStreamToken=*/ ''));
-        });
-    };
-    return IndexedDbMutationQueue;
-}());
-/**
- * @return true if the mutation queue for the given user contains a pending
- *         mutation for the given key.
- */
-function mutationQueueContainsKey(txn, userId, key) {
-    var indexKey = DbDocumentMutation.prefixForPath(userId, key.path);
-    var encodedPath = indexKey[1];
-    var startRange = IDBKeyRange.lowerBound(indexKey);
-    var containsKey = false;
-    return documentMutationsStore(txn)
-        .iterate({ range: startRange, keysOnly: true }, function (key, value, control) {
-        var userID = key[0], keyPath = key[1], /*batchID*/ _ = key[2];
-        if (userID === userId && keyPath === encodedPath) {
-            containsKey = true;
-        }
-        control.done();
-    })
-        .next(function () { return containsKey; });
-}
-/** Returns true if any mutation queue contains the given document. */
-function mutationQueuesContainKey(txn, docKey) {
-    var found = false;
-    return mutationQueuesStore(txn)
-        .iterateSerial(function (userId) {
-        return mutationQueueContainsKey(txn, userId, docKey).next(function (containsKey) {
-            if (containsKey) {
-                found = true;
-            }
-            return PersistencePromise.resolve(!containsKey);
-        });
-    })
-        .next(function () { return found; });
-}
-/**
- * Delete a mutation batch and the associated document mutations.
- * @return A PersistencePromise of the document mutations that were removed.
- */
-function removeMutationBatch(txn, userId, batch) {
-    var mutationStore = txn.store(DbMutationBatch.store);
-    var indexTxn = txn.store(DbDocumentMutation.store);
-    var promises = [];
-    var range = IDBKeyRange.only(batch.batchId);
-    var numDeleted = 0;
-    var removePromise = mutationStore.iterate({ range: range }, function (key, value, control) {
-        numDeleted++;
-        return control.delete();
-    });
-    promises.push(removePromise.next(function () {
-        assert(numDeleted === 1, 'Dangling document-mutation reference found: Missing batch ' +
-            batch.batchId);
-    }));
-    var removedDocuments = [];
-    for (var _i = 0, _a = batch.mutations; _i < _a.length; _i++) {
-        var mutation = _a[_i];
-        var indexKey = DbDocumentMutation.key(userId, mutation.key.path, batch.batchId);
-        promises.push(indexTxn.delete(indexKey));
-        removedDocuments.push(mutation.key);
-    }
-    return PersistencePromise.waitFor(promises).next(function () { return removedDocuments; });
-}
-function convertStreamToken(token) {
-    if (token instanceof Uint8Array) {
-        // TODO(b/78771403): Convert tokens to strings during deserialization
-        assert(process.env.USE_MOCK_PERSISTENCE === 'YES', 'Persisting non-string stream tokens is only supported with mock persistence.');
-        return token.toString();
-    }
-    else {
-        return token;
-    }
-}
-/**
- * Helper to get a typed SimpleDbStore for the mutations object store.
- */
-function mutationsStore(txn) {
-    return IndexedDbPersistence.getStore(txn, DbMutationBatch.store);
-}
-/**
- * Helper to get a typed SimpleDbStore for the mutationQueues object store.
- */
-function documentMutationsStore(txn) {
-    return IndexedDbPersistence.getStore(txn, DbDocumentMutation.store);
-}
-/**
- * Helper to get a typed SimpleDbStore for the mutationQueues object store.
- */
-function mutationQueuesStore(txn) {
-    return IndexedDbPersistence.getStore(txn, DbMutationQueue.store);
-}
-
-/**
- * @license
- * Copyright 2017 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-var RESERVED_BITS = 1;
-var GeneratorIds;
-(function (GeneratorIds) {
-    GeneratorIds[GeneratorIds["QueryCache"] = 0] = "QueryCache";
-    GeneratorIds[GeneratorIds["SyncEngine"] = 1] = "SyncEngine"; // The target IDs for limbo detection are odd (end in 1).
-})(GeneratorIds || (GeneratorIds = {}));
-/**
- * Generates monotonically increasing target IDs for sending targets to the
- * watch stream.
- *
- * The client constructs two generators, one for the query cache (via
- * forQueryCache()), and one for limbo documents (via forSyncEngine()). These
- * two generators produce non-overlapping IDs (by using even and odd IDs
- * respectively).
- *
- * By separating the target ID space, the query cache can generate target IDs
- * that persist across client restarts, while sync engine can independently
- * generate in-memory target IDs that are transient and can be reused after a
- * restart.
- */
-// TODO(mrschmidt): Explore removing this class in favor of generating these IDs
-// directly in SyncEngine and LocalStore.
-var TargetIdGenerator = /** @class */ (function () {
-    /**
-     * Instantiates a new TargetIdGenerator. If a seed is provided, the generator
-     * will use the seed value as the next target ID.
-     */
-    function TargetIdGenerator(generatorId, seed) {
-        this.generatorId = generatorId;
-        assert((generatorId & RESERVED_BITS) === generatorId, "Generator ID " + generatorId + " contains more than " + RESERVED_BITS + " reserved bits");
-        this.seek(seed !== undefined ? seed : this.generatorId);
-    }
-    TargetIdGenerator.prototype.next = function () {
-        var nextId = this.nextId;
-        this.nextId += 1 << RESERVED_BITS;
-        return nextId;
-    };
-    /**
-     * Returns the ID that follows the given ID. Subsequent calls to `next()`
-     * use the newly returned target ID as their base.
-     */
-    // PORTING NOTE: Multi-tab only.
-    TargetIdGenerator.prototype.after = function (targetId) {
-        this.seek(targetId + (1 << RESERVED_BITS));
-        return this.next();
-    };
-    TargetIdGenerator.prototype.seek = function (targetId) {
-        assert((targetId & RESERVED_BITS) === this.generatorId, 'Cannot supply target ID from different generator ID');
-        this.nextId = targetId;
-    };
-    TargetIdGenerator.forQueryCache = function () {
-        // We seed the query cache generator to return '2' as its first ID, as there
-        // is no differentiation in the protocol layer between an unset number and
-        // the number '0'. If we were to sent a target with target ID '0', the
-        // backend would consider it unset and replace it with its own ID.
-        var targetIdGenerator = new TargetIdGenerator(GeneratorIds.QueryCache, 2);
-        return targetIdGenerator;
-    };
-    TargetIdGenerator.forSyncEngine = function () {
-        // Sync engine assigns target IDs for limbo document detection.
-        return new TargetIdGenerator(GeneratorIds.SyncEngine);
-    };
-    return TargetIdGenerator;
-}());
-
-/**
- * @license
- * Copyright 2017 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 var LOG_TAG$1 = 'SimpleDb';
 /**
  * Provides a wrapper around IndexedDb with a simplified interface that uses
@@ -34672,8 +33975,8 @@ var SimpleDb = /** @class */ (function () {
                     'Close all tabs that access Firestore and reload this page to proceed.'));
             };
             request.onerror = function (event) {
-                var error = event.target.error;
-                if (error.name === 'VersionError') {
+                var error$$1 = event.target.error;
+                if (error$$1.name === 'VersionError') {
                     reject(new FirestoreError(Code.FAILED_PRECONDITION, 'A newer version of the Firestore SDK was previously used and so the persisted ' +
                         'data is not compatible with the version of the SDK you are now using. The SDK ' +
                         'will operate with persistence disabled. If you need persistence, please ' +
@@ -34681,7 +33984,7 @@ var SimpleDb = /** @class */ (function () {
                         'data for your app to start fresh.'));
                 }
                 else {
-                    reject(error);
+                    reject(error$$1);
                 }
             };
             request.onupgradeneeded = function (event) {
@@ -34747,14 +34050,14 @@ var SimpleDb = /** @class */ (function () {
     SimpleDb.prototype.runTransaction = function (mode, objectStores, transactionFn) {
         var transaction = SimpleDbTransaction.open(this.db, mode, objectStores);
         var transactionFnResult = transactionFn(transaction)
-            .catch(function (error) {
+            .catch(function (error$$1) {
             // Abort the transaction if there was an error.
-            transaction.abort(error);
+            transaction.abort(error$$1);
             // We cannot actually recover, and calling `abort()` will cause the transaction's
             // completion promise to be rejected. This in turn means that we won't use
             // `transactionFnResult` below. We return a rejection here so that we don't add the
             // possibility of returning `void` to the type of `transactionFnResult`.
-            return PersistencePromise.reject(error);
+            return PersistencePromise.reject(error$$1);
         })
             .toPromise();
         // As noted above, errors are propagated by aborting the transaction. So
@@ -34863,12 +34166,12 @@ var SimpleDbTransaction = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
-    SimpleDbTransaction.prototype.abort = function (error) {
-        if (error) {
-            this.completionDeferred.reject(error);
+    SimpleDbTransaction.prototype.abort = function (error$$1) {
+        if (error$$1) {
+            this.completionDeferred.reject(error$$1);
         }
         if (!this.aborted) {
-            debug(LOG_TAG$1, 'Aborting transaction:', error ? error.message : 'Client-initiated abort');
+            debug(LOG_TAG$1, 'Aborting transaction:', error$$1 ? error$$1.message : 'Client-initiated abort');
             this.aborted = true;
             this.transaction.abort();
         }
@@ -35632,15 +34935,13 @@ var REMOTE_DOCUMENT_CHANGE_MISSING_ERR_MSG = 'The remote document changelog no l
 var IndexedDbRemoteDocumentCache = /** @class */ (function () {
     /**
      * @param {LocalSerializer} serializer The document serializer.
-     * @param {IndexManager} indexManager The query indexes that need to be maintained.
      * @param keepDocumentChangeLog Whether to keep a document change log in
      * IndexedDb. This change log is required for Multi-Tab synchronization, but
      * not needed in clients that don't share access to their remote document
      * cache.
      */
-    function IndexedDbRemoteDocumentCache(serializer, indexManager, keepDocumentChangeLog) {
+    function IndexedDbRemoteDocumentCache(serializer, keepDocumentChangeLog) {
         this.serializer = serializer;
-        this.indexManager = indexManager;
         this.keepDocumentChangeLog = keepDocumentChangeLog;
         /** The last id read by `getNewDocumentChanges()`. */
         this._lastProcessedDocumentChangeId = 0;
@@ -35676,7 +34977,6 @@ var IndexedDbRemoteDocumentCache = /** @class */ (function () {
                 var _a = entries_1[_i], key = _a.key, doc = _a.doc;
                 promises.push(documentStore.put(dbKey(key), doc));
                 changedKeys = changedKeys.add(key);
-                promises.push(this.indexManager.addToCollectionParentIndex(transaction, key.path.popLast()));
             }
             if (this.keepDocumentChangeLog) {
                 promises.push(documentChangesStore(transaction).put({
@@ -35814,23 +35114,13 @@ var IndexedDbRemoteDocumentCache = /** @class */ (function () {
     };
     IndexedDbRemoteDocumentCache.prototype.getDocumentsMatchingQuery = function (transaction, query) {
         var _this = this;
-        assert(!query.isCollectionGroupQuery(), 'CollectionGroup queries should be handled in LocalDocumentsView');
         var results = documentMap();
-        var immediateChildrenPathLength = query.path.length + 1;
         // Documents are ordered by key, so we can use a prefix scan to narrow down
         // the documents we need to match the query against.
         var startKey = query.path.toArray();
         var range = IDBKeyRange.lowerBound(startKey);
         return remoteDocumentsStore(transaction)
             .iterate({ range: range }, function (key, dbRemoteDoc, control) {
-            // The query is actually returning any path that starts with the query
-            // path prefix which may include documents in subcollections. For
-            // example, a query on 'rooms' will return rooms/abc/messages/xyx but we
-            // shouldn't match it. Fix this by discarding rows with document keys
-            // more than one segment longer than the query path.
-            if (key.length !== immediateChildrenPathLength) {
-                return;
-            }
             var maybeDoc = _this.serializer.fromDbRemoteDocument(dbRemoteDoc);
             if (!query.path.isPrefixOf(maybeDoc.key.path)) {
                 control.done();
@@ -36009,65 +35299,6 @@ function dbDocumentSize(doc) {
 }
 
 /**
- * Copyright 2019 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * An in-memory implementation of IndexManager.
- */
-var MemoryIndexManager = /** @class */ (function () {
-    function MemoryIndexManager() {
-        this.collectionParentIndex = new MemoryCollectionParentIndex();
-    }
-    MemoryIndexManager.prototype.addToCollectionParentIndex = function (transaction, collectionPath) {
-        this.collectionParentIndex.add(collectionPath);
-        return PersistencePromise.resolve();
-    };
-    MemoryIndexManager.prototype.getCollectionParents = function (transaction, collectionId) {
-        return PersistencePromise.resolve(this.collectionParentIndex.getEntries(collectionId));
-    };
-    return MemoryIndexManager;
-}());
-/**
- * Internal implementation of the collection-parent index exposed by MemoryIndexManager.
- * Also used for in-memory caching by IndexedDbIndexManager and initial index population
- * in indexeddb_schema.ts
- */
-var MemoryCollectionParentIndex = /** @class */ (function () {
-    function MemoryCollectionParentIndex() {
-        this.index = {};
-    }
-    // Returns false if the entry already existed.
-    MemoryCollectionParentIndex.prototype.add = function (collectionPath) {
-        assert(collectionPath.length % 2 === 1, 'Expected a collection path.');
-        var collectionId = collectionPath.lastSegment();
-        var parentPath = collectionPath.popLast();
-        var existingParents = this.index[collectionId] ||
-            new SortedSet(ResourcePath.comparator);
-        var added = !existingParents.has(parentPath);
-        this.index[collectionId] = existingParents.add(parentPath);
-        return added;
-    };
-    MemoryCollectionParentIndex.prototype.getEntries = function (collectionId) {
-        var parentPaths = this.index[collectionId] ||
-            new SortedSet(ResourcePath.comparator);
-        return parentPaths.toArray();
-    };
-    return MemoryCollectionParentIndex;
-}());
-
-/**
  * @license
  * Copyright 2017 Google Inc.
  *
@@ -36096,9 +35327,8 @@ var MemoryCollectionParentIndex = /** @class */ (function () {
  * 5. Removal of held write acks.
  * 6. Create document global for tracking document cache size.
  * 7. Ensure every cached document has a sentinel row with a sequence number.
- * 8. Add collection-parent index for Collection Group queries.
  */
-var SCHEMA_VERSION = 8;
+var SCHEMA_VERSION = 7;
 /** Performs database creation and schema upgrades. */
 var SchemaConverter = /** @class */ (function () {
     function SchemaConverter(serializer) {
@@ -36161,9 +35391,6 @@ var SchemaConverter = /** @class */ (function () {
         if (fromVersion < 7 && toVersion >= 7) {
             p = p.next(function () { return _this.ensureSequenceNumbers(txn); });
         }
-        if (fromVersion < 8 && toVersion >= 8) {
-            p = p.next(function () { return _this.createCollectionParentIndex(db, txn); });
-        }
         return p;
     };
     SchemaConverter.prototype.addDocumentGlobal = function (txn) {
@@ -36204,18 +35431,18 @@ var SchemaConverter = /** @class */ (function () {
      * with a sequence number. Missing rows are given the most recently used sequence number.
      */
     SchemaConverter.prototype.ensureSequenceNumbers = function (txn) {
-        var documentTargetStore = txn.store(DbTargetDocument.store);
+        var documentTargetStore$$1 = txn.store(DbTargetDocument.store);
         var documentsStore = txn.store(DbRemoteDocument.store);
         return getHighestListenSequenceNumber(txn).next(function (currentSequenceNumber) {
             var writeSentinelKey = function (path) {
-                return documentTargetStore.put(new DbTargetDocument(0, encode(path), currentSequenceNumber));
+                return documentTargetStore$$1.put(new DbTargetDocument(0, encode(path), currentSequenceNumber));
             };
             var promises = [];
             return documentsStore
                 .iterate(function (key, doc) {
                 var path = new ResourcePath(key);
                 var docSentinelKey = sentinelKey(path);
-                promises.push(documentTargetStore.get(docSentinelKey).next(function (maybeSentinel) {
+                promises.push(documentTargetStore$$1.get(docSentinelKey).next(function (maybeSentinel) {
                     if (!maybeSentinel) {
                         return writeSentinelKey(path);
                     }
@@ -36225,42 +35452,6 @@ var SchemaConverter = /** @class */ (function () {
                 }));
             })
                 .next(function () { return PersistencePromise.waitFor(promises); });
-        });
-    };
-    SchemaConverter.prototype.createCollectionParentIndex = function (db, txn) {
-        // Create the index.
-        db.createObjectStore(DbCollectionParent.store, {
-            keyPath: DbCollectionParent.keyPath
-        });
-        var collectionParentsStore = txn.store(DbCollectionParent.store);
-        // Helper to add an index entry iff we haven't already written it.
-        var cache = new MemoryCollectionParentIndex();
-        var addEntry = function (collectionPath) {
-            if (cache.add(collectionPath)) {
-                var collectionId = collectionPath.lastSegment();
-                var parentPath = collectionPath.popLast();
-                return collectionParentsStore.put({
-                    collectionId: collectionId,
-                    parent: encode(parentPath)
-                });
-            }
-        };
-        // Index existing remote documents.
-        return txn
-            .store(DbRemoteDocument.store)
-            .iterate({ keysOnly: true }, function (pathSegments, _) {
-            var path = new ResourcePath(pathSegments);
-            return addEntry(path.popLast());
-        })
-            .next(function () {
-            // Index existing mutations.
-            return txn
-                .store(DbDocumentMutation.store)
-                .iterate({ keysOnly: true }, function (_a, _) {
-                var userID = _a[0], encodedPath = _a[1], batchId = _a[2];
-                var path = decode(encodedPath);
-                return addEntry(path.popLast());
-            });
         });
     };
     return SchemaConverter;
@@ -36377,19 +35568,6 @@ var DbMutationBatch = /** @class */ (function () {
      */
     localWriteTimeMs, 
     /**
-     * A list of "mutations" that represent a partial base state from when this
-     * write batch was initially created. During local application of the write
-     * batch, these baseMutations are applied prior to the real writes in order
-     * to override certain document fields from the remote document cache. This
-     * is necessary in the case of non-idempotent writes (e.g. `increment()`
-     * transforms) to make sure that the local view of the modified documents
-     * doesn't flicker if the remote document cache receives the result of the
-     * non-idempotent write before the write is removed from the queue.
-     *
-     * These mutations are never sent to the backend.
-     */
-    baseMutations, 
-    /**
      * A list of mutations to apply. All mutations will be applied atomically.
      *
      * Mutations are serialized via JsonProtoSerializer.toMutation().
@@ -36398,7 +35576,6 @@ var DbMutationBatch = /** @class */ (function () {
         this.userId = userId;
         this.batchId = batchId;
         this.localWriteTimeMs = localWriteTimeMs;
-        this.baseMutations = baseMutations;
         this.mutations = mutations;
     }
     /** Name of the IndexedDb object store.  */
@@ -36752,32 +35929,6 @@ var DbTargetGlobal = /** @class */ (function () {
     DbTargetGlobal.store = 'targetGlobal';
     return DbTargetGlobal;
 }());
-/**
- * An object representing an association between a Collection id (e.g. 'messages')
- * to a parent path (e.g. '/chats/123') that contains it as a (sub)collection.
- * This is used to efficiently find all collections to query when performing
- * a Collection Group query.
- */
-var DbCollectionParent = /** @class */ (function () {
-    function DbCollectionParent(
-    /**
-     * The collectionId (e.g. 'messages')
-     */
-    collectionId, 
-    /**
-     * The path to the parent (either a document location or an empty path for
-     * a root-level collection).
-     */
-    parent) {
-        this.collectionId = collectionId;
-        this.parent = parent;
-    }
-    /** Name of the IndexedDb object store. */
-    DbCollectionParent.store = 'collectionParents';
-    /** Keys are automatically assigned via the collectionId, parent properties. */
-    DbCollectionParent.keyPath = ['collectionId', 'parent'];
-    return DbCollectionParent;
-}());
 function createQueryCache(db) {
     var targetDocumentsStore = db.createObjectStore(DbTargetDocument.store, {
         keyPath: DbTargetDocument.keyPath
@@ -36892,17 +36043,16 @@ var V4_STORES = V3_STORES.concat([
 ]);
 // V5 does not change the set of stores.
 var V6_STORES = V4_STORES.concat([DbRemoteDocumentGlobal.store]);
-// V7 does not change the set of stores.
-var V8_STORES = V6_STORES.concat([DbCollectionParent.store]);
 /**
  * The list of all default IndexedDB stores used throughout the SDK. This is
  * used when creating transactions so that access across all stores is done
  * atomically.
  */
-var ALL_STORES = V8_STORES;
+var ALL_STORES = V6_STORES;
 
 /**
- * Copyright 2019 Google Inc.
+ * @license
+ * Copyright 2017 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36916,63 +36066,427 @@ var ALL_STORES = V8_STORES;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * A persisted implementation of IndexManager.
- */
-var IndexedDbIndexManager = /** @class */ (function () {
-    function IndexedDbIndexManager() {
+/** A mutation queue for a specific user, backed by IndexedDB. */
+var IndexedDbMutationQueue = /** @class */ (function () {
+    function IndexedDbMutationQueue(
+    /**
+     * The normalized userId (e.g. null UID => "" userId) used to store /
+     * retrieve mutations.
+     */
+    userId, serializer, referenceDelegate) {
+        this.userId = userId;
+        this.serializer = serializer;
+        this.referenceDelegate = referenceDelegate;
         /**
-         * An in-memory copy of the index entries we've already written since the SDK
-         * launched. Used to avoid re-writing the same entry repeatedly.
+         * Caches the document keys for pending mutation batches. If the mutation
+         * has been removed from IndexedDb, the cached value may continue to
+         * be used to retrieve the batch's document keys. To remove a cached value
+         * locally, `removeCachedMutationKeys()` should be invoked either directly
+         * or through `removeMutationBatches()`.
          *
-         * This is *NOT* a complete cache of what's in persistence and so can never be used to
-         * satisfy reads.
+         * With multi-tab, when the primary client acknowledges or rejects a mutation,
+         * this cache is used by secondary clients to invalidate the local
+         * view of the documents that were previously affected by the mutation.
          */
-        this.collectionParentsCache = new MemoryCollectionParentIndex();
+        // PORTING NOTE: Multi-tab only.
+        this.documentKeysByBatchId = {};
     }
-    IndexedDbIndexManager.prototype.addToCollectionParentIndex = function (transaction, collectionPath) {
-        assert(collectionPath.length % 2 === 1, 'Expected a collection path.');
-        if (this.collectionParentsCache.add(collectionPath)) {
-            assert(collectionPath.length >= 1, 'Invalid collection path.');
-            var collectionId = collectionPath.lastSegment();
-            var parentPath = collectionPath.popLast();
-            return collectionParentsStore(transaction).put({
-                collectionId: collectionId,
-                parent: encode(parentPath)
-            });
-        }
-        return PersistencePromise.resolve();
+    /**
+     * Creates a new mutation queue for the given user.
+     * @param user The user for which to create a mutation queue.
+     * @param serializer The serializer to use when persisting to IndexedDb.
+     */
+    IndexedDbMutationQueue.forUser = function (user, serializer, referenceDelegate) {
+        // TODO(mcg): Figure out what constraints there are on userIDs
+        // In particular, are there any reserved characters? are empty ids allowed?
+        // For the moment store these together in the same mutations table assuming
+        // that empty userIDs aren't allowed.
+        assert(user.uid !== '', 'UserID must not be an empty string.');
+        var userId = user.isAuthenticated() ? user.uid : '';
+        return new IndexedDbMutationQueue(userId, serializer, referenceDelegate);
     };
-    IndexedDbIndexManager.prototype.getCollectionParents = function (transaction, collectionId) {
-        var parentPaths = [];
-        var range = IDBKeyRange.bound([collectionId, ''], [immediateSuccessor(collectionId), ''], 
-        /*lowerOpen=*/ false, 
-        /*upperOpen=*/ true);
-        return collectionParentsStore(transaction)
-            .loadAll(range)
-            .next(function (entries) {
-            for (var _i = 0, entries_1 = entries; _i < entries_1.length; _i++) {
-                var entry = entries_1[_i];
-                // This collectionId guard shouldn't be necessary (and isn't as long
-                // as we're running in a real browser), but there's a bug in
-                // indexeddbshim that breaks our range in our tests running in node:
-                // https://github.com/axemclion/IndexedDBShim/issues/334
-                if (entry.collectionId !== collectionId) {
-                    break;
-                }
-                parentPaths.push(decode(entry.parent));
-            }
-            return parentPaths;
+    IndexedDbMutationQueue.prototype.checkEmpty = function (transaction) {
+        var empty = true;
+        var range = IDBKeyRange.bound([this.userId, Number.NEGATIVE_INFINITY], [this.userId, Number.POSITIVE_INFINITY]);
+        return mutationsStore(transaction)
+            .iterate({ index: DbMutationBatch.userMutationsIndex, range: range }, function (key, value, control) {
+            empty = false;
+            control.done();
+        })
+            .next(function () { return empty; });
+    };
+    IndexedDbMutationQueue.prototype.acknowledgeBatch = function (transaction, batch, streamToken) {
+        return this.getMutationQueueMetadata(transaction).next(function (metadata) {
+            metadata.lastStreamToken = convertStreamToken(streamToken);
+            return mutationQueuesStore(transaction).put(metadata);
         });
     };
-    return IndexedDbIndexManager;
+    IndexedDbMutationQueue.prototype.getLastStreamToken = function (transaction) {
+        return this.getMutationQueueMetadata(transaction).next(function (metadata) { return metadata.lastStreamToken; });
+    };
+    IndexedDbMutationQueue.prototype.setLastStreamToken = function (transaction, streamToken) {
+        return this.getMutationQueueMetadata(transaction).next(function (metadata) {
+            metadata.lastStreamToken = convertStreamToken(streamToken);
+            return mutationQueuesStore(transaction).put(metadata);
+        });
+    };
+    IndexedDbMutationQueue.prototype.addMutationBatch = function (transaction, localWriteTime, mutations) {
+        var _this = this;
+        var documentStore = documentMutationsStore(transaction);
+        var mutationStore = mutationsStore(transaction);
+        // The IndexedDb implementation in Chrome (and Firefox) does not handle
+        // compound indices that include auto-generated keys correctly. To ensure
+        // that the index entry is added correctly in all browsers, we perform two
+        // writes: The first write is used to retrieve the next auto-generated Batch
+        // ID, and the second write populates the index and stores the actual
+        // mutation batch.
+        // See: https://bugs.chromium.org/p/chromium/issues/detail?id=701972
+        // tslint:disable-next-line:no-any We write an empty object to obtain key
+        return mutationStore.add({}).next(function (batchId) {
+            assert(typeof batchId === 'number', 'Auto-generated key is not a number');
+            var batch = new MutationBatch(batchId, localWriteTime, mutations);
+            var dbBatch = _this.serializer.toDbMutationBatch(_this.userId, batch);
+            _this.documentKeysByBatchId[batchId] = batch.keys();
+            var promises = [];
+            for (var _i = 0, mutations_1 = mutations; _i < mutations_1.length; _i++) {
+                var mutation = mutations_1[_i];
+                var indexKey = DbDocumentMutation.key(_this.userId, mutation.key.path, batchId);
+                promises.push(mutationStore.put(dbBatch));
+                promises.push(documentStore.put(indexKey, DbDocumentMutation.PLACEHOLDER));
+            }
+            return PersistencePromise.waitFor(promises).next(function () { return batch; });
+        });
+    };
+    IndexedDbMutationQueue.prototype.lookupMutationBatch = function (transaction, batchId) {
+        var _this = this;
+        return mutationsStore(transaction)
+            .get(batchId)
+            .next(function (dbBatch) {
+            if (dbBatch) {
+                assert(dbBatch.userId === _this.userId, "Unexpected user '" + dbBatch.userId + "' for mutation batch " + batchId);
+                return _this.serializer.fromDbMutationBatch(dbBatch);
+            }
+            return null;
+        });
+    };
+    IndexedDbMutationQueue.prototype.lookupMutationKeys = function (transaction, batchId) {
+        var _this = this;
+        if (this.documentKeysByBatchId[batchId]) {
+            return PersistencePromise.resolve(this.documentKeysByBatchId[batchId]);
+        }
+        else {
+            return this.lookupMutationBatch(transaction, batchId).next(function (batch) {
+                if (batch) {
+                    var keys = batch.keys();
+                    _this.documentKeysByBatchId[batchId] = keys;
+                    return keys;
+                }
+                else {
+                    return null;
+                }
+            });
+        }
+    };
+    IndexedDbMutationQueue.prototype.getNextMutationBatchAfterBatchId = function (transaction, batchId) {
+        var _this = this;
+        return this.getMutationQueueMetadata(transaction).next(function (metadata) {
+            var nextBatchId = batchId + 1;
+            var range = IDBKeyRange.lowerBound([_this.userId, nextBatchId]);
+            var foundBatch = null;
+            return mutationsStore(transaction)
+                .iterate({ index: DbMutationBatch.userMutationsIndex, range: range }, function (key, dbBatch, control) {
+                if (dbBatch.userId === _this.userId) {
+                    assert(dbBatch.batchId >= nextBatchId, 'Should have found mutation after ' + nextBatchId);
+                    foundBatch = _this.serializer.fromDbMutationBatch(dbBatch);
+                }
+                control.done();
+            })
+                .next(function () { return foundBatch; });
+        });
+    };
+    IndexedDbMutationQueue.prototype.getAllMutationBatches = function (transaction) {
+        var _this = this;
+        var range = IDBKeyRange.bound([this.userId, BATCHID_UNKNOWN], [this.userId, Number.POSITIVE_INFINITY]);
+        return mutationsStore(transaction)
+            .loadAll(DbMutationBatch.userMutationsIndex, range)
+            .next(function (dbBatches) {
+            return dbBatches.map(function (dbBatch) { return _this.serializer.fromDbMutationBatch(dbBatch); });
+        });
+    };
+    IndexedDbMutationQueue.prototype.getAllMutationBatchesAffectingDocumentKey = function (transaction, documentKey) {
+        var _this = this;
+        // Scan the document-mutation index starting with a prefix starting with
+        // the given documentKey.
+        var indexPrefix = DbDocumentMutation.prefixForPath(this.userId, documentKey.path);
+        var indexStart = IDBKeyRange.lowerBound(indexPrefix);
+        var results = [];
+        return documentMutationsStore(transaction)
+            .iterate({ range: indexStart }, function (indexKey, _, control) {
+            var userID = indexKey[0], encodedPath = indexKey[1], batchId = indexKey[2];
+            // Only consider rows matching exactly the specific key of
+            // interest. Note that because we order by path first, and we
+            // order terminators before path separators, we'll encounter all
+            // the index rows for documentKey contiguously. In particular, all
+            // the rows for documentKey will occur before any rows for
+            // documents nested in a subcollection beneath documentKey so we
+            // can stop as soon as we hit any such row.
+            var path = decode(encodedPath);
+            if (userID !== _this.userId || !documentKey.path.isEqual(path)) {
+                control.done();
+                return;
+            }
+            // Look up the mutation batch in the store.
+            return mutationsStore(transaction)
+                .get(batchId)
+                .next(function (mutation) {
+                if (!mutation) {
+                    throw fail('Dangling document-mutation reference found: ' +
+                        indexKey +
+                        ' which points to ' +
+                        batchId);
+                }
+                assert(mutation.userId === _this.userId, "Unexpected user '" + mutation.userId + "' for mutation batch " + batchId);
+                results.push(_this.serializer.fromDbMutationBatch(mutation));
+            });
+        })
+            .next(function () { return results; });
+    };
+    IndexedDbMutationQueue.prototype.getAllMutationBatchesAffectingDocumentKeys = function (transaction, documentKeys) {
+        var _this = this;
+        var uniqueBatchIDs = new SortedSet(primitiveComparator);
+        var promises = [];
+        documentKeys.forEach(function (documentKey) {
+            var indexStart = DbDocumentMutation.prefixForPath(_this.userId, documentKey.path);
+            var range = IDBKeyRange.lowerBound(indexStart);
+            var promise = documentMutationsStore(transaction).iterate({ range: range }, function (indexKey, _, control) {
+                var userID = indexKey[0], encodedPath = indexKey[1], batchID = indexKey[2];
+                // Only consider rows matching exactly the specific key of
+                // interest. Note that because we order by path first, and we
+                // order terminators before path separators, we'll encounter all
+                // the index rows for documentKey contiguously. In particular, all
+                // the rows for documentKey will occur before any rows for
+                // documents nested in a subcollection beneath documentKey so we
+                // can stop as soon as we hit any such row.
+                var path = decode(encodedPath);
+                if (userID !== _this.userId || !documentKey.path.isEqual(path)) {
+                    control.done();
+                    return;
+                }
+                uniqueBatchIDs = uniqueBatchIDs.add(batchID);
+            });
+            promises.push(promise);
+        });
+        return PersistencePromise.waitFor(promises).next(function () {
+            return _this.lookupMutationBatches(transaction, uniqueBatchIDs);
+        });
+    };
+    IndexedDbMutationQueue.prototype.getAllMutationBatchesAffectingQuery = function (transaction, query) {
+        var _this = this;
+        assert(!query.isDocumentQuery(), "Document queries shouldn't go down this path");
+        var queryPath = query.path;
+        var immediateChildrenLength = queryPath.length + 1;
+        // TODO(mcg): Actually implement a single-collection query
+        //
+        // This is actually executing an ancestor query, traversing the whole
+        // subtree below the collection which can be horrifically inefficient for
+        // some structures. The right way to solve this is to implement the full
+        // value index, but that's not in the cards in the near future so this is
+        // the best we can do for the moment.
+        //
+        // Since we don't yet index the actual properties in the mutations, our
+        // current approach is to just return all mutation batches that affect
+        // documents in the collection being queried.
+        var indexPrefix = DbDocumentMutation.prefixForPath(this.userId, queryPath);
+        var indexStart = IDBKeyRange.lowerBound(indexPrefix);
+        // Collect up unique batchIDs encountered during a scan of the index. Use a
+        // SortedSet to accumulate batch IDs so they can be traversed in order in a
+        // scan of the main table.
+        var uniqueBatchIDs = new SortedSet(primitiveComparator);
+        return documentMutationsStore(transaction)
+            .iterate({ range: indexStart }, function (indexKey, _, control) {
+            var userID = indexKey[0], encodedPath = indexKey[1], batchID = indexKey[2];
+            var path = decode(encodedPath);
+            if (userID !== _this.userId || !queryPath.isPrefixOf(path)) {
+                control.done();
+                return;
+            }
+            // Rows with document keys more than one segment longer than the
+            // query path can't be matches. For example, a query on 'rooms'
+            // can't match the document /rooms/abc/messages/xyx.
+            // TODO(mcg): we'll need a different scanner when we implement
+            // ancestor queries.
+            if (path.length !== immediateChildrenLength) {
+                return;
+            }
+            uniqueBatchIDs = uniqueBatchIDs.add(batchID);
+        })
+            .next(function () { return _this.lookupMutationBatches(transaction, uniqueBatchIDs); });
+    };
+    IndexedDbMutationQueue.prototype.lookupMutationBatches = function (transaction, batchIDs) {
+        var _this = this;
+        var results = [];
+        var promises = [];
+        // TODO(rockwood): Implement this using iterate.
+        batchIDs.forEach(function (batchId) {
+            promises.push(mutationsStore(transaction)
+                .get(batchId)
+                .next(function (mutation) {
+                if (mutation === null) {
+                    throw fail('Dangling document-mutation reference found, ' +
+                        'which points to ' +
+                        batchId);
+                }
+                assert(mutation.userId === _this.userId, "Unexpected user '" + mutation.userId + "' for mutation batch " + batchId);
+                results.push(_this.serializer.fromDbMutationBatch(mutation));
+            }));
+        });
+        return PersistencePromise.waitFor(promises).next(function () { return results; });
+    };
+    IndexedDbMutationQueue.prototype.removeMutationBatch = function (transaction, batch) {
+        var _this = this;
+        return removeMutationBatch(transaction.simpleDbTransaction, this.userId, batch).next(function (removedDocuments) {
+            _this.removeCachedMutationKeys(batch.batchId);
+            return PersistencePromise.forEach(removedDocuments, function (key) {
+                return _this.referenceDelegate.removeMutationReference(transaction, key);
+            });
+        });
+    };
+    IndexedDbMutationQueue.prototype.removeCachedMutationKeys = function (batchId) {
+        delete this.documentKeysByBatchId[batchId];
+    };
+    IndexedDbMutationQueue.prototype.performConsistencyCheck = function (txn) {
+        var _this = this;
+        return this.checkEmpty(txn).next(function (empty) {
+            if (!empty) {
+                return PersistencePromise.resolve();
+            }
+            // Verify that there are no entries in the documentMutations index if
+            // the queue is empty.
+            var startRange = IDBKeyRange.lowerBound(DbDocumentMutation.prefixForUser(_this.userId));
+            var danglingMutationReferences = [];
+            return documentMutationsStore(txn)
+                .iterate({ range: startRange }, function (key, _, control) {
+                var userID = key[0];
+                if (userID !== _this.userId) {
+                    control.done();
+                    return;
+                }
+                else {
+                    var path = decode(key[1]);
+                    danglingMutationReferences.push(path);
+                }
+            })
+                .next(function () {
+                assert(danglingMutationReferences.length === 0, 'Document leak -- detected dangling mutation references when queue is empty. ' +
+                    'Dangling keys: ' +
+                    danglingMutationReferences.map(function (p) { return p.canonicalString(); }));
+            });
+        });
+    };
+    IndexedDbMutationQueue.prototype.containsKey = function (txn, key) {
+        return mutationQueueContainsKey(txn, this.userId, key);
+    };
+    // PORTING NOTE: Multi-tab only (state is held in memory in other clients).
+    /** Returns the mutation queue's metadata from IndexedDb. */
+    IndexedDbMutationQueue.prototype.getMutationQueueMetadata = function (transaction) {
+        var _this = this;
+        return mutationQueuesStore(transaction)
+            .get(this.userId)
+            .next(function (metadata) {
+            return (metadata ||
+                new DbMutationQueue(_this.userId, BATCHID_UNKNOWN, 
+                /*lastStreamToken=*/ ''));
+        });
+    };
+    return IndexedDbMutationQueue;
 }());
 /**
- * Helper to get a typed SimpleDbStore for the collectionParents
- * document store.
+ * @return true if the mutation queue for the given user contains a pending
+ *         mutation for the given key.
  */
-function collectionParentsStore(txn) {
-    return IndexedDbPersistence.getStore(txn, DbCollectionParent.store);
+function mutationQueueContainsKey(txn, userId, key) {
+    var indexKey = DbDocumentMutation.prefixForPath(userId, key.path);
+    var encodedPath = indexKey[1];
+    var startRange = IDBKeyRange.lowerBound(indexKey);
+    var containsKey = false;
+    return documentMutationsStore(txn)
+        .iterate({ range: startRange, keysOnly: true }, function (key, value, control) {
+        var userID = key[0], keyPath = key[1], /*batchID*/ _ = key[2];
+        if (userID === userId && keyPath === encodedPath) {
+            containsKey = true;
+        }
+        control.done();
+    })
+        .next(function () { return containsKey; });
+}
+/** Returns true if any mutation queue contains the given document. */
+function mutationQueuesContainKey(txn, docKey) {
+    var found = false;
+    return mutationQueuesStore(txn)
+        .iterateSerial(function (userId) {
+        return mutationQueueContainsKey(txn, userId, docKey).next(function (containsKey) {
+            if (containsKey) {
+                found = true;
+            }
+            return PersistencePromise.resolve(!containsKey);
+        });
+    })
+        .next(function () { return found; });
+}
+/**
+ * Delete a mutation batch and the associated document mutations.
+ * @return A PersistencePromise of the document mutations that were removed.
+ */
+function removeMutationBatch(txn, userId, batch) {
+    var mutationStore = txn.store(DbMutationBatch.store);
+    var indexTxn = txn.store(DbDocumentMutation.store);
+    var promises = [];
+    var range = IDBKeyRange.only(batch.batchId);
+    var numDeleted = 0;
+    var removePromise = mutationStore.iterate({ range: range }, function (key, value, control) {
+        numDeleted++;
+        return control.delete();
+    });
+    promises.push(removePromise.next(function () {
+        assert(numDeleted === 1, 'Dangling document-mutation reference found: Missing batch ' +
+            batch.batchId);
+    }));
+    var removedDocuments = [];
+    for (var _i = 0, _a = batch.mutations; _i < _a.length; _i++) {
+        var mutation = _a[_i];
+        var indexKey = DbDocumentMutation.key(userId, mutation.key.path, batch.batchId);
+        promises.push(indexTxn.delete(indexKey));
+        removedDocuments.push(mutation.key);
+    }
+    return PersistencePromise.waitFor(promises).next(function () { return removedDocuments; });
+}
+function convertStreamToken(token) {
+    if (token instanceof Uint8Array) {
+        // TODO(b/78771403): Convert tokens to strings during deserialization
+        assert(process.env.USE_MOCK_PERSISTENCE === 'YES', 'Persisting non-string stream tokens is only supported with mock persistence.');
+        return token.toString();
+    }
+    else {
+        return token;
+    }
+}
+/**
+ * Helper to get a typed SimpleDbStore for the mutations object store.
+ */
+function mutationsStore(txn) {
+    return IndexedDbPersistence.getStore(txn, DbMutationBatch.store);
+}
+/**
+ * Helper to get a typed SimpleDbStore for the mutationQueues object store.
+ */
+function documentMutationsStore(txn) {
+    return IndexedDbPersistence.getStore(txn, DbDocumentMutation.store);
+}
+/**
+ * Helper to get a typed SimpleDbStore for the mutationQueues object store.
+ */
+function mutationQueuesStore(txn) {
+    return IndexedDbPersistence.getStore(txn, DbMutationQueue.store);
 }
 
 /**
@@ -37059,25 +36573,19 @@ var LocalSerializer = /** @class */ (function () {
     /** Encodes a batch of mutations into a DbMutationBatch for local storage. */
     LocalSerializer.prototype.toDbMutationBatch = function (userId, batch) {
         var _this = this;
-        var serializedBaseMutations = batch.baseMutations.map(function (m) {
-            return _this.remoteSerializer.toMutation(m);
-        });
         var serializedMutations = batch.mutations.map(function (m) {
             return _this.remoteSerializer.toMutation(m);
         });
-        return new DbMutationBatch(userId, batch.batchId, batch.localWriteTime.toMillis(), serializedBaseMutations, serializedMutations);
+        return new DbMutationBatch(userId, batch.batchId, batch.localWriteTime.toMillis(), serializedMutations);
     };
     /** Decodes a DbMutationBatch into a MutationBatch */
     LocalSerializer.prototype.fromDbMutationBatch = function (dbBatch) {
         var _this = this;
-        var baseMutations = (dbBatch.baseMutations || []).map(function (m) {
-            return _this.remoteSerializer.fromMutation(m);
-        });
         var mutations = dbBatch.mutations.map(function (m) {
             return _this.remoteSerializer.fromMutation(m);
         });
         var timestamp = Timestamp.fromMillis(dbBatch.localWriteTimeMs);
-        return new MutationBatch(dbBatch.batchId, timestamp, baseMutations, mutations);
+        return new MutationBatch(dbBatch.batchId, timestamp, mutations);
     };
     /*
      * Encodes a set of document keys into an array of EncodedResourcePaths.
@@ -37531,8 +37039,7 @@ var IndexedDbPersistence = /** @class */ (function () {
         this.document = platform.document;
         this.allowTabSynchronization = multiClientParams !== undefined;
         this.queryCache = new IndexedDbQueryCache(this.referenceDelegate, this.serializer);
-        this.indexManager = new IndexedDbIndexManager();
-        this.remoteDocumentCache = new IndexedDbRemoteDocumentCache(this.serializer, this.indexManager, 
+        this.remoteDocumentCache = new IndexedDbRemoteDocumentCache(this.serializer, 
         /*keepDocumentChangeLog=*/ this.allowTabSynchronization);
         if (platform.window && platform.window.localStorage) {
             this.window = platform.window;
@@ -37719,8 +37226,8 @@ var IndexedDbPersistence = /** @class */ (function () {
      */
     IndexedDbPersistence.prototype.maybeGarbageCollectMultiClientState = function () {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var activeClients_1, inactiveClients_1;
             var _this = this;
+            var activeClients_1, inactiveClients_1;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -37931,7 +37438,7 @@ var IndexedDbPersistence = /** @class */ (function () {
     });
     IndexedDbPersistence.prototype.getMutationQueue = function (user) {
         assert(this.started, 'Cannot initialize MutationQueue before persistence is started.');
-        return IndexedDbMutationQueue.forUser(user, this.serializer, this.indexManager, this.referenceDelegate);
+        return IndexedDbMutationQueue.forUser(user, this.serializer, this.referenceDelegate);
     };
     IndexedDbPersistence.prototype.getQueryCache = function () {
         assert(this.started, 'Cannot initialize QueryCache before persistence is started.');
@@ -37940,10 +37447,6 @@ var IndexedDbPersistence = /** @class */ (function () {
     IndexedDbPersistence.prototype.getRemoteDocumentCache = function () {
         assert(this.started, 'Cannot initialize RemoteDocumentCache before persistence is started.');
         return this.remoteDocumentCache;
-    };
-    IndexedDbPersistence.prototype.getIndexManager = function () {
-        assert(this.started, 'Cannot initialize IndexManager before persistence is started.');
-        return this.indexManager;
     };
     IndexedDbPersistence.prototype.runTransaction = function (action, mode, transactionOperation) {
         var _this = this;
@@ -38397,10 +37900,9 @@ function writeSentinelKey(txn, key) {
  * MutationQueue to the RemoteDocumentCache.
  */
 var LocalDocumentsView = /** @class */ (function () {
-    function LocalDocumentsView(remoteDocumentCache, mutationQueue, indexManager) {
+    function LocalDocumentsView(remoteDocumentCache, mutationQueue) {
         this.remoteDocumentCache = remoteDocumentCache;
         this.mutationQueue = mutationQueue;
-        this.indexManager = indexManager;
     }
     /**
      * Get the local view of the document identified by `key`.
@@ -38472,11 +37974,8 @@ var LocalDocumentsView = /** @class */ (function () {
     };
     /** Performs a query against the local view of all documents. */
     LocalDocumentsView.prototype.getDocumentsMatchingQuery = function (transaction, query) {
-        if (query.isDocumentQuery()) {
+        if (DocumentKey.isDocumentKey(query.path)) {
             return this.getDocumentsMatchingDocumentQuery(transaction, query.path);
-        }
-        else if (query.isCollectionGroupQuery()) {
-            return this.getDocumentsMatchingCollectionGroupQuery(transaction, query);
         }
         else {
             return this.getDocumentsMatchingCollectionQuery(transaction, query);
@@ -38490,26 +37989,6 @@ var LocalDocumentsView = /** @class */ (function () {
                 result = result.insert(maybeDoc.key, maybeDoc);
             }
             return result;
-        });
-    };
-    LocalDocumentsView.prototype.getDocumentsMatchingCollectionGroupQuery = function (transaction, query) {
-        var _this = this;
-        assert(query.path.isEmpty(), 'Currently we only support collection group queries at the root.');
-        var collectionId = query.collectionGroup;
-        var results = documentMap();
-        return this.indexManager
-            .getCollectionParents(transaction, collectionId)
-            .next(function (parents) {
-            // Perform a collection query against each parent that contains the
-            // collectionId and aggregate the results.
-            return PersistencePromise.forEach(parents, function (parent) {
-                var collectionQuery = query.asCollectionQueryAtPath(parent.child(collectionId));
-                return _this.getDocumentsMatchingCollectionQuery(transaction, collectionQuery).next(function (r) {
-                    r.forEach(function (key, doc) {
-                        results = results.insert(key, doc);
-                    });
-                });
-            }).next(function () { return results; });
         });
     };
     LocalDocumentsView.prototype.getDocumentsMatchingCollectionQuery = function (transaction, query) {
@@ -38764,7 +38243,7 @@ var LocalStore = /** @class */ (function () {
         this.mutationQueue = persistence.getMutationQueue(initialUser);
         this.remoteDocuments = persistence.getRemoteDocumentCache();
         this.queryCache = persistence.getQueryCache();
-        this.localDocuments = new LocalDocumentsView(this.remoteDocuments, this.mutationQueue, this.persistence.getIndexManager());
+        this.localDocuments = new LocalDocumentsView(this.remoteDocuments, this.mutationQueue);
     }
     /**
      * Tells the LocalStore that the currently authenticated user has changed.
@@ -38787,7 +38266,7 @@ var LocalStore = /** @class */ (function () {
                 _this.mutationQueue = _this.persistence.getMutationQueue(user);
                 // Recreate our LocalDocumentsView using the new
                 // MutationQueue.
-                _this.localDocuments = new LocalDocumentsView(_this.remoteDocuments, _this.mutationQueue, _this.persistence.getIndexManager());
+                _this.localDocuments = new LocalDocumentsView(_this.remoteDocuments, _this.mutationQueue);
                 return _this.mutationQueue.getAllMutationBatches(txn);
             })
                 .next(function (newBatches) {
@@ -38828,49 +38307,21 @@ var LocalStore = /** @class */ (function () {
     /* Accept locally generated Mutations and commit them to storage. */
     LocalStore.prototype.localWrite = function (mutations) {
         var _this = this;
-        var localWriteTime = Timestamp.now();
-        var keys = mutations.reduce(function (keys, m) { return keys.add(m.key); }, documentKeySet());
         return this.persistence.runTransaction('Locally write mutations', 'readwrite', function (txn) {
-            // Load and apply all existing mutations. This lets us compute the
-            // current base state for all non-idempotent transforms before applying
-            // any additional user-provided writes.
-            return _this.localDocuments
-                .getDocuments(txn, keys)
-                .next(function (existingDocs) {
-                // For non-idempotent mutations (such as `FieldValue.increment()`),
-                // we record the base state in a separate patch mutation. This is
-                // later used to guarantee consistent values and prevents flicker
-                // even if the backend sends us an update that already includes our
-                // transform.
-                var baseMutations = [];
-                for (var _i = 0, mutations_1 = mutations; _i < mutations_1.length; _i++) {
-                    var mutation = mutations_1[_i];
-                    var maybeDoc = existingDocs.get(mutation.key);
-                    if (!mutation.isIdempotent) {
-                        // Theoretically, we should only include non-idempotent fields
-                        // in this field mask as this mask is used to populate the base
-                        // state for all DocumentTransforms.  By  including all fields,
-                        // we incorrectly prevent rebasing of idempotent transforms
-                        // (such as `arrayUnion()`) when any non-idempotent transforms
-                        // are present.
-                        var fieldMask = mutation.fieldMask;
-                        if (fieldMask) {
-                            var baseValues = maybeDoc instanceof Document
-                                ? fieldMask.applyTo(maybeDoc.data)
-                                : ObjectValue.EMPTY;
-                            // NOTE: The base state should only be applied if there's some
-                            // existing document to override, so use a Precondition of
-                            // exists=true
-                            baseMutations.push(new PatchMutation(mutation.key, baseValues, fieldMask, Precondition.exists(true)));
-                        }
-                    }
-                }
-                return _this.mutationQueue
-                    .addMutationBatch(txn, localWriteTime, baseMutations, mutations)
-                    .next(function (batch) {
-                    var changes = batch.applyToLocalDocumentSet(existingDocs);
-                    return { batchId: batch.batchId, changes: changes };
-                });
+            var batch;
+            var localWriteTime = Timestamp.now();
+            return _this.mutationQueue
+                .addMutationBatch(txn, localWriteTime, mutations)
+                .next(function (promisedBatch) {
+                batch = promisedBatch;
+                // TODO(koss): This is doing an N^2 update by replaying ALL the
+                // mutations on each document (instead of just the ones added) in
+                // this batch.
+                var keys = batch.keys();
+                return _this.localDocuments.getDocuments(txn, keys);
+            })
+                .next(function (changedDocuments) {
+                return { batchId: batch.batchId, changes: changedDocuments };
             });
         });
     };
@@ -39343,8 +38794,7 @@ var LocalStore = /** @class */ (function () {
  * limitations under the License.
  */
 var MemoryMutationQueue = /** @class */ (function () {
-    function MemoryMutationQueue(indexManager, referenceDelegate) {
-        this.indexManager = indexManager;
+    function MemoryMutationQueue(referenceDelegate) {
         this.referenceDelegate = referenceDelegate;
         /**
          * The set of all mutations that have been sent but not yet been applied to
@@ -39384,7 +38834,7 @@ var MemoryMutationQueue = /** @class */ (function () {
         this.lastStreamToken = streamToken;
         return PersistencePromise.resolve();
     };
-    MemoryMutationQueue.prototype.addMutationBatch = function (transaction, localWriteTime, baseMutations, mutations) {
+    MemoryMutationQueue.prototype.addMutationBatch = function (transaction, localWriteTime, mutations) {
         assert(mutations.length !== 0, 'Mutation batches should not be empty');
         var batchId = this.nextBatchId;
         this.nextBatchId++;
@@ -39392,13 +38842,12 @@ var MemoryMutationQueue = /** @class */ (function () {
             var prior = this.mutationQueue[this.mutationQueue.length - 1];
             assert(prior.batchId < batchId, 'Mutation batchIDs must be monotonically increasing order');
         }
-        var batch = new MutationBatch(batchId, localWriteTime, baseMutations, mutations);
+        var batch = new MutationBatch(batchId, localWriteTime, mutations);
         this.mutationQueue.push(batch);
-        // Track references by document key and index collection parents.
+        // Track references by document key.
         for (var _i = 0, mutations_1 = mutations; _i < mutations_1.length; _i++) {
             var mutation = mutations_1[_i];
             this.batchesByDocumentKey = this.batchesByDocumentKey.add(new DocReference(mutation.key, batchId));
-            this.indexManager.addToCollectionParentIndex(transaction, mutation.key.path.popLast());
         }
         return PersistencePromise.resolve(batch);
     };
@@ -39448,7 +38897,6 @@ var MemoryMutationQueue = /** @class */ (function () {
         return PersistencePromise.resolve(this.findMutationBatches(uniqueBatchIDs));
     };
     MemoryMutationQueue.prototype.getAllMutationBatchesAffectingQuery = function (transaction, query) {
-        assert(!query.isCollectionGroupQuery(), 'CollectionGroup queries should be handled in LocalDocumentsView');
         // Use the query path as a prefix for testing if a document matches the
         // query.
         var prefix = query.path;
@@ -39756,8 +39204,7 @@ var MemoryRemoteDocumentCache = /** @class */ (function () {
      * @param sizer Used to assess the size of a document. For eager GC, this is expected to just
      * return 0 to avoid unnecessarily doing the work of calculating the size.
      */
-    function MemoryRemoteDocumentCache(indexManager, sizer) {
-        this.indexManager = indexManager;
+    function MemoryRemoteDocumentCache(sizer) {
         this.sizer = sizer;
         this.docs = documentSizeMap();
         this.newDocumentChanges = documentKeySet();
@@ -39767,16 +39214,14 @@ var MemoryRemoteDocumentCache = /** @class */ (function () {
      * Adds the supplied entries to the cache. Adds the given size delta to the cached size.
      */
     MemoryRemoteDocumentCache.prototype.addEntries = function (transaction, entries, sizeDelta) {
-        var promises = [];
         for (var _i = 0, entries_1 = entries; _i < entries_1.length; _i++) {
             var entry = entries_1[_i];
             var key = entry.maybeDocument.key;
             this.docs = this.docs.insert(key, entry);
             this.newDocumentChanges = this.newDocumentChanges.add(key);
-            promises.push(this.indexManager.addToCollectionParentIndex(transaction, key.path.popLast()));
         }
         this.size += sizeDelta;
-        return PersistencePromise.waitFor(promises);
+        return PersistencePromise.resolve();
     };
     /**
      * Removes the specified entry from the cache and updates the size as appropriate.
@@ -39834,7 +39279,6 @@ var MemoryRemoteDocumentCache = /** @class */ (function () {
         return PersistencePromise.resolve({ maybeDocuments: results, sizeMap: sizeMap });
     };
     MemoryRemoteDocumentCache.prototype.getDocumentsMatchingQuery = function (transaction, query) {
-        assert(!query.isCollectionGroupQuery(), 'CollectionGroup queries should be handled in LocalDocumentsView');
         var results = documentMap();
         // Documents are ordered by key, so we can use a prefix scan to narrow down
         // the documents we need to match the query against.
@@ -39940,6 +39384,13 @@ var MemoryPersistence = /** @class */ (function () {
     function MemoryPersistence(clientId, referenceDelegateFactory) {
         var _this = this;
         this.clientId = clientId;
+        /**
+         * Note that these are retained here to make it easier to write tests
+         * affecting both the in-memory and IndexedDB-backed persistence layers. Tests
+         * can create a new LocalStore wrapping this Persistence instance and this
+         * will make the in-memory persistence layer behave as if it were actually
+         * persisting values.
+         */
         this.mutationQueues = {};
         this.listenSequence = new ListenSequence(0);
         this._started = false;
@@ -39949,8 +39400,7 @@ var MemoryPersistence = /** @class */ (function () {
         var sizer = function (doc) {
             return _this.referenceDelegate.documentSize(doc);
         };
-        this.indexManager = new MemoryIndexManager();
-        this.remoteDocumentCache = new MemoryRemoteDocumentCache(this.indexManager, sizer);
+        this.remoteDocumentCache = new MemoryRemoteDocumentCache(sizer);
     }
     MemoryPersistence.createLruPersistence = function (clientId, serializer, params) {
         var factory = function (p) {
@@ -39990,13 +39440,10 @@ var MemoryPersistence = /** @class */ (function () {
     MemoryPersistence.prototype.setNetworkEnabled = function (networkEnabled) {
         // No op.
     };
-    MemoryPersistence.prototype.getIndexManager = function () {
-        return this.indexManager;
-    };
     MemoryPersistence.prototype.getMutationQueue = function (user) {
         var queue = this.mutationQueues[user.toKey()];
         if (!queue) {
-            queue = new MemoryMutationQueue(this.indexManager, this.referenceDelegate);
+            queue = new MemoryMutationQueue(this.referenceDelegate);
             this.mutationQueues[user.toKey()] = queue;
         }
         return queue;
@@ -40619,13 +40066,13 @@ var PersistentStream = /** @class */ (function () {
      * @param finalState the intended state of the stream after closing.
      * @param error the error the connection was closed with.
      */
-    PersistentStream.prototype.close = function (finalState, error$1) {
+    PersistentStream.prototype.close = function (finalState, error$$1) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         assert(this.isStarted(), 'Only started streams should be closed.');
-                        assert(finalState === PersistentStreamState.Error || isNullOrUndefined(error$1), "Can't provide an error when not in an error state.");
+                        assert(finalState === PersistentStreamState.Error || isNullOrUndefined(error$$1), "Can't provide an error when not in an error state.");
                         // Cancel any outstanding timers (they're guaranteed not to execute).
                         this.cancelIdleCheck();
                         this.backoff.cancel();
@@ -40636,13 +40083,13 @@ var PersistentStream = /** @class */ (function () {
                             // If this is an intentional close ensure we don't delay our next connection attempt.
                             this.backoff.reset();
                         }
-                        else if (error$1 && error$1.code === Code.RESOURCE_EXHAUSTED) {
+                        else if (error$$1 && error$$1.code === Code.RESOURCE_EXHAUSTED) {
                             // Log the error. (Probably either 'quota exceeded' or 'max queue length reached'.)
-                            error(error$1.toString());
+                            error(error$$1.toString());
                             error('Using maximum backoff delay to prevent overloading the backend.');
                             this.backoff.resetToMax();
                         }
-                        else if (error$1 && error$1.code === Code.UNAUTHENTICATED) {
+                        else if (error$$1 && error$$1.code === Code.UNAUTHENTICATED) {
                             // "unauthenticated" error means the token was rejected. Try force refreshing it in case it
                             // just expired.
                             this.credentialsProvider.invalidateToken();
@@ -40657,7 +40104,7 @@ var PersistentStream = /** @class */ (function () {
                         // inhibit backoff or otherwise manipulate the state in its non-started state.
                         this.state = finalState;
                         // Notify the listener that the stream closed.
-                        return [4 /*yield*/, this.listener.onClose(error$1)];
+                        return [4 /*yield*/, this.listener.onClose(error$$1)];
                     case 1:
                         // Notify the listener that the stream closed.
                         _a.sent();
@@ -40689,9 +40136,9 @@ var PersistentStream = /** @class */ (function () {
                 // AsyncQueue since they don't chain asynchronous calls
                 _this.startStream(token);
             }
-        }, function (error) {
+        }, function (error$$1) {
             dispatchIfNotClosed(function () {
-                var rpcError = new FirestoreError(Code.UNKNOWN, 'Fetching auth token failed: ' + error.message);
+                var rpcError = new FirestoreError(Code.UNKNOWN, 'Fetching auth token failed: ' + error$$1.message);
                 return _this.handleStreamClose(rpcError);
             });
         });
@@ -40708,9 +40155,9 @@ var PersistentStream = /** @class */ (function () {
                 return _this.listener.onOpen();
             });
         });
-        this.stream.onClose(function (error) {
+        this.stream.onClose(function (error$$1) {
             dispatchIfNotClosed(function () {
-                return _this.handleStreamClose(error);
+                return _this.handleStreamClose(error$$1);
             });
         });
         this.stream.onMessage(function (msg) {
@@ -40734,15 +40181,15 @@ var PersistentStream = /** @class */ (function () {
         }); });
     };
     // Visible for tests
-    PersistentStream.prototype.handleStreamClose = function (error) {
+    PersistentStream.prototype.handleStreamClose = function (error$$1) {
         assert(this.isStarted(), "Can't handle server close on non-started stream");
-        debug(LOG_TAG$6, "close with error: " + error);
+        debug(LOG_TAG$6, "close with error: " + error$$1);
         this.stream = null;
         // In theory the stream could close cleanly, however, in our current model
         // we never expect this to happen because if we stop a stream ourselves,
         // this callback will never be called. To prevent cases where we retry
         // without a backoff accidentally, we set the stream to error in all cases.
-        return this.close(PersistentStreamState.Error, error);
+        return this.close(PersistentStreamState.Error, error$$1);
     };
     /**
      * Returns a "dispatcher" function that dispatches operations onto the
@@ -41301,7 +40748,7 @@ var OnlineStateTracker = /** @class */ (function () {
      * allow multiple failures (based on MAX_WATCH_STREAM_FAILURES) before we
      * actually transition to the 'Offline' state.
      */
-    OnlineStateTracker.prototype.handleWatchStreamFailure = function (error) {
+    OnlineStateTracker.prototype.handleWatchStreamFailure = function (error$$1) {
         if (this.state === OnlineState.Online) {
             this.setAndBroadcast(OnlineState.Unknown);
             // To get to OnlineState.Online, set() must have been called which would
@@ -41314,7 +40761,7 @@ var OnlineStateTracker = /** @class */ (function () {
             if (this.watchStreamFailures >= MAX_WATCH_STREAM_FAILURES) {
                 this.clearOnlineStateTimer();
                 this.logClientOfflineWarningIfNecessary("Connection failed " + MAX_WATCH_STREAM_FAILURES + " " +
-                    ("times. Most recent error: " + error.toString()));
+                    ("times. Most recent error: " + error$$1.toString()));
                 this.setAndBroadcast(OnlineState.Offline);
             }
         }
@@ -41645,10 +41092,10 @@ var RemoteStore = /** @class */ (function () {
             });
         });
     };
-    RemoteStore.prototype.onWatchStreamClose = function (error) {
+    RemoteStore.prototype.onWatchStreamClose = function (error$$1) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
             return tslib_1.__generator(this, function (_a) {
-                if (error === undefined) {
+                if (error$$1 === undefined) {
                     // Graceful stop (due to stop() or idle timeout). Make sure that's
                     // desirable.
                     assert(!this.shouldStartWatchStream(), 'Watch stream was stopped gracefully while still needed.');
@@ -41656,7 +41103,7 @@ var RemoteStore = /** @class */ (function () {
                 this.cleanUpWatchStreamState();
                 // If we still need the watch stream, retry the connection.
                 if (this.shouldStartWatchStream()) {
-                    this.onlineStateTracker.handleWatchStreamFailure(error);
+                    this.onlineStateTracker.handleWatchStreamFailure(error$$1);
                     this.startWatchStream();
                 }
                 else {
@@ -41765,7 +41212,7 @@ var RemoteStore = /** @class */ (function () {
     RemoteStore.prototype.handleTargetError = function (watchChange) {
         var _this = this;
         assert(!!watchChange.cause, 'Handling target error without a cause');
-        var error = watchChange.cause;
+        var error$$1 = watchChange.cause;
         var promiseChain = Promise.resolve();
         watchChange.targetIds.forEach(function (targetId) {
             promiseChain = promiseChain.then(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
@@ -41774,7 +41221,7 @@ var RemoteStore = /** @class */ (function () {
                     if (contains(this.listenTargets, targetId)) {
                         delete this.listenTargets[targetId];
                         this.watchChangeAggregator.removeTarget(targetId);
-                        return [2 /*return*/, this.syncEngine.rejectListen(targetId, error)];
+                        return [2 /*return*/, this.syncEngine.rejectListen(targetId, error$$1)];
                     }
                     return [2 /*return*/];
                 });
@@ -41889,29 +41336,29 @@ var RemoteStore = /** @class */ (function () {
             return _this.fillWritePipeline();
         });
     };
-    RemoteStore.prototype.onWriteStreamClose = function (error) {
+    RemoteStore.prototype.onWriteStreamClose = function (error$$1) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var errorHandling;
             var _this = this;
+            var errorHandling;
             return tslib_1.__generator(this, function (_a) {
-                if (error === undefined) {
+                if (error$$1 === undefined) {
                     // Graceful stop (due to stop() or idle timeout). Make sure that's
                     // desirable.
                     assert(!this.shouldStartWriteStream(), 'Write stream was stopped gracefully while still needed.');
                 }
                 // If the write stream closed due to an error, invoke the error callbacks if
                 // there are pending writes.
-                if (error && this.writePipeline.length > 0) {
+                if (error$$1 && this.writePipeline.length > 0) {
                     errorHandling = void 0;
                     if (this.writeStream.handshakeComplete) {
                         // This error affects the actual write.
-                        errorHandling = this.handleWriteError(error);
+                        errorHandling = this.handleWriteError(error$$1);
                     }
                     else {
                         // If there was an error before the handshake has finished, it's
                         // possible that the server is unable to process the stream token
                         // we're sending. (Perhaps it's too old?)
-                        errorHandling = this.handleHandshakeError(error);
+                        errorHandling = this.handleHandshakeError(error$$1);
                     }
                     return [2 /*return*/, errorHandling.then(function () {
                             // The write stream might have been started by refilling the write
@@ -41925,13 +41372,13 @@ var RemoteStore = /** @class */ (function () {
             });
         });
     };
-    RemoteStore.prototype.handleHandshakeError = function (error) {
+    RemoteStore.prototype.handleHandshakeError = function (error$$1) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
             return tslib_1.__generator(this, function (_a) {
                 // Reset the token if it's a permanent error, signaling the write stream is
                 // no longer valid. Note that the handshake does not count as a write: see
                 // comments on isPermanentWriteError for details.
-                if (isPermanentError(error.code)) {
+                if (isPermanentError(error$$1.code)) {
                     debug(LOG_TAG$8, 'RemoteStore error before completed handshake; resetting stream token: ', this.writeStream.lastStreamToken);
                     this.writeStream.lastStreamToken = emptyByteString();
                     return [2 /*return*/, this.localStore
@@ -41942,21 +41389,21 @@ var RemoteStore = /** @class */ (function () {
             });
         });
     };
-    RemoteStore.prototype.handleWriteError = function (error) {
+    RemoteStore.prototype.handleWriteError = function (error$$1) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var batch;
             var _this = this;
+            var batch;
             return tslib_1.__generator(this, function (_a) {
                 // Only handle permanent errors here. If it's transient, just let the retry
                 // logic kick in.
-                if (isPermanentWriteError(error.code)) {
+                if (isPermanentWriteError(error$$1.code)) {
                     batch = this.writePipeline.shift();
                     // In this case it's also unlikely that the server itself is melting
                     // down -- this was just a bad request so inhibit backoff on the next
                     // restart.
                     this.writeStream.inhibitBackoff();
                     return [2 /*return*/, this.syncEngine
-                            .rejectFailedWrite(batch.batchId, error)
+                            .rejectFailedWrite(batch.batchId, error$$1)
                             .then(function () {
                             // It's possible that with the completion of this mutation
                             // another slot has freed up.
@@ -42882,8 +42329,8 @@ var SyncEngine = /** @class */ (function () {
     /** Stops listening to the query. */
     SyncEngine.prototype.unlisten = function (query) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var queryView, targetRemainsActive;
             var _this = this;
+            var queryView, targetRemainsActive;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -42945,8 +42392,8 @@ var SyncEngine = /** @class */ (function () {
         });
     };
     // TODO(klimt): Wrap the given error in a standard Firestore error object.
-    SyncEngine.prototype.wrapUpdateFunctionError = function (error) {
-        return error;
+    SyncEngine.prototype.wrapUpdateFunctionError = function (error$$1) {
+        return error$$1;
     };
     /**
      * Takes an updateFunction in which a set of reads and writes can be performed
@@ -42992,9 +42439,9 @@ var SyncEngine = /** @class */ (function () {
                 .then(function () {
                 return result;
             })
-                .catch(function (error) {
+                .catch(function (error$$1) {
                 if (retries === 0) {
-                    return Promise.reject(error);
+                    return Promise.reject(error$$1);
                 }
                 // TODO(klimt): Put in a retry delay?
                 return _this.runTransaction(updateFunction, retries - 1);
@@ -43062,8 +42509,8 @@ var SyncEngine = /** @class */ (function () {
     };
     SyncEngine.prototype.rejectListen = function (targetId, err) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var limboResolution, limboKey, documentUpdates, resolvedLimboDocuments, event_1, queryView_1;
             var _this = this;
+            var limboResolution, limboKey, documentUpdates, resolvedLimboDocuments, event_1, queryView_1;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -43101,7 +42548,7 @@ var SyncEngine = /** @class */ (function () {
         });
     };
     // PORTING NOTE: Multi-tab only
-    SyncEngine.prototype.applyBatchState = function (batchId, batchState, error) {
+    SyncEngine.prototype.applyBatchState = function (batchId, batchState, error$$1) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
             var documents;
             return tslib_1.__generator(this, function (_a) {
@@ -43137,7 +42584,7 @@ var SyncEngine = /** @class */ (function () {
                         if (batchState === 'acknowledged' || batchState === 'rejected') {
                             // NOTE: Both these methods are no-ops for batches that originated from
                             // other clients.
-                            this.processUserCallback(batchId, error ? error : null);
+                            this.processUserCallback(batchId, error$$1 ? error$$1 : null);
                             this.localStore.removeCachedMutationBatchMetadata(batchId);
                         }
                         else {
@@ -43169,18 +42616,18 @@ var SyncEngine = /** @class */ (function () {
         })
             .catch(ignoreIfPrimaryLeaseLoss);
     };
-    SyncEngine.prototype.rejectFailedWrite = function (batchId, error) {
+    SyncEngine.prototype.rejectFailedWrite = function (batchId, error$$1) {
         var _this = this;
         this.assertSubscribed('rejectFailedWrite()');
         // The local store may or may not be able to apply the write result and
         // raise events immediately (depending on whether the watcher is caught up),
         // so we raise user callbacks first so that they consistently happen before
         // listen events.
-        this.processUserCallback(batchId, error);
+        this.processUserCallback(batchId, error$$1);
         return this.localStore
             .rejectBatch(batchId)
             .then(function (changes) {
-            _this.sharedClientState.updateMutationState(batchId, 'rejected', error);
+            _this.sharedClientState.updateMutationState(batchId, 'rejected', error$$1);
             return _this.emitNewSnapsAndNotifyLocalStore(changes);
         })
             .catch(ignoreIfPrimaryLeaseLoss);
@@ -43197,7 +42644,7 @@ var SyncEngine = /** @class */ (function () {
      * Resolves or rejects the user callback for the given batch and then discards
      * it.
      */
-    SyncEngine.prototype.processUserCallback = function (batchId, error) {
+    SyncEngine.prototype.processUserCallback = function (batchId, error$$1) {
         var newCallbacks = this.mutationUserCallbacks[this.currentUser.toKey()];
         // NOTE: Mutations restored from persistence won't have callbacks, so it's
         // okay for there to be no callback for this ID.
@@ -43205,8 +42652,8 @@ var SyncEngine = /** @class */ (function () {
             var callback = newCallbacks.get(batchId);
             if (callback) {
                 assert(batchId === newCallbacks.minKey(), 'Mutation callbacks processed out-of-order?');
-                if (error) {
-                    callback.reject(error);
+                if (error$$1) {
+                    callback.reject(error$$1);
                 }
                 else {
                     callback.resolve();
@@ -43283,8 +42730,8 @@ var SyncEngine = /** @class */ (function () {
     };
     SyncEngine.prototype.emitNewSnapsAndNotifyLocalStore = function (changes, remoteEvent) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var newSnaps, docChangesInAllViews, queriesProcessed;
             var _this = this;
+            var newSnaps, docChangesInAllViews, queriesProcessed;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -43364,8 +42811,8 @@ var SyncEngine = /** @class */ (function () {
     // PORTING NOTE: Multi-tab only
     SyncEngine.prototype.applyPrimaryState = function (isPrimary) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var activeTargets, activeQueries, _i, activeQueries_1, queryData, activeTargets_1, p_1;
             var _this = this;
+            var activeTargets, activeQueries, _i, activeQueries_1, queryData, activeTargets_1, p_1;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -43499,10 +42946,10 @@ var SyncEngine = /** @class */ (function () {
         return this.localStore.getActiveClients();
     };
     // PORTING NOTE: Multi-tab only
-    SyncEngine.prototype.applyTargetState = function (targetId, state, error) {
+    SyncEngine.prototype.applyTargetState = function (targetId, state, error$$1) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var _a, queryView;
             var _this = this;
+            var _a, queryView;
             return tslib_1.__generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
@@ -43562,7 +43009,7 @@ var SyncEngine = /** @class */ (function () {
                             /*keepPersistedQueryData=*/ true)];
                     case 3:
                         _b.sent();
-                        this.syncEngineListener.onWatchError(queryView.query, error);
+                        this.syncEngineListener.onWatchError(queryView.query, error$$1);
                         return [3 /*break*/, 5];
                     case 4:
                         fail('Unexpected target state: ' + state);
@@ -43575,8 +43022,8 @@ var SyncEngine = /** @class */ (function () {
     // PORTING NOTE: Multi-tab only
     SyncEngine.prototype.applyActiveTargetsChange = function (added, removed) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var _i, added_1, targetId, query, queryData, _loop_2, this_1, _a, removed_1, targetId;
             var _this = this;
+            var _i, added_1, targetId, query, queryData, _loop_2, this_1, _a, removed_1, targetId;
             return tslib_1.__generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
@@ -43738,7 +43185,7 @@ var User = /** @class */ (function () {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var LOG_TAG$a = 'SharedClientState';
+var LOG_TAG$10 = 'SharedClientState';
 // The format of the LocalStorage key that stores the client state is:
 //     firestore_clients_<persistence_prefix>_<instance_key>
 var CLIENT_STATE_KEY_PREFIX = 'firestore_clients';
@@ -43766,12 +43213,12 @@ var SEQUENCE_NUMBER_KEY_PREFIX = 'firestore_sequence_number';
  */
 // Visible for testing
 var MutationMetadata = /** @class */ (function () {
-    function MutationMetadata(user, batchId, state, error) {
+    function MutationMetadata(user, batchId, state, error$$1) {
         this.user = user;
         this.batchId = batchId;
         this.state = state;
-        this.error = error;
-        assert((error !== undefined) === (state === 'rejected'), "MutationMetadata must contain an error iff state is 'rejected'");
+        this.error = error$$1;
+        assert((error$$1 !== undefined) === (state === 'rejected'), "MutationMetadata must contain an error iff state is 'rejected'");
     }
     /**
      * Parses a MutationMetadata from its JSON representation in WebStorage.
@@ -43797,7 +43244,7 @@ var MutationMetadata = /** @class */ (function () {
             return new MutationMetadata(user, batchId, mutationBatch.state, firestoreError);
         }
         else {
-            error(LOG_TAG$a, "Failed to parse mutation state for ID '" + batchId + "': " + value);
+            error(LOG_TAG$10, "Failed to parse mutation state for ID '" + batchId + "': " + value);
             return null;
         }
     };
@@ -43822,11 +43269,11 @@ var MutationMetadata = /** @class */ (function () {
  */
 // Visible for testing
 var QueryTargetMetadata = /** @class */ (function () {
-    function QueryTargetMetadata(targetId, state, error) {
+    function QueryTargetMetadata(targetId, state, error$$1) {
         this.targetId = targetId;
         this.state = state;
-        this.error = error;
-        assert((error !== undefined) === (state === 'rejected'), "QueryTargetMetadata must contain an error iff state is 'rejected'");
+        this.error = error$$1;
+        assert((error$$1 !== undefined) === (state === 'rejected'), "QueryTargetMetadata must contain an error iff state is 'rejected'");
     }
     /**
      * Parses a QueryTargetMetadata from its JSON representation in WebStorage.
@@ -43852,7 +43299,7 @@ var QueryTargetMetadata = /** @class */ (function () {
             return new QueryTargetMetadata(targetId, targetState.state, firestoreError);
         }
         else {
-            error(LOG_TAG$a, "Failed to parse target state for ID '" + targetId + "': " + value);
+            error(LOG_TAG$10, "Failed to parse target state for ID '" + targetId + "': " + value);
             return null;
         }
     };
@@ -43897,7 +43344,7 @@ var RemoteClientState = /** @class */ (function () {
             return new RemoteClientState(clientId, activeTargetIdsSet);
         }
         else {
-            error(LOG_TAG$a, "Failed to parse client data for instance '" + clientId + "': " + value);
+            error(LOG_TAG$10, "Failed to parse client data for instance '" + clientId + "': " + value);
             return null;
         }
     };
@@ -43926,7 +43373,7 @@ var SharedOnlineState = /** @class */ (function () {
             return new SharedOnlineState(onlineState.clientId, OnlineState[onlineState.onlineState]);
         }
         else {
-            error(LOG_TAG$a, "Failed to parse online state: " + value);
+            error(LOG_TAG$10, "Failed to parse online state: " + value);
             return null;
         }
     };
@@ -44018,8 +43465,8 @@ var WebStorageSharedClientState = /** @class */ (function () {
     };
     WebStorageSharedClientState.prototype.start = function () {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var existingClients, _i, existingClients_1, clientId, storageItem, clientState, onlineStateJSON, onlineState, _a, _b, event_1;
             var _this = this;
+            var existingClients, _i, existingClients_1, clientId, storageItem, clientState, onlineStateJSON, onlineState, _a, _b, event_1;
             return tslib_1.__generator(this, function (_c) {
                 switch (_c.label) {
                     case 0:
@@ -44089,8 +43536,8 @@ var WebStorageSharedClientState = /** @class */ (function () {
     WebStorageSharedClientState.prototype.addPendingMutation = function (batchId) {
         this.persistMutationState(batchId, 'pending');
     };
-    WebStorageSharedClientState.prototype.updateMutationState = function (batchId, state, error) {
-        this.persistMutationState(batchId, state, error);
+    WebStorageSharedClientState.prototype.updateMutationState = function (batchId, state, error$$1) {
+        this.persistMutationState(batchId, state, error$$1);
         // Once a final mutation result is observed by other clients, they no longer
         // access the mutation's metadata entry. Since WebStorage replays events
         // in order, it is safe to delete the entry right after updating it.
@@ -44123,8 +43570,8 @@ var WebStorageSharedClientState = /** @class */ (function () {
     WebStorageSharedClientState.prototype.clearQueryState = function (targetId) {
         this.removeItem(this.toWebStorageQueryTargetMetadataKey(targetId));
     };
-    WebStorageSharedClientState.prototype.updateQueryState = function (targetId, state, error) {
-        this.persistQueryTargetState(targetId, state, error);
+    WebStorageSharedClientState.prototype.updateQueryState = function (targetId, state, error$$1) {
+        this.persistQueryTargetState(targetId, state, error$$1);
     };
     WebStorageSharedClientState.prototype.handleUserChange = function (user, removedBatchIds, addedBatchIds) {
         var _this = this;
@@ -44148,21 +43595,21 @@ var WebStorageSharedClientState = /** @class */ (function () {
     };
     WebStorageSharedClientState.prototype.getItem = function (key) {
         var value = this.storage.getItem(key);
-        debug(LOG_TAG$a, 'READ', key, value);
+        debug(LOG_TAG$10, 'READ', key, value);
         return value;
     };
     WebStorageSharedClientState.prototype.setItem = function (key, value) {
-        debug(LOG_TAG$a, 'SET', key, value);
+        debug(LOG_TAG$10, 'SET', key, value);
         this.storage.setItem(key, value);
     };
     WebStorageSharedClientState.prototype.removeItem = function (key) {
-        debug(LOG_TAG$a, 'REMOVE', key);
+        debug(LOG_TAG$10, 'REMOVE', key);
         this.storage.removeItem(key);
     };
     WebStorageSharedClientState.prototype.handleWebStorageEvent = function (event) {
         var _this = this;
         if (event.storageArea === this.storage) {
-            debug(LOG_TAG$a, 'EVENT', event.key, event.newValue);
+            debug(LOG_TAG$10, 'EVENT', event.key, event.newValue);
             if (event.key === this.localClientStorageKey) {
                 error('Received WebStorage notification for local change. Another client might have ' +
                     'garbage-collected our state');
@@ -44236,8 +43683,8 @@ var WebStorageSharedClientState = /** @class */ (function () {
     WebStorageSharedClientState.prototype.persistClientState = function () {
         this.setItem(this.localClientStorageKey, this.localClientState.toWebStorageJSON());
     };
-    WebStorageSharedClientState.prototype.persistMutationState = function (batchId, state, error) {
-        var mutationState = new MutationMetadata(this.currentUser, batchId, state, error);
+    WebStorageSharedClientState.prototype.persistMutationState = function (batchId, state, error$$1) {
+        var mutationState = new MutationMetadata(this.currentUser, batchId, state, error$$1);
         var mutationKey = this.toWebStorageMutationBatchKey(batchId);
         this.setItem(mutationKey, mutationState.toWebStorageJSON());
     };
@@ -44252,9 +43699,9 @@ var WebStorageSharedClientState = /** @class */ (function () {
         };
         this.storage.setItem(this.onlineStateKey, JSON.stringify(entry));
     };
-    WebStorageSharedClientState.prototype.persistQueryTargetState = function (targetId, state, error) {
+    WebStorageSharedClientState.prototype.persistQueryTargetState = function (targetId, state, error$$1) {
         var targetKey = this.toWebStorageQueryTargetMetadataKey(targetId);
-        var targetMetadata = new QueryTargetMetadata(targetId, state, error);
+        var targetMetadata = new QueryTargetMetadata(targetId, state, error$$1);
         this.setItem(targetKey, targetMetadata.toWebStorageJSON());
     };
     /** Assembles the key for a client state in WebStorage */
@@ -44323,7 +43770,7 @@ var WebStorageSharedClientState = /** @class */ (function () {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
             return tslib_1.__generator(this, function (_a) {
                 if (mutationBatch.user.uid !== this.currentUser.uid) {
-                    debug(LOG_TAG$a, "Ignoring mutation for non-active user " + mutationBatch.user.uid);
+                    debug(LOG_TAG$10, "Ignoring mutation for non-active user " + mutationBatch.user.uid);
                     return [2 /*return*/];
                 }
                 return [2 /*return*/, this.syncEngine.applyBatchState(mutationBatch.batchId, mutationBatch.state, mutationBatch.error)];
@@ -44384,7 +43831,7 @@ function fromWebStorageSequenceNumber(seqString) {
             sequenceNumber = parsed;
         }
         catch (e) {
-            error(LOG_TAG$a, 'Failed to read sequence number from WebStorage', e);
+            error(LOG_TAG$10, 'Failed to read sequence number from WebStorage', e);
         }
     }
     return sequenceNumber;
@@ -44405,14 +43852,14 @@ var MemorySharedClientState = /** @class */ (function () {
     MemorySharedClientState.prototype.addPendingMutation = function (batchId) {
         // No op.
     };
-    MemorySharedClientState.prototype.updateMutationState = function (batchId, state, error) {
+    MemorySharedClientState.prototype.updateMutationState = function (batchId, state, error$$1) {
         // No op.
     };
     MemorySharedClientState.prototype.addLocalQueryTarget = function (targetId) {
         this.localState.addQueryTarget(targetId);
         return this.queryState[targetId] || 'not-current';
     };
-    MemorySharedClientState.prototype.updateQueryState = function (targetId, state, error) {
+    MemorySharedClientState.prototype.updateQueryState = function (targetId, state, error$$1) {
         this.queryState[targetId] = state;
     };
     MemorySharedClientState.prototype.removeLocalQueryTarget = function (targetId) {
@@ -44461,7 +43908,7 @@ var MemorySharedClientState = /** @class */ (function () {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var LOG_TAG$b = 'FirestoreClient';
+var LOG_TAG$11 = 'FirestoreClient';
 /** The DOMException code for an aborted operation. */
 var DOM_EXCEPTION_ABORTED = 20;
 /** The DOMException code for quota exceeded. */
@@ -44610,17 +44057,17 @@ var FirestoreClient = /** @class */ (function () {
                 persistenceResult.resolve();
                 return maybeLruGc;
             })
-                .catch(function (error) {
+                .catch(function (error$$1) {
                 // Regardless of whether or not the retry succeeds, from an user
                 // perspective, offline persistence has failed.
-                persistenceResult.reject(error);
+                persistenceResult.reject(error$$1);
                 // An unknown failure on the first stage shuts everything down.
-                if (!_this.canFallback(error)) {
-                    throw error;
+                if (!_this.canFallback(error$$1)) {
+                    throw error$$1;
                 }
                 console.warn('Error enabling offline storage. Falling back to' +
                     ' storage disabled: ' +
-                    error);
+                    error$$1);
                 return _this.startMemoryPersistence();
             });
         }
@@ -44637,21 +44084,21 @@ var FirestoreClient = /** @class */ (function () {
      * Decides whether the provided error allows us to gracefully disable
      * persistence (as opposed to crashing the client).
      */
-    FirestoreClient.prototype.canFallback = function (error) {
-        if (error instanceof FirestoreError) {
-            return (error.code === Code.FAILED_PRECONDITION ||
-                error.code === Code.UNIMPLEMENTED);
+    FirestoreClient.prototype.canFallback = function (error$$1) {
+        if (error$$1 instanceof FirestoreError) {
+            return (error$$1.code === Code.FAILED_PRECONDITION ||
+                error$$1.code === Code.UNIMPLEMENTED);
         }
         else if (typeof DOMException !== 'undefined' &&
-            error instanceof DOMException) {
+            error$$1 instanceof DOMException) {
             // We fall back to memory persistence if we cannot write the primary
             // lease. This can happen can during a schema migration, or if we run out
             // of quota when we try to write the primary lease.
             // For both the `QuotaExceededError` and the  `AbortError`, it is safe to
             // fall back to memory persistence since all modifications to IndexedDb
             // failed to commit.
-            return (error.code === DOM_EXCEPTION_QUOTA_EXCEEDED ||
-                error.code === DOM_EXCEPTION_ABORTED);
+            return (error$$1.code === DOM_EXCEPTION_QUOTA_EXCEEDED ||
+                error$$1.code === DOM_EXCEPTION_ABORTED);
         }
         return true;
     };
@@ -44715,12 +44162,12 @@ var FirestoreClient = /** @class */ (function () {
      */
     FirestoreClient.prototype.initializeRest = function (user, maybeLruGc) {
         var _this = this;
-        debug(LOG_TAG$b, 'Initializing. user=', user.uid);
+        debug(LOG_TAG$11, 'Initializing. user=', user.uid);
         return this.platform
             .loadConnection(this.databaseInfo)
             .then(function (connection) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-            var serializer, datastore, remoteStoreOnlineStateChangedHandler, sharedClientStateOnlineStateChangedHandler;
             var _this = this;
+            var serializer, datastore, remoteStoreOnlineStateChangedHandler, sharedClientStateOnlineStateChangedHandler;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -44783,7 +44230,7 @@ var FirestoreClient = /** @class */ (function () {
     };
     FirestoreClient.prototype.handleCredentialChange = function (user) {
         this.asyncQueue.verifyOperationInProgress();
-        debug(LOG_TAG$b, 'Credential Changed. Current user: ' + user.uid);
+        debug(LOG_TAG$11, 'Credential Changed. Current user: ' + user.uid);
         return this.syncEngine.handleCredentialChange(user);
     };
     /** Disables the network connection. Pending operations will not complete. */
@@ -44977,7 +44424,7 @@ var FieldPath$1 = /** @class */ (function () {
      *
      * @param fieldNames A list of field names.
      */
-    function FieldPath$1() {
+    function FieldPath$$1() {
         var fieldNames = [];
         for (var _i = 0; _i < arguments.length; _i++) {
             fieldNames[_i] = arguments[_i];
@@ -44992,11 +44439,11 @@ var FieldPath$1 = /** @class */ (function () {
         }
         this._internalPath = new FieldPath(fieldNames);
     }
-    FieldPath$1.documentId = function () {
-        return FieldPath$1._DOCUMENT_ID;
+    FieldPath$$1.documentId = function () {
+        return FieldPath$$1._DOCUMENT_ID;
     };
-    FieldPath$1.prototype.isEqual = function (other) {
-        if (!(other instanceof FieldPath$1)) {
+    FieldPath$$1.prototype.isEqual = function (other) {
+        if (!(other instanceof FieldPath$$1)) {
             throw invalidClassError('isEqual', 'FieldPath', 1, other);
         }
         return this._internalPath.isEqual(other._internalPath);
@@ -45007,8 +44454,8 @@ var FieldPath$1 = /** @class */ (function () {
      * included), but in the cases we currently support documentId(), the net
      * effect is the same.
      */
-    FieldPath$1._DOCUMENT_ID = new FieldPath$1(FieldPath.keyField().canonicalString());
-    return FieldPath$1;
+    FieldPath$$1._DOCUMENT_ID = new FieldPath$$1(FieldPath.keyField().canonicalString());
+    return FieldPath$$1;
 }());
 /**
  * Matches any characters in a field path string that are reserved.
@@ -45298,11 +44745,9 @@ var FieldValueImpl = /** @class */ (function () {
         this._methodName = _methodName;
     }
     FieldValueImpl.delete = function () {
-        validateNoArgs('FieldValue.delete', arguments);
         return DeleteFieldValueImpl.instance;
     };
     FieldValueImpl.serverTimestamp = function () {
-        validateNoArgs('FieldValue.serverTimestamp', arguments);
         return ServerTimestampFieldValueImpl.instance;
     };
     FieldValueImpl.arrayUnion = function () {
@@ -45324,11 +44769,6 @@ var FieldValueImpl = /** @class */ (function () {
         // NOTE: We don't actually parse the data until it's used in set() or
         // update() since we need access to the Firestore instance.
         return new ArrayRemoveFieldValueImpl(elements);
-    };
-    FieldValueImpl.increment = function (n) {
-        validateArgType('FieldValue.increment', 'number', 1, n);
-        validateExactNumberOfArgs('FieldValue.increment', arguments, 1);
-        return new NumericIncrementFieldValueImpl(n);
     };
     FieldValueImpl.prototype.isEqual = function (other) {
         return this === other;
@@ -45370,15 +44810,6 @@ var ArrayRemoveFieldValueImpl = /** @class */ (function (_super) {
         return _this;
     }
     return ArrayRemoveFieldValueImpl;
-}(FieldValueImpl));
-var NumericIncrementFieldValueImpl = /** @class */ (function (_super) {
-    tslib_1.__extends(NumericIncrementFieldValueImpl, _super);
-    function NumericIncrementFieldValueImpl(_operand) {
-        var _this = _super.call(this, 'FieldValue.increment') || this;
-        _this._operand = _operand;
-        return _this;
-    }
-    return NumericIncrementFieldValueImpl;
 }(FieldValueImpl));
 // Public instance that disallows construction at runtime. This constructor is
 // used when exporting FieldValueImpl on firebase.firestore.FieldValue and will
@@ -45661,21 +45092,21 @@ var UserDataConverter = /** @class */ (function () {
     UserDataConverter.prototype.parseUpdateVarargs = function (methodName, field, value, moreFieldsAndValues) {
         var context = new ParseContext(UserDataSource.Update, methodName, FieldPath.EMPTY_PATH);
         var keys = [fieldPathFromArgument(methodName, field)];
-        var values = [value];
+        var values$$1 = [value];
         if (moreFieldsAndValues.length % 2 !== 0) {
             throw new FirestoreError(Code.INVALID_ARGUMENT, "Function " + methodName + "() needs to be called with an even number " +
                 'of arguments that alternate between field names and values.');
         }
         for (var i = 0; i < moreFieldsAndValues.length; i += 2) {
             keys.push(fieldPathFromArgument(methodName, moreFieldsAndValues[i]));
-            values.push(moreFieldsAndValues[i + 1]);
+            values$$1.push(moreFieldsAndValues[i + 1]);
         }
         var fieldMaskPaths = new SortedSet(FieldPath.comparator);
         var updateData = ObjectValue.EMPTY;
         for (var i = 0; i < keys.length; ++i) {
             var path = keys[i];
             var childContext = context.childContextForFieldPath(path);
-            var value_1 = this.runPreConverter(values[i], childContext);
+            var value_1 = this.runPreConverter(values$$1[i], childContext);
             if (value_1 instanceof DeleteFieldValueImpl) {
                 // Add it to the field mask, but don't add anything to updateData.
                 fieldMaskPaths = fieldMaskPaths.add(path);
@@ -45833,11 +45264,6 @@ var UserDataConverter = /** @class */ (function () {
             var parsedElements = this.parseArrayTransformElements(value._methodName, value._elements);
             var arrayRemove = new ArrayRemoveTransformOperation(parsedElements);
             context.fieldTransforms.push(new FieldTransform(context.path, arrayRemove));
-        }
-        else if (value instanceof NumericIncrementFieldValueImpl) {
-            var operand = this.parseQueryValue('FieldValue.increment', value._operand);
-            var numericIncrement = new NumericIncrementTransformOperation(operand);
-            context.fieldTransforms.push(new FieldTransform(context.path, numericIncrement));
         }
         else {
             fail('Unknown FieldValue type: ' + value);
@@ -46203,25 +45629,20 @@ var Firestore = /** @class */ (function () {
     Firestore.prototype.collection = function (pathString) {
         validateExactNumberOfArgs('Firestore.collection', arguments, 1);
         validateArgType('Firestore.collection', 'non-empty string', 1, pathString);
+        if (!pathString) {
+            throw new FirestoreError(Code.INVALID_ARGUMENT, 'Must provide a non-empty collection path to collection()');
+        }
         this.ensureClientConfigured();
         return new CollectionReference(ResourcePath.fromString(pathString), this);
     };
     Firestore.prototype.doc = function (pathString) {
         validateExactNumberOfArgs('Firestore.doc', arguments, 1);
         validateArgType('Firestore.doc', 'non-empty string', 1, pathString);
-        this.ensureClientConfigured();
-        return DocumentReference.forPath(ResourcePath.fromString(pathString), this);
-    };
-    // TODO(b/116617988): Fix name, uncomment d.ts definitions, and update CHANGELOG.md.
-    Firestore.prototype._collectionGroup = function (collectionId) {
-        validateExactNumberOfArgs('Firestore.collectionGroup', arguments, 1);
-        validateArgType('Firestore.collectionGroup', 'non-empty string', 1, collectionId);
-        if (collectionId.indexOf('/') >= 0) {
-            throw new FirestoreError(Code.INVALID_ARGUMENT, "Invalid collection ID '" + collectionId + "' passed to function " +
-                "Firestore.collectionGroup(). Collection IDs must not contain '/'.");
+        if (!pathString) {
+            throw new FirestoreError(Code.INVALID_ARGUMENT, 'Must provide a non-empty document path to doc()');
         }
         this.ensureClientConfigured();
-        return new Query$1(new Query(ResourcePath.EMPTY_PATH, collectionId), this);
+        return DocumentReference.forPath(ResourcePath.fromString(pathString), this);
     };
     Firestore.prototype.runTransaction = function (updateFunction) {
         var _this = this;
@@ -46746,11 +46167,11 @@ var QueryDocumentSnapshot = /** @class */ (function (_super) {
     return QueryDocumentSnapshot;
 }(DocumentSnapshot));
 var Query$1 = /** @class */ (function () {
-    function Query(_query, firestore) {
+    function Query$$1(_query, firestore) {
         this._query = _query;
         this.firestore = firestore;
     }
-    Query.prototype.where = function (field, opStr, value) {
+    Query$$1.prototype.where = function (field, opStr, value) {
         validateExactNumberOfArgs('Query.where', arguments, 3);
         validateArgType('Query.where', 'non-empty string', 2, opStr);
         validateDefined('Query.where', 3, value);
@@ -46763,23 +46184,19 @@ var Query$1 = /** @class */ (function () {
                     'FieldPath.documentId() since document IDs are not arrays.');
             }
             if (typeof value === 'string') {
+                if (value.indexOf('/') !== -1) {
+                    // TODO(dimond): Allow slashes once ancestor queries are supported
+                    throw new FirestoreError(Code.INVALID_ARGUMENT, 'Function Query.where() requires its third parameter to be a ' +
+                        'valid document ID if the first parameter is ' +
+                        'FieldPath.documentId(), but it contains a slash.');
+                }
                 if (value === '') {
                     throw new FirestoreError(Code.INVALID_ARGUMENT, 'Function Query.where() requires its third parameter to be a ' +
                         'valid document ID if the first parameter is ' +
                         'FieldPath.documentId(), but it was an empty string.');
                 }
-                if (!this._query.isCollectionGroupQuery() &&
-                    value.indexOf('/') !== -1) {
-                    throw new FirestoreError(Code.INVALID_ARGUMENT, "Invalid third parameter to Query.where(). When querying a collection by " +
-                        "FieldPath.documentId(), the value provided must be a plain document ID, but " +
-                        ("'" + value + "' contains a slash."));
-                }
-                var path = this._query.path.child(ResourcePath.fromString(value));
-                if (!DocumentKey.isDocumentKey(path)) {
-                    throw new FirestoreError(Code.INVALID_ARGUMENT, "Invalid third parameter to Query.where(). When querying a collection group by " +
-                        "FieldPath.documentId(), the value provided must result in a valid document path, " +
-                        ("but '" + path + "' is not because it has an odd number of segments (" + path.length + ")."));
-                }
+                var path = this._query.path.child(new ResourcePath([value]));
+                assert(path.length % 2 === 0, 'Path should be a document key');
                 fieldValue = new RefValue(this.firestore._databaseId, new DocumentKey(path));
             }
             else if (value instanceof DocumentReference) {
@@ -46798,9 +46215,9 @@ var Query$1 = /** @class */ (function () {
         }
         var filter = Filter.create(fieldPath, relationOp, fieldValue);
         this.validateNewFilter(filter);
-        return new Query(this._query.addFilter(filter), this.firestore);
+        return new Query$$1(this._query.addFilter(filter), this.firestore);
     };
-    Query.prototype.orderBy = function (field, directionStr) {
+    Query$$1.prototype.orderBy = function (field, directionStr) {
         validateBetweenNumberOfArgs('Query.orderBy', arguments, 1, 2);
         validateOptionalArgType('Query.orderBy', 'non-empty string', 2, directionStr);
         var direction;
@@ -46825,18 +46242,18 @@ var Query$1 = /** @class */ (function () {
         var fieldPath = fieldPathFromArgument('Query.orderBy', field);
         var orderBy = new OrderBy(fieldPath, direction);
         this.validateNewOrderBy(orderBy);
-        return new Query(this._query.addOrderBy(orderBy), this.firestore);
+        return new Query$$1(this._query.addOrderBy(orderBy), this.firestore);
     };
-    Query.prototype.limit = function (n) {
+    Query$$1.prototype.limit = function (n) {
         validateExactNumberOfArgs('Query.limit', arguments, 1);
         validateArgType('Query.limit', 'number', 1, n);
         if (n <= 0) {
             throw new FirestoreError(Code.INVALID_ARGUMENT, "Invalid Query. Query limit (" + n + ") is invalid. Limit must be " +
                 'positive.');
         }
-        return new Query(this._query.withLimit(n), this.firestore);
+        return new Query$$1(this._query.withLimit(n), this.firestore);
     };
-    Query.prototype.startAt = function (docOrField) {
+    Query$$1.prototype.startAt = function (docOrField) {
         var fields = [];
         for (var _i = 1; _i < arguments.length; _i++) {
             fields[_i - 1] = arguments[_i];
@@ -46844,9 +46261,9 @@ var Query$1 = /** @class */ (function () {
         validateAtLeastNumberOfArgs('Query.startAt', arguments, 1);
         var bound = this.boundFromDocOrFields('Query.startAt', docOrField, fields, 
         /*before=*/ true);
-        return new Query(this._query.withStartAt(bound), this.firestore);
+        return new Query$$1(this._query.withStartAt(bound), this.firestore);
     };
-    Query.prototype.startAfter = function (docOrField) {
+    Query$$1.prototype.startAfter = function (docOrField) {
         var fields = [];
         for (var _i = 1; _i < arguments.length; _i++) {
             fields[_i - 1] = arguments[_i];
@@ -46854,9 +46271,9 @@ var Query$1 = /** @class */ (function () {
         validateAtLeastNumberOfArgs('Query.startAfter', arguments, 1);
         var bound = this.boundFromDocOrFields('Query.startAfter', docOrField, fields, 
         /*before=*/ false);
-        return new Query(this._query.withStartAt(bound), this.firestore);
+        return new Query$$1(this._query.withStartAt(bound), this.firestore);
     };
-    Query.prototype.endBefore = function (docOrField) {
+    Query$$1.prototype.endBefore = function (docOrField) {
         var fields = [];
         for (var _i = 1; _i < arguments.length; _i++) {
             fields[_i - 1] = arguments[_i];
@@ -46864,9 +46281,9 @@ var Query$1 = /** @class */ (function () {
         validateAtLeastNumberOfArgs('Query.endBefore', arguments, 1);
         var bound = this.boundFromDocOrFields('Query.endBefore', docOrField, fields, 
         /*before=*/ true);
-        return new Query(this._query.withEndAt(bound), this.firestore);
+        return new Query$$1(this._query.withEndAt(bound), this.firestore);
     };
-    Query.prototype.endAt = function (docOrField) {
+    Query$$1.prototype.endAt = function (docOrField) {
         var fields = [];
         for (var _i = 1; _i < arguments.length; _i++) {
             fields[_i - 1] = arguments[_i];
@@ -46874,16 +46291,16 @@ var Query$1 = /** @class */ (function () {
         validateAtLeastNumberOfArgs('Query.endAt', arguments, 1);
         var bound = this.boundFromDocOrFields('Query.endAt', docOrField, fields, 
         /*before=*/ false);
-        return new Query(this._query.withEndAt(bound), this.firestore);
+        return new Query$$1(this._query.withEndAt(bound), this.firestore);
     };
-    Query.prototype.isEqual = function (other) {
-        if (!(other instanceof Query)) {
+    Query$$1.prototype.isEqual = function (other) {
+        if (!(other instanceof Query$$1)) {
             throw invalidClassError('isEqual', 'Query', 1, other);
         }
         return (this.firestore === other.firestore && this._query.isEqual(other._query));
     };
     /** Helper function to create a bound from a document or fields */
-    Query.prototype.boundFromDocOrFields = function (methodName, docOrField, fields, before) {
+    Query$$1.prototype.boundFromDocOrFields = function (methodName, docOrField, fields, before) {
         validateDefined(methodName, 1, docOrField);
         if (docOrField instanceof DocumentSnapshot) {
             if (fields.length > 0) {
@@ -46912,7 +46329,7 @@ var Query$1 = /** @class */ (function () {
      * of the query or if any of the fields in the order by are an uncommitted
      * server timestamp.
      */
-    Query.prototype.boundFromDocument = function (methodName, doc, before) {
+    Query$$1.prototype.boundFromDocument = function (methodName, doc, before) {
         var components = [];
         // Because people expect to continue/end a query at the exact document
         // provided, we need to use the implicit sort order rather than the explicit
@@ -46951,37 +46368,28 @@ var Query$1 = /** @class */ (function () {
     /**
      * Converts a list of field values to a Bound for the given query.
      */
-    Query.prototype.boundFromFields = function (methodName, values, before) {
+    Query$$1.prototype.boundFromFields = function (methodName, values$$1, before) {
         // Use explicit order by's because it has to match the query the user made
         var orderBy = this._query.explicitOrderBy;
-        if (values.length > orderBy.length) {
+        if (values$$1.length > orderBy.length) {
             throw new FirestoreError(Code.INVALID_ARGUMENT, "Too many arguments provided to " + methodName + "(). " +
                 "The number of arguments must be less than or equal to the " +
                 "number of Query.orderBy() clauses");
         }
         var components = [];
-        for (var i = 0; i < values.length; i++) {
-            var rawValue = values[i];
+        for (var i = 0; i < values$$1.length; i++) {
+            var rawValue = values$$1[i];
             var orderByComponent = orderBy[i];
             if (orderByComponent.field.isKeyField()) {
                 if (typeof rawValue !== 'string') {
                     throw new FirestoreError(Code.INVALID_ARGUMENT, "Invalid query. Expected a string for document ID in " +
                         (methodName + "(), but got a " + typeof rawValue));
                 }
-                if (!this._query.isCollectionGroupQuery() &&
-                    rawValue.indexOf('/') !== -1) {
-                    throw new FirestoreError(Code.INVALID_ARGUMENT, "Invalid query. When querying a collection and ordering by FieldPath.documentId(), " +
-                        ("the value passed to " + methodName + "() must be a plain document ID, but ") +
-                        ("'" + rawValue + "' contains a slash."));
+                if (rawValue.indexOf('/') !== -1) {
+                    throw new FirestoreError(Code.INVALID_ARGUMENT, "Invalid query. Document ID '" + rawValue + "' contains a slash in " +
+                        (methodName + "()"));
                 }
-                var path = this._query.path.child(ResourcePath.fromString(rawValue));
-                if (!DocumentKey.isDocumentKey(path)) {
-                    throw new FirestoreError(Code.INVALID_ARGUMENT, "Invalid query. When querying a collection group and ordering by " +
-                        ("FieldPath.documentId(), the value passed to " + methodName + "() must result in a ") +
-                        ("valid document path, but '" + path + "' is not because it contains an odd number ") +
-                        "of segments.");
-                }
-                var key = new DocumentKey(path);
+                var key = new DocumentKey(this._query.path.child(rawValue));
                 components.push(new RefValue(this.firestore._databaseId, key));
             }
             else {
@@ -46991,7 +46399,7 @@ var Query$1 = /** @class */ (function () {
         }
         return new Bound(components, before);
     };
-    Query.prototype.onSnapshot = function () {
+    Query$$1.prototype.onSnapshot = function () {
         var args = [];
         for (var _i = 0; _i < arguments.length; _i++) {
             args[_i] = arguments[_i];
@@ -47024,7 +46432,7 @@ var Query$1 = /** @class */ (function () {
         }
         return this.onSnapshotInternal(options, observer);
     };
-    Query.prototype.onSnapshotInternal = function (options, observer) {
+    Query$$1.prototype.onSnapshotInternal = function (options, observer) {
         var _this = this;
         var errHandler = function (err) {
             console.error('Uncaught Error in onSnapshot:', err);
@@ -47047,7 +46455,7 @@ var Query$1 = /** @class */ (function () {
             firestoreClient.unlisten(internalListener);
         };
     };
-    Query.prototype.get = function (options) {
+    Query$$1.prototype.get = function (options) {
         var _this = this;
         validateBetweenNumberOfArgs('Query.get', arguments, 0, 1);
         validateGetOptions('Query.get', options);
@@ -47065,7 +46473,7 @@ var Query$1 = /** @class */ (function () {
             }
         });
     };
-    Query.prototype.getViaSnapshotListener = function (resolve, reject, options) {
+    Query$$1.prototype.getViaSnapshotListener = function (resolve, reject, options) {
         var unlisten = this.onSnapshotInternal({
             includeMetadataChanges: true,
             waitForSyncWhenOnline: true
@@ -47089,7 +46497,7 @@ var Query$1 = /** @class */ (function () {
             error: reject
         });
     };
-    Query.prototype.validateNewFilter = function (filter) {
+    Query$$1.prototype.validateNewFilter = function (filter) {
         if (filter instanceof RelationFilter) {
             if (filter.isInequality()) {
                 var existingField = this._query.getInequalityFilterField();
@@ -47112,7 +46520,7 @@ var Query$1 = /** @class */ (function () {
             }
         }
     };
-    Query.prototype.validateNewOrderBy = function (orderBy) {
+    Query$$1.prototype.validateNewOrderBy = function (orderBy) {
         if (this._query.getFirstOrderByField() === null) {
             // This is the first order by. It must match any inequality.
             var inequalityField = this._query.getInequalityFilterField();
@@ -47121,7 +46529,7 @@ var Query$1 = /** @class */ (function () {
             }
         }
     };
-    Query.prototype.validateOrderByAndInequalityMatch = function (inequality, orderBy) {
+    Query$$1.prototype.validateOrderByAndInequalityMatch = function (inequality, orderBy) {
         if (!orderBy.isEqual(inequality)) {
             throw new FirestoreError(Code.INVALID_ARGUMENT, "Invalid query. You have a where filter with an inequality " +
                 ("(<, <=, >, or >=) on field '" + inequality.toString() + "' ") +
@@ -47130,7 +46538,7 @@ var Query$1 = /** @class */ (function () {
                 ("is on field '" + orderBy.toString() + "' instead."));
         }
     };
-    return Query;
+    return Query$$1;
 }());
 var QuerySnapshot = /** @class */ (function () {
     function QuerySnapshot(_firestore, _originalQuery, _snapshot) {
@@ -47459,8 +46867,8 @@ var firestoreNamespace = {
 /**
  * Configures Firestore as part of the Firebase SDK by calling registerService.
  */
-function configureForFirebase(firebase) {
-    firebase.INTERNAL.registerService('firestore', function (app) { return new Firestore(app); }, shallowCopy(firestoreNamespace));
+function configureForFirebase(firebase$$1) {
+    firebase$$1.INTERNAL.registerService('firestore', function (app) { return new Firestore(app); }, shallowCopy(firestoreNamespace));
 }
 
 /**
@@ -47485,7 +46893,6 @@ function registerFirestore(instance) {
 registerFirestore(firebase);
 
 exports.registerFirestore = registerFirestore;
-
 });
 
 unwrapExports(index_cjs$5);
@@ -47497,8 +46904,8 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
-var firebase = _interopDefault(index_cjs$2);
 
+var firebase = _interopDefault(index_cjs$2);
 
 /**
  * @license
@@ -47842,19 +47249,6 @@ var Serializer = /** @class */ (function () {
  * limitations under the License.
  */
 /**
- * Returns a Promise that will be rejected after the given duration.
- * The error will be of type HttpsErrorImpl.
- *
- * @param millis Number of milliseconds to wait before rejecting.
- */
-function failAfter(millis) {
-    return new Promise(function (_, reject) {
-        setTimeout(function () {
-            reject(new HttpsErrorImpl('deadline-exceeded', 'deadline-exceeded'));
-        }, millis);
-    });
-}
-/**
  * The main class for the Firebase Functions SDK.
  */
 var Service = /** @class */ (function () {
@@ -47886,8 +47280,8 @@ var Service = /** @class */ (function () {
         var projectId = this.app_.options.projectId;
         var region = this.region_;
         if (this.emulatorOrigin !== null) {
-            var origin_1 = this.emulatorOrigin;
-            return origin_1 + "/" + projectId + "/" + region + "/" + name;
+            var origin = this.emulatorOrigin;
+            return origin + "/" + projectId + "/" + region + "/" + name;
         }
         return "https://" + region + "-" + projectId + ".cloudfunctions.net/" + name;
     };
@@ -47905,10 +47299,10 @@ var Service = /** @class */ (function () {
      * Returns a reference to the callable https trigger with the given name.
      * @param name The name of the trigger.
      */
-    Service.prototype.httpsCallable = function (name, options) {
+    Service.prototype.httpsCallable = function (name) {
         var _this = this;
         var callable = function (data) {
-            return _this.call(name, data, options || {});
+            return _this.call(name, data);
         };
         return callable;
     };
@@ -47940,7 +47334,7 @@ var Service = /** @class */ (function () {
                     case 3:
                         e_1 = _a.sent();
                         // This could be an unhandled error on the backend, or it could be a
-                        // network error. There's no way to know, since an unhandled error on the
+                        // network error. There's no way to no, since an unhandled error on the
                         // backend will fail to set the proper CORS header, and thus will be
                         // treated as a network error by fetch.
                         return [2 /*return*/, {
@@ -47972,9 +47366,9 @@ var Service = /** @class */ (function () {
      * @param name The name of the callable trigger.
      * @param data The data to pass as params to the function.s
      */
-    Service.prototype.call = function (name, data, options) {
+    Service.prototype.call = function (name, data) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var url, body, headers, context, timeout, response, error, responseData, decodedData;
+            var url, body, headers, context, response, error, responseData, decodedData;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -47992,11 +47386,7 @@ var Service = /** @class */ (function () {
                         if (context.instanceIdToken) {
                             headers.append('Firebase-Instance-ID-Token', context.instanceIdToken);
                         }
-                        timeout = options.timeout || 70000;
-                        return [4 /*yield*/, Promise.race([
-                                this.postJSON(url, body, headers),
-                                failAfter(timeout)
-                            ])];
+                        return [4 /*yield*/, this.postJSON(url, body, headers)];
                     case 2:
                         response = _a.sent();
                         error = _errorForResponse(response.status, response.json, this.serializer);
@@ -48062,7 +47452,6 @@ function registerFunctions(instance) {
 registerFunctions(firebase);
 
 exports.registerFunctions = registerFunctions;
-
 });
 
 unwrapExports(index_cjs$7);
@@ -48101,7 +47490,6 @@ var index_cjs_1$4 = index_cjs$7.registerFunctions;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var _a;
 var ERROR_CODES = {
     AVAILABLE_IN_WINDOW: 'only-available-in-window',
     AVAILABLE_IN_SW: 'only-available-in-sw',
@@ -48143,64 +47531,26 @@ var ERROR_CODES = {
     USE_PUBLIC_KEY_BEFORE_GET_TOKEN: 'use-public-key-before-get-token',
     PUBLIC_KEY_DECRYPTION_FAILED: 'public-vapid-key-decryption-failed'
 };
-var ERROR_MAP = (_a = {},
-    _a[ERROR_CODES.AVAILABLE_IN_WINDOW] = 'This method is available in a Window context.',
-    _a[ERROR_CODES.AVAILABLE_IN_SW] = 'This method is available in a service worker ' + 'context.',
-    _a[ERROR_CODES.SHOULD_BE_INHERITED] = 'This method should be overriden by ' + 'extended classes.',
-    _a[ERROR_CODES.BAD_SENDER_ID] = "Please ensure that 'messagingSenderId' is set " +
-        'correctly in the options passed into firebase.initializeApp().',
-    _a[ERROR_CODES.PERMISSION_DEFAULT] = 'The required permissions were not granted and ' + 'dismissed instead.',
-    _a[ERROR_CODES.PERMISSION_BLOCKED] = 'The required permissions were not granted and ' + 'blocked instead.',
-    _a[ERROR_CODES.UNSUPPORTED_BROWSER] = "This browser doesn't support the API's " +
-        'required to use the firebase SDK.',
-    _a[ERROR_CODES.NOTIFICATIONS_BLOCKED] = 'Notifications have been blocked.',
-    _a[ERROR_CODES.FAILED_DEFAULT_REGISTRATION] = 'We are unable to register the ' +
-        'default service worker. {$browserErrorMessage}',
-    _a[ERROR_CODES.SW_REGISTRATION_EXPECTED] = 'A service worker registration was the ' + 'expected input.',
-    _a[ERROR_CODES.GET_SUBSCRIPTION_FAILED] = 'There was an error when trying to get ' +
-        'any existing Push Subscriptions.',
-    _a[ERROR_CODES.INVALID_SAVED_TOKEN] = 'Unable to access details of the saved token.',
-    _a[ERROR_CODES.SW_REG_REDUNDANT] = 'The service worker being used for push was made ' + 'redundant.',
-    _a[ERROR_CODES.TOKEN_SUBSCRIBE_FAILED] = 'A problem occured while subscribing the ' + 'user to FCM: {$message}',
-    _a[ERROR_CODES.TOKEN_SUBSCRIBE_NO_TOKEN] = 'FCM returned no token when subscribing ' + 'the user to push.',
-    _a[ERROR_CODES.TOKEN_SUBSCRIBE_NO_PUSH_SET] = 'FCM returned an invalid response ' + 'when getting an FCM token.',
-    _a[ERROR_CODES.TOKEN_UNSUBSCRIBE_FAILED] = 'A problem occured while unsubscribing the ' + 'user from FCM: {$message}',
-    _a[ERROR_CODES.TOKEN_UPDATE_FAILED] = 'A problem occured while updating the ' + 'user from FCM: {$message}',
-    _a[ERROR_CODES.TOKEN_UPDATE_NO_TOKEN] = 'FCM returned no token when updating ' + 'the user to push.',
-    _a[ERROR_CODES.USE_SW_BEFORE_GET_TOKEN] = 'The useServiceWorker() method may only be called once and must be ' +
-        'called before calling getToken() to ensure your service worker is used.',
-    _a[ERROR_CODES.INVALID_DELETE_TOKEN] = 'You must pass a valid token into ' +
-        'deleteToken(), i.e. the token from getToken().',
-    _a[ERROR_CODES.DELETE_TOKEN_NOT_FOUND] = 'The deletion attempt for token could not ' +
-        'be performed as the token was not found.',
-    _a[ERROR_CODES.DELETE_SCOPE_NOT_FOUND] = 'The deletion attempt for service worker ' +
-        'scope could not be performed as the scope was not found.',
-    _a[ERROR_CODES.BG_HANDLER_FUNCTION_EXPECTED] = 'The input to ' + 'setBackgroundMessageHandler() must be a function.',
-    _a[ERROR_CODES.NO_WINDOW_CLIENT_TO_MSG] = 'An attempt was made to message a ' + 'non-existant window client.',
-    _a[ERROR_CODES.UNABLE_TO_RESUBSCRIBE] = 'There was an error while re-subscribing ' +
+var ERROR_MAP = (_a = {}, _a[ERROR_CODES.AVAILABLE_IN_WINDOW] = 'This method is available in a Window context.', _a[ERROR_CODES.AVAILABLE_IN_SW] = 'This method is available in a service worker ' + 'context.', _a[ERROR_CODES.SHOULD_BE_INHERITED] = 'This method should be overriden by ' + 'extended classes.', _a[ERROR_CODES.BAD_SENDER_ID] = "Please ensure that 'messagingSenderId' is set " +
+        'correctly in the options passed into firebase.initializeApp().', _a[ERROR_CODES.PERMISSION_DEFAULT] = 'The required permissions were not granted and ' + 'dismissed instead.', _a[ERROR_CODES.PERMISSION_BLOCKED] = 'The required permissions were not granted and ' + 'blocked instead.', _a[ERROR_CODES.UNSUPPORTED_BROWSER] = "This browser doesn't support the API's " +
+        'required to use the firebase SDK.', _a[ERROR_CODES.NOTIFICATIONS_BLOCKED] = 'Notifications have been blocked.', _a[ERROR_CODES.FAILED_DEFAULT_REGISTRATION] = 'We are unable to register the ' +
+        'default service worker. {$browserErrorMessage}', _a[ERROR_CODES.SW_REGISTRATION_EXPECTED] = 'A service worker registration was the ' + 'expected input.', _a[ERROR_CODES.GET_SUBSCRIPTION_FAILED] = 'There was an error when trying to get ' +
+        'any existing Push Subscriptions.', _a[ERROR_CODES.INVALID_SAVED_TOKEN] = 'Unable to access details of the saved token.', _a[ERROR_CODES.SW_REG_REDUNDANT] = 'The service worker being used for push was made ' + 'redundant.', _a[ERROR_CODES.TOKEN_SUBSCRIBE_FAILED] = 'A problem occured while subscribing the ' + 'user to FCM: {$message}', _a[ERROR_CODES.TOKEN_SUBSCRIBE_NO_TOKEN] = 'FCM returned no token when subscribing ' + 'the user to push.', _a[ERROR_CODES.TOKEN_SUBSCRIBE_NO_PUSH_SET] = 'FCM returned an invalid response ' + 'when getting an FCM token.', _a[ERROR_CODES.TOKEN_UNSUBSCRIBE_FAILED] = 'A problem occured while unsubscribing the ' + 'user from FCM: {$message}', _a[ERROR_CODES.TOKEN_UPDATE_FAILED] = 'A problem occured while updating the ' + 'user from FCM: {$message}', _a[ERROR_CODES.TOKEN_UPDATE_NO_TOKEN] = 'FCM returned no token when updating ' + 'the user to push.', _a[ERROR_CODES.USE_SW_BEFORE_GET_TOKEN] = 'The useServiceWorker() method may only be called once and must be ' +
+        'called before calling getToken() to ensure your service worker is used.', _a[ERROR_CODES.INVALID_DELETE_TOKEN] = 'You must pass a valid token into ' +
+        'deleteToken(), i.e. the token from getToken().', _a[ERROR_CODES.DELETE_TOKEN_NOT_FOUND] = 'The deletion attempt for token could not ' +
+        'be performed as the token was not found.', _a[ERROR_CODES.DELETE_SCOPE_NOT_FOUND] = 'The deletion attempt for service worker ' +
+        'scope could not be performed as the scope was not found.', _a[ERROR_CODES.BG_HANDLER_FUNCTION_EXPECTED] = 'The input to ' + 'setBackgroundMessageHandler() must be a function.', _a[ERROR_CODES.NO_WINDOW_CLIENT_TO_MSG] = 'An attempt was made to message a ' + 'non-existant window client.', _a[ERROR_CODES.UNABLE_TO_RESUBSCRIBE] = 'There was an error while re-subscribing ' +
         'the FCM token for push messaging. Will have to resubscribe the ' +
-        'user on next visit. {$message}',
-    _a[ERROR_CODES.NO_FCM_TOKEN_FOR_RESUBSCRIBE] = 'Could not find an FCM token ' +
+        'user on next visit. {$message}', _a[ERROR_CODES.NO_FCM_TOKEN_FOR_RESUBSCRIBE] = 'Could not find an FCM token ' +
         'and as a result, unable to resubscribe. Will have to resubscribe the ' +
-        'user on next visit.',
-    _a[ERROR_CODES.FAILED_TO_DELETE_TOKEN] = 'Unable to delete the currently saved token.',
-    _a[ERROR_CODES.NO_SW_IN_REG] = 'Even though the service worker registration was ' +
-        'successful, there was a problem accessing the service worker itself.',
-    _a[ERROR_CODES.INCORRECT_GCM_SENDER_ID] = "Please change your web app manifest's " +
-        "'gcm_sender_id' value to '103953800507' to use Firebase messaging.",
-    _a[ERROR_CODES.BAD_SCOPE] = 'The service worker scope must be a string with at ' +
-        'least one character.',
-    _a[ERROR_CODES.BAD_VAPID_KEY] = 'The public VAPID key is not a Uint8Array with 65 bytes.',
-    _a[ERROR_CODES.BAD_SUBSCRIPTION] = 'The subscription must be a valid ' + 'PushSubscription.',
-    _a[ERROR_CODES.BAD_TOKEN] = 'The FCM Token used for storage / lookup was not ' +
-        'a valid token string.',
-    _a[ERROR_CODES.BAD_PUSH_SET] = 'The FCM push set used for storage / lookup was not ' +
-        'not a valid push set string.',
-    _a[ERROR_CODES.FAILED_DELETE_VAPID_KEY] = 'The VAPID key could not be deleted.',
-    _a[ERROR_CODES.INVALID_PUBLIC_VAPID_KEY] = 'The public VAPID key must be a string.',
-    _a[ERROR_CODES.PUBLIC_KEY_DECRYPTION_FAILED] = 'The public VAPID key did not equal ' + '65 bytes when decrypted.',
-    _a);
+        'user on next visit.', _a[ERROR_CODES.FAILED_TO_DELETE_TOKEN] = 'Unable to delete the currently saved token.', _a[ERROR_CODES.NO_SW_IN_REG] = 'Even though the service worker registration was ' +
+        'successful, there was a problem accessing the service worker itself.', _a[ERROR_CODES.INCORRECT_GCM_SENDER_ID] = "Please change your web app manifest's " +
+        "'gcm_sender_id' value to '103953800507' to use Firebase messaging.", _a[ERROR_CODES.BAD_SCOPE] = 'The service worker scope must be a string with at ' +
+        'least one character.', _a[ERROR_CODES.BAD_VAPID_KEY] = 'The public VAPID key is not a Uint8Array with 65 bytes.', _a[ERROR_CODES.BAD_SUBSCRIPTION] = 'The subscription must be a valid ' + 'PushSubscription.', _a[ERROR_CODES.BAD_TOKEN] = 'The FCM Token used for storage / lookup was not ' +
+        'a valid token string.', _a[ERROR_CODES.BAD_PUSH_SET] = 'The FCM push set used for storage / lookup was not ' +
+        'not a valid push set string.', _a[ERROR_CODES.FAILED_DELETE_VAPID_KEY] = 'The VAPID key could not be deleted.', _a[ERROR_CODES.INVALID_PUBLIC_VAPID_KEY] = 'The public VAPID key must be a string.', _a[ERROR_CODES.PUBLIC_KEY_DECRYPTION_FAILED] = 'The public VAPID key did not equal ' + '65 bytes when decrypted.', _a);
 var errorFactory = new index_cjs_15('messaging', 'Messaging', ERROR_MAP);
+var _a;
 
 /**
  * @license
@@ -48368,7 +47718,7 @@ function isArrayBufferEqual(a, b) {
  */
 function toBase64(arrayBuffer) {
     var uint8Version = new Uint8Array(arrayBuffer);
-    return btoa(String.fromCharCode.apply(String, __spread(uint8Version)));
+    return btoa(String.fromCharCode.apply(null, uint8Version));
 }
 function arrayBufferToBase64(arrayBuffer) {
     var base64String = toBase64(arrayBuffer);
@@ -49639,7 +48989,6 @@ var SwController = /** @class */ (function (_super) {
     // Visible for testing
     // TODO: Make private
     SwController.prototype.getNotificationData_ = function (msgPayload) {
-        var _a;
         if (!msgPayload) {
             return;
         }
@@ -49653,6 +49002,7 @@ var SwController = /** @class */ (function (_super) {
         // notification).
         notificationInformation.data = __assign({}, msgPayload.notification.data, (_a = {}, _a[FCM_MSG] = msgPayload, _a));
         return notificationInformation;
+        var _a;
     };
     /**
      * Calling setBackgroundMessageHandler will opt in to some specific
@@ -49741,12 +49091,7 @@ var SwController = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, getClientList()];
                     case 1:
                         clientList = _a.sent();
-                        return [2 /*return*/, clientList.some(function (client) {
-                                return client.visibilityState === 'visible' &&
-                                    // Ignore chrome-extension clients as that matches the background pages
-                                    // of extensions, which are always considered visible.
-                                    !client.url.startsWith('chrome-extension://');
-                            })];
+                        return [2 /*return*/, clientList.some(function (client) { return client.visibilityState === 'visible'; })];
                 }
             });
         });
@@ -49761,8 +49106,8 @@ var SwController = /** @class */ (function (_super) {
     // TODO: Make private
     SwController.prototype.sendMessageToWindowClients_ = function (msgPayload) {
         return __awaiter(this, void 0, void 0, function () {
-            var clientList, internalMsg;
             var _this = this;
+            var clientList, internalMsg;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, getClientList()];
@@ -49826,11 +49171,8 @@ function getClientList() {
     });
 }
 function createNewMsg(msgType, msgData) {
+    return _a = {}, _a[MessageParameter.TYPE_OF_MSG] = msgType, _a[MessageParameter.DATA] = msgData, _a;
     var _a;
-    return _a = {},
-        _a[MessageParameter.TYPE_OF_MSG] = msgType,
-        _a[MessageParameter.DATA] = msgData,
-        _a;
 }
 
 /**
@@ -50919,17 +50261,17 @@ var NetworkXhrIo = /** @class */ (function () {
         this.sent_ = false;
         this.xhr_ = new XMLHttpRequest();
         this.errorCode_ = ErrorCode.NO_ERROR;
-        this.sendPromise_ = make(function (resolve, reject) {
+        this.sendPromise_ = make(function (resolve$$1, reject$$1) {
             _this.xhr_.addEventListener('abort', function (event) {
                 _this.errorCode_ = ErrorCode.ABORT;
-                resolve(_this);
+                resolve$$1(_this);
             });
             _this.xhr_.addEventListener('error', function (event) {
                 _this.errorCode_ = ErrorCode.NETWORK_ERROR;
-                resolve(_this);
+                resolve$$1(_this);
             });
             _this.xhr_.addEventListener('load', function (event) {
-                resolve(_this);
+                resolve$$1(_this);
             });
         });
     }
@@ -52335,9 +51677,9 @@ var UploadTask = /** @class */ (function () {
                 _this.transition_(InternalTaskState.ERROR);
             }
         };
-        this.promise_ = make(function (resolve, reject) {
-            _this.resolve_ = resolve;
-            _this.reject_ = reject;
+        this.promise_ = make(function (resolve$$1, reject$$1) {
+            _this.resolve_ = resolve$$1;
+            _this.reject_ = reject$$1;
             _this.start_();
         });
         // Prevent uncaught rejections on the internal promise from bubbling out
@@ -53381,9 +52723,9 @@ var NetworkRequest = /** @class */ (function () {
         this.timeout_ = timeout;
         this.pool_ = pool;
         var self = this;
-        this.promise_ = make(function (resolve, reject) {
-            self.resolve_ = resolve;
-            self.reject_ = reject;
+        this.promise_ = make(function (resolve$$1, reject$$1) {
+            self.resolve_ = resolve$$1;
+            self.reject_ = reject$$1;
             self.start_();
         });
     }
@@ -53392,8 +52734,8 @@ var NetworkRequest = /** @class */ (function () {
      */
     NetworkRequest.prototype.start_ = function () {
         var self = this;
-        function doTheRequest(backoffCallback, canceled) {
-            if (canceled) {
+        function doTheRequest(backoffCallback, canceled$$1) {
+            if (canceled$$1) {
                 backoffCallback(false, new RequestEndStatus(false, null, true));
                 return;
             }
@@ -53433,21 +52775,21 @@ var NetworkRequest = /** @class */ (function () {
          *     through, false if it hit the retry limit or was canceled.
          */
         function backoffDone(requestWentThrough, status) {
-            var resolve = self.resolve_;
-            var reject = self.reject_;
+            var resolve$$1 = self.resolve_;
+            var reject$$1 = self.reject_;
             var xhr = status.xhr;
             if (status.wasSuccessCode) {
                 try {
                     var result = self.callback_(xhr, xhr.getResponseText());
                     if (isJustDef(result)) {
-                        resolve(result);
+                        resolve$$1(result);
                     }
                     else {
-                        resolve();
+                        resolve$$1();
                     }
                 }
                 catch (e) {
-                    reject(e);
+                    reject$$1(e);
                 }
             }
             else {
@@ -53455,10 +52797,10 @@ var NetworkRequest = /** @class */ (function () {
                     var err = unknown();
                     err.setServerResponseProp(xhr.getResponseText());
                     if (self.errorCallback_) {
-                        reject(self.errorCallback_(xhr, err));
+                        reject$$1(self.errorCallback_(xhr, err));
                     }
                     else {
-                        reject(err);
+                        reject$$1(err);
                     }
                 }
                 else {
@@ -53466,11 +52808,11 @@ var NetworkRequest = /** @class */ (function () {
                         var err = self.appDelete_
                             ? appDeleted()
                             : canceled();
-                        reject(err);
+                        reject$$1(err);
                     }
                     else {
                         var err = retryLimitExceeded();
-                        reject(err);
+                        reject$$1(err);
                     }
                 }
             }
