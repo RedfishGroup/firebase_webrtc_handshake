@@ -10,6 +10,17 @@ import commonjs from 'rollup-plugin-commonjs';
 export default [
   {
     input: 'src/index.js',
+    external: [
+      'simple-peer/simplepeer.min.js',
+      'firebase/dist/index.esm',
+      'msgpack-lite/dist/msgpack.min.js',
+      'webrtc-adapter/src/js/adapter_core.js',
+    ],
+    plugins: [
+      globals(),
+      resolve({ jsnext: true, main: true, browser: true }),
+      commonjs(),
+    ],
     output: [
       {
         file: 'dist/build.js',
@@ -22,28 +33,6 @@ export default [
           'webrtc-adapter': 'webrtc-adapter',
         },
       },
-      {
-        file: 'dist/build.cjs.js',
-        format: 'cjs',
-        sourcemap: true,
-        globals: {
-          'simple-peer': 'simple-peer',
-          firebase: 'firebase',
-          'msgpack-lite': 'msgpack-lite',
-          'webrtc-adapter': 'webrtc-adapter',
-        },
-      },
-    ],
-    plugins: [
-      commonjs(),
-      globals(),
-      resolve({ jsnext: true, main: true, browser: true }),
-    ],
-    external: [
-      'simple-peer/simplepeer.min.js',
-      'firebase/dist/index.esm',
-      'msgpack-lite/dist/msgpack.min.js',
-      'webrtc-adapter/src/js/adapter_core.js',
     ],
   },
 ];
