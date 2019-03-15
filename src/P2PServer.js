@@ -65,6 +65,7 @@ export class P2PServer extends Evented {
       this._updateOnFireBase();
     }, this.POLLING_FREQUENCY);
     this.listenToChannels();
+    this.isListening = true;
     this.fire("init", undefined);
   }
 
@@ -98,53 +99,65 @@ export class P2PServer extends Evented {
   }
 
   listenToChannels() {
+    // disabling no-loop-func because these loops are correct usage
+    // https://eslint.org/docs/rules/no-loop-func
     // when a new channel is added, listen to it.
-    this.channelRef.on("child_added", (ev, prevKey) => {
+    this.channelRef.on("child_added", ev => {
       if (this.connections.length > this.MAX_CONNECTIONS) {
-        console.error(
-          "Too many connections. TODO:close/remove old stail connections"
+        log.error(
+          "Too many connections. TODO:close/remove old stale connections"
         );
         return;
       }
       var val = ev.val();
+      if (this.debug) {
+        log.info(val, "new child");
+      }
       for (var i in val.fromClient) {
         var sig = val.fromClient[i];
-        if (sig.type == "offer") {
+        if (sig.type === "offer") {
           var mykey = ev.key;
           var channel = new Channel(
             this.channelRef.child(mykey),
             this._makePeer()
           );
           this.connections.push(channel);
+
           // on message through webRTC (simple-peer)
+          //eslint-disable-next-line no-loop-func
           channel.peer.on("signal", data => {
-            if (data.type == "answer") {
+            if (data.type === "answer") {
               channel.outRef.push(data);
             } else if (data.candidate) {
               channel.outRef.push(data);
             } else {
-              console.warn("unexpected message from WebRTC", data);
+              log.warn(data, "unexpected message from WebRTC");
             }
           });
+
           // on message through firebase
+          //eslint-disable-next-line no-loop-func
           channel.inRef.on("child_added", ev2 => {
             var val2 = ev2.val();
+            if (this.debug) {
+              log.info(val2, "child_added -- firebase");
+            }
             if (val2.candidate) {
-              if (this.debug)
-                console.log("server got candidate from firebase", val2);
+              if (this.debug) {
+                log.info(val2, "server got candidate from firebase");
+              }
               channel.peer.signal(val2);
-            } else if (val2.type == "offer") {
+            } else if (val2.type === "offer") {
               channel.peer.signal(val2);
-            } else if (val2.type == "answer") {
+            } else if (val2.type === "answer") {
               //ignore this. It was probably from me.
             } else {
-              console.warn("unexpected message from firebase", val2);
+              log.warn(val2, "unexpected message from Firebase");
             }
           });
         }
       }
     });
-    this.isListening = true;
   }
 
   _makePeer() {
