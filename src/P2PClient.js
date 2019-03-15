@@ -20,6 +20,7 @@ export class P2PClient extends Evented {
     this.connection = null;
     this.channelRef = null;
     this.stream = undefined;
+    this.isStream = true;
     this.debug = false;
     this.connectionCallbacks = [];
   }
@@ -51,7 +52,7 @@ export class P2PClient extends Evented {
               iceServers: this.iceServers
             }
           };
-          if (sval.isStream) {
+          if (sval.isStream || this.isStream) {
             pOpts.stream = this.getMyStream();
           }
           var p = new PeerBinary(pOpts);

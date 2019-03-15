@@ -1,5 +1,5 @@
 import { P2PServer, P2PClient, firebase } from "../dist/build.full.js";
-
+import { getICEservers } from "../src/getIceServers.js";
 var gStream = undefined;
 var gServer = undefined;
 var client1 = undefined;
@@ -42,6 +42,7 @@ function startClient() {
   });
 }
 
+window.strartCamera = startCamera;
 //startCamera();
 
 //
@@ -64,10 +65,17 @@ function startCanvas() {
 }
 
 function startCanvasServer(stream) {
+  getICEservers().then(iceServers => {
+    _startCanvasServer(stream, iceServers);
+  });
+}
+
+function _startCanvasServer(stream, iceServers) {
   console.log("start canvas servre called with", stream);
   var canServer = new P2PServer({
     id: "Main Canvas Stream Server" + Math.floor(10000 * Math.random()),
-    stream: stream
+    stream: stream,
+    iceServers
   });
   setTimeout(startCanvasClient, 1000, canServer.id);
 }
@@ -99,6 +107,12 @@ function startCanvasClient(id) {
 }
 
 function startRTEServer(stream) {
+  getICEservers().then(iceServers => {
+    _startRTEServer(stream, iceServers);
+  });
+}
+
+function _startRTEServer(stream, iceServers) {
   let app;
   if (firebase.apps.length > 0) {
     app = firebase.apps[0];
@@ -123,7 +137,9 @@ function startRTEServer(stream) {
   var canServer = new P2PServer({
     id: myID,
     stream: stream,
-    database: ref
+    database: ref,
+    iceServers,
+    debug: true
   });
   canServer.on("updateTimeStamp", () => {
     ref
@@ -134,7 +150,9 @@ function startRTEServer(stream) {
   canServer.on("dataBig", ev => {
     console.log("databig", ev);
   });
-  document.body.getElementById("myID").innerHTML = myID;
+  document.getElementById(
+    "myID"
+  ).innerHTML = `<a target='blank' href='./connectToStream.html?id=${myID}'>${myID}</a>`;
 }
 
 let stream = startCanvas();
