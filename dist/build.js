@@ -610,6 +610,7 @@ class P2PClient extends Evented {
     this.isStream = true;
     this.debug = false;
     this.connectionCallbacks = [];
+    this.lastNegotioationState = undefined;
   }
 
   getPeerList(callback) {
@@ -711,6 +712,14 @@ class P2PClient extends Evented {
       var val = ev.val();
       if (val.type === "answer") {
         setTimeout(() => {
+          let state = this.connection._pc.signalingState;
+          if (state == this.lastNegotioationState) {
+            //console.log("signalstate. skip nested negotiations");
+            return;
+          }
+          //console.log("signal start negotiation");
+          this.lastNegotioationState = state;
+          //console.log("answer", this);
           if (!this.connection.destroyed) this.connection.signal(val);
         }, 50); // a slight delay helps establish connection, I think.
       } else if (val.candidate) {
@@ -756,6 +765,9 @@ class P2PClient extends Evented {
     this.connection.on("stream", stream => {
       if (this.debug) console.log("Client: connected to stream", stream);
       this.fire("stream", { peer: this.connection, stream: stream });
+    });
+    this.connection._pc.addEventListener("signalingstatechange", () => {
+      console.log("signalState", this.connection._pc.signalingState);
     });
   }
 }
