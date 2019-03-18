@@ -18,17 +18,16 @@
   "peerDependencies": {
     "firebase": "^5.8.4",
     "msgpack-lite": "^0.1.26",
-    "simple-peer": "^9.2.1",
     "webrtc-adapter": "^7.2.1"
   },
   "devDependencies": {
     "firebase": "^5.8.4",
     "msgpack-lite": "^0.1.26",
-    "simple-peer": "^9.2.1",
-    "webrtc-adapter": "^7.2.1",
     "rollup-plugin-commonjs": "^9.2.1",
     "rollup-plugin-node-globals": "^1.4.0",
     "rollup-plugin-node-resolve": "^4.0.1",
-    "rollup-plugin-replace": "^2.1.0"
+    "rollup-plugin-replace": "^2.1.0",
+    "simple-peer": "ssh://git@github.com:m0ose/simple-peer.git",
+    "webrtc-adapter": "^7.2.1"
   }
 }
