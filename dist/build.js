@@ -469,7 +469,7 @@ class P2PServer extends Evented {
       }
       var val = ev.val();
       if (this.debug) {
-        log.info(val, "new child");
+        console.log(val, "new child");
       }
       for (var i in val.fromClient) {
         var sig = val.fromClient[i];
@@ -498,11 +498,11 @@ class P2PServer extends Evented {
           channel.inRef.on("child_added", ev2 => {
             var val2 = ev2.val();
             if (this.debug) {
-              log.info(val2, "child_added -- firebase");
+              console.log(val2, "child_added -- firebase");
             }
             if (val2.candidate) {
               if (this.debug) {
-                log.info(val2, "server got candidate from firebase");
+                console.log(val2, "server got candidate from firebase");
               }
               channel.peer.signal(val2);
             } else if (val2.type === "offer") {
