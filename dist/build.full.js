@@ -7662,7 +7662,7 @@ function disableWarnings(bool) {
   return 'adapter.js deprecation warnings ' + (bool ? 'disabled' : 'enabled');
 }
 
-function log$1() {
+function log() {
   if (typeof window === 'object') {
     if (logDisabled_) {
       return;
@@ -7759,7 +7759,7 @@ function compactObject(data) {
  *  that can be found in the LICENSE file in the root of the source
  *  tree.
  */
-const logging = log$1;
+const logging = log;
 
 function shimGetUserMedia(window) {
   const navigator = window && window.navigator;
@@ -11439,7 +11439,7 @@ function shimPeerConnection$1(window) {
     if (config && config.iceServers) {
       config.iceServers = filterIceServers(config.iceServers,
         browserDetails.version);
-      log$1('ICE servers after filtering:', config.iceServers);
+      log('ICE servers after filtering:', config.iceServers);
     }
     return new RTCPeerConnectionShim(config);
   };
@@ -12425,7 +12425,7 @@ function adapterFactory({window} = {}, options = {
   shimSafari: true,
 }) {
   // Utils.
-  const logging = log$1;
+  const logging = log;
   const browserDetails = detectBrowser(window);
 
   const adapter = {
@@ -13563,7 +13563,7 @@ var store = _global[SHARED] || (_global[SHARED] = {});
   return store[key] || (store[key] = value !== undefined ? value : {});
 })('versions', []).push({
   version: _core.version,
-  mode: _library ? 'pure' : 'global',
+  mode: 'global',
   copyright: '© 2019 Denis Pushkarev (zloirock.ru)'
 });
 });
@@ -61289,7 +61289,7 @@ class P2PServer extends Evented {
         try {
           conx.peer.send.bind(conx.peer)(data);
         } catch (err) {
-          log.error(err, "Got an error, interrupted connection? ");
+          console.error(err, "Got an error, interrupted connection? ");
         }
       }
     }
@@ -61301,7 +61301,7 @@ class P2PServer extends Evented {
         try {
           conx.peer.sendBig.bind(conx.peer)(data);
         } catch (err) {
-          log.error(err, "Got an error, interrupted connection? ");
+          console.error(err, "Got an error, interrupted connection? ");
         }
       }
     }
@@ -61313,7 +61313,7 @@ class P2PServer extends Evented {
     // when a new channel is added, listen to it.
     this.channelRef.on("child_added", ev => {
       if (this.connections.length > this.MAX_CONNECTIONS) {
-        log.error(
+        console.error(
           "Too many connections. TODO:close/remove old stale connections"
         );
         return;
@@ -61334,13 +61334,18 @@ class P2PServer extends Evented {
 
           // on message through webRTC (simple-peer)
           //eslint-disable-next-line no-loop-func
+          var answerSentYet = false;
           channel.peer.on("signal", data => {
             if (data.type === "answer") {
+              if (answerSentYet) {
+                console.warn("Why am i trying to send multiple answers");
+              }
               channel.outRef.push(data);
+              answerSentYet = true;
             } else if (data.candidate) {
               channel.outRef.push(data);
             } else {
-              log.warn(data, "unexpected message from WebRTC");
+              console.warn(data, "unexpected message from WebRTC");
             }
           });
 
@@ -61359,7 +61364,7 @@ class P2PServer extends Evented {
             } else if (val2.type === "offer") {
               channel.peer.signal(val2);
             } else if (val2.type === "answer") ; else {
-              log.warn(val2, "unexpected message from Firebase");
+              console.warn(val2, "unexpected message from Firebase");
             }
           });
         }
@@ -61559,7 +61564,7 @@ class P2PClient extends Evented {
     this.outRef = this.channelRef.child("fromClient");
     this.inRef = this.channelRef.child("fromServer");
     this.inRef.on("child_added", ev => {
-      if (this.debug) log.trace(ev.val(), "channel message, client");
+      if (this.debug) console.log(ev.val(), "channel message, client");
       var val = ev.val();
       if (val.type === "answer") {
         setTimeout(() => {
@@ -61574,12 +61579,12 @@ class P2PClient extends Evented {
           if (!this.connection.destroyed) this.connection.signal(val);
         }, 50); // a slight delay helps establish connection, I think.
       } else if (val.candidate) {
-        if (this.debug) log.trace("client recieved candidate from firebase");
+        if (this.debug) console.log("client recieved candidate from firebase");
         setTimeout(() => {
           if (!this.connection.destroyed) this.connection.signal(val);
         }, 50);
       } else {
-        log.warn(val, "Client recieved unexpected signal through Firebase");
+        console.warn(val, "Client recieved unexpected signal through Firebase");
       }
     });
   }

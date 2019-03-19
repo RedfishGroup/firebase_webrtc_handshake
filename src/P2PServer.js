@@ -80,7 +80,7 @@ export class P2PServer extends Evented {
         try {
           conx.peer.send.bind(conx.peer)(data);
         } catch (err) {
-          log.error(err, "Got an error, interrupted connection? ");
+          console.error(err, "Got an error, interrupted connection? ");
         }
       }
     }
@@ -92,7 +92,7 @@ export class P2PServer extends Evented {
         try {
           conx.peer.sendBig.bind(conx.peer)(data);
         } catch (err) {
-          log.error(err, "Got an error, interrupted connection? ");
+          console.error(err, "Got an error, interrupted connection? ");
         }
       }
     }
@@ -104,7 +104,7 @@ export class P2PServer extends Evented {
     // when a new channel is added, listen to it.
     this.channelRef.on("child_added", ev => {
       if (this.connections.length > this.MAX_CONNECTIONS) {
-        log.error(
+        console.error(
           "Too many connections. TODO:close/remove old stale connections"
         );
         return;
@@ -125,13 +125,18 @@ export class P2PServer extends Evented {
 
           // on message through webRTC (simple-peer)
           //eslint-disable-next-line no-loop-func
+          var answerSentYet = false;
           channel.peer.on("signal", data => {
             if (data.type === "answer") {
+              if (answerSentYet) {
+                console.warn("Why am i trying to send multiple answers");
+              }
               channel.outRef.push(data);
+              answerSentYet = true;
             } else if (data.candidate) {
               channel.outRef.push(data);
             } else {
-              log.warn(data, "unexpected message from WebRTC");
+              console.warn(data, "unexpected message from WebRTC");
             }
           });
 
@@ -152,7 +157,7 @@ export class P2PServer extends Evented {
             } else if (val2.type === "answer") {
               //ignore this. It was probably from me.
             } else {
-              log.warn(val2, "unexpected message from Firebase");
+              console.warn(val2, "unexpected message from Firebase");
             }
           });
         }

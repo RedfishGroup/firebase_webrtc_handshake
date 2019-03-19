@@ -121,7 +121,7 @@ export class P2PClient extends Evented {
     this.outRef = this.channelRef.child("fromClient");
     this.inRef = this.channelRef.child("fromServer");
     this.inRef.on("child_added", ev => {
-      if (this.debug) log.trace(ev.val(), "channel message, client");
+      if (this.debug) console.log(ev.val(), "channel message, client");
       var val = ev.val();
       if (val.type === "answer") {
         setTimeout(() => {
@@ -136,12 +136,12 @@ export class P2PClient extends Evented {
           if (!this.connection.destroyed) this.connection.signal(val);
         }, 50); // a slight delay helps establish connection, I think.
       } else if (val.candidate) {
-        if (this.debug) log.trace("client recieved candidate from firebase");
+        if (this.debug) console.log("client recieved candidate from firebase");
         setTimeout(() => {
           if (!this.connection.destroyed) this.connection.signal(val);
         }, 50);
       } else {
-        log.warn(val, "Client recieved unexpected signal through Firebase");
+        console.warn(val, "Client recieved unexpected signal through Firebase");
       }
     });
   }
