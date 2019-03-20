@@ -61425,7 +61425,7 @@ class P2PServer extends Evented {
       x.destroy();
     }
     this.connections = [];
-    clearInterval(this.intervalID);
+    clearInterval(this._intervalID);
   }
 
   _removeConnection(peer) {
