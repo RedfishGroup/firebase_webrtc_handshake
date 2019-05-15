@@ -16,5 +16,6 @@ export var settings = {
       urls: "turn:global.turn.twilio.com:3478?transport=udp"
     }
   ],
-  POLLING_FREQUENCY: 15000
+  POLLING_FREQUENCY: 15000,
+  debug: false
 };
