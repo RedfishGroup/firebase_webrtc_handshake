@@ -1,12 +1,12 @@
-import * as Peer2 from "simple-peer/simplepeer.min.js";
-import { generateWebRTCpayload, recursivelyDecodeBlobs } from "./dataUtils.js";
-import adapter from "webrtc-adapter/src/js/adapter_core.js";
-import * as msgpacklite from "msgpack-lite/dist/msgpack.min.js";
+import * as Peer2 from 'simple-peer/simplepeer.min.js';
+import { generateWebRTCpayload, recursivelyDecodeBlobs } from './dataUtils.js';
+// import adapter from "webrtc-adapter/src/js/adapter_core.js";
+import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js';
 
 var msgPack = msgpacklite.default;
 var Peer = Peer2.default;
 window.simpPeer = Peer;
-console.log("msg pack", msgpacklite);
+console.log('msg pack', msgpacklite);
 
 export class PeerBinary extends Peer {
   constructor(options) {
@@ -15,13 +15,13 @@ export class PeerBinary extends Peer {
     this._registerDataMessage();
     this.unchunker = new UnChunker(); //
     this.unchunker.onData = val => {
-      this.emit("dataBig", val);
+      this.emit('dataBig', val);
     };
   }
 
   //want to overide these 2 functions I think.
   _registerDataMessage(event) {
-    this.on("data", data => {
+    this.on('data', data => {
       //when its done with a complete chunk, call this.emit('dataBig', completed)
       this.unchunker.registerChunk(data);
     });
@@ -45,7 +45,7 @@ export class UnChunker {
     this.payloads = {};
     this.payloadCount = 0;
     this.onData = function(val) {
-      console.log("default, data is ready:", val);
+      console.log('default, data is ready:', val);
     };
   }
 
@@ -67,10 +67,10 @@ export class UnChunker {
         }
       } catch (err) {
         console.error(err);
-        console.error("val:", msg);
+        console.error('val:', msg);
       }
     } else {
-      console.warn("not my type", msg);
+      console.warn('not my type', msg);
       //console.warn(this._ab2str(msg))
     }
     return null;
@@ -80,7 +80,7 @@ export class UnChunker {
     this.payloads[id] = Object.assign(header, {
       count: header.chunkCount,
       chunks: [],
-      lastUpdate: new Date()
+      lastUpdate: new Date(),
     });
     this.payloadCount++;
   }
@@ -114,7 +114,7 @@ export class UnChunker {
       this._removePayload(payloadID);
     } catch (err) {
       console.error(err);
-      console.error("buffer", result);
+      console.error('buffer', result);
     }
   }
 
@@ -124,7 +124,7 @@ export class UnChunker {
   }
 
   parseHeader(data) {
-    if (typeof data == "object" && !(data instanceof Uint8Array)) {
+    if (typeof data == 'object' && !(data instanceof Uint8Array)) {
       if (data.chunkCount && data.chunkCount > 0) {
         return data;
       }
