@@ -5,17 +5,17 @@ export var settings = {
   CHUNK_SIZE: Math.pow(2, 10), // size in bytes of the chunks. 2^16 is just under the limit in chrome.
   ICE_SERVERS: [
     {
-      url: "stun:23.21.150.121",
-      urls: "stun:23.21.150.121"
+      url: 'stun:23.21.150.121',
+      urls: 'stun:23.21.150.121',
     },
     {
-      url: "turn:global.turn.twilio.com:3478?transport=udp",
+      url: 'turn:global.turn.twilio.com:3478?transport=udp',
       username:
-        "508d1e639868dc17f5da97a75b1d3b43bf2fc6d11e4e863678501db568b5665c",
-      credential: "W5GTdhQQ6DqOD7k6bS8+xZVNQXm+fgLXSEQpN8bTe70=",
-      urls: "turn:global.turn.twilio.com:3478?transport=udp"
-    }
+        '508d1e639868dc17f5da97a75b1d3b43bf2fc6d11e4e863678501db568b5665c',
+      credential: 'W5GTdhQQ6DqOD7k6bS8+xZVNQXm+fgLXSEQpN8bTe70=',
+      urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+    },
   ],
   POLLING_FREQUENCY: 15000,
-  debug: false
+  debug: false,
 };
