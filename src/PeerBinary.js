@@ -17,6 +17,7 @@ export class PeerBinary extends Peer {
     this.unchunker.onData = val => {
       this.emit('dataBig', val);
     };
+    this.peerID = options.peerID;
   }
 
   //want to overide these 2 functions I think.
