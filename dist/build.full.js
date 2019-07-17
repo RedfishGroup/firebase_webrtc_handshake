@@ -50092,9 +50092,10 @@ class P2PServer extends Evented {
         var sig = val.fromClient[i];
         if (sig.type === 'offer') {
           var mykey = ev.key;
+          var { peerID, myID } = sig;
           var channel = new Channel(
             this.channelRef.child(mykey),
-            this._makePeer(mykey)
+            this._makePeer(myID)
           );
           this.connections.push(channel);
 
