@@ -647,6 +647,7 @@ class P2PClient extends Evented {
               iceServers: this.iceServers,
             },
           };
+
           if (sval.isStream || this.isStream) {
             pOpts.stream = this.getMyStream();
           }
@@ -712,6 +713,8 @@ class P2PClient extends Evented {
 
   _createChannel(offer) {
     //this.channelRef = this.serverRef.child('channels').push({offer:offer})
+    offer.peerID = this.peerID;
+    offer.myID = this.myID;
     this.channelRef = this.serverRef.child('channels').push({
       fromClient: [offer],
     });

@@ -1553,9 +1553,10 @@ signal-exit@^3.0.0:
   resolved "https://registry.yarnpkg.com/signal-exit/-/signal-exit-3.0.2.tgz#b5fdc08f1287ea1178628e415e25132b73646c6d"
   integrity sha1-tf3AjxKH6hF4Yo5BXiUTK3NkbG0=
 
-"simple-peer@ssh://git@github.com:m0ose/simple-peer.git":
-  version "9.2.0"
-  resolved "ssh://git@github.com:m0ose/simple-peer.git#66c85c11cb75f3a3d7b5b4e5d698223dc8a0dbeb"
+simple-peer@9.4.0:
+  version "9.4.0"
+  resolved "https://registry.yarnpkg.com/simple-peer/-/simple-peer-9.4.0.tgz#eb82ef1181e10ec0c014a94953e2eb278f3d9025"
+  integrity sha512-8qF32uq6SSSVXoBq9g31uGqZYupwRD3Ta/QK9fV04U/IbnIS6mictLb8/kjFyLVa3JrD7QYyKrw3nvJJ+lNFDw==
   dependencies:
     debug "^4.0.1"
     get-browser-rtc "^1.0.0"
