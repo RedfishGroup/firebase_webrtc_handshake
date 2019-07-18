@@ -50097,7 +50097,7 @@ class P2PServer extends Evented {
             this.channelRef.child(mykey),
             this._makePeer(myID)
           );
-          this.connections = [...connections, channel];
+          this.connections = [...this.connections, channel];
           this.fire('addConnection', channel);
 
           // on message through webRTC (simple-peer)
