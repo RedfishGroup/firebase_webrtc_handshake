@@ -236,6 +236,8 @@ export class P2PServer extends Evented {
       var conn = this.connections[index];
       conn.destroy();
       this.connections.splice(index, 1);
+      this.connections = [...this.connections];
+      this.fire('removeConnection', conn);
       if (this.debug) console.log(this.connections);
     }
   }
