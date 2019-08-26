@@ -1,7 +1,7 @@
 // Rollup plugins.
-import cjs from 'rollup-plugin-commonjs';
-import globals from 'rollup-plugin-node-globals';
-import replace from 'rollup-plugin-replace';
+// import cjs from 'rollup-plugin-commonjs';
+// import globals from 'rollup-plugin-node-globals';
+// import replace from 'rollup-plugin-replace';
 import resolve from 'rollup-plugin-node-resolve';
 import commonjs from 'rollup-plugin-commonjs';
 
@@ -10,7 +10,10 @@ import commonjs from 'rollup-plugin-commonjs';
 export default [
   {
     input: 'src/index.js',
-    plugins: [resolve({ jsnext: true, main: true, browser: true }), commonjs()],
+    plugins: [
+      resolve({ mainFields: ['module', 'main', 'jsnext:main', 'browser'] }),
+      commonjs(),
+    ],
     output: [
       {
         file: 'dist/build.full.js',

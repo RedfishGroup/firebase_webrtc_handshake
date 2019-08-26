@@ -1,7 +1,6 @@
 import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js';
 import msgpacklite__default, {  } from 'msgpack-lite/dist/msgpack.min.js';
 import Peer2__default from 'simple-peer/simplepeer.min.js';
-import 'webrtc-adapter/src/js/adapter_core.js';
 import firebase2__default from 'firebase/dist/index.esm';
 
 class Evented {
@@ -53,18 +52,19 @@ var settings = {
   CHUNK_SIZE: Math.pow(2, 10), // size in bytes of the chunks. 2^16 is just under the limit in chrome.
   ICE_SERVERS: [
     {
-      url: "stun:23.21.150.121",
-      urls: "stun:23.21.150.121"
+      url: 'stun:23.21.150.121',
+      urls: 'stun:23.21.150.121',
     },
     {
-      url: "turn:global.turn.twilio.com:3478?transport=udp",
+      url: 'turn:global.turn.twilio.com:3478?transport=udp',
       username:
-        "508d1e639868dc17f5da97a75b1d3b43bf2fc6d11e4e863678501db568b5665c",
-      credential: "W5GTdhQQ6DqOD7k6bS8+xZVNQXm+fgLXSEQpN8bTe70=",
-      urls: "turn:global.turn.twilio.com:3478?transport=udp"
-    }
+        '508d1e639868dc17f5da97a75b1d3b43bf2fc6d11e4e863678501db568b5665c',
+      credential: 'W5GTdhQQ6DqOD7k6bS8+xZVNQXm+fgLXSEQpN8bTe70=',
+      urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+    },
   ],
-  POLLING_FREQUENCY: 15000
+  POLLING_FREQUENCY: 15000,
+  debug: false,
 };
 
 var msgPack = msgpacklite__default;
@@ -186,7 +186,7 @@ function imageToBlob(img, cb) {
 var msgPack$1 = msgpacklite__default;
 var Peer = Peer2__default;
 window.simpPeer = Peer;
-console.log("msg pack", msgpacklite);
+console.log('msg pack', msgpacklite);
 
 class PeerBinary extends Peer {
   constructor(options) {
@@ -195,13 +195,14 @@ class PeerBinary extends Peer {
     this._registerDataMessage();
     this.unchunker = new UnChunker(); //
     this.unchunker.onData = val => {
-      this.emit("dataBig", val);
+      this.emit('dataBig', val);
     };
+    this.peerID = options.peerID;
   }
 
   //want to overide these 2 functions I think.
   _registerDataMessage(event) {
-    this.on("data", data => {
+    this.on('data', data => {
       //when its done with a complete chunk, call this.emit('dataBig', completed)
       this.unchunker.registerChunk(data);
     });
@@ -225,7 +226,7 @@ class UnChunker {
     this.payloads = {};
     this.payloadCount = 0;
     this.onData = function(val) {
-      console.log("default, data is ready:", val);
+      console.log('default, data is ready:', val);
     };
   }
 
@@ -247,10 +248,10 @@ class UnChunker {
         }
       } catch (err) {
         console.error(err);
-        console.error("val:", msg);
+        console.error('val:', msg);
       }
     } else {
-      console.warn("not my type", msg);
+      console.warn('not my type', msg);
       //console.warn(this._ab2str(msg))
     }
     return null;
@@ -260,7 +261,7 @@ class UnChunker {
     this.payloads[id] = Object.assign(header, {
       count: header.chunkCount,
       chunks: [],
-      lastUpdate: new Date()
+      lastUpdate: new Date(),
     });
     this.payloadCount++;
   }
@@ -294,7 +295,7 @@ class UnChunker {
       this._removePayload(payloadID);
     } catch (err) {
       console.error(err);
-      console.error("buffer", result);
+      console.error('buffer', result);
     }
   }
 
@@ -304,7 +305,7 @@ class UnChunker {
   }
 
   parseHeader(data) {
-    if (typeof data == "object" && !(data instanceof Uint8Array)) {
+    if (typeof data == 'object' && !(data instanceof Uint8Array)) {
       if (data.chunkCount && data.chunkCount > 0) {
         return data;
       }
@@ -365,8 +366,8 @@ var firebase$1 = firebase2__default;
 
 class Channel {
   constructor(fbref, peer) {
-    this.outRef = fbref.child("fromServer"); //firebase
-    this.inRef = fbref.child("fromClient");
+    this.outRef = fbref.child('fromServer'); //firebase
+    this.inRef = fbref.child('fromClient');
     this.peer = peer; // simple-peer
   }
 
@@ -382,12 +383,12 @@ class P2PServer extends Evented {
     super(); //no idea what this does
     console.assert(
       options.iceServers,
-      "Server: no ice servers yet. Using defaults"
+      'Server: no ice servers yet. Using defaults'
     );
     this.MAX_CONNECTIONS = 20;
     this.debug = false;
     this.isListening = false;
-    this.id = "server" + Math.floor(Math.random() * 100000);
+    this.id = 'server' + Math.floor(Math.random() * 100000);
     this.stream = undefined;
     this.iceServers =
       options.iceServers || options.ICE_SERVERS || settings.ICE_SERVERS;
@@ -409,22 +410,22 @@ class P2PServer extends Evented {
   init() {
     var fbref = this.database;
     this.userRef = fbref.child(this.id);
-    this.updateRef = this.userRef.child("lastUpdate");
+    this.updateRef = this.userRef.child('lastUpdate');
     this.userRef.onDisconnect().remove();
     this.updateRef.set(firebase$1.database.ServerValue.TIMESTAMP);
-    this.channelRef = this.userRef.child("channels");
+    this.channelRef = this.userRef.child('channels');
     if (this.stream) {
-      this.userRef.child("isStream").set(true);
+      this.userRef.child('isStream').set(true);
     }
     this.channelRef.set([]);
     this.connections = [];
     this._intervalID = setInterval(() => {
-      this.fire("updateTimeStamp", undefined);
+      this.fire('updateTimeStamp', undefined);
       this._updateOnFireBase();
     }, this.POLLING_FREQUENCY);
     this.listenToChannels();
     this.isListening = true;
-    this.fire("init", undefined);
+    this.fire('init', undefined);
   }
 
   _updateOnFireBase() {
@@ -438,7 +439,7 @@ class P2PServer extends Evented {
         try {
           conx.peer.send.bind(conx.peer)(data);
         } catch (err) {
-          console.error(err, "Got an error, interrupted connection? ");
+          console.error(err, 'Got an error, interrupted connection? ');
         }
       }
     }
@@ -450,7 +451,7 @@ class P2PServer extends Evented {
         try {
           conx.peer.sendBig.bind(conx.peer)(data);
         } catch (err) {
-          console.error(err, "Got an error, interrupted connection? ");
+          console.error(err, 'Got an error, interrupted connection? ');
         }
       }
     }
@@ -460,60 +461,62 @@ class P2PServer extends Evented {
     // disabling no-loop-func because these loops are correct usage
     // https://eslint.org/docs/rules/no-loop-func
     // when a new channel is added, listen to it.
-    this.channelRef.on("child_added", ev => {
+    this.channelRef.on('child_added', ev => {
       if (this.connections.length > this.MAX_CONNECTIONS) {
         console.error(
-          "Too many connections. TODO:close/remove old stale connections"
+          'Too many connections. TODO:close/remove old stale connections'
         );
         return;
       }
       var val = ev.val();
       if (this.debug) {
-        console.log(val, "new child");
+        console.log(val, 'new child');
       }
       for (var i in val.fromClient) {
         var sig = val.fromClient[i];
-        if (sig.type === "offer") {
+        if (sig.type === 'offer') {
           var mykey = ev.key;
+          var { peerID, myID } = sig;
           var channel = new Channel(
             this.channelRef.child(mykey),
-            this._makePeer()
+            this._makePeer(myID)
           );
-          this.connections.push(channel);
+          this.connections = [...this.connections, channel];
+          this.fire('addConnection', channel);
 
           // on message through webRTC (simple-peer)
           //eslint-disable-next-line no-loop-func
           var answerSentYet = false;
-          channel.peer.on("signal", data => {
-            if (data.type === "answer") {
+          channel.peer.on('signal', data => {
+            if (data.type === 'answer') {
               if (answerSentYet) {
-                console.warn("Why am i trying to send multiple answers");
+                console.warn('Why am i trying to send multiple answers');
               }
               channel.outRef.push(data);
               answerSentYet = true;
             } else if (data.candidate) {
               channel.outRef.push(data);
             } else {
-              console.warn(data, "unexpected message from WebRTC");
+              console.warn(data, 'unexpected message from WebRTC');
             }
           });
 
           // on message through firebase
           //eslint-disable-next-line no-loop-func
-          channel.inRef.on("child_added", ev2 => {
+          channel.inRef.on('child_added', ev2 => {
             var val2 = ev2.val();
             if (this.debug) {
-              console.log(val2, "child_added -- firebase");
+              console.log(val2, 'child_added -- firebase');
             }
             if (val2.candidate) {
               if (this.debug) {
-                console.log(val2, "server got candidate from firebase");
+                console.log(val2, 'server got candidate from firebase');
               }
               channel.peer.signal(val2);
-            } else if (val2.type === "offer") {
+            } else if (val2.type === 'offer') {
               channel.peer.signal(val2);
-            } else if (val2.type === "answer") ; else {
-              console.warn(val2, "unexpected message from Firebase");
+            } else if (val2.type === 'answer') ; else {
+              console.warn(val2, 'unexpected message from Firebase');
             }
           });
         }
@@ -521,43 +524,43 @@ class P2PServer extends Evented {
     });
   }
 
-  _makePeer() {
-    if (this.debug) console.log("_makePeer called");
-    this.fire("makePeer", undefined);
+  _makePeer(peerID) {
+    if (this.debug) console.log('_makePeer called with peerID: ', peerID);
+    this.fire('makePeer', undefined);
     var myoptions = {
       initiator: false,
       trickle: true,
       config: {
-        iceServers: this.iceServers
+        iceServers: this.iceServers,
       },
-      peerID: this.id
+      peerID,
     };
     if (this.stream) myoptions.stream = this.stream;
     var p = new PeerBinary(myoptions);
     // fire events
-    p.on("error", err => {
-      console.error("server: error", err);
-      this.fire("error", { peer: p, err: err });
+    p.on('error', err => {
+      console.error('server: error', err);
+      this.fire('error', { peer: p, err: err });
     });
-    p.on("connect", () => {
-      if (this.debug) console.log("server: client connected");
-      this.fire("connect", { peer: p });
+    p.on('connect', () => {
+      if (this.debug) console.log('server: client connected');
+      this.fire('connect', { peer: p });
     });
-    p.on("data", data => {
-      if (this.debug) console.log("server: server recieved some data: ", data);
-      this.fire("data", { peer: p, data: data });
+    p.on('data', data => {
+      if (this.debug) console.log('server: server recieved some data: ', data);
+      this.fire('data', { peer: p, data: data });
     });
-    p.on("close", () => {
-      if (this.debug) console.log("server: connection closed", p);
+    p.on('close', () => {
+      if (this.debug) console.log('server: connection closed', p);
       this._removeConnection(p);
-      this.fire("close", { peer: p });
+      this.fire('close', { peer: p });
     });
-    p.on("dataBig", data => {
-      this.fire("dataBig", { peer: p, data: data });
+    p.on('dataBig', data => {
+      this.fire('dataBig', { peer: p, data: data });
     });
-    p.on("stream", stream => {
-      if (this.debug) console.log("Server: connected to stream", stream);
-      this.fire("stream", { peer: p, stream: stream });
+    p.on('stream', stream => {
+      if (this.debug) console.log('Server: connected to stream', stream);
+      this.fire('stream', { peer: p, stream: stream });
     });
     //TODO make it so server can register events that will get called on each individual connection
     return p;
@@ -583,7 +586,7 @@ class P2PServer extends Evented {
     for (var i = 0; i < this.connections.length; i++) {
       var conn = this.connections[i];
       if (conn.peer == peer) {
-        if (this.debug) console.log("found my connection", i, conn);
+        if (this.debug) console.log('found my connection', i, conn);
         index = i;
       }
     }
@@ -591,6 +594,8 @@ class P2PServer extends Evented {
       var conn = this.connections[index];
       conn.destroy();
       this.connections.splice(index, 1);
+      this.connections = [...this.connections];
+      this.fire('removeConnection', conn);
       if (this.debug) console.log(this.connections);
     }
   }
@@ -601,26 +606,27 @@ class P2PClient extends Evented {
     super();
     Object.assign(this, settings);
     Object.assign(this, options);
+
     this.iceServers =
       options.iceServers || options.ICE_SERVERS || settings.ICE_SERVERS;
-    this.database;
+
     if (options.database) {
       this.database = options.database;
     } else {
       this.database = getDatabase();
     }
+
     this.fbref = this.database;
     this.connection = null;
     this.channelRef = null;
     this.stream = undefined;
     this.isStream = true;
-    this.debug = false;
     this.connectionCallbacks = [];
-    this.lastNegotioationState = undefined;
+    this.lastNegotiationState = undefined;
   }
 
   getPeerList(callback) {
-    this.fbref.once("value", ev => {
+    this.fbref.once('value', ev => {
       var val = ev.val();
       this.peerList = val;
       callback(null, val);
@@ -632,41 +638,43 @@ class P2PClient extends Evented {
     this.getPeerList(() => {
       var peer = this.peerList[id];
       if (!peer) {
-        console.error("peer not defined. id:", id);
-        callback("peer not defined");
+        console.error('peer not defined. id:', id);
+        callback('peer not defined');
       } else {
         this.id = id;
         this.serverRef = this.fbref.child(id);
-        this.serverRef.once("value", ev1 => {
+        this.serverRef.once('value', ev1 => {
           var sval = ev1.val();
           let pOpts = {
             initiator: true,
             trickle: true,
             config: {
-              iceServers: this.iceServers
-            }
+              iceServers: this.iceServers,
+            },
           };
+
           if (sval.isStream || this.isStream) {
             pOpts.stream = this.getMyStream();
           }
           var p = new PeerBinary(pOpts);
           this.connection = p;
           this._registerEvents();
-          p.on("signal", data => {
-            if (data.type == "offer") {
+          p.on('signal', data => {
+            if (data.type == 'offer') {
               this._createChannel(data);
             } else if (data.candidate) {
-              if (this.debug)
-                console.log("client recieved candidate from webrtc", data);
+              if (this.debug) {
+                console.log('client recieved candidate from webrtc', data);
+              }
               this.outRef.push(data);
             } else {
               console.warn(
-                "Client recieved unexpected signal through WebRTC:",
+                'Client recieved unexpected signal through WebRTC:',
                 data
               );
             }
           });
-          //callback(null, this.connection);
+          callback(null, this.connection);
         });
       }
     });
@@ -674,9 +682,10 @@ class P2PClient extends Evented {
 
   getMyStream() {
     if (this.stream) return this.stream;
+
     // create fake stream if no stream specified, and the server is in streaming mode.
     //    because, at the moment, simple-peer must have a stream from the initiator.
-    let fakeCanvas = document.createElement("canvas");
+    let fakeCanvas = document.createElement('canvas');
     fakeCanvas.width = fakeCanvas.height = 1;
     var fakeStream = fakeCanvas.captureStream();
     return fakeStream;
@@ -686,8 +695,9 @@ class P2PClient extends Evented {
     callback =
       callback ||
       function() {
-        console.log("client disconnected from server", arguments);
+        console.log('client disconnected from server', arguments);
       };
+
     if (this.serverRef) {
       this.serverRef.off();
     }
@@ -708,45 +718,48 @@ class P2PClient extends Evented {
 
   _createChannel(offer) {
     //this.channelRef = this.serverRef.child('channels').push({offer:offer})
-    this.channelRef = this.serverRef.child("channels").push({
-      fromClient: [offer]
+    offer.peerID = this.peerID;
+    offer.myID = this.myID;
+    this.channelRef = this.serverRef.child('channels').push({
+      fromClient: [offer],
     });
-    this.outRef = this.channelRef.child("fromClient");
-    this.inRef = this.channelRef.child("fromServer");
-    this.inRef.on("child_added", ev => {
-      if (this.debug) console.log(ev.val(), "channel message, client");
+    this.outRef = this.channelRef.child('fromClient');
+    this.inRef = this.channelRef.child('fromServer');
+    this.inRef.on('child_added', ev => {
+      if (this.debug) console.log(ev.val(), 'channel message, client');
       var val = ev.val();
-      if (val.type === "answer") {
+      if (val.type === 'answer') {
         setTimeout(() => {
           let state = this.connection._pc.signalingState;
-          if (state == this.lastNegotioationState) {
-            //console.log("signalstate. skip nested negotiations");
+          if (state == this.lastNegotiationState) {
+            if (this.debug)
+              console.log('signalstate. skip nested negotiations');
             return;
           }
-          //console.log("signal start negotiation");
-          this.lastNegotioationState = state;
-          //console.log("answer", this);
+          if (this.debug) console.log('signal start negotiation');
+          this.lastNegotiationState = state;
+          if (this.debug) console.log('answer', this);
           if (!this.connection.destroyed) this.connection.signal(val);
         }, 50); // a slight delay helps establish connection, I think.
       } else if (val.candidate) {
-        if (this.debug) console.log("client recieved candidate from firebase");
+        if (this.debug) console.log('client recieved candidate from firebase');
         setTimeout(() => {
           if (!this.connection.destroyed) this.connection.signal(val);
         }, 50);
       } else {
-        console.warn(val, "Client recieved unexpected signal through Firebase");
+        console.warn(val, 'Client recieved unexpected signal through Firebase');
       }
     });
   }
 
   _registerEvents() {
     // fire events
-    this.connection.on("error", err => {
-      console.error("client: error", err);
-      this.fire("error", { peer: this.connection, err: err });
+    this.connection.on('error', err => {
+      console.error('client: error', err);
+      this.fire('error', { peer: this.connection, err: err });
     });
-    this.connection.on("connect", () => {
-      if (this.debug) console.log("client: client connected");
+    this.connection.on('connect', () => {
+      if (this.debug) console.log('client: client connected');
       try {
         for (var callback of this.connectionCallbacks) {
           callback(null, this.connection);
@@ -755,25 +768,25 @@ class P2PClient extends Evented {
       } catch (err) {
         console.warn(err);
       }
-      this.fire("connect", { peer: this.connection });
+      this.fire('connect', { peer: this.connection });
     });
-    this.connection.on("data", data => {
-      if (this.debug) console.log("server: server recieved some data: ", data);
-      this.fire("data", { peer: this.connection, data: data });
+    this.connection.on('data', data => {
+      if (this.debug) console.log('server: server recieved some data: ', data);
+      this.fire('data', { peer: this.connection, data: data });
     });
-    this.connection.on("close", data => {
-      if (this.debug) console.log("connection closed", this.connection);
-      this.fire("close", { peer: this.connection });
+    this.connection.on('close', data => {
+      if (this.debug) console.log('connection closed', this.connection);
+      this.fire('close', { peer: this.connection });
     });
-    this.connection.on("dataBig", data => {
-      this.fire("dataBig", { peer: this.connection, data: data });
+    this.connection.on('dataBig', data => {
+      this.fire('dataBig', { peer: this.connection, data: data });
     });
-    this.connection.on("stream", stream => {
-      if (this.debug) console.log("Client: connected to stream", stream);
-      this.fire("stream", { peer: this.connection, stream: stream });
+    this.connection.on('stream', stream => {
+      if (this.debug) console.log('Client: connected to stream', stream);
+      this.fire('stream', { peer: this.connection, stream: stream });
     });
-    this.connection._pc.addEventListener("signalingstatechange", () => {
-      console.log("signalState", this.connection._pc.signalingState);
+    this.connection._pc.addEventListener('signalingstatechange', () => {
+      console.log('signalState', this.connection._pc.signalingState);
     });
   }
 }
@@ -781,7 +794,7 @@ class P2PClient extends Evented {
 var msgPack$2 = msgpacklite__default;
 var Peer$1 = Peer2__default;
 window.simpPeer = Peer$1;
-console.log("msg pack", msgpacklite);
+console.log('msg pack', msgpacklite);
 
 class PeerBinary$1 extends Peer$1 {
   constructor(options) {
@@ -790,13 +803,14 @@ class PeerBinary$1 extends Peer$1 {
     this._registerDataMessage();
     this.unchunker = new UnChunker$1(); //
     this.unchunker.onData = val => {
-      this.emit("dataBig", val);
+      this.emit('dataBig', val);
     };
+    this.peerID = options.peerID;
   }
 
   //want to overide these 2 functions I think.
   _registerDataMessage(event) {
-    this.on("data", data => {
+    this.on('data', data => {
       //when its done with a complete chunk, call this.emit('dataBig', completed)
       this.unchunker.registerChunk(data);
     });
@@ -820,7 +834,7 @@ class UnChunker$1 {
     this.payloads = {};
     this.payloadCount = 0;
     this.onData = function(val) {
-      console.log("default, data is ready:", val);
+      console.log('default, data is ready:', val);
     };
   }
 
@@ -842,10 +856,10 @@ class UnChunker$1 {
         }
       } catch (err) {
         console.error(err);
-        console.error("val:", msg);
+        console.error('val:', msg);
       }
     } else {
-      console.warn("not my type", msg);
+      console.warn('not my type', msg);
       //console.warn(this._ab2str(msg))
     }
     return null;
@@ -855,7 +869,7 @@ class UnChunker$1 {
     this.payloads[id] = Object.assign(header, {
       count: header.chunkCount,
       chunks: [],
-      lastUpdate: new Date()
+      lastUpdate: new Date(),
     });
     this.payloadCount++;
   }
@@ -889,7 +903,7 @@ class UnChunker$1 {
       this._removePayload(payloadID);
     } catch (err) {
       console.error(err);
-      console.error("buffer", result);
+      console.error('buffer', result);
     }
   }
 
@@ -899,7 +913,7 @@ class UnChunker$1 {
   }
 
   parseHeader(data) {
-    if (typeof data == "object" && !(data instanceof Uint8Array)) {
+    if (typeof data == 'object' && !(data instanceof Uint8Array)) {
       if (data.chunkCount && data.chunkCount > 0) {
         return data;
       }

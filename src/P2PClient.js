@@ -1,33 +1,34 @@
-import { PeerBinary } from "./PeerBinary.js";
-import { settings } from "./settings.js";
-import { Evented } from "./Evented.js";
-import { getDatabase } from "./defaultFirebase.js";
+import { PeerBinary } from './PeerBinary.js';
+import { settings } from './settings.js';
+import { Evented } from './Evented.js';
+import { getDatabase } from './defaultFirebase.js';
 
 export class P2PClient extends Evented {
   constructor(options = {}) {
     super();
     Object.assign(this, settings);
     Object.assign(this, options);
+
     this.iceServers =
       options.iceServers || options.ICE_SERVERS || settings.ICE_SERVERS;
-    this.database;
+
     if (options.database) {
       this.database = options.database;
     } else {
       this.database = getDatabase();
     }
+
     this.fbref = this.database;
     this.connection = null;
     this.channelRef = null;
     this.stream = undefined;
     this.isStream = true;
-    this.debug = false;
     this.connectionCallbacks = [];
-    this.lastNegotioationState = undefined;
+    this.lastNegotiationState = undefined;
   }
 
   getPeerList(callback) {
-    this.fbref.once("value", ev => {
+    this.fbref.once('value', ev => {
       var val = ev.val();
       this.peerList = val;
       callback(null, val);
@@ -39,41 +40,43 @@ export class P2PClient extends Evented {
     this.getPeerList(() => {
       var peer = this.peerList[id];
       if (!peer) {
-        console.error("peer not defined. id:", id);
-        callback("peer not defined");
+        console.error('peer not defined. id:', id);
+        callback('peer not defined');
       } else {
         this.id = id;
         this.serverRef = this.fbref.child(id);
-        this.serverRef.once("value", ev1 => {
+        this.serverRef.once('value', ev1 => {
           var sval = ev1.val();
           let pOpts = {
             initiator: true,
             trickle: true,
             config: {
-              iceServers: this.iceServers
-            }
+              iceServers: this.iceServers,
+            },
           };
+
           if (sval.isStream || this.isStream) {
             pOpts.stream = this.getMyStream();
           }
           var p = new PeerBinary(pOpts);
           this.connection = p;
           this._registerEvents();
-          p.on("signal", data => {
-            if (data.type == "offer") {
+          p.on('signal', data => {
+            if (data.type == 'offer') {
               this._createChannel(data);
             } else if (data.candidate) {
-              if (this.debug)
-                console.log("client recieved candidate from webrtc", data);
+              if (this.debug) {
+                console.log('client recieved candidate from webrtc', data);
+              }
               this.outRef.push(data);
             } else {
               console.warn(
-                "Client recieved unexpected signal through WebRTC:",
+                'Client recieved unexpected signal through WebRTC:',
                 data
               );
             }
           });
-          //callback(null, this.connection);
+          callback(null, this.connection);
         });
       }
     });
@@ -81,9 +84,10 @@ export class P2PClient extends Evented {
 
   getMyStream() {
     if (this.stream) return this.stream;
+
     // create fake stream if no stream specified, and the server is in streaming mode.
     //    because, at the moment, simple-peer must have a stream from the initiator.
-    let fakeCanvas = document.createElement("canvas");
+    let fakeCanvas = document.createElement('canvas');
     fakeCanvas.width = fakeCanvas.height = 1;
     var fakeStream = fakeCanvas.captureStream();
     return fakeStream;
@@ -93,8 +97,9 @@ export class P2PClient extends Evented {
     callback =
       callback ||
       function() {
-        console.log("client disconnected from server", arguments);
+        console.log('client disconnected from server', arguments);
       };
+
     if (this.serverRef) {
       this.serverRef.off();
     }
@@ -115,45 +120,48 @@ export class P2PClient extends Evented {
 
   _createChannel(offer) {
     //this.channelRef = this.serverRef.child('channels').push({offer:offer})
-    this.channelRef = this.serverRef.child("channels").push({
-      fromClient: [offer]
+    offer.peerID = this.peerID;
+    offer.myID = this.myID;
+    this.channelRef = this.serverRef.child('channels').push({
+      fromClient: [offer],
     });
-    this.outRef = this.channelRef.child("fromClient");
-    this.inRef = this.channelRef.child("fromServer");
-    this.inRef.on("child_added", ev => {
-      if (this.debug) console.log(ev.val(), "channel message, client");
+    this.outRef = this.channelRef.child('fromClient');
+    this.inRef = this.channelRef.child('fromServer');
+    this.inRef.on('child_added', ev => {
+      if (this.debug) console.log(ev.val(), 'channel message, client');
       var val = ev.val();
-      if (val.type === "answer") {
+      if (val.type === 'answer') {
         setTimeout(() => {
           let state = this.connection._pc.signalingState;
-          if (state == this.lastNegotioationState) {
-            //console.log("signalstate. skip nested negotiations");
+          if (state == this.lastNegotiationState) {
+            if (this.debug)
+              console.log('signalstate. skip nested negotiations');
             return;
           }
-          //console.log("signal start negotiation");
-          this.lastNegotioationState = state;
-          //console.log("answer", this);
+          if (this.debug) console.log('signal start negotiation');
+          this.lastNegotiationState = state;
+          if (this.debug) console.log('answer', this);
           if (!this.connection.destroyed) this.connection.signal(val);
         }, 50); // a slight delay helps establish connection, I think.
       } else if (val.candidate) {
-        if (this.debug) console.log("client recieved candidate from firebase");
+        if (this.debug) console.log('client recieved candidate from firebase');
         setTimeout(() => {
           if (!this.connection.destroyed) this.connection.signal(val);
         }, 50);
       } else {
-        console.warn(val, "Client recieved unexpected signal through Firebase");
+        console.warn(val, 'Client recieved unexpected signal through Firebase');
       }
     });
   }
 
   _registerEvents() {
     // fire events
-    this.connection.on("error", err => {
-      console.error("client: error", err);
-      this.fire("error", { peer: this.connection, err: err });
+    this.connection.on('error', err => {
+      console.error('client: error', err);
+      this.fire('error', { peer: this.connection, err: err });
     });
-    this.connection.on("connect", () => {
-      if (this.debug) console.log("client: client connected");
+    this.connection.on('connect', () => {
+      if (this.debug) console.log('client: client connected');
       try {
         for (var callback of this.connectionCallbacks) {
           callback(null, this.connection);
@@ -162,25 +170,25 @@ export class P2PClient extends Evented {
       } catch (err) {
         console.warn(err);
       }
-      this.fire("connect", { peer: this.connection });
+      this.fire('connect', { peer: this.connection });
     });
-    this.connection.on("data", data => {
-      if (this.debug) console.log("server: server recieved some data: ", data);
-      this.fire("data", { peer: this.connection, data: data });
+    this.connection.on('data', data => {
+      if (this.debug) console.log('server: server recieved some data: ', data);
+      this.fire('data', { peer: this.connection, data: data });
     });
-    this.connection.on("close", data => {
-      if (this.debug) console.log("connection closed", this.connection);
-      this.fire("close", { peer: this.connection });
+    this.connection.on('close', data => {
+      if (this.debug) console.log('connection closed', this.connection);
+      this.fire('close', { peer: this.connection });
     });
-    this.connection.on("dataBig", data => {
-      this.fire("dataBig", { peer: this.connection, data: data });
+    this.connection.on('dataBig', data => {
+      this.fire('dataBig', { peer: this.connection, data: data });
     });
-    this.connection.on("stream", stream => {
-      if (this.debug) console.log("Client: connected to stream", stream);
-      this.fire("stream", { peer: this.connection, stream: stream });
+    this.connection.on('stream', stream => {
+      if (this.debug) console.log('Client: connected to stream', stream);
+      this.fire('stream', { peer: this.connection, stream: stream });
     });
-    this.connection._pc.addEventListener("signalingstatechange", () => {
-      console.log("signalState", this.connection._pc.signalingState);
+    this.connection._pc.addEventListener('signalingstatechange', () => {
+      console.log('signalState', this.connection._pc.signalingState);
     });
   }
 }

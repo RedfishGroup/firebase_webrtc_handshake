@@ -1,7 +1,8 @@
 {
   "name": "firebase_webrtc_handshake",
   "description": "Facilitate a webrtc connection using Firebase.",
-  "version": "1.0.19",
+
+  "version": "1.0.23",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/RedfishGroup/firebase_webrtc_handshake.git"
@@ -16,18 +17,19 @@
   },
   "homepage": "https://github.com/RedfishGroup/firebase_webrtc_handshake#readme",
   "peerDependencies": {
-    "firebase": "^5.8.4",
-    "msgpack-lite": "^0.1.26",
-    "webrtc-adapter": "^7.2.1"
+    "firebase": "5.8.4",
+    "msgpack-lite": "0.1.26",
+    "webrtc-adapter": "7.2.1"
   },
   "devDependencies": {
-    "firebase": "^5.8.4",
-    "msgpack-lite": "^0.1.26",
-    "rollup-plugin-commonjs": "^9.2.1",
-    "rollup-plugin-node-globals": "^1.4.0",
-    "rollup-plugin-node-resolve": "^4.0.1",
-    "rollup-plugin-replace": "^2.1.0",
-    "simple-peer": "ssh://git@github.com:m0ose/simple-peer.git",
-    "webrtc-adapter": "^7.2.1"
+    "firebase": "6.3.0",
+    "msgpack-lite": "0.1.26",
+    "rollup": "^1.17.0",
+    "rollup-plugin-commonjs": "10.0.1",
+    "rollup-plugin-node-globals": "1.4.0",
+    "rollup-plugin-node-resolve": "5.2.0",
+    "rollup-plugin-replace": "2.2.0",
+    "simple-peer": "9.4.0",
+    "webrtc-adapter": "7.2.8"
   }
 }

@@ -4,10 +4,6 @@ function commonjsRequire () {
 	throw new Error('Dynamic requires are not currently supported by rollup-plugin-commonjs');
 }
 
-function unwrapExports (x) {
-	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x.default : x;
-}
-
 function createCommonjsModule(fn, module) {
 	return module = { exports: {} }, fn(module, module.exports), module.exports;
 }
@@ -7418,18 +7414,19 @@ var settings = {
   CHUNK_SIZE: Math.pow(2, 10), // size in bytes of the chunks. 2^16 is just under the limit in chrome.
   ICE_SERVERS: [
     {
-      url: "stun:23.21.150.121",
-      urls: "stun:23.21.150.121"
+      url: 'stun:23.21.150.121',
+      urls: 'stun:23.21.150.121',
     },
     {
-      url: "turn:global.turn.twilio.com:3478?transport=udp",
+      url: 'turn:global.turn.twilio.com:3478?transport=udp',
       username:
-        "508d1e639868dc17f5da97a75b1d3b43bf2fc6d11e4e863678501db568b5665c",
-      credential: "W5GTdhQQ6DqOD7k6bS8+xZVNQXm+fgLXSEQpN8bTe70=",
-      urls: "turn:global.turn.twilio.com:3478?transport=udp"
-    }
+        '508d1e639868dc17f5da97a75b1d3b43bf2fc6d11e4e863678501db568b5665c',
+      credential: 'W5GTdhQQ6DqOD7k6bS8+xZVNQXm+fgLXSEQpN8bTe70=',
+      urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+    },
   ],
-  POLLING_FREQUENCY: 15000
+  POLLING_FREQUENCY: 15000,
+  debug: false,
 };
 
 var msgpack_min = createCommonjsModule(function (module, exports) {
@@ -7558,4997 +7555,10 @@ function imageToBlob(img, cb) {
   });
 }
 
-/*
- *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-
-let logDisabled_ = true;
-let deprecationWarnings_ = true;
-
-/**
- * Extract browser version out of the provided user agent string.
- *
- * @param {!string} uastring userAgent string.
- * @param {!string} expr Regular expression used as match criteria.
- * @param {!number} pos position in the version string to be returned.
- * @return {!number} browser version.
- */
-function extractVersion(uastring, expr, pos) {
-  const match = uastring.match(expr);
-  return match && match.length >= pos && parseInt(match[pos], 10);
-}
-
-// Wraps the peerconnection event eventNameToWrap in a function
-// which returns the modified event object (or false to prevent
-// the event).
-function wrapPeerConnectionEvent(window, eventNameToWrap, wrapper) {
-  if (!window.RTCPeerConnection) {
-    return;
-  }
-  const proto = window.RTCPeerConnection.prototype;
-  const nativeAddEventListener = proto.addEventListener;
-  proto.addEventListener = function(nativeEventName, cb) {
-    if (nativeEventName !== eventNameToWrap) {
-      return nativeAddEventListener.apply(this, arguments);
-    }
-    const wrappedCallback = (e) => {
-      const modifiedEvent = wrapper(e);
-      if (modifiedEvent) {
-        cb(modifiedEvent);
-      }
-    };
-    this._eventMap = this._eventMap || {};
-    this._eventMap[cb] = wrappedCallback;
-    return nativeAddEventListener.apply(this, [nativeEventName,
-      wrappedCallback]);
-  };
-
-  const nativeRemoveEventListener = proto.removeEventListener;
-  proto.removeEventListener = function(nativeEventName, cb) {
-    if (nativeEventName !== eventNameToWrap || !this._eventMap
-        || !this._eventMap[cb]) {
-      return nativeRemoveEventListener.apply(this, arguments);
-    }
-    const unwrappedCb = this._eventMap[cb];
-    delete this._eventMap[cb];
-    return nativeRemoveEventListener.apply(this, [nativeEventName,
-      unwrappedCb]);
-  };
-
-  Object.defineProperty(proto, 'on' + eventNameToWrap, {
-    get() {
-      return this['_on' + eventNameToWrap];
-    },
-    set(cb) {
-      if (this['_on' + eventNameToWrap]) {
-        this.removeEventListener(eventNameToWrap,
-            this['_on' + eventNameToWrap]);
-        delete this['_on' + eventNameToWrap];
-      }
-      if (cb) {
-        this.addEventListener(eventNameToWrap,
-            this['_on' + eventNameToWrap] = cb);
-      }
-    },
-    enumerable: true,
-    configurable: true
-  });
-}
-
-function disableLog(bool) {
-  if (typeof bool !== 'boolean') {
-    return new Error('Argument type: ' + typeof bool +
-        '. Please use a boolean.');
-  }
-  logDisabled_ = bool;
-  return (bool) ? 'adapter.js logging disabled' :
-      'adapter.js logging enabled';
-}
-
-/**
- * Disable or enable deprecation warnings
- * @param {!boolean} bool set to true to disable warnings.
- */
-function disableWarnings(bool) {
-  if (typeof bool !== 'boolean') {
-    return new Error('Argument type: ' + typeof bool +
-        '. Please use a boolean.');
-  }
-  deprecationWarnings_ = !bool;
-  return 'adapter.js deprecation warnings ' + (bool ? 'disabled' : 'enabled');
-}
-
-function log() {
-  if (typeof window === 'object') {
-    if (logDisabled_) {
-      return;
-    }
-    if (typeof console !== 'undefined' && typeof console.log === 'function') {
-      console.log.apply(console, arguments);
-    }
-  }
-}
-
-/**
- * Shows a deprecation warning suggesting the modern and spec-compatible API.
- */
-function deprecated(oldMethod, newMethod) {
-  if (!deprecationWarnings_) {
-    return;
-  }
-  console.warn(oldMethod + ' is deprecated, please use ' + newMethod +
-      ' instead.');
-}
-
-/**
- * Browser detector.
- *
- * @return {object} result containing browser and version
- *     properties.
- */
-function detectBrowser(window) {
-  const {navigator} = window;
-
-  // Returned result object.
-  const result = {browser: null, version: null};
-
-  // Fail early if it's not a browser
-  if (typeof window === 'undefined' || !window.navigator) {
-    result.browser = 'Not a browser.';
-    return result;
-  }
-
-  if (navigator.mozGetUserMedia) { // Firefox.
-    result.browser = 'firefox';
-    result.version = extractVersion(navigator.userAgent,
-        /Firefox\/(\d+)\./, 1);
-  } else if (navigator.webkitGetUserMedia) {
-    // Chrome, Chromium, Webview, Opera.
-    // Version matches Chrome/WebRTC version.
-    result.browser = 'chrome';
-    result.version = extractVersion(navigator.userAgent,
-        /Chrom(e|ium)\/(\d+)\./, 2);
-  } else if (navigator.mediaDevices &&
-      navigator.userAgent.match(/Edge\/(\d+).(\d+)$/)) { // Edge.
-    result.browser = 'edge';
-    result.version = extractVersion(navigator.userAgent,
-        /Edge\/(\d+).(\d+)$/, 2);
-  } else if (window.RTCPeerConnection &&
-      navigator.userAgent.match(/AppleWebKit\/(\d+)\./)) { // Safari.
-    result.browser = 'safari';
-    result.version = extractVersion(navigator.userAgent,
-        /AppleWebKit\/(\d+)\./, 1);
-  } else { // Default fallthrough: not supported.
-    result.browser = 'Not a supported browser.';
-    return result;
-  }
-
-  return result;
-}
-
-/**
- * Remove all empty objects and undefined values
- * from a nested object -- an enhanced and vanilla version
- * of Lodash's `compact`.
- */
-function compactObject(data) {
-  if (typeof data !== 'object') {
-    return data;
-  }
-
-  return Object.keys(data).reduce(function(accumulator, key) {
-    const isObject = typeof data[key] === 'object';
-    const value = isObject ? compactObject(data[key]) : data[key];
-    const isEmptyObject = isObject && !Object.keys(value).length;
-    if (value === undefined || isEmptyObject) {
-      return accumulator;
-    }
-
-    return Object.assign(accumulator, {[key]: value});
-  }, {});
-}
-
-/*
- *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-const logging = log;
-
-function shimGetUserMedia(window) {
-  const navigator = window && window.navigator;
-
-  if (!navigator.mediaDevices) {
-    return;
-  }
-
-  const browserDetails = detectBrowser(window);
-
-  const constraintsToChrome_ = function(c) {
-    if (typeof c !== 'object' || c.mandatory || c.optional) {
-      return c;
-    }
-    const cc = {};
-    Object.keys(c).forEach(key => {
-      if (key === 'require' || key === 'advanced' || key === 'mediaSource') {
-        return;
-      }
-      const r = (typeof c[key] === 'object') ? c[key] : {ideal: c[key]};
-      if (r.exact !== undefined && typeof r.exact === 'number') {
-        r.min = r.max = r.exact;
-      }
-      const oldname_ = function(prefix, name) {
-        if (prefix) {
-          return prefix + name.charAt(0).toUpperCase() + name.slice(1);
-        }
-        return (name === 'deviceId') ? 'sourceId' : name;
-      };
-      if (r.ideal !== undefined) {
-        cc.optional = cc.optional || [];
-        let oc = {};
-        if (typeof r.ideal === 'number') {
-          oc[oldname_('min', key)] = r.ideal;
-          cc.optional.push(oc);
-          oc = {};
-          oc[oldname_('max', key)] = r.ideal;
-          cc.optional.push(oc);
-        } else {
-          oc[oldname_('', key)] = r.ideal;
-          cc.optional.push(oc);
-        }
-      }
-      if (r.exact !== undefined && typeof r.exact !== 'number') {
-        cc.mandatory = cc.mandatory || {};
-        cc.mandatory[oldname_('', key)] = r.exact;
-      } else {
-        ['min', 'max'].forEach(mix => {
-          if (r[mix] !== undefined) {
-            cc.mandatory = cc.mandatory || {};
-            cc.mandatory[oldname_(mix, key)] = r[mix];
-          }
-        });
-      }
-    });
-    if (c.advanced) {
-      cc.optional = (cc.optional || []).concat(c.advanced);
-    }
-    return cc;
-  };
-
-  const shimConstraints_ = function(constraints, func) {
-    if (browserDetails.version >= 61) {
-      return func(constraints);
-    }
-    constraints = JSON.parse(JSON.stringify(constraints));
-    if (constraints && typeof constraints.audio === 'object') {
-      const remap = function(obj, a, b) {
-        if (a in obj && !(b in obj)) {
-          obj[b] = obj[a];
-          delete obj[a];
-        }
-      };
-      constraints = JSON.parse(JSON.stringify(constraints));
-      remap(constraints.audio, 'autoGainControl', 'googAutoGainControl');
-      remap(constraints.audio, 'noiseSuppression', 'googNoiseSuppression');
-      constraints.audio = constraintsToChrome_(constraints.audio);
-    }
-    if (constraints && typeof constraints.video === 'object') {
-      // Shim facingMode for mobile & surface pro.
-      let face = constraints.video.facingMode;
-      face = face && ((typeof face === 'object') ? face : {ideal: face});
-      const getSupportedFacingModeLies = browserDetails.version < 66;
-
-      if ((face && (face.exact === 'user' || face.exact === 'environment' ||
-                    face.ideal === 'user' || face.ideal === 'environment')) &&
-          !(navigator.mediaDevices.getSupportedConstraints &&
-            navigator.mediaDevices.getSupportedConstraints().facingMode &&
-            !getSupportedFacingModeLies)) {
-        delete constraints.video.facingMode;
-        let matches;
-        if (face.exact === 'environment' || face.ideal === 'environment') {
-          matches = ['back', 'rear'];
-        } else if (face.exact === 'user' || face.ideal === 'user') {
-          matches = ['front'];
-        }
-        if (matches) {
-          // Look for matches in label, or use last cam for back (typical).
-          return navigator.mediaDevices.enumerateDevices()
-          .then(devices => {
-            devices = devices.filter(d => d.kind === 'videoinput');
-            let dev = devices.find(d => matches.some(match =>
-              d.label.toLowerCase().includes(match)));
-            if (!dev && devices.length && matches.includes('back')) {
-              dev = devices[devices.length - 1]; // more likely the back cam
-            }
-            if (dev) {
-              constraints.video.deviceId = face.exact ? {exact: dev.deviceId} :
-                                                        {ideal: dev.deviceId};
-            }
-            constraints.video = constraintsToChrome_(constraints.video);
-            logging('chrome: ' + JSON.stringify(constraints));
-            return func(constraints);
-          });
-        }
-      }
-      constraints.video = constraintsToChrome_(constraints.video);
-    }
-    logging('chrome: ' + JSON.stringify(constraints));
-    return func(constraints);
-  };
-
-  const shimError_ = function(e) {
-    if (browserDetails.version >= 64) {
-      return e;
-    }
-    return {
-      name: {
-        PermissionDeniedError: 'NotAllowedError',
-        PermissionDismissedError: 'NotAllowedError',
-        InvalidStateError: 'NotAllowedError',
-        DevicesNotFoundError: 'NotFoundError',
-        ConstraintNotSatisfiedError: 'OverconstrainedError',
-        TrackStartError: 'NotReadableError',
-        MediaDeviceFailedDueToShutdown: 'NotAllowedError',
-        MediaDeviceKillSwitchOn: 'NotAllowedError',
-        TabCaptureError: 'AbortError',
-        ScreenCaptureError: 'AbortError',
-        DeviceCaptureError: 'AbortError'
-      }[e.name] || e.name,
-      message: e.message,
-      constraint: e.constraint || e.constraintName,
-      toString() {
-        return this.name + (this.message && ': ') + this.message;
-      }
-    };
-  };
-
-  const getUserMedia_ = function(constraints, onSuccess, onError) {
-    shimConstraints_(constraints, c => {
-      navigator.webkitGetUserMedia(c, onSuccess, e => {
-        if (onError) {
-          onError(shimError_(e));
-        }
-      });
-    });
-  };
-  navigator.getUserMedia = getUserMedia_.bind(navigator);
-
-  // Even though Chrome 45 has navigator.mediaDevices and a getUserMedia
-  // function which returns a Promise, it does not accept spec-style
-  // constraints.
-  const origGetUserMedia = navigator.mediaDevices.getUserMedia.
-      bind(navigator.mediaDevices);
-  navigator.mediaDevices.getUserMedia = function(cs) {
-    return shimConstraints_(cs, c => origGetUserMedia(c).then(stream => {
-      if (c.audio && !stream.getAudioTracks().length ||
-          c.video && !stream.getVideoTracks().length) {
-        stream.getTracks().forEach(track => {
-          track.stop();
-        });
-        throw new DOMException('', 'NotFoundError');
-      }
-      return stream;
-    }, e => Promise.reject(shimError_(e))));
-  };
-}
-
-/*
- *  Copyright (c) 2018 The adapter.js project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-function shimGetDisplayMedia(window, getSourceId) {
-  if (window.navigator.mediaDevices &&
-    'getDisplayMedia' in window.navigator.mediaDevices) {
-    return;
-  }
-  if (!(window.navigator.mediaDevices)) {
-    return;
-  }
-  // getSourceId is a function that returns a promise resolving with
-  // the sourceId of the screen/window/tab to be shared.
-  if (typeof getSourceId !== 'function') {
-    console.error('shimGetDisplayMedia: getSourceId argument is not ' +
-        'a function');
-    return;
-  }
-  window.navigator.mediaDevices.getDisplayMedia = function(constraints) {
-    return getSourceId(constraints)
-      .then(sourceId => {
-        const widthSpecified = constraints.video && constraints.video.width;
-        const heightSpecified = constraints.video && constraints.video.height;
-        const frameRateSpecified = constraints.video &&
-          constraints.video.frameRate;
-        constraints.video = {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: sourceId,
-            maxFrameRate: frameRateSpecified || 3
-          }
-        };
-        if (widthSpecified) {
-          constraints.video.mandatory.maxWidth = widthSpecified;
-        }
-        if (heightSpecified) {
-          constraints.video.mandatory.maxHeight = heightSpecified;
-        }
-        return window.navigator.mediaDevices.getUserMedia(constraints);
-      });
-  };
-}
-
-/* iterates the stats graph recursively. */
-function walkStats(stats, base, resultSet) {
-  if (!base || resultSet.has(base.id)) {
-    return;
-  }
-  resultSet.set(base.id, base);
-  Object.keys(base).forEach(name => {
-    if (name.endsWith('Id')) {
-      walkStats(stats, stats.get(base[name]), resultSet);
-    } else if (name.endsWith('Ids')) {
-      base[name].forEach(id => {
-        walkStats(stats, stats.get(id), resultSet);
-      });
-    }
-  });
-}
-
-/* filter getStats for a sender/receiver track. */
-function filterStats(result, track, outbound) {
-  const streamStatsType = outbound ? 'outbound-rtp' : 'inbound-rtp';
-  const filteredResult = new Map();
-  if (track === null) {
-    return filteredResult;
-  }
-  const trackStats = [];
-  result.forEach(value => {
-    if (value.type === 'track' &&
-        value.trackIdentifier === track.id) {
-      trackStats.push(value);
-    }
-  });
-  trackStats.forEach(trackStat => {
-    result.forEach(stats => {
-      if (stats.type === streamStatsType && stats.trackId === trackStat.id) {
-        walkStats(result, stats, filteredResult);
-      }
-    });
-  });
-  return filteredResult;
-}
-
-function shimMediaStream(window) {
-  window.MediaStream = window.MediaStream || window.webkitMediaStream;
-}
-
-function shimOnTrack(window) {
-  if (typeof window === 'object' && window.RTCPeerConnection && !('ontrack' in
-      window.RTCPeerConnection.prototype)) {
-    Object.defineProperty(window.RTCPeerConnection.prototype, 'ontrack', {
-      get() {
-        return this._ontrack;
-      },
-      set(f) {
-        if (this._ontrack) {
-          this.removeEventListener('track', this._ontrack);
-        }
-        this.addEventListener('track', this._ontrack = f);
-      },
-      enumerable: true,
-      configurable: true
-    });
-    const origSetRemoteDescription =
-        window.RTCPeerConnection.prototype.setRemoteDescription;
-    window.RTCPeerConnection.prototype.setRemoteDescription = function() {
-      if (!this._ontrackpoly) {
-        this._ontrackpoly = (e) => {
-          // onaddstream does not fire when a track is added to an existing
-          // stream. But stream.onaddtrack is implemented so we use that.
-          e.stream.addEventListener('addtrack', te => {
-            let receiver;
-            if (window.RTCPeerConnection.prototype.getReceivers) {
-              receiver = this.getReceivers()
-                .find(r => r.track && r.track.id === te.track.id);
-            } else {
-              receiver = {track: te.track};
-            }
-
-            const event = new Event('track');
-            event.track = te.track;
-            event.receiver = receiver;
-            event.transceiver = {receiver};
-            event.streams = [e.stream];
-            this.dispatchEvent(event);
-          });
-          e.stream.getTracks().forEach(track => {
-            let receiver;
-            if (window.RTCPeerConnection.prototype.getReceivers) {
-              receiver = this.getReceivers()
-                .find(r => r.track && r.track.id === track.id);
-            } else {
-              receiver = {track};
-            }
-            const event = new Event('track');
-            event.track = track;
-            event.receiver = receiver;
-            event.transceiver = {receiver};
-            event.streams = [e.stream];
-            this.dispatchEvent(event);
-          });
-        };
-        this.addEventListener('addstream', this._ontrackpoly);
-      }
-      return origSetRemoteDescription.apply(this, arguments);
-    };
-  } else {
-    // even if RTCRtpTransceiver is in window, it is only used and
-    // emitted in unified-plan. Unfortunately this means we need
-    // to unconditionally wrap the event.
-    wrapPeerConnectionEvent(window, 'track', e => {
-      if (!e.transceiver) {
-        Object.defineProperty(e, 'transceiver',
-          {value: {receiver: e.receiver}});
-      }
-      return e;
-    });
-  }
-}
-
-function shimGetSendersWithDtmf(window) {
-  // Overrides addTrack/removeTrack, depends on shimAddTrackRemoveTrack.
-  if (typeof window === 'object' && window.RTCPeerConnection &&
-      !('getSenders' in window.RTCPeerConnection.prototype) &&
-      'createDTMFSender' in window.RTCPeerConnection.prototype) {
-    const shimSenderWithDtmf = function(pc, track) {
-      return {
-        track,
-        get dtmf() {
-          if (this._dtmf === undefined) {
-            if (track.kind === 'audio') {
-              this._dtmf = pc.createDTMFSender(track);
-            } else {
-              this._dtmf = null;
-            }
-          }
-          return this._dtmf;
-        },
-        _pc: pc
-      };
-    };
-
-    // augment addTrack when getSenders is not available.
-    if (!window.RTCPeerConnection.prototype.getSenders) {
-      window.RTCPeerConnection.prototype.getSenders = function() {
-        this._senders = this._senders || [];
-        return this._senders.slice(); // return a copy of the internal state.
-      };
-      const origAddTrack = window.RTCPeerConnection.prototype.addTrack;
-      window.RTCPeerConnection.prototype.addTrack = function(track, stream) {
-        let sender = origAddTrack.apply(this, arguments);
-        if (!sender) {
-          sender = shimSenderWithDtmf(this, track);
-          this._senders.push(sender);
-        }
-        return sender;
-      };
-
-      const origRemoveTrack = window.RTCPeerConnection.prototype.removeTrack;
-      window.RTCPeerConnection.prototype.removeTrack = function(sender) {
-        origRemoveTrack.apply(this, arguments);
-        const idx = this._senders.indexOf(sender);
-        if (idx !== -1) {
-          this._senders.splice(idx, 1);
-        }
-      };
-    }
-    const origAddStream = window.RTCPeerConnection.prototype.addStream;
-    window.RTCPeerConnection.prototype.addStream = function(stream) {
-      this._senders = this._senders || [];
-      origAddStream.apply(this, [stream]);
-      stream.getTracks().forEach(track => {
-        this._senders.push(shimSenderWithDtmf(this, track));
-      });
-    };
-
-    const origRemoveStream = window.RTCPeerConnection.prototype.removeStream;
-    window.RTCPeerConnection.prototype.removeStream = function(stream) {
-      this._senders = this._senders || [];
-      origRemoveStream.apply(this, [stream]);
-
-      stream.getTracks().forEach(track => {
-        const sender = this._senders.find(s => s.track === track);
-        if (sender) { // remove sender
-          this._senders.splice(this._senders.indexOf(sender), 1);
-        }
-      });
-    };
-  } else if (typeof window === 'object' && window.RTCPeerConnection &&
-             'getSenders' in window.RTCPeerConnection.prototype &&
-             'createDTMFSender' in window.RTCPeerConnection.prototype &&
-             window.RTCRtpSender &&
-             !('dtmf' in window.RTCRtpSender.prototype)) {
-    const origGetSenders = window.RTCPeerConnection.prototype.getSenders;
-    window.RTCPeerConnection.prototype.getSenders = function() {
-      const senders = origGetSenders.apply(this, []);
-      senders.forEach(sender => sender._pc = this);
-      return senders;
-    };
-
-    Object.defineProperty(window.RTCRtpSender.prototype, 'dtmf', {
-      get() {
-        if (this._dtmf === undefined) {
-          if (this.track.kind === 'audio') {
-            this._dtmf = this._pc.createDTMFSender(this.track);
-          } else {
-            this._dtmf = null;
-          }
-        }
-        return this._dtmf;
-      }
-    });
-  }
-}
-
-function shimSenderReceiverGetStats(window) {
-  if (!(typeof window === 'object' && window.RTCPeerConnection &&
-      window.RTCRtpSender && window.RTCRtpReceiver)) {
-    return;
-  }
-
-  // shim sender stats.
-  if (!('getStats' in window.RTCRtpSender.prototype)) {
-    const origGetSenders = window.RTCPeerConnection.prototype.getSenders;
-    if (origGetSenders) {
-      window.RTCPeerConnection.prototype.getSenders = function() {
-        const senders = origGetSenders.apply(this, []);
-        senders.forEach(sender => sender._pc = this);
-        return senders;
-      };
-    }
-
-    const origAddTrack = window.RTCPeerConnection.prototype.addTrack;
-    if (origAddTrack) {
-      window.RTCPeerConnection.prototype.addTrack = function() {
-        const sender = origAddTrack.apply(this, arguments);
-        sender._pc = this;
-        return sender;
-      };
-    }
-    window.RTCRtpSender.prototype.getStats = function() {
-      const sender = this;
-      return this._pc.getStats().then(result =>
-        /* Note: this will include stats of all senders that
-         *   send a track with the same id as sender.track as
-         *   it is not possible to identify the RTCRtpSender.
-         */
-        filterStats(result, sender.track, true));
-    };
-  }
-
-  // shim receiver stats.
-  if (!('getStats' in window.RTCRtpReceiver.prototype)) {
-    const origGetReceivers = window.RTCPeerConnection.prototype.getReceivers;
-    if (origGetReceivers) {
-      window.RTCPeerConnection.prototype.getReceivers = function() {
-        const receivers = origGetReceivers.apply(this, []);
-        receivers.forEach(receiver => receiver._pc = this);
-        return receivers;
-      };
-    }
-    wrapPeerConnectionEvent(window, 'track', e => {
-      e.receiver._pc = e.srcElement;
-      return e;
-    });
-    window.RTCRtpReceiver.prototype.getStats = function() {
-      const receiver = this;
-      return this._pc.getStats().then(result =>
-        filterStats(result, receiver.track, false));
-    };
-  }
-
-  if (!('getStats' in window.RTCRtpSender.prototype &&
-      'getStats' in window.RTCRtpReceiver.prototype)) {
-    return;
-  }
-
-  // shim RTCPeerConnection.getStats(track).
-  const origGetStats = window.RTCPeerConnection.prototype.getStats;
-  window.RTCPeerConnection.prototype.getStats = function() {
-    if (arguments.length > 0 &&
-        arguments[0] instanceof window.MediaStreamTrack) {
-      const track = arguments[0];
-      let sender;
-      let receiver;
-      let err;
-      this.getSenders().forEach(s => {
-        if (s.track === track) {
-          if (sender) {
-            err = true;
-          } else {
-            sender = s;
-          }
-        }
-      });
-      this.getReceivers().forEach(r => {
-        if (r.track === track) {
-          if (receiver) {
-            err = true;
-          } else {
-            receiver = r;
-          }
-        }
-        return r.track === track;
-      });
-      if (err || (sender && receiver)) {
-        return Promise.reject(new DOMException(
-          'There are more than one sender or receiver for the track.',
-          'InvalidAccessError'));
-      } else if (sender) {
-        return sender.getStats();
-      } else if (receiver) {
-        return receiver.getStats();
-      }
-      return Promise.reject(new DOMException(
-        'There is no sender or receiver for the track.',
-        'InvalidAccessError'));
-    }
-    return origGetStats.apply(this, arguments);
-  };
-}
-
-function shimAddTrackRemoveTrackWithNative(window) {
-  // shim addTrack/removeTrack with native variants in order to make
-  // the interactions with legacy getLocalStreams behave as in other browsers.
-  // Keeps a mapping stream.id => [stream, rtpsenders...]
-  window.RTCPeerConnection.prototype.getLocalStreams = function() {
-    this._shimmedLocalStreams = this._shimmedLocalStreams || {};
-    return Object.keys(this._shimmedLocalStreams)
-      .map(streamId => this._shimmedLocalStreams[streamId][0]);
-  };
-
-  const origAddTrack = window.RTCPeerConnection.prototype.addTrack;
-  window.RTCPeerConnection.prototype.addTrack = function(track, stream) {
-    if (!stream) {
-      return origAddTrack.apply(this, arguments);
-    }
-    this._shimmedLocalStreams = this._shimmedLocalStreams || {};
-
-    const sender = origAddTrack.apply(this, arguments);
-    if (!this._shimmedLocalStreams[stream.id]) {
-      this._shimmedLocalStreams[stream.id] = [stream, sender];
-    } else if (this._shimmedLocalStreams[stream.id].indexOf(sender) === -1) {
-      this._shimmedLocalStreams[stream.id].push(sender);
-    }
-    return sender;
-  };
-
-  const origAddStream = window.RTCPeerConnection.prototype.addStream;
-  window.RTCPeerConnection.prototype.addStream = function(stream) {
-    this._shimmedLocalStreams = this._shimmedLocalStreams || {};
-
-    stream.getTracks().forEach(track => {
-      const alreadyExists = this.getSenders().find(s => s.track === track);
-      if (alreadyExists) {
-        throw new DOMException('Track already exists.',
-            'InvalidAccessError');
-      }
-    });
-    const existingSenders = this.getSenders();
-    origAddStream.apply(this, arguments);
-    const newSenders = this.getSenders()
-      .filter(newSender => existingSenders.indexOf(newSender) === -1);
-    this._shimmedLocalStreams[stream.id] = [stream].concat(newSenders);
-  };
-
-  const origRemoveStream = window.RTCPeerConnection.prototype.removeStream;
-  window.RTCPeerConnection.prototype.removeStream = function(stream) {
-    this._shimmedLocalStreams = this._shimmedLocalStreams || {};
-    delete this._shimmedLocalStreams[stream.id];
-    return origRemoveStream.apply(this, arguments);
-  };
-
-  const origRemoveTrack = window.RTCPeerConnection.prototype.removeTrack;
-  window.RTCPeerConnection.prototype.removeTrack = function(sender) {
-    this._shimmedLocalStreams = this._shimmedLocalStreams || {};
-    if (sender) {
-      Object.keys(this._shimmedLocalStreams).forEach(streamId => {
-        const idx = this._shimmedLocalStreams[streamId].indexOf(sender);
-        if (idx !== -1) {
-          this._shimmedLocalStreams[streamId].splice(idx, 1);
-        }
-        if (this._shimmedLocalStreams[streamId].length === 1) {
-          delete this._shimmedLocalStreams[streamId];
-        }
-      });
-    }
-    return origRemoveTrack.apply(this, arguments);
-  };
-}
-
-function shimAddTrackRemoveTrack(window) {
-  if (!window.RTCPeerConnection) {
-    return;
-  }
-  const browserDetails = detectBrowser(window);
-  // shim addTrack and removeTrack.
-  if (window.RTCPeerConnection.prototype.addTrack &&
-      browserDetails.version >= 65) {
-    return shimAddTrackRemoveTrackWithNative(window);
-  }
-
-  // also shim pc.getLocalStreams when addTrack is shimmed
-  // to return the original streams.
-  const origGetLocalStreams = window.RTCPeerConnection.prototype
-      .getLocalStreams;
-  window.RTCPeerConnection.prototype.getLocalStreams = function() {
-    const nativeStreams = origGetLocalStreams.apply(this);
-    this._reverseStreams = this._reverseStreams || {};
-    return nativeStreams.map(stream => this._reverseStreams[stream.id]);
-  };
-
-  const origAddStream = window.RTCPeerConnection.prototype.addStream;
-  window.RTCPeerConnection.prototype.addStream = function(stream) {
-    this._streams = this._streams || {};
-    this._reverseStreams = this._reverseStreams || {};
-
-    stream.getTracks().forEach(track => {
-      const alreadyExists = this.getSenders().find(s => s.track === track);
-      if (alreadyExists) {
-        throw new DOMException('Track already exists.',
-            'InvalidAccessError');
-      }
-    });
-    // Add identity mapping for consistency with addTrack.
-    // Unless this is being used with a stream from addTrack.
-    if (!this._reverseStreams[stream.id]) {
-      const newStream = new window.MediaStream(stream.getTracks());
-      this._streams[stream.id] = newStream;
-      this._reverseStreams[newStream.id] = stream;
-      stream = newStream;
-    }
-    origAddStream.apply(this, [stream]);
-  };
-
-  const origRemoveStream = window.RTCPeerConnection.prototype.removeStream;
-  window.RTCPeerConnection.prototype.removeStream = function(stream) {
-    this._streams = this._streams || {};
-    this._reverseStreams = this._reverseStreams || {};
-
-    origRemoveStream.apply(this, [(this._streams[stream.id] || stream)]);
-    delete this._reverseStreams[(this._streams[stream.id] ?
-        this._streams[stream.id].id : stream.id)];
-    delete this._streams[stream.id];
-  };
-
-  window.RTCPeerConnection.prototype.addTrack = function(track, stream) {
-    if (this.signalingState === 'closed') {
-      throw new DOMException(
-        'The RTCPeerConnection\'s signalingState is \'closed\'.',
-        'InvalidStateError');
-    }
-    const streams = [].slice.call(arguments, 1);
-    if (streams.length !== 1 ||
-        !streams[0].getTracks().find(t => t === track)) {
-      // this is not fully correct but all we can manage without
-      // [[associated MediaStreams]] internal slot.
-      throw new DOMException(
-        'The adapter.js addTrack polyfill only supports a single ' +
-        ' stream which is associated with the specified track.',
-        'NotSupportedError');
-    }
-
-    const alreadyExists = this.getSenders().find(s => s.track === track);
-    if (alreadyExists) {
-      throw new DOMException('Track already exists.',
-          'InvalidAccessError');
-    }
-
-    this._streams = this._streams || {};
-    this._reverseStreams = this._reverseStreams || {};
-    const oldStream = this._streams[stream.id];
-    if (oldStream) {
-      // this is using odd Chrome behaviour, use with caution:
-      // https://bugs.chromium.org/p/webrtc/issues/detail?id=7815
-      // Note: we rely on the high-level addTrack/dtmf shim to
-      // create the sender with a dtmf sender.
-      oldStream.addTrack(track);
-
-      // Trigger ONN async.
-      Promise.resolve().then(() => {
-        this.dispatchEvent(new Event('negotiationneeded'));
-      });
-    } else {
-      const newStream = new window.MediaStream([track]);
-      this._streams[stream.id] = newStream;
-      this._reverseStreams[newStream.id] = stream;
-      this.addStream(newStream);
-    }
-    return this.getSenders().find(s => s.track === track);
-  };
-
-  // replace the internal stream id with the external one and
-  // vice versa.
-  function replaceInternalStreamId(pc, description) {
-    let sdp = description.sdp;
-    Object.keys(pc._reverseStreams || []).forEach(internalId => {
-      const externalStream = pc._reverseStreams[internalId];
-      const internalStream = pc._streams[externalStream.id];
-      sdp = sdp.replace(new RegExp(internalStream.id, 'g'),
-          externalStream.id);
-    });
-    return new RTCSessionDescription({
-      type: description.type,
-      sdp
-    });
-  }
-  function replaceExternalStreamId(pc, description) {
-    let sdp = description.sdp;
-    Object.keys(pc._reverseStreams || []).forEach(internalId => {
-      const externalStream = pc._reverseStreams[internalId];
-      const internalStream = pc._streams[externalStream.id];
-      sdp = sdp.replace(new RegExp(externalStream.id, 'g'),
-          internalStream.id);
-    });
-    return new RTCSessionDescription({
-      type: description.type,
-      sdp
-    });
-  }
-  ['createOffer', 'createAnswer'].forEach(function(method) {
-    const nativeMethod = window.RTCPeerConnection.prototype[method];
-    window.RTCPeerConnection.prototype[method] = function() {
-      const args = arguments;
-      const isLegacyCall = arguments.length &&
-          typeof arguments[0] === 'function';
-      if (isLegacyCall) {
-        return nativeMethod.apply(this, [
-          (description) => {
-            const desc = replaceInternalStreamId(this, description);
-            args[0].apply(null, [desc]);
-          },
-          (err) => {
-            if (args[1]) {
-              args[1].apply(null, err);
-            }
-          }, arguments[2]
-        ]);
-      }
-      return nativeMethod.apply(this, arguments)
-      .then(description => replaceInternalStreamId(this, description));
-    };
-  });
-
-  const origSetLocalDescription =
-      window.RTCPeerConnection.prototype.setLocalDescription;
-  window.RTCPeerConnection.prototype.setLocalDescription = function() {
-    if (!arguments.length || !arguments[0].type) {
-      return origSetLocalDescription.apply(this, arguments);
-    }
-    arguments[0] = replaceExternalStreamId(this, arguments[0]);
-    return origSetLocalDescription.apply(this, arguments);
-  };
-
-  // TODO: mangle getStats: https://w3c.github.io/webrtc-stats/#dom-rtcmediastreamstats-streamidentifier
-
-  const origLocalDescription = Object.getOwnPropertyDescriptor(
-      window.RTCPeerConnection.prototype, 'localDescription');
-  Object.defineProperty(window.RTCPeerConnection.prototype,
-      'localDescription', {
-        get() {
-          const description = origLocalDescription.get.apply(this);
-          if (description.type === '') {
-            return description;
-          }
-          return replaceInternalStreamId(this, description);
-        }
-      });
-
-  window.RTCPeerConnection.prototype.removeTrack = function(sender) {
-    if (this.signalingState === 'closed') {
-      throw new DOMException(
-        'The RTCPeerConnection\'s signalingState is \'closed\'.',
-        'InvalidStateError');
-    }
-    // We can not yet check for sender instanceof RTCRtpSender
-    // since we shim RTPSender. So we check if sender._pc is set.
-    if (!sender._pc) {
-      throw new DOMException('Argument 1 of RTCPeerConnection.removeTrack ' +
-          'does not implement interface RTCRtpSender.', 'TypeError');
-    }
-    const isLocal = sender._pc === this;
-    if (!isLocal) {
-      throw new DOMException('Sender was not created by this connection.',
-          'InvalidAccessError');
-    }
-
-    // Search for the native stream the senders track belongs to.
-    this._streams = this._streams || {};
-    let stream;
-    Object.keys(this._streams).forEach(streamid => {
-      const hasTrack = this._streams[streamid].getTracks()
-        .find(track => sender.track === track);
-      if (hasTrack) {
-        stream = this._streams[streamid];
-      }
-    });
-
-    if (stream) {
-      if (stream.getTracks().length === 1) {
-        // if this is the last track of the stream, remove the stream. This
-        // takes care of any shimmed _senders.
-        this.removeStream(this._reverseStreams[stream.id]);
-      } else {
-        // relying on the same odd chrome behaviour as above.
-        stream.removeTrack(sender.track);
-      }
-      this.dispatchEvent(new Event('negotiationneeded'));
-    }
-  };
-}
-
-function shimPeerConnection(window) {
-  if (!window.RTCPeerConnection && window.webkitRTCPeerConnection) {
-    // very basic support for old versions.
-    window.RTCPeerConnection = window.webkitRTCPeerConnection;
-  }
-  if (!window.RTCPeerConnection) {
-    return;
-  }
-
-  const origGetStats = window.RTCPeerConnection.prototype.getStats;
-  window.RTCPeerConnection.prototype.getStats = function(selector,
-      successCallback, errorCallback) {
-    const args = arguments;
-
-    // If selector is a function then we are in the old style stats so just
-    // pass back the original getStats format to avoid breaking old users.
-    if (arguments.length > 0 && typeof selector === 'function') {
-      return origGetStats.apply(this, arguments);
-    }
-
-    // When spec-style getStats is supported, return those when called with
-    // either no arguments or the selector argument is null.
-    if (origGetStats.length === 0 && (arguments.length === 0 ||
-        typeof arguments[0] !== 'function')) {
-      return origGetStats.apply(this, []);
-    }
-
-    const fixChromeStats_ = function(response) {
-      const standardReport = {};
-      const reports = response.result();
-      reports.forEach(report => {
-        const standardStats = {
-          id: report.id,
-          timestamp: report.timestamp,
-          type: {
-            localcandidate: 'local-candidate',
-            remotecandidate: 'remote-candidate'
-          }[report.type] || report.type
-        };
-        report.names().forEach(name => {
-          standardStats[name] = report.stat(name);
-        });
-        standardReport[standardStats.id] = standardStats;
-      });
-
-      return standardReport;
-    };
-
-    // shim getStats with maplike support
-    const makeMapStats = function(stats) {
-      return new Map(Object.keys(stats).map(key => [key, stats[key]]));
-    };
-
-    if (arguments.length >= 2) {
-      const successCallbackWrapper_ = function(response) {
-        args[1](makeMapStats(fixChromeStats_(response)));
-      };
-
-      return origGetStats.apply(this, [successCallbackWrapper_,
-        arguments[0]]);
-    }
-
-    // promise-support
-    return new Promise((resolve, reject) => {
-      origGetStats.apply(this, [
-        function(response) {
-          resolve(makeMapStats(fixChromeStats_(response)));
-        }, reject]);
-    }).then(successCallback, errorCallback);
-  };
-
-  // shim implicit creation of RTCSessionDescription/RTCIceCandidate
-  ['setLocalDescription', 'setRemoteDescription', 'addIceCandidate']
-      .forEach(function(method) {
-        const nativeMethod = window.RTCPeerConnection.prototype[method];
-        window.RTCPeerConnection.prototype[method] = function() {
-          arguments[0] = new ((method === 'addIceCandidate') ?
-              window.RTCIceCandidate :
-              window.RTCSessionDescription)(arguments[0]);
-          return nativeMethod.apply(this, arguments);
-        };
-      });
-
-  // support for addIceCandidate(null or undefined)
-  const nativeAddIceCandidate =
-      window.RTCPeerConnection.prototype.addIceCandidate;
-  window.RTCPeerConnection.prototype.addIceCandidate = function() {
-    if (!arguments[0]) {
-      if (arguments[1]) {
-        arguments[1].apply(null);
-      }
-      return Promise.resolve();
-    }
-    return nativeAddIceCandidate.apply(this, arguments);
-  };
-}
-
-function fixNegotiationNeeded(window) {
-  wrapPeerConnectionEvent(window, 'negotiationneeded', e => {
-    const pc = e.target;
-    if (pc.signalingState !== 'stable') {
-      return;
-    }
-    return e;
-  });
-}
-
-var chromeShim = /*#__PURE__*/Object.freeze({
-	shimMediaStream: shimMediaStream,
-	shimOnTrack: shimOnTrack,
-	shimGetSendersWithDtmf: shimGetSendersWithDtmf,
-	shimSenderReceiverGetStats: shimSenderReceiverGetStats,
-	shimAddTrackRemoveTrackWithNative: shimAddTrackRemoveTrackWithNative,
-	shimAddTrackRemoveTrack: shimAddTrackRemoveTrack,
-	shimPeerConnection: shimPeerConnection,
-	fixNegotiationNeeded: fixNegotiationNeeded,
-	shimGetUserMedia: shimGetUserMedia,
-	shimGetDisplayMedia: shimGetDisplayMedia
-});
-
-/*
- *  Copyright (c) 2018 The WebRTC project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-// Edge does not like
-// 1) stun: filtered after 14393 unless ?transport=udp is present
-// 2) turn: that does not have all of turn:host:port?transport=udp
-// 3) turn: with ipv6 addresses
-// 4) turn: occurring muliple times
-function filterIceServers(iceServers, edgeVersion) {
-  let hasTurn = false;
-  iceServers = JSON.parse(JSON.stringify(iceServers));
-  return iceServers.filter(server => {
-    if (server && (server.urls || server.url)) {
-      var urls = server.urls || server.url;
-      if (server.url && !server.urls) {
-        deprecated('RTCIceServer.url', 'RTCIceServer.urls');
-      }
-      const isString = typeof urls === 'string';
-      if (isString) {
-        urls = [urls];
-      }
-      urls = urls.filter(url => {
-        // filter STUN unconditionally.
-        if (url.indexOf('stun:') === 0) {
-          return false;
-        }
-
-        const validTurn = url.startsWith('turn') &&
-            !url.startsWith('turn:[') &&
-            url.includes('transport=udp');
-        if (validTurn && !hasTurn) {
-          hasTurn = true;
-          return true;
-        }
-        return validTurn && !hasTurn;
-      });
-
-      delete server.url;
-      server.urls = isString ? urls[0] : urls;
-      return !!urls.length;
-    }
-  });
-}
-
-var sdp = createCommonjsModule(function (module) {
-
-// SDP helpers.
-var SDPUtils = {};
-
-// Generate an alphanumeric identifier for cname or mids.
-// TODO: use UUIDs instead? https://gist.github.com/jed/982883
-SDPUtils.generateIdentifier = function() {
-  return Math.random().toString(36).substr(2, 10);
-};
-
-// The RTCP CNAME used by all peerconnections from the same JS.
-SDPUtils.localCName = SDPUtils.generateIdentifier();
-
-// Splits SDP into lines, dealing with both CRLF and LF.
-SDPUtils.splitLines = function(blob) {
-  return blob.trim().split('\n').map(function(line) {
-    return line.trim();
-  });
-};
-// Splits SDP into sessionpart and mediasections. Ensures CRLF.
-SDPUtils.splitSections = function(blob) {
-  var parts = blob.split('\nm=');
-  return parts.map(function(part, index) {
-    return (index > 0 ? 'm=' + part : part).trim() + '\r\n';
-  });
-};
-
-// returns the session description.
-SDPUtils.getDescription = function(blob) {
-  var sections = SDPUtils.splitSections(blob);
-  return sections && sections[0];
-};
-
-// returns the individual media sections.
-SDPUtils.getMediaSections = function(blob) {
-  var sections = SDPUtils.splitSections(blob);
-  sections.shift();
-  return sections;
-};
-
-// Returns lines that start with a certain prefix.
-SDPUtils.matchPrefix = function(blob, prefix) {
-  return SDPUtils.splitLines(blob).filter(function(line) {
-    return line.indexOf(prefix) === 0;
-  });
-};
-
-// Parses an ICE candidate line. Sample input:
-// candidate:702786350 2 udp 41819902 8.8.8.8 60769 typ relay raddr 8.8.8.8
-// rport 55996"
-SDPUtils.parseCandidate = function(line) {
-  var parts;
-  // Parse both variants.
-  if (line.indexOf('a=candidate:') === 0) {
-    parts = line.substring(12).split(' ');
-  } else {
-    parts = line.substring(10).split(' ');
-  }
-
-  var candidate = {
-    foundation: parts[0],
-    component: parseInt(parts[1], 10),
-    protocol: parts[2].toLowerCase(),
-    priority: parseInt(parts[3], 10),
-    ip: parts[4],
-    address: parts[4], // address is an alias for ip.
-    port: parseInt(parts[5], 10),
-    // skip parts[6] == 'typ'
-    type: parts[7]
-  };
-
-  for (var i = 8; i < parts.length; i += 2) {
-    switch (parts[i]) {
-      case 'raddr':
-        candidate.relatedAddress = parts[i + 1];
-        break;
-      case 'rport':
-        candidate.relatedPort = parseInt(parts[i + 1], 10);
-        break;
-      case 'tcptype':
-        candidate.tcpType = parts[i + 1];
-        break;
-      case 'ufrag':
-        candidate.ufrag = parts[i + 1]; // for backward compability.
-        candidate.usernameFragment = parts[i + 1];
-        break;
-      default: // extension handling, in particular ufrag
-        candidate[parts[i]] = parts[i + 1];
-        break;
-    }
-  }
-  return candidate;
-};
-
-// Translates a candidate object into SDP candidate attribute.
-SDPUtils.writeCandidate = function(candidate) {
-  var sdp = [];
-  sdp.push(candidate.foundation);
-  sdp.push(candidate.component);
-  sdp.push(candidate.protocol.toUpperCase());
-  sdp.push(candidate.priority);
-  sdp.push(candidate.address || candidate.ip);
-  sdp.push(candidate.port);
-
-  var type = candidate.type;
-  sdp.push('typ');
-  sdp.push(type);
-  if (type !== 'host' && candidate.relatedAddress &&
-      candidate.relatedPort) {
-    sdp.push('raddr');
-    sdp.push(candidate.relatedAddress);
-    sdp.push('rport');
-    sdp.push(candidate.relatedPort);
-  }
-  if (candidate.tcpType && candidate.protocol.toLowerCase() === 'tcp') {
-    sdp.push('tcptype');
-    sdp.push(candidate.tcpType);
-  }
-  if (candidate.usernameFragment || candidate.ufrag) {
-    sdp.push('ufrag');
-    sdp.push(candidate.usernameFragment || candidate.ufrag);
-  }
-  return 'candidate:' + sdp.join(' ');
-};
-
-// Parses an ice-options line, returns an array of option tags.
-// a=ice-options:foo bar
-SDPUtils.parseIceOptions = function(line) {
-  return line.substr(14).split(' ');
-};
-
-// Parses an rtpmap line, returns RTCRtpCoddecParameters. Sample input:
-// a=rtpmap:111 opus/48000/2
-SDPUtils.parseRtpMap = function(line) {
-  var parts = line.substr(9).split(' ');
-  var parsed = {
-    payloadType: parseInt(parts.shift(), 10) // was: id
-  };
-
-  parts = parts[0].split('/');
-
-  parsed.name = parts[0];
-  parsed.clockRate = parseInt(parts[1], 10); // was: clockrate
-  parsed.channels = parts.length === 3 ? parseInt(parts[2], 10) : 1;
-  // legacy alias, got renamed back to channels in ORTC.
-  parsed.numChannels = parsed.channels;
-  return parsed;
-};
-
-// Generate an a=rtpmap line from RTCRtpCodecCapability or
-// RTCRtpCodecParameters.
-SDPUtils.writeRtpMap = function(codec) {
-  var pt = codec.payloadType;
-  if (codec.preferredPayloadType !== undefined) {
-    pt = codec.preferredPayloadType;
-  }
-  var channels = codec.channels || codec.numChannels || 1;
-  return 'a=rtpmap:' + pt + ' ' + codec.name + '/' + codec.clockRate +
-      (channels !== 1 ? '/' + channels : '') + '\r\n';
-};
-
-// Parses an a=extmap line (headerextension from RFC 5285). Sample input:
-// a=extmap:2 urn:ietf:params:rtp-hdrext:toffset
-// a=extmap:2/sendonly urn:ietf:params:rtp-hdrext:toffset
-SDPUtils.parseExtmap = function(line) {
-  var parts = line.substr(9).split(' ');
-  return {
-    id: parseInt(parts[0], 10),
-    direction: parts[0].indexOf('/') > 0 ? parts[0].split('/')[1] : 'sendrecv',
-    uri: parts[1]
-  };
-};
-
-// Generates a=extmap line from RTCRtpHeaderExtensionParameters or
-// RTCRtpHeaderExtension.
-SDPUtils.writeExtmap = function(headerExtension) {
-  return 'a=extmap:' + (headerExtension.id || headerExtension.preferredId) +
-      (headerExtension.direction && headerExtension.direction !== 'sendrecv'
-          ? '/' + headerExtension.direction
-          : '') +
-      ' ' + headerExtension.uri + '\r\n';
-};
-
-// Parses an ftmp line, returns dictionary. Sample input:
-// a=fmtp:96 vbr=on;cng=on
-// Also deals with vbr=on; cng=on
-SDPUtils.parseFmtp = function(line) {
-  var parsed = {};
-  var kv;
-  var parts = line.substr(line.indexOf(' ') + 1).split(';');
-  for (var j = 0; j < parts.length; j++) {
-    kv = parts[j].trim().split('=');
-    parsed[kv[0].trim()] = kv[1];
-  }
-  return parsed;
-};
-
-// Generates an a=ftmp line from RTCRtpCodecCapability or RTCRtpCodecParameters.
-SDPUtils.writeFmtp = function(codec) {
-  var line = '';
-  var pt = codec.payloadType;
-  if (codec.preferredPayloadType !== undefined) {
-    pt = codec.preferredPayloadType;
-  }
-  if (codec.parameters && Object.keys(codec.parameters).length) {
-    var params = [];
-    Object.keys(codec.parameters).forEach(function(param) {
-      if (codec.parameters[param]) {
-        params.push(param + '=' + codec.parameters[param]);
-      } else {
-        params.push(param);
-      }
-    });
-    line += 'a=fmtp:' + pt + ' ' + params.join(';') + '\r\n';
-  }
-  return line;
-};
-
-// Parses an rtcp-fb line, returns RTCPRtcpFeedback object. Sample input:
-// a=rtcp-fb:98 nack rpsi
-SDPUtils.parseRtcpFb = function(line) {
-  var parts = line.substr(line.indexOf(' ') + 1).split(' ');
-  return {
-    type: parts.shift(),
-    parameter: parts.join(' ')
-  };
-};
-// Generate a=rtcp-fb lines from RTCRtpCodecCapability or RTCRtpCodecParameters.
-SDPUtils.writeRtcpFb = function(codec) {
-  var lines = '';
-  var pt = codec.payloadType;
-  if (codec.preferredPayloadType !== undefined) {
-    pt = codec.preferredPayloadType;
-  }
-  if (codec.rtcpFeedback && codec.rtcpFeedback.length) {
-    // FIXME: special handling for trr-int?
-    codec.rtcpFeedback.forEach(function(fb) {
-      lines += 'a=rtcp-fb:' + pt + ' ' + fb.type +
-      (fb.parameter && fb.parameter.length ? ' ' + fb.parameter : '') +
-          '\r\n';
-    });
-  }
-  return lines;
-};
-
-// Parses an RFC 5576 ssrc media attribute. Sample input:
-// a=ssrc:3735928559 cname:something
-SDPUtils.parseSsrcMedia = function(line) {
-  var sp = line.indexOf(' ');
-  var parts = {
-    ssrc: parseInt(line.substr(7, sp - 7), 10)
-  };
-  var colon = line.indexOf(':', sp);
-  if (colon > -1) {
-    parts.attribute = line.substr(sp + 1, colon - sp - 1);
-    parts.value = line.substr(colon + 1);
-  } else {
-    parts.attribute = line.substr(sp + 1);
-  }
-  return parts;
-};
-
-SDPUtils.parseSsrcGroup = function(line) {
-  var parts = line.substr(13).split(' ');
-  return {
-    semantics: parts.shift(),
-    ssrcs: parts.map(function(ssrc) {
-      return parseInt(ssrc, 10);
-    })
-  };
-};
-
-// Extracts the MID (RFC 5888) from a media section.
-// returns the MID or undefined if no mid line was found.
-SDPUtils.getMid = function(mediaSection) {
-  var mid = SDPUtils.matchPrefix(mediaSection, 'a=mid:')[0];
-  if (mid) {
-    return mid.substr(6);
-  }
-};
-
-SDPUtils.parseFingerprint = function(line) {
-  var parts = line.substr(14).split(' ');
-  return {
-    algorithm: parts[0].toLowerCase(), // algorithm is case-sensitive in Edge.
-    value: parts[1]
-  };
-};
-
-// Extracts DTLS parameters from SDP media section or sessionpart.
-// FIXME: for consistency with other functions this should only
-//   get the fingerprint line as input. See also getIceParameters.
-SDPUtils.getDtlsParameters = function(mediaSection, sessionpart) {
-  var lines = SDPUtils.matchPrefix(mediaSection + sessionpart,
-      'a=fingerprint:');
-  // Note: a=setup line is ignored since we use the 'auto' role.
-  // Note2: 'algorithm' is not case sensitive except in Edge.
-  return {
-    role: 'auto',
-    fingerprints: lines.map(SDPUtils.parseFingerprint)
-  };
-};
-
-// Serializes DTLS parameters to SDP.
-SDPUtils.writeDtlsParameters = function(params, setupType) {
-  var sdp = 'a=setup:' + setupType + '\r\n';
-  params.fingerprints.forEach(function(fp) {
-    sdp += 'a=fingerprint:' + fp.algorithm + ' ' + fp.value + '\r\n';
-  });
-  return sdp;
-};
-// Parses ICE information from SDP media section or sessionpart.
-// FIXME: for consistency with other functions this should only
-//   get the ice-ufrag and ice-pwd lines as input.
-SDPUtils.getIceParameters = function(mediaSection, sessionpart) {
-  var lines = SDPUtils.splitLines(mediaSection);
-  // Search in session part, too.
-  lines = lines.concat(SDPUtils.splitLines(sessionpart));
-  var iceParameters = {
-    usernameFragment: lines.filter(function(line) {
-      return line.indexOf('a=ice-ufrag:') === 0;
-    })[0].substr(12),
-    password: lines.filter(function(line) {
-      return line.indexOf('a=ice-pwd:') === 0;
-    })[0].substr(10)
-  };
-  return iceParameters;
-};
-
-// Serializes ICE parameters to SDP.
-SDPUtils.writeIceParameters = function(params) {
-  return 'a=ice-ufrag:' + params.usernameFragment + '\r\n' +
-      'a=ice-pwd:' + params.password + '\r\n';
-};
-
-// Parses the SDP media section and returns RTCRtpParameters.
-SDPUtils.parseRtpParameters = function(mediaSection) {
-  var description = {
-    codecs: [],
-    headerExtensions: [],
-    fecMechanisms: [],
-    rtcp: []
-  };
-  var lines = SDPUtils.splitLines(mediaSection);
-  var mline = lines[0].split(' ');
-  for (var i = 3; i < mline.length; i++) { // find all codecs from mline[3..]
-    var pt = mline[i];
-    var rtpmapline = SDPUtils.matchPrefix(
-        mediaSection, 'a=rtpmap:' + pt + ' ')[0];
-    if (rtpmapline) {
-      var codec = SDPUtils.parseRtpMap(rtpmapline);
-      var fmtps = SDPUtils.matchPrefix(
-          mediaSection, 'a=fmtp:' + pt + ' ');
-      // Only the first a=fmtp:<pt> is considered.
-      codec.parameters = fmtps.length ? SDPUtils.parseFmtp(fmtps[0]) : {};
-      codec.rtcpFeedback = SDPUtils.matchPrefix(
-          mediaSection, 'a=rtcp-fb:' + pt + ' ')
-        .map(SDPUtils.parseRtcpFb);
-      description.codecs.push(codec);
-      // parse FEC mechanisms from rtpmap lines.
-      switch (codec.name.toUpperCase()) {
-        case 'RED':
-        case 'ULPFEC':
-          description.fecMechanisms.push(codec.name.toUpperCase());
-          break;
-        default: // only RED and ULPFEC are recognized as FEC mechanisms.
-          break;
-      }
-    }
-  }
-  SDPUtils.matchPrefix(mediaSection, 'a=extmap:').forEach(function(line) {
-    description.headerExtensions.push(SDPUtils.parseExtmap(line));
-  });
-  // FIXME: parse rtcp.
-  return description;
-};
-
-// Generates parts of the SDP media section describing the capabilities /
-// parameters.
-SDPUtils.writeRtpDescription = function(kind, caps) {
-  var sdp = '';
-
-  // Build the mline.
-  sdp += 'm=' + kind + ' ';
-  sdp += caps.codecs.length > 0 ? '9' : '0'; // reject if no codecs.
-  sdp += ' UDP/TLS/RTP/SAVPF ';
-  sdp += caps.codecs.map(function(codec) {
-    if (codec.preferredPayloadType !== undefined) {
-      return codec.preferredPayloadType;
-    }
-    return codec.payloadType;
-  }).join(' ') + '\r\n';
-
-  sdp += 'c=IN IP4 0.0.0.0\r\n';
-  sdp += 'a=rtcp:9 IN IP4 0.0.0.0\r\n';
-
-  // Add a=rtpmap lines for each codec. Also fmtp and rtcp-fb.
-  caps.codecs.forEach(function(codec) {
-    sdp += SDPUtils.writeRtpMap(codec);
-    sdp += SDPUtils.writeFmtp(codec);
-    sdp += SDPUtils.writeRtcpFb(codec);
-  });
-  var maxptime = 0;
-  caps.codecs.forEach(function(codec) {
-    if (codec.maxptime > maxptime) {
-      maxptime = codec.maxptime;
-    }
-  });
-  if (maxptime > 0) {
-    sdp += 'a=maxptime:' + maxptime + '\r\n';
-  }
-  sdp += 'a=rtcp-mux\r\n';
-
-  if (caps.headerExtensions) {
-    caps.headerExtensions.forEach(function(extension) {
-      sdp += SDPUtils.writeExtmap(extension);
-    });
-  }
-  // FIXME: write fecMechanisms.
-  return sdp;
-};
-
-// Parses the SDP media section and returns an array of
-// RTCRtpEncodingParameters.
-SDPUtils.parseRtpEncodingParameters = function(mediaSection) {
-  var encodingParameters = [];
-  var description = SDPUtils.parseRtpParameters(mediaSection);
-  var hasRed = description.fecMechanisms.indexOf('RED') !== -1;
-  var hasUlpfec = description.fecMechanisms.indexOf('ULPFEC') !== -1;
-
-  // filter a=ssrc:... cname:, ignore PlanB-msid
-  var ssrcs = SDPUtils.matchPrefix(mediaSection, 'a=ssrc:')
-  .map(function(line) {
-    return SDPUtils.parseSsrcMedia(line);
-  })
-  .filter(function(parts) {
-    return parts.attribute === 'cname';
-  });
-  var primarySsrc = ssrcs.length > 0 && ssrcs[0].ssrc;
-  var secondarySsrc;
-
-  var flows = SDPUtils.matchPrefix(mediaSection, 'a=ssrc-group:FID')
-  .map(function(line) {
-    var parts = line.substr(17).split(' ');
-    return parts.map(function(part) {
-      return parseInt(part, 10);
-    });
-  });
-  if (flows.length > 0 && flows[0].length > 1 && flows[0][0] === primarySsrc) {
-    secondarySsrc = flows[0][1];
-  }
-
-  description.codecs.forEach(function(codec) {
-    if (codec.name.toUpperCase() === 'RTX' && codec.parameters.apt) {
-      var encParam = {
-        ssrc: primarySsrc,
-        codecPayloadType: parseInt(codec.parameters.apt, 10)
-      };
-      if (primarySsrc && secondarySsrc) {
-        encParam.rtx = {ssrc: secondarySsrc};
-      }
-      encodingParameters.push(encParam);
-      if (hasRed) {
-        encParam = JSON.parse(JSON.stringify(encParam));
-        encParam.fec = {
-          ssrc: primarySsrc,
-          mechanism: hasUlpfec ? 'red+ulpfec' : 'red'
-        };
-        encodingParameters.push(encParam);
-      }
-    }
-  });
-  if (encodingParameters.length === 0 && primarySsrc) {
-    encodingParameters.push({
-      ssrc: primarySsrc
-    });
-  }
-
-  // we support both b=AS and b=TIAS but interpret AS as TIAS.
-  var bandwidth = SDPUtils.matchPrefix(mediaSection, 'b=');
-  if (bandwidth.length) {
-    if (bandwidth[0].indexOf('b=TIAS:') === 0) {
-      bandwidth = parseInt(bandwidth[0].substr(7), 10);
-    } else if (bandwidth[0].indexOf('b=AS:') === 0) {
-      // use formula from JSEP to convert b=AS to TIAS value.
-      bandwidth = parseInt(bandwidth[0].substr(5), 10) * 1000 * 0.95
-          - (50 * 40 * 8);
-    } else {
-      bandwidth = undefined;
-    }
-    encodingParameters.forEach(function(params) {
-      params.maxBitrate = bandwidth;
-    });
-  }
-  return encodingParameters;
-};
-
-// parses http://draft.ortc.org/#rtcrtcpparameters*
-SDPUtils.parseRtcpParameters = function(mediaSection) {
-  var rtcpParameters = {};
-
-  // Gets the first SSRC. Note tha with RTX there might be multiple
-  // SSRCs.
-  var remoteSsrc = SDPUtils.matchPrefix(mediaSection, 'a=ssrc:')
-      .map(function(line) {
-        return SDPUtils.parseSsrcMedia(line);
-      })
-      .filter(function(obj) {
-        return obj.attribute === 'cname';
-      })[0];
-  if (remoteSsrc) {
-    rtcpParameters.cname = remoteSsrc.value;
-    rtcpParameters.ssrc = remoteSsrc.ssrc;
-  }
-
-  // Edge uses the compound attribute instead of reducedSize
-  // compound is !reducedSize
-  var rsize = SDPUtils.matchPrefix(mediaSection, 'a=rtcp-rsize');
-  rtcpParameters.reducedSize = rsize.length > 0;
-  rtcpParameters.compound = rsize.length === 0;
-
-  // parses the rtcp-mux attrіbute.
-  // Note that Edge does not support unmuxed RTCP.
-  var mux = SDPUtils.matchPrefix(mediaSection, 'a=rtcp-mux');
-  rtcpParameters.mux = mux.length > 0;
-
-  return rtcpParameters;
-};
-
-// parses either a=msid: or a=ssrc:... msid lines and returns
-// the id of the MediaStream and MediaStreamTrack.
-SDPUtils.parseMsid = function(mediaSection) {
-  var parts;
-  var spec = SDPUtils.matchPrefix(mediaSection, 'a=msid:');
-  if (spec.length === 1) {
-    parts = spec[0].substr(7).split(' ');
-    return {stream: parts[0], track: parts[1]};
-  }
-  var planB = SDPUtils.matchPrefix(mediaSection, 'a=ssrc:')
-  .map(function(line) {
-    return SDPUtils.parseSsrcMedia(line);
-  })
-  .filter(function(msidParts) {
-    return msidParts.attribute === 'msid';
-  });
-  if (planB.length > 0) {
-    parts = planB[0].value.split(' ');
-    return {stream: parts[0], track: parts[1]};
-  }
-};
-
-// Generate a session ID for SDP.
-// https://tools.ietf.org/html/draft-ietf-rtcweb-jsep-20#section-5.2.1
-// recommends using a cryptographically random +ve 64-bit value
-// but right now this should be acceptable and within the right range
-SDPUtils.generateSessionId = function() {
-  return Math.random().toString().substr(2, 21);
-};
-
-// Write boilder plate for start of SDP
-// sessId argument is optional - if not supplied it will
-// be generated randomly
-// sessVersion is optional and defaults to 2
-// sessUser is optional and defaults to 'thisisadapterortc'
-SDPUtils.writeSessionBoilerplate = function(sessId, sessVer, sessUser) {
-  var sessionId;
-  var version = sessVer !== undefined ? sessVer : 2;
-  if (sessId) {
-    sessionId = sessId;
-  } else {
-    sessionId = SDPUtils.generateSessionId();
-  }
-  var user = sessUser || 'thisisadapterortc';
-  // FIXME: sess-id should be an NTP timestamp.
-  return 'v=0\r\n' +
-      'o=' + user + ' ' + sessionId + ' ' + version +
-        ' IN IP4 127.0.0.1\r\n' +
-      's=-\r\n' +
-      't=0 0\r\n';
-};
-
-SDPUtils.writeMediaSection = function(transceiver, caps, type, stream) {
-  var sdp = SDPUtils.writeRtpDescription(transceiver.kind, caps);
-
-  // Map ICE parameters (ufrag, pwd) to SDP.
-  sdp += SDPUtils.writeIceParameters(
-      transceiver.iceGatherer.getLocalParameters());
-
-  // Map DTLS parameters to SDP.
-  sdp += SDPUtils.writeDtlsParameters(
-      transceiver.dtlsTransport.getLocalParameters(),
-      type === 'offer' ? 'actpass' : 'active');
-
-  sdp += 'a=mid:' + transceiver.mid + '\r\n';
-
-  if (transceiver.direction) {
-    sdp += 'a=' + transceiver.direction + '\r\n';
-  } else if (transceiver.rtpSender && transceiver.rtpReceiver) {
-    sdp += 'a=sendrecv\r\n';
-  } else if (transceiver.rtpSender) {
-    sdp += 'a=sendonly\r\n';
-  } else if (transceiver.rtpReceiver) {
-    sdp += 'a=recvonly\r\n';
-  } else {
-    sdp += 'a=inactive\r\n';
-  }
-
-  if (transceiver.rtpSender) {
-    // spec.
-    var msid = 'msid:' + stream.id + ' ' +
-        transceiver.rtpSender.track.id + '\r\n';
-    sdp += 'a=' + msid;
-
-    // for Chrome.
-    sdp += 'a=ssrc:' + transceiver.sendEncodingParameters[0].ssrc +
-        ' ' + msid;
-    if (transceiver.sendEncodingParameters[0].rtx) {
-      sdp += 'a=ssrc:' + transceiver.sendEncodingParameters[0].rtx.ssrc +
-          ' ' + msid;
-      sdp += 'a=ssrc-group:FID ' +
-          transceiver.sendEncodingParameters[0].ssrc + ' ' +
-          transceiver.sendEncodingParameters[0].rtx.ssrc +
-          '\r\n';
-    }
-  }
-  // FIXME: this should be written by writeRtpDescription.
-  sdp += 'a=ssrc:' + transceiver.sendEncodingParameters[0].ssrc +
-      ' cname:' + SDPUtils.localCName + '\r\n';
-  if (transceiver.rtpSender && transceiver.sendEncodingParameters[0].rtx) {
-    sdp += 'a=ssrc:' + transceiver.sendEncodingParameters[0].rtx.ssrc +
-        ' cname:' + SDPUtils.localCName + '\r\n';
-  }
-  return sdp;
-};
-
-// Gets the direction from the mediaSection or the sessionpart.
-SDPUtils.getDirection = function(mediaSection, sessionpart) {
-  // Look for sendrecv, sendonly, recvonly, inactive, default to sendrecv.
-  var lines = SDPUtils.splitLines(mediaSection);
-  for (var i = 0; i < lines.length; i++) {
-    switch (lines[i]) {
-      case 'a=sendrecv':
-      case 'a=sendonly':
-      case 'a=recvonly':
-      case 'a=inactive':
-        return lines[i].substr(2);
-      default:
-        // FIXME: What should happen here?
-    }
-  }
-  if (sessionpart) {
-    return SDPUtils.getDirection(sessionpart);
-  }
-  return 'sendrecv';
-};
-
-SDPUtils.getKind = function(mediaSection) {
-  var lines = SDPUtils.splitLines(mediaSection);
-  var mline = lines[0].split(' ');
-  return mline[0].substr(2);
-};
-
-SDPUtils.isRejected = function(mediaSection) {
-  return mediaSection.split(' ', 2)[1] === '0';
-};
-
-SDPUtils.parseMLine = function(mediaSection) {
-  var lines = SDPUtils.splitLines(mediaSection);
-  var parts = lines[0].substr(2).split(' ');
-  return {
-    kind: parts[0],
-    port: parseInt(parts[1], 10),
-    protocol: parts[2],
-    fmt: parts.slice(3).join(' ')
-  };
-};
-
-SDPUtils.parseOLine = function(mediaSection) {
-  var line = SDPUtils.matchPrefix(mediaSection, 'o=')[0];
-  var parts = line.substr(2).split(' ');
-  return {
-    username: parts[0],
-    sessionId: parts[1],
-    sessionVersion: parseInt(parts[2], 10),
-    netType: parts[3],
-    addressType: parts[4],
-    address: parts[5]
-  };
-};
-
-// a very naive interpretation of a valid SDP.
-SDPUtils.isValidSDP = function(blob) {
-  if (typeof blob !== 'string' || blob.length === 0) {
-    return false;
-  }
-  var lines = SDPUtils.splitLines(blob);
-  for (var i = 0; i < lines.length; i++) {
-    if (lines[i].length < 2 || lines[i].charAt(1) !== '=') {
-      return false;
-    }
-    // TODO: check the modifier a bit more.
-  }
-  return true;
-};
-
-// Expose public methods.
-{
-  module.exports = SDPUtils;
-}
-});
-
-function fixStatsType(stat) {
-  return {
-    inboundrtp: 'inbound-rtp',
-    outboundrtp: 'outbound-rtp',
-    candidatepair: 'candidate-pair',
-    localcandidate: 'local-candidate',
-    remotecandidate: 'remote-candidate'
-  }[stat.type] || stat.type;
-}
-
-function writeMediaSection(transceiver, caps, type, stream, dtlsRole) {
-  var sdp$$1 = sdp.writeRtpDescription(transceiver.kind, caps);
-
-  // Map ICE parameters (ufrag, pwd) to SDP.
-  sdp$$1 += sdp.writeIceParameters(
-      transceiver.iceGatherer.getLocalParameters());
-
-  // Map DTLS parameters to SDP.
-  sdp$$1 += sdp.writeDtlsParameters(
-      transceiver.dtlsTransport.getLocalParameters(),
-      type === 'offer' ? 'actpass' : dtlsRole || 'active');
-
-  sdp$$1 += 'a=mid:' + transceiver.mid + '\r\n';
-
-  if (transceiver.rtpSender && transceiver.rtpReceiver) {
-    sdp$$1 += 'a=sendrecv\r\n';
-  } else if (transceiver.rtpSender) {
-    sdp$$1 += 'a=sendonly\r\n';
-  } else if (transceiver.rtpReceiver) {
-    sdp$$1 += 'a=recvonly\r\n';
-  } else {
-    sdp$$1 += 'a=inactive\r\n';
-  }
-
-  if (transceiver.rtpSender) {
-    var trackId = transceiver.rtpSender._initialTrackId ||
-        transceiver.rtpSender.track.id;
-    transceiver.rtpSender._initialTrackId = trackId;
-    // spec.
-    var msid = 'msid:' + (stream ? stream.id : '-') + ' ' +
-        trackId + '\r\n';
-    sdp$$1 += 'a=' + msid;
-    // for Chrome. Legacy should no longer be required.
-    sdp$$1 += 'a=ssrc:' + transceiver.sendEncodingParameters[0].ssrc +
-        ' ' + msid;
-
-    // RTX
-    if (transceiver.sendEncodingParameters[0].rtx) {
-      sdp$$1 += 'a=ssrc:' + transceiver.sendEncodingParameters[0].rtx.ssrc +
-          ' ' + msid;
-      sdp$$1 += 'a=ssrc-group:FID ' +
-          transceiver.sendEncodingParameters[0].ssrc + ' ' +
-          transceiver.sendEncodingParameters[0].rtx.ssrc +
-          '\r\n';
-    }
-  }
-  // FIXME: this should be written by writeRtpDescription.
-  sdp$$1 += 'a=ssrc:' + transceiver.sendEncodingParameters[0].ssrc +
-      ' cname:' + sdp.localCName + '\r\n';
-  if (transceiver.rtpSender && transceiver.sendEncodingParameters[0].rtx) {
-    sdp$$1 += 'a=ssrc:' + transceiver.sendEncodingParameters[0].rtx.ssrc +
-        ' cname:' + sdp.localCName + '\r\n';
-  }
-  return sdp$$1;
-}
-
-// Edge does not like
-// 1) stun: filtered after 14393 unless ?transport=udp is present
-// 2) turn: that does not have all of turn:host:port?transport=udp
-// 3) turn: with ipv6 addresses
-// 4) turn: occurring muliple times
-function filterIceServers$1(iceServers, edgeVersion) {
-  var hasTurn = false;
-  iceServers = JSON.parse(JSON.stringify(iceServers));
-  return iceServers.filter(function(server) {
-    if (server && (server.urls || server.url)) {
-      var urls = server.urls || server.url;
-      if (server.url && !server.urls) {
-        console.warn('RTCIceServer.url is deprecated! Use urls instead.');
-      }
-      var isString = typeof urls === 'string';
-      if (isString) {
-        urls = [urls];
-      }
-      urls = urls.filter(function(url) {
-        var validTurn = url.indexOf('turn:') === 0 &&
-            url.indexOf('transport=udp') !== -1 &&
-            url.indexOf('turn:[') === -1 &&
-            !hasTurn;
-
-        if (validTurn) {
-          hasTurn = true;
-          return true;
-        }
-        return url.indexOf('stun:') === 0 && edgeVersion >= 14393 &&
-            url.indexOf('?transport=udp') === -1;
-      });
-
-      delete server.url;
-      server.urls = isString ? urls[0] : urls;
-      return !!urls.length;
-    }
-  });
-}
-
-// Determines the intersection of local and remote capabilities.
-function getCommonCapabilities(localCapabilities, remoteCapabilities) {
-  var commonCapabilities = {
-    codecs: [],
-    headerExtensions: [],
-    fecMechanisms: []
-  };
-
-  var findCodecByPayloadType = function(pt, codecs) {
-    pt = parseInt(pt, 10);
-    for (var i = 0; i < codecs.length; i++) {
-      if (codecs[i].payloadType === pt ||
-          codecs[i].preferredPayloadType === pt) {
-        return codecs[i];
-      }
-    }
-  };
-
-  var rtxCapabilityMatches = function(lRtx, rRtx, lCodecs, rCodecs) {
-    var lCodec = findCodecByPayloadType(lRtx.parameters.apt, lCodecs);
-    var rCodec = findCodecByPayloadType(rRtx.parameters.apt, rCodecs);
-    return lCodec && rCodec &&
-        lCodec.name.toLowerCase() === rCodec.name.toLowerCase();
-  };
-
-  localCapabilities.codecs.forEach(function(lCodec) {
-    for (var i = 0; i < remoteCapabilities.codecs.length; i++) {
-      var rCodec = remoteCapabilities.codecs[i];
-      if (lCodec.name.toLowerCase() === rCodec.name.toLowerCase() &&
-          lCodec.clockRate === rCodec.clockRate) {
-        if (lCodec.name.toLowerCase() === 'rtx' &&
-            lCodec.parameters && rCodec.parameters.apt) {
-          // for RTX we need to find the local rtx that has a apt
-          // which points to the same local codec as the remote one.
-          if (!rtxCapabilityMatches(lCodec, rCodec,
-              localCapabilities.codecs, remoteCapabilities.codecs)) {
-            continue;
-          }
-        }
-        rCodec = JSON.parse(JSON.stringify(rCodec)); // deepcopy
-        // number of channels is the highest common number of channels
-        rCodec.numChannels = Math.min(lCodec.numChannels,
-            rCodec.numChannels);
-        // push rCodec so we reply with offerer payload type
-        commonCapabilities.codecs.push(rCodec);
-
-        // determine common feedback mechanisms
-        rCodec.rtcpFeedback = rCodec.rtcpFeedback.filter(function(fb) {
-          for (var j = 0; j < lCodec.rtcpFeedback.length; j++) {
-            if (lCodec.rtcpFeedback[j].type === fb.type &&
-                lCodec.rtcpFeedback[j].parameter === fb.parameter) {
-              return true;
-            }
-          }
-          return false;
-        });
-        // FIXME: also need to determine .parameters
-        //  see https://github.com/openpeer/ortc/issues/569
-        break;
-      }
-    }
-  });
-
-  localCapabilities.headerExtensions.forEach(function(lHeaderExtension) {
-    for (var i = 0; i < remoteCapabilities.headerExtensions.length;
-         i++) {
-      var rHeaderExtension = remoteCapabilities.headerExtensions[i];
-      if (lHeaderExtension.uri === rHeaderExtension.uri) {
-        commonCapabilities.headerExtensions.push(rHeaderExtension);
-        break;
-      }
-    }
-  });
-
-  // FIXME: fecMechanisms
-  return commonCapabilities;
-}
-
-// is action=setLocalDescription with type allowed in signalingState
-function isActionAllowedInSignalingState(action, type, signalingState) {
-  return {
-    offer: {
-      setLocalDescription: ['stable', 'have-local-offer'],
-      setRemoteDescription: ['stable', 'have-remote-offer']
-    },
-    answer: {
-      setLocalDescription: ['have-remote-offer', 'have-local-pranswer'],
-      setRemoteDescription: ['have-local-offer', 'have-remote-pranswer']
-    }
-  }[type][action].indexOf(signalingState) !== -1;
-}
-
-function maybeAddCandidate(iceTransport, candidate) {
-  // Edge's internal representation adds some fields therefore
-  // not all fieldѕ are taken into account.
-  var alreadyAdded = iceTransport.getRemoteCandidates()
-      .find(function(remoteCandidate) {
-        return candidate.foundation === remoteCandidate.foundation &&
-            candidate.ip === remoteCandidate.ip &&
-            candidate.port === remoteCandidate.port &&
-            candidate.priority === remoteCandidate.priority &&
-            candidate.protocol === remoteCandidate.protocol &&
-            candidate.type === remoteCandidate.type;
-      });
-  if (!alreadyAdded) {
-    iceTransport.addRemoteCandidate(candidate);
-  }
-  return !alreadyAdded;
-}
-
-
-function makeError(name, description) {
-  var e = new Error(description);
-  e.name = name;
-  // legacy error codes from https://heycam.github.io/webidl/#idl-DOMException-error-names
-  e.code = {
-    NotSupportedError: 9,
-    InvalidStateError: 11,
-    InvalidAccessError: 15,
-    TypeError: undefined,
-    OperationError: undefined
-  }[name];
-  return e;
-}
-
-var rtcpeerconnection = function(window, edgeVersion) {
-  // https://w3c.github.io/mediacapture-main/#mediastream
-  // Helper function to add the track to the stream and
-  // dispatch the event ourselves.
-  function addTrackToStreamAndFireEvent(track, stream) {
-    stream.addTrack(track);
-    stream.dispatchEvent(new window.MediaStreamTrackEvent('addtrack',
-        {track: track}));
-  }
-
-  function removeTrackFromStreamAndFireEvent(track, stream) {
-    stream.removeTrack(track);
-    stream.dispatchEvent(new window.MediaStreamTrackEvent('removetrack',
-        {track: track}));
-  }
-
-  function fireAddTrack(pc, track, receiver, streams) {
-    var trackEvent = new Event('track');
-    trackEvent.track = track;
-    trackEvent.receiver = receiver;
-    trackEvent.transceiver = {receiver: receiver};
-    trackEvent.streams = streams;
-    window.setTimeout(function() {
-      pc._dispatchEvent('track', trackEvent);
-    });
-  }
-
-  var RTCPeerConnection = function(config) {
-    var pc = this;
-
-    var _eventTarget = document.createDocumentFragment();
-    ['addEventListener', 'removeEventListener', 'dispatchEvent']
-        .forEach(function(method) {
-          pc[method] = _eventTarget[method].bind(_eventTarget);
-        });
-
-    this.canTrickleIceCandidates = null;
-
-    this.needNegotiation = false;
-
-    this.localStreams = [];
-    this.remoteStreams = [];
-
-    this._localDescription = null;
-    this._remoteDescription = null;
-
-    this.signalingState = 'stable';
-    this.iceConnectionState = 'new';
-    this.connectionState = 'new';
-    this.iceGatheringState = 'new';
-
-    config = JSON.parse(JSON.stringify(config || {}));
-
-    this.usingBundle = config.bundlePolicy === 'max-bundle';
-    if (config.rtcpMuxPolicy === 'negotiate') {
-      throw(makeError('NotSupportedError',
-          'rtcpMuxPolicy \'negotiate\' is not supported'));
-    } else if (!config.rtcpMuxPolicy) {
-      config.rtcpMuxPolicy = 'require';
-    }
-
-    switch (config.iceTransportPolicy) {
-      case 'all':
-      case 'relay':
-        break;
-      default:
-        config.iceTransportPolicy = 'all';
-        break;
-    }
-
-    switch (config.bundlePolicy) {
-      case 'balanced':
-      case 'max-compat':
-      case 'max-bundle':
-        break;
-      default:
-        config.bundlePolicy = 'balanced';
-        break;
-    }
-
-    config.iceServers = filterIceServers$1(config.iceServers || [], edgeVersion);
-
-    this._iceGatherers = [];
-    if (config.iceCandidatePoolSize) {
-      for (var i = config.iceCandidatePoolSize; i > 0; i--) {
-        this._iceGatherers.push(new window.RTCIceGatherer({
-          iceServers: config.iceServers,
-          gatherPolicy: config.iceTransportPolicy
-        }));
-      }
-    } else {
-      config.iceCandidatePoolSize = 0;
-    }
-
-    this._config = config;
-
-    // per-track iceGathers, iceTransports, dtlsTransports, rtpSenders, ...
-    // everything that is needed to describe a SDP m-line.
-    this.transceivers = [];
-
-    this._sdpSessionId = sdp.generateSessionId();
-    this._sdpSessionVersion = 0;
-
-    this._dtlsRole = undefined; // role for a=setup to use in answers.
-
-    this._isClosed = false;
-  };
-
-  Object.defineProperty(RTCPeerConnection.prototype, 'localDescription', {
-    configurable: true,
-    get: function() {
-      return this._localDescription;
-    }
-  });
-  Object.defineProperty(RTCPeerConnection.prototype, 'remoteDescription', {
-    configurable: true,
-    get: function() {
-      return this._remoteDescription;
-    }
-  });
-
-  // set up event handlers on prototype
-  RTCPeerConnection.prototype.onicecandidate = null;
-  RTCPeerConnection.prototype.onaddstream = null;
-  RTCPeerConnection.prototype.ontrack = null;
-  RTCPeerConnection.prototype.onremovestream = null;
-  RTCPeerConnection.prototype.onsignalingstatechange = null;
-  RTCPeerConnection.prototype.oniceconnectionstatechange = null;
-  RTCPeerConnection.prototype.onconnectionstatechange = null;
-  RTCPeerConnection.prototype.onicegatheringstatechange = null;
-  RTCPeerConnection.prototype.onnegotiationneeded = null;
-  RTCPeerConnection.prototype.ondatachannel = null;
-
-  RTCPeerConnection.prototype._dispatchEvent = function(name, event) {
-    if (this._isClosed) {
-      return;
-    }
-    this.dispatchEvent(event);
-    if (typeof this['on' + name] === 'function') {
-      this['on' + name](event);
-    }
-  };
-
-  RTCPeerConnection.prototype._emitGatheringStateChange = function() {
-    var event = new Event('icegatheringstatechange');
-    this._dispatchEvent('icegatheringstatechange', event);
-  };
-
-  RTCPeerConnection.prototype.getConfiguration = function() {
-    return this._config;
-  };
-
-  RTCPeerConnection.prototype.getLocalStreams = function() {
-    return this.localStreams;
-  };
-
-  RTCPeerConnection.prototype.getRemoteStreams = function() {
-    return this.remoteStreams;
-  };
-
-  // internal helper to create a transceiver object.
-  // (which is not yet the same as the WebRTC 1.0 transceiver)
-  RTCPeerConnection.prototype._createTransceiver = function(kind, doNotAdd) {
-    var hasBundleTransport = this.transceivers.length > 0;
-    var transceiver = {
-      track: null,
-      iceGatherer: null,
-      iceTransport: null,
-      dtlsTransport: null,
-      localCapabilities: null,
-      remoteCapabilities: null,
-      rtpSender: null,
-      rtpReceiver: null,
-      kind: kind,
-      mid: null,
-      sendEncodingParameters: null,
-      recvEncodingParameters: null,
-      stream: null,
-      associatedRemoteMediaStreams: [],
-      wantReceive: true
-    };
-    if (this.usingBundle && hasBundleTransport) {
-      transceiver.iceTransport = this.transceivers[0].iceTransport;
-      transceiver.dtlsTransport = this.transceivers[0].dtlsTransport;
-    } else {
-      var transports = this._createIceAndDtlsTransports();
-      transceiver.iceTransport = transports.iceTransport;
-      transceiver.dtlsTransport = transports.dtlsTransport;
-    }
-    if (!doNotAdd) {
-      this.transceivers.push(transceiver);
-    }
-    return transceiver;
-  };
-
-  RTCPeerConnection.prototype.addTrack = function(track, stream) {
-    if (this._isClosed) {
-      throw makeError('InvalidStateError',
-          'Attempted to call addTrack on a closed peerconnection.');
-    }
-
-    var alreadyExists = this.transceivers.find(function(s) {
-      return s.track === track;
-    });
-
-    if (alreadyExists) {
-      throw makeError('InvalidAccessError', 'Track already exists.');
-    }
-
-    var transceiver;
-    for (var i = 0; i < this.transceivers.length; i++) {
-      if (!this.transceivers[i].track &&
-          this.transceivers[i].kind === track.kind) {
-        transceiver = this.transceivers[i];
-      }
-    }
-    if (!transceiver) {
-      transceiver = this._createTransceiver(track.kind);
-    }
-
-    this._maybeFireNegotiationNeeded();
-
-    if (this.localStreams.indexOf(stream) === -1) {
-      this.localStreams.push(stream);
-    }
-
-    transceiver.track = track;
-    transceiver.stream = stream;
-    transceiver.rtpSender = new window.RTCRtpSender(track,
-        transceiver.dtlsTransport);
-    return transceiver.rtpSender;
-  };
-
-  RTCPeerConnection.prototype.addStream = function(stream) {
-    var pc = this;
-    if (edgeVersion >= 15025) {
-      stream.getTracks().forEach(function(track) {
-        pc.addTrack(track, stream);
-      });
-    } else {
-      // Clone is necessary for local demos mostly, attaching directly
-      // to two different senders does not work (build 10547).
-      // Fixed in 15025 (or earlier)
-      var clonedStream = stream.clone();
-      stream.getTracks().forEach(function(track, idx) {
-        var clonedTrack = clonedStream.getTracks()[idx];
-        track.addEventListener('enabled', function(event) {
-          clonedTrack.enabled = event.enabled;
-        });
-      });
-      clonedStream.getTracks().forEach(function(track) {
-        pc.addTrack(track, clonedStream);
-      });
-    }
-  };
-
-  RTCPeerConnection.prototype.removeTrack = function(sender) {
-    if (this._isClosed) {
-      throw makeError('InvalidStateError',
-          'Attempted to call removeTrack on a closed peerconnection.');
-    }
-
-    if (!(sender instanceof window.RTCRtpSender)) {
-      throw new TypeError('Argument 1 of RTCPeerConnection.removeTrack ' +
-          'does not implement interface RTCRtpSender.');
-    }
-
-    var transceiver = this.transceivers.find(function(t) {
-      return t.rtpSender === sender;
-    });
-
-    if (!transceiver) {
-      throw makeError('InvalidAccessError',
-          'Sender was not created by this connection.');
-    }
-    var stream = transceiver.stream;
-
-    transceiver.rtpSender.stop();
-    transceiver.rtpSender = null;
-    transceiver.track = null;
-    transceiver.stream = null;
-
-    // remove the stream from the set of local streams
-    var localStreams = this.transceivers.map(function(t) {
-      return t.stream;
-    });
-    if (localStreams.indexOf(stream) === -1 &&
-        this.localStreams.indexOf(stream) > -1) {
-      this.localStreams.splice(this.localStreams.indexOf(stream), 1);
-    }
-
-    this._maybeFireNegotiationNeeded();
-  };
-
-  RTCPeerConnection.prototype.removeStream = function(stream) {
-    var pc = this;
-    stream.getTracks().forEach(function(track) {
-      var sender = pc.getSenders().find(function(s) {
-        return s.track === track;
-      });
-      if (sender) {
-        pc.removeTrack(sender);
-      }
-    });
-  };
-
-  RTCPeerConnection.prototype.getSenders = function() {
-    return this.transceivers.filter(function(transceiver) {
-      return !!transceiver.rtpSender;
-    })
-    .map(function(transceiver) {
-      return transceiver.rtpSender;
-    });
-  };
-
-  RTCPeerConnection.prototype.getReceivers = function() {
-    return this.transceivers.filter(function(transceiver) {
-      return !!transceiver.rtpReceiver;
-    })
-    .map(function(transceiver) {
-      return transceiver.rtpReceiver;
-    });
-  };
-
-
-  RTCPeerConnection.prototype._createIceGatherer = function(sdpMLineIndex,
-      usingBundle) {
-    var pc = this;
-    if (usingBundle && sdpMLineIndex > 0) {
-      return this.transceivers[0].iceGatherer;
-    } else if (this._iceGatherers.length) {
-      return this._iceGatherers.shift();
-    }
-    var iceGatherer = new window.RTCIceGatherer({
-      iceServers: this._config.iceServers,
-      gatherPolicy: this._config.iceTransportPolicy
-    });
-    Object.defineProperty(iceGatherer, 'state',
-        {value: 'new', writable: true}
-    );
-
-    this.transceivers[sdpMLineIndex].bufferedCandidateEvents = [];
-    this.transceivers[sdpMLineIndex].bufferCandidates = function(event) {
-      var end = !event.candidate || Object.keys(event.candidate).length === 0;
-      // polyfill since RTCIceGatherer.state is not implemented in
-      // Edge 10547 yet.
-      iceGatherer.state = end ? 'completed' : 'gathering';
-      if (pc.transceivers[sdpMLineIndex].bufferedCandidateEvents !== null) {
-        pc.transceivers[sdpMLineIndex].bufferedCandidateEvents.push(event);
-      }
-    };
-    iceGatherer.addEventListener('localcandidate',
-      this.transceivers[sdpMLineIndex].bufferCandidates);
-    return iceGatherer;
-  };
-
-  // start gathering from an RTCIceGatherer.
-  RTCPeerConnection.prototype._gather = function(mid, sdpMLineIndex) {
-    var pc = this;
-    var iceGatherer = this.transceivers[sdpMLineIndex].iceGatherer;
-    if (iceGatherer.onlocalcandidate) {
-      return;
-    }
-    var bufferedCandidateEvents =
-      this.transceivers[sdpMLineIndex].bufferedCandidateEvents;
-    this.transceivers[sdpMLineIndex].bufferedCandidateEvents = null;
-    iceGatherer.removeEventListener('localcandidate',
-      this.transceivers[sdpMLineIndex].bufferCandidates);
-    iceGatherer.onlocalcandidate = function(evt) {
-      if (pc.usingBundle && sdpMLineIndex > 0) {
-        // if we know that we use bundle we can drop candidates with
-        // ѕdpMLineIndex > 0. If we don't do this then our state gets
-        // confused since we dispose the extra ice gatherer.
-        return;
-      }
-      var event = new Event('icecandidate');
-      event.candidate = {sdpMid: mid, sdpMLineIndex: sdpMLineIndex};
-
-      var cand = evt.candidate;
-      // Edge emits an empty object for RTCIceCandidateComplete‥
-      var end = !cand || Object.keys(cand).length === 0;
-      if (end) {
-        // polyfill since RTCIceGatherer.state is not implemented in
-        // Edge 10547 yet.
-        if (iceGatherer.state === 'new' || iceGatherer.state === 'gathering') {
-          iceGatherer.state = 'completed';
-        }
-      } else {
-        if (iceGatherer.state === 'new') {
-          iceGatherer.state = 'gathering';
-        }
-        // RTCIceCandidate doesn't have a component, needs to be added
-        cand.component = 1;
-        // also the usernameFragment. TODO: update SDP to take both variants.
-        cand.ufrag = iceGatherer.getLocalParameters().usernameFragment;
-
-        var serializedCandidate = sdp.writeCandidate(cand);
-        event.candidate = Object.assign(event.candidate,
-            sdp.parseCandidate(serializedCandidate));
-
-        event.candidate.candidate = serializedCandidate;
-        event.candidate.toJSON = function() {
-          return {
-            candidate: event.candidate.candidate,
-            sdpMid: event.candidate.sdpMid,
-            sdpMLineIndex: event.candidate.sdpMLineIndex,
-            usernameFragment: event.candidate.usernameFragment
-          };
-        };
-      }
-
-      // update local description.
-      var sections = sdp.getMediaSections(pc._localDescription.sdp);
-      if (!end) {
-        sections[event.candidate.sdpMLineIndex] +=
-            'a=' + event.candidate.candidate + '\r\n';
-      } else {
-        sections[event.candidate.sdpMLineIndex] +=
-            'a=end-of-candidates\r\n';
-      }
-      pc._localDescription.sdp =
-          sdp.getDescription(pc._localDescription.sdp) +
-          sections.join('');
-      var complete = pc.transceivers.every(function(transceiver) {
-        return transceiver.iceGatherer &&
-            transceiver.iceGatherer.state === 'completed';
-      });
-
-      if (pc.iceGatheringState !== 'gathering') {
-        pc.iceGatheringState = 'gathering';
-        pc._emitGatheringStateChange();
-      }
-
-      // Emit candidate. Also emit null candidate when all gatherers are
-      // complete.
-      if (!end) {
-        pc._dispatchEvent('icecandidate', event);
-      }
-      if (complete) {
-        pc._dispatchEvent('icecandidate', new Event('icecandidate'));
-        pc.iceGatheringState = 'complete';
-        pc._emitGatheringStateChange();
-      }
-    };
-
-    // emit already gathered candidates.
-    window.setTimeout(function() {
-      bufferedCandidateEvents.forEach(function(e) {
-        iceGatherer.onlocalcandidate(e);
-      });
-    }, 0);
-  };
-
-  // Create ICE transport and DTLS transport.
-  RTCPeerConnection.prototype._createIceAndDtlsTransports = function() {
-    var pc = this;
-    var iceTransport = new window.RTCIceTransport(null);
-    iceTransport.onicestatechange = function() {
-      pc._updateIceConnectionState();
-      pc._updateConnectionState();
-    };
-
-    var dtlsTransport = new window.RTCDtlsTransport(iceTransport);
-    dtlsTransport.ondtlsstatechange = function() {
-      pc._updateConnectionState();
-    };
-    dtlsTransport.onerror = function() {
-      // onerror does not set state to failed by itself.
-      Object.defineProperty(dtlsTransport, 'state',
-          {value: 'failed', writable: true});
-      pc._updateConnectionState();
-    };
-
-    return {
-      iceTransport: iceTransport,
-      dtlsTransport: dtlsTransport
-    };
-  };
-
-  // Destroy ICE gatherer, ICE transport and DTLS transport.
-  // Without triggering the callbacks.
-  RTCPeerConnection.prototype._disposeIceAndDtlsTransports = function(
-      sdpMLineIndex) {
-    var iceGatherer = this.transceivers[sdpMLineIndex].iceGatherer;
-    if (iceGatherer) {
-      delete iceGatherer.onlocalcandidate;
-      delete this.transceivers[sdpMLineIndex].iceGatherer;
-    }
-    var iceTransport = this.transceivers[sdpMLineIndex].iceTransport;
-    if (iceTransport) {
-      delete iceTransport.onicestatechange;
-      delete this.transceivers[sdpMLineIndex].iceTransport;
-    }
-    var dtlsTransport = this.transceivers[sdpMLineIndex].dtlsTransport;
-    if (dtlsTransport) {
-      delete dtlsTransport.ondtlsstatechange;
-      delete dtlsTransport.onerror;
-      delete this.transceivers[sdpMLineIndex].dtlsTransport;
-    }
-  };
-
-  // Start the RTP Sender and Receiver for a transceiver.
-  RTCPeerConnection.prototype._transceive = function(transceiver,
-      send, recv) {
-    var params = getCommonCapabilities(transceiver.localCapabilities,
-        transceiver.remoteCapabilities);
-    if (send && transceiver.rtpSender) {
-      params.encodings = transceiver.sendEncodingParameters;
-      params.rtcp = {
-        cname: sdp.localCName,
-        compound: transceiver.rtcpParameters.compound
-      };
-      if (transceiver.recvEncodingParameters.length) {
-        params.rtcp.ssrc = transceiver.recvEncodingParameters[0].ssrc;
-      }
-      transceiver.rtpSender.send(params);
-    }
-    if (recv && transceiver.rtpReceiver && params.codecs.length > 0) {
-      // remove RTX field in Edge 14942
-      if (transceiver.kind === 'video'
-          && transceiver.recvEncodingParameters
-          && edgeVersion < 15019) {
-        transceiver.recvEncodingParameters.forEach(function(p) {
-          delete p.rtx;
-        });
-      }
-      if (transceiver.recvEncodingParameters.length) {
-        params.encodings = transceiver.recvEncodingParameters;
-      } else {
-        params.encodings = [{}];
-      }
-      params.rtcp = {
-        compound: transceiver.rtcpParameters.compound
-      };
-      if (transceiver.rtcpParameters.cname) {
-        params.rtcp.cname = transceiver.rtcpParameters.cname;
-      }
-      if (transceiver.sendEncodingParameters.length) {
-        params.rtcp.ssrc = transceiver.sendEncodingParameters[0].ssrc;
-      }
-      transceiver.rtpReceiver.receive(params);
-    }
-  };
-
-  RTCPeerConnection.prototype.setLocalDescription = function(description) {
-    var pc = this;
-
-    // Note: pranswer is not supported.
-    if (['offer', 'answer'].indexOf(description.type) === -1) {
-      return Promise.reject(makeError('TypeError',
-          'Unsupported type "' + description.type + '"'));
-    }
-
-    if (!isActionAllowedInSignalingState('setLocalDescription',
-        description.type, pc.signalingState) || pc._isClosed) {
-      return Promise.reject(makeError('InvalidStateError',
-          'Can not set local ' + description.type +
-          ' in state ' + pc.signalingState));
-    }
-
-    var sections;
-    var sessionpart;
-    if (description.type === 'offer') {
-      // VERY limited support for SDP munging. Limited to:
-      // * changing the order of codecs
-      sections = sdp.splitSections(description.sdp);
-      sessionpart = sections.shift();
-      sections.forEach(function(mediaSection, sdpMLineIndex) {
-        var caps = sdp.parseRtpParameters(mediaSection);
-        pc.transceivers[sdpMLineIndex].localCapabilities = caps;
-      });
-
-      pc.transceivers.forEach(function(transceiver, sdpMLineIndex) {
-        pc._gather(transceiver.mid, sdpMLineIndex);
-      });
-    } else if (description.type === 'answer') {
-      sections = sdp.splitSections(pc._remoteDescription.sdp);
-      sessionpart = sections.shift();
-      var isIceLite = sdp.matchPrefix(sessionpart,
-          'a=ice-lite').length > 0;
-      sections.forEach(function(mediaSection, sdpMLineIndex) {
-        var transceiver = pc.transceivers[sdpMLineIndex];
-        var iceGatherer = transceiver.iceGatherer;
-        var iceTransport = transceiver.iceTransport;
-        var dtlsTransport = transceiver.dtlsTransport;
-        var localCapabilities = transceiver.localCapabilities;
-        var remoteCapabilities = transceiver.remoteCapabilities;
-
-        // treat bundle-only as not-rejected.
-        var rejected = sdp.isRejected(mediaSection) &&
-            sdp.matchPrefix(mediaSection, 'a=bundle-only').length === 0;
-
-        if (!rejected && !transceiver.rejected) {
-          var remoteIceParameters = sdp.getIceParameters(
-              mediaSection, sessionpart);
-          var remoteDtlsParameters = sdp.getDtlsParameters(
-              mediaSection, sessionpart);
-          if (isIceLite) {
-            remoteDtlsParameters.role = 'server';
-          }
-
-          if (!pc.usingBundle || sdpMLineIndex === 0) {
-            pc._gather(transceiver.mid, sdpMLineIndex);
-            if (iceTransport.state === 'new') {
-              iceTransport.start(iceGatherer, remoteIceParameters,
-                  isIceLite ? 'controlling' : 'controlled');
-            }
-            if (dtlsTransport.state === 'new') {
-              dtlsTransport.start(remoteDtlsParameters);
-            }
-          }
-
-          // Calculate intersection of capabilities.
-          var params = getCommonCapabilities(localCapabilities,
-              remoteCapabilities);
-
-          // Start the RTCRtpSender. The RTCRtpReceiver for this
-          // transceiver has already been started in setRemoteDescription.
-          pc._transceive(transceiver,
-              params.codecs.length > 0,
-              false);
-        }
-      });
-    }
-
-    pc._localDescription = {
-      type: description.type,
-      sdp: description.sdp
-    };
-    if (description.type === 'offer') {
-      pc._updateSignalingState('have-local-offer');
-    } else {
-      pc._updateSignalingState('stable');
-    }
-
-    return Promise.resolve();
-  };
-
-  RTCPeerConnection.prototype.setRemoteDescription = function(description) {
-    var pc = this;
-
-    // Note: pranswer is not supported.
-    if (['offer', 'answer'].indexOf(description.type) === -1) {
-      return Promise.reject(makeError('TypeError',
-          'Unsupported type "' + description.type + '"'));
-    }
-
-    if (!isActionAllowedInSignalingState('setRemoteDescription',
-        description.type, pc.signalingState) || pc._isClosed) {
-      return Promise.reject(makeError('InvalidStateError',
-          'Can not set remote ' + description.type +
-          ' in state ' + pc.signalingState));
-    }
-
-    var streams = {};
-    pc.remoteStreams.forEach(function(stream) {
-      streams[stream.id] = stream;
-    });
-    var receiverList = [];
-    var sections = sdp.splitSections(description.sdp);
-    var sessionpart = sections.shift();
-    var isIceLite = sdp.matchPrefix(sessionpart,
-        'a=ice-lite').length > 0;
-    var usingBundle = sdp.matchPrefix(sessionpart,
-        'a=group:BUNDLE ').length > 0;
-    pc.usingBundle = usingBundle;
-    var iceOptions = sdp.matchPrefix(sessionpart,
-        'a=ice-options:')[0];
-    if (iceOptions) {
-      pc.canTrickleIceCandidates = iceOptions.substr(14).split(' ')
-          .indexOf('trickle') >= 0;
-    } else {
-      pc.canTrickleIceCandidates = false;
-    }
-
-    sections.forEach(function(mediaSection, sdpMLineIndex) {
-      var lines = sdp.splitLines(mediaSection);
-      var kind = sdp.getKind(mediaSection);
-      // treat bundle-only as not-rejected.
-      var rejected = sdp.isRejected(mediaSection) &&
-          sdp.matchPrefix(mediaSection, 'a=bundle-only').length === 0;
-      var protocol = lines[0].substr(2).split(' ')[2];
-
-      var direction = sdp.getDirection(mediaSection, sessionpart);
-      var remoteMsid = sdp.parseMsid(mediaSection);
-
-      var mid = sdp.getMid(mediaSection) || sdp.generateIdentifier();
-
-      // Reject datachannels which are not implemented yet.
-      if (rejected || (kind === 'application' && (protocol === 'DTLS/SCTP' ||
-          protocol === 'UDP/DTLS/SCTP'))) {
-        // TODO: this is dangerous in the case where a non-rejected m-line
-        //     becomes rejected.
-        pc.transceivers[sdpMLineIndex] = {
-          mid: mid,
-          kind: kind,
-          protocol: protocol,
-          rejected: true
-        };
-        return;
-      }
-
-      if (!rejected && pc.transceivers[sdpMLineIndex] &&
-          pc.transceivers[sdpMLineIndex].rejected) {
-        // recycle a rejected transceiver.
-        pc.transceivers[sdpMLineIndex] = pc._createTransceiver(kind, true);
-      }
-
-      var transceiver;
-      var iceGatherer;
-      var iceTransport;
-      var dtlsTransport;
-      var rtpReceiver;
-      var sendEncodingParameters;
-      var recvEncodingParameters;
-      var localCapabilities;
-
-      var track;
-      // FIXME: ensure the mediaSection has rtcp-mux set.
-      var remoteCapabilities = sdp.parseRtpParameters(mediaSection);
-      var remoteIceParameters;
-      var remoteDtlsParameters;
-      if (!rejected) {
-        remoteIceParameters = sdp.getIceParameters(mediaSection,
-            sessionpart);
-        remoteDtlsParameters = sdp.getDtlsParameters(mediaSection,
-            sessionpart);
-        remoteDtlsParameters.role = 'client';
-      }
-      recvEncodingParameters =
-          sdp.parseRtpEncodingParameters(mediaSection);
-
-      var rtcpParameters = sdp.parseRtcpParameters(mediaSection);
-
-      var isComplete = sdp.matchPrefix(mediaSection,
-          'a=end-of-candidates', sessionpart).length > 0;
-      var cands = sdp.matchPrefix(mediaSection, 'a=candidate:')
-          .map(function(cand) {
-            return sdp.parseCandidate(cand);
-          })
-          .filter(function(cand) {
-            return cand.component === 1;
-          });
-
-      // Check if we can use BUNDLE and dispose transports.
-      if ((description.type === 'offer' || description.type === 'answer') &&
-          !rejected && usingBundle && sdpMLineIndex > 0 &&
-          pc.transceivers[sdpMLineIndex]) {
-        pc._disposeIceAndDtlsTransports(sdpMLineIndex);
-        pc.transceivers[sdpMLineIndex].iceGatherer =
-            pc.transceivers[0].iceGatherer;
-        pc.transceivers[sdpMLineIndex].iceTransport =
-            pc.transceivers[0].iceTransport;
-        pc.transceivers[sdpMLineIndex].dtlsTransport =
-            pc.transceivers[0].dtlsTransport;
-        if (pc.transceivers[sdpMLineIndex].rtpSender) {
-          pc.transceivers[sdpMLineIndex].rtpSender.setTransport(
-              pc.transceivers[0].dtlsTransport);
-        }
-        if (pc.transceivers[sdpMLineIndex].rtpReceiver) {
-          pc.transceivers[sdpMLineIndex].rtpReceiver.setTransport(
-              pc.transceivers[0].dtlsTransport);
-        }
-      }
-      if (description.type === 'offer' && !rejected) {
-        transceiver = pc.transceivers[sdpMLineIndex] ||
-            pc._createTransceiver(kind);
-        transceiver.mid = mid;
-
-        if (!transceiver.iceGatherer) {
-          transceiver.iceGatherer = pc._createIceGatherer(sdpMLineIndex,
-              usingBundle);
-        }
-
-        if (cands.length && transceiver.iceTransport.state === 'new') {
-          if (isComplete && (!usingBundle || sdpMLineIndex === 0)) {
-            transceiver.iceTransport.setRemoteCandidates(cands);
-          } else {
-            cands.forEach(function(candidate) {
-              maybeAddCandidate(transceiver.iceTransport, candidate);
-            });
-          }
-        }
-
-        localCapabilities = window.RTCRtpReceiver.getCapabilities(kind);
-
-        // filter RTX until additional stuff needed for RTX is implemented
-        // in adapter.js
-        if (edgeVersion < 15019) {
-          localCapabilities.codecs = localCapabilities.codecs.filter(
-              function(codec) {
-                return codec.name !== 'rtx';
-              });
-        }
-
-        sendEncodingParameters = transceiver.sendEncodingParameters || [{
-          ssrc: (2 * sdpMLineIndex + 2) * 1001
-        }];
-
-        // TODO: rewrite to use http://w3c.github.io/webrtc-pc/#set-associated-remote-streams
-        var isNewTrack = false;
-        if (direction === 'sendrecv' || direction === 'sendonly') {
-          isNewTrack = !transceiver.rtpReceiver;
-          rtpReceiver = transceiver.rtpReceiver ||
-              new window.RTCRtpReceiver(transceiver.dtlsTransport, kind);
-
-          if (isNewTrack) {
-            var stream;
-            track = rtpReceiver.track;
-            // FIXME: does not work with Plan B.
-            if (remoteMsid && remoteMsid.stream === '-') ; else if (remoteMsid) {
-              if (!streams[remoteMsid.stream]) {
-                streams[remoteMsid.stream] = new window.MediaStream();
-                Object.defineProperty(streams[remoteMsid.stream], 'id', {
-                  get: function() {
-                    return remoteMsid.stream;
-                  }
-                });
-              }
-              Object.defineProperty(track, 'id', {
-                get: function() {
-                  return remoteMsid.track;
-                }
-              });
-              stream = streams[remoteMsid.stream];
-            } else {
-              if (!streams.default) {
-                streams.default = new window.MediaStream();
-              }
-              stream = streams.default;
-            }
-            if (stream) {
-              addTrackToStreamAndFireEvent(track, stream);
-              transceiver.associatedRemoteMediaStreams.push(stream);
-            }
-            receiverList.push([track, rtpReceiver, stream]);
-          }
-        } else if (transceiver.rtpReceiver && transceiver.rtpReceiver.track) {
-          transceiver.associatedRemoteMediaStreams.forEach(function(s) {
-            var nativeTrack = s.getTracks().find(function(t) {
-              return t.id === transceiver.rtpReceiver.track.id;
-            });
-            if (nativeTrack) {
-              removeTrackFromStreamAndFireEvent(nativeTrack, s);
-            }
-          });
-          transceiver.associatedRemoteMediaStreams = [];
-        }
-
-        transceiver.localCapabilities = localCapabilities;
-        transceiver.remoteCapabilities = remoteCapabilities;
-        transceiver.rtpReceiver = rtpReceiver;
-        transceiver.rtcpParameters = rtcpParameters;
-        transceiver.sendEncodingParameters = sendEncodingParameters;
-        transceiver.recvEncodingParameters = recvEncodingParameters;
-
-        // Start the RTCRtpReceiver now. The RTPSender is started in
-        // setLocalDescription.
-        pc._transceive(pc.transceivers[sdpMLineIndex],
-            false,
-            isNewTrack);
-      } else if (description.type === 'answer' && !rejected) {
-        transceiver = pc.transceivers[sdpMLineIndex];
-        iceGatherer = transceiver.iceGatherer;
-        iceTransport = transceiver.iceTransport;
-        dtlsTransport = transceiver.dtlsTransport;
-        rtpReceiver = transceiver.rtpReceiver;
-        sendEncodingParameters = transceiver.sendEncodingParameters;
-        localCapabilities = transceiver.localCapabilities;
-
-        pc.transceivers[sdpMLineIndex].recvEncodingParameters =
-            recvEncodingParameters;
-        pc.transceivers[sdpMLineIndex].remoteCapabilities =
-            remoteCapabilities;
-        pc.transceivers[sdpMLineIndex].rtcpParameters = rtcpParameters;
-
-        if (cands.length && iceTransport.state === 'new') {
-          if ((isIceLite || isComplete) &&
-              (!usingBundle || sdpMLineIndex === 0)) {
-            iceTransport.setRemoteCandidates(cands);
-          } else {
-            cands.forEach(function(candidate) {
-              maybeAddCandidate(transceiver.iceTransport, candidate);
-            });
-          }
-        }
-
-        if (!usingBundle || sdpMLineIndex === 0) {
-          if (iceTransport.state === 'new') {
-            iceTransport.start(iceGatherer, remoteIceParameters,
-                'controlling');
-          }
-          if (dtlsTransport.state === 'new') {
-            dtlsTransport.start(remoteDtlsParameters);
-          }
-        }
-
-        // If the offer contained RTX but the answer did not,
-        // remove RTX from sendEncodingParameters.
-        var commonCapabilities = getCommonCapabilities(
-          transceiver.localCapabilities,
-          transceiver.remoteCapabilities);
-
-        var hasRtx = commonCapabilities.codecs.filter(function(c) {
-          return c.name.toLowerCase() === 'rtx';
-        }).length;
-        if (!hasRtx && transceiver.sendEncodingParameters[0].rtx) {
-          delete transceiver.sendEncodingParameters[0].rtx;
-        }
-
-        pc._transceive(transceiver,
-            direction === 'sendrecv' || direction === 'recvonly',
-            direction === 'sendrecv' || direction === 'sendonly');
-
-        // TODO: rewrite to use http://w3c.github.io/webrtc-pc/#set-associated-remote-streams
-        if (rtpReceiver &&
-            (direction === 'sendrecv' || direction === 'sendonly')) {
-          track = rtpReceiver.track;
-          if (remoteMsid) {
-            if (!streams[remoteMsid.stream]) {
-              streams[remoteMsid.stream] = new window.MediaStream();
-            }
-            addTrackToStreamAndFireEvent(track, streams[remoteMsid.stream]);
-            receiverList.push([track, rtpReceiver, streams[remoteMsid.stream]]);
-          } else {
-            if (!streams.default) {
-              streams.default = new window.MediaStream();
-            }
-            addTrackToStreamAndFireEvent(track, streams.default);
-            receiverList.push([track, rtpReceiver, streams.default]);
-          }
-        } else {
-          // FIXME: actually the receiver should be created later.
-          delete transceiver.rtpReceiver;
-        }
-      }
-    });
-
-    if (pc._dtlsRole === undefined) {
-      pc._dtlsRole = description.type === 'offer' ? 'active' : 'passive';
-    }
-
-    pc._remoteDescription = {
-      type: description.type,
-      sdp: description.sdp
-    };
-    if (description.type === 'offer') {
-      pc._updateSignalingState('have-remote-offer');
-    } else {
-      pc._updateSignalingState('stable');
-    }
-    Object.keys(streams).forEach(function(sid) {
-      var stream = streams[sid];
-      if (stream.getTracks().length) {
-        if (pc.remoteStreams.indexOf(stream) === -1) {
-          pc.remoteStreams.push(stream);
-          var event = new Event('addstream');
-          event.stream = stream;
-          window.setTimeout(function() {
-            pc._dispatchEvent('addstream', event);
-          });
-        }
-
-        receiverList.forEach(function(item) {
-          var track = item[0];
-          var receiver = item[1];
-          if (stream.id !== item[2].id) {
-            return;
-          }
-          fireAddTrack(pc, track, receiver, [stream]);
-        });
-      }
-    });
-    receiverList.forEach(function(item) {
-      if (item[2]) {
-        return;
-      }
-      fireAddTrack(pc, item[0], item[1], []);
-    });
-
-    // check whether addIceCandidate({}) was called within four seconds after
-    // setRemoteDescription.
-    window.setTimeout(function() {
-      if (!(pc && pc.transceivers)) {
-        return;
-      }
-      pc.transceivers.forEach(function(transceiver) {
-        if (transceiver.iceTransport &&
-            transceiver.iceTransport.state === 'new' &&
-            transceiver.iceTransport.getRemoteCandidates().length > 0) {
-          console.warn('Timeout for addRemoteCandidate. Consider sending ' +
-              'an end-of-candidates notification');
-          transceiver.iceTransport.addRemoteCandidate({});
-        }
-      });
-    }, 4000);
-
-    return Promise.resolve();
-  };
-
-  RTCPeerConnection.prototype.close = function() {
-    this.transceivers.forEach(function(transceiver) {
-      /* not yet
-      if (transceiver.iceGatherer) {
-        transceiver.iceGatherer.close();
-      }
-      */
-      if (transceiver.iceTransport) {
-        transceiver.iceTransport.stop();
-      }
-      if (transceiver.dtlsTransport) {
-        transceiver.dtlsTransport.stop();
-      }
-      if (transceiver.rtpSender) {
-        transceiver.rtpSender.stop();
-      }
-      if (transceiver.rtpReceiver) {
-        transceiver.rtpReceiver.stop();
-      }
-    });
-    // FIXME: clean up tracks, local streams, remote streams, etc
-    this._isClosed = true;
-    this._updateSignalingState('closed');
-  };
-
-  // Update the signaling state.
-  RTCPeerConnection.prototype._updateSignalingState = function(newState) {
-    this.signalingState = newState;
-    var event = new Event('signalingstatechange');
-    this._dispatchEvent('signalingstatechange', event);
-  };
-
-  // Determine whether to fire the negotiationneeded event.
-  RTCPeerConnection.prototype._maybeFireNegotiationNeeded = function() {
-    var pc = this;
-    if (this.signalingState !== 'stable' || this.needNegotiation === true) {
-      return;
-    }
-    this.needNegotiation = true;
-    window.setTimeout(function() {
-      if (pc.needNegotiation) {
-        pc.needNegotiation = false;
-        var event = new Event('negotiationneeded');
-        pc._dispatchEvent('negotiationneeded', event);
-      }
-    }, 0);
-  };
-
-  // Update the ice connection state.
-  RTCPeerConnection.prototype._updateIceConnectionState = function() {
-    var newState;
-    var states = {
-      'new': 0,
-      closed: 0,
-      checking: 0,
-      connected: 0,
-      completed: 0,
-      disconnected: 0,
-      failed: 0
-    };
-    this.transceivers.forEach(function(transceiver) {
-      if (transceiver.iceTransport && !transceiver.rejected) {
-        states[transceiver.iceTransport.state]++;
-      }
-    });
-
-    newState = 'new';
-    if (states.failed > 0) {
-      newState = 'failed';
-    } else if (states.checking > 0) {
-      newState = 'checking';
-    } else if (states.disconnected > 0) {
-      newState = 'disconnected';
-    } else if (states.new > 0) {
-      newState = 'new';
-    } else if (states.connected > 0) {
-      newState = 'connected';
-    } else if (states.completed > 0) {
-      newState = 'completed';
-    }
-
-    if (newState !== this.iceConnectionState) {
-      this.iceConnectionState = newState;
-      var event = new Event('iceconnectionstatechange');
-      this._dispatchEvent('iceconnectionstatechange', event);
-    }
-  };
-
-  // Update the connection state.
-  RTCPeerConnection.prototype._updateConnectionState = function() {
-    var newState;
-    var states = {
-      'new': 0,
-      closed: 0,
-      connecting: 0,
-      connected: 0,
-      completed: 0,
-      disconnected: 0,
-      failed: 0
-    };
-    this.transceivers.forEach(function(transceiver) {
-      if (transceiver.iceTransport && transceiver.dtlsTransport &&
-          !transceiver.rejected) {
-        states[transceiver.iceTransport.state]++;
-        states[transceiver.dtlsTransport.state]++;
-      }
-    });
-    // ICETransport.completed and connected are the same for this purpose.
-    states.connected += states.completed;
-
-    newState = 'new';
-    if (states.failed > 0) {
-      newState = 'failed';
-    } else if (states.connecting > 0) {
-      newState = 'connecting';
-    } else if (states.disconnected > 0) {
-      newState = 'disconnected';
-    } else if (states.new > 0) {
-      newState = 'new';
-    } else if (states.connected > 0) {
-      newState = 'connected';
-    }
-
-    if (newState !== this.connectionState) {
-      this.connectionState = newState;
-      var event = new Event('connectionstatechange');
-      this._dispatchEvent('connectionstatechange', event);
-    }
-  };
-
-  RTCPeerConnection.prototype.createOffer = function() {
-    var pc = this;
-
-    if (pc._isClosed) {
-      return Promise.reject(makeError('InvalidStateError',
-          'Can not call createOffer after close'));
-    }
-
-    var numAudioTracks = pc.transceivers.filter(function(t) {
-      return t.kind === 'audio';
-    }).length;
-    var numVideoTracks = pc.transceivers.filter(function(t) {
-      return t.kind === 'video';
-    }).length;
-
-    // Determine number of audio and video tracks we need to send/recv.
-    var offerOptions = arguments[0];
-    if (offerOptions) {
-      // Reject Chrome legacy constraints.
-      if (offerOptions.mandatory || offerOptions.optional) {
-        throw new TypeError(
-            'Legacy mandatory/optional constraints not supported.');
-      }
-      if (offerOptions.offerToReceiveAudio !== undefined) {
-        if (offerOptions.offerToReceiveAudio === true) {
-          numAudioTracks = 1;
-        } else if (offerOptions.offerToReceiveAudio === false) {
-          numAudioTracks = 0;
-        } else {
-          numAudioTracks = offerOptions.offerToReceiveAudio;
-        }
-      }
-      if (offerOptions.offerToReceiveVideo !== undefined) {
-        if (offerOptions.offerToReceiveVideo === true) {
-          numVideoTracks = 1;
-        } else if (offerOptions.offerToReceiveVideo === false) {
-          numVideoTracks = 0;
-        } else {
-          numVideoTracks = offerOptions.offerToReceiveVideo;
-        }
-      }
-    }
-
-    pc.transceivers.forEach(function(transceiver) {
-      if (transceiver.kind === 'audio') {
-        numAudioTracks--;
-        if (numAudioTracks < 0) {
-          transceiver.wantReceive = false;
-        }
-      } else if (transceiver.kind === 'video') {
-        numVideoTracks--;
-        if (numVideoTracks < 0) {
-          transceiver.wantReceive = false;
-        }
-      }
-    });
-
-    // Create M-lines for recvonly streams.
-    while (numAudioTracks > 0 || numVideoTracks > 0) {
-      if (numAudioTracks > 0) {
-        pc._createTransceiver('audio');
-        numAudioTracks--;
-      }
-      if (numVideoTracks > 0) {
-        pc._createTransceiver('video');
-        numVideoTracks--;
-      }
-    }
-
-    var sdp$$1 = sdp.writeSessionBoilerplate(pc._sdpSessionId,
-        pc._sdpSessionVersion++);
-    pc.transceivers.forEach(function(transceiver, sdpMLineIndex) {
-      // For each track, create an ice gatherer, ice transport,
-      // dtls transport, potentially rtpsender and rtpreceiver.
-      var track = transceiver.track;
-      var kind = transceiver.kind;
-      var mid = transceiver.mid || sdp.generateIdentifier();
-      transceiver.mid = mid;
-
-      if (!transceiver.iceGatherer) {
-        transceiver.iceGatherer = pc._createIceGatherer(sdpMLineIndex,
-            pc.usingBundle);
-      }
-
-      var localCapabilities = window.RTCRtpSender.getCapabilities(kind);
-      // filter RTX until additional stuff needed for RTX is implemented
-      // in adapter.js
-      if (edgeVersion < 15019) {
-        localCapabilities.codecs = localCapabilities.codecs.filter(
-            function(codec) {
-              return codec.name !== 'rtx';
-            });
-      }
-      localCapabilities.codecs.forEach(function(codec) {
-        // work around https://bugs.chromium.org/p/webrtc/issues/detail?id=6552
-        // by adding level-asymmetry-allowed=1
-        if (codec.name === 'H264' &&
-            codec.parameters['level-asymmetry-allowed'] === undefined) {
-          codec.parameters['level-asymmetry-allowed'] = '1';
-        }
-
-        // for subsequent offers, we might have to re-use the payload
-        // type of the last offer.
-        if (transceiver.remoteCapabilities &&
-            transceiver.remoteCapabilities.codecs) {
-          transceiver.remoteCapabilities.codecs.forEach(function(remoteCodec) {
-            if (codec.name.toLowerCase() === remoteCodec.name.toLowerCase() &&
-                codec.clockRate === remoteCodec.clockRate) {
-              codec.preferredPayloadType = remoteCodec.payloadType;
-            }
-          });
-        }
-      });
-      localCapabilities.headerExtensions.forEach(function(hdrExt) {
-        var remoteExtensions = transceiver.remoteCapabilities &&
-            transceiver.remoteCapabilities.headerExtensions || [];
-        remoteExtensions.forEach(function(rHdrExt) {
-          if (hdrExt.uri === rHdrExt.uri) {
-            hdrExt.id = rHdrExt.id;
-          }
-        });
-      });
-
-      // generate an ssrc now, to be used later in rtpSender.send
-      var sendEncodingParameters = transceiver.sendEncodingParameters || [{
-        ssrc: (2 * sdpMLineIndex + 1) * 1001
-      }];
-      if (track) {
-        // add RTX
-        if (edgeVersion >= 15019 && kind === 'video' &&
-            !sendEncodingParameters[0].rtx) {
-          sendEncodingParameters[0].rtx = {
-            ssrc: sendEncodingParameters[0].ssrc + 1
-          };
-        }
-      }
-
-      if (transceiver.wantReceive) {
-        transceiver.rtpReceiver = new window.RTCRtpReceiver(
-            transceiver.dtlsTransport, kind);
-      }
-
-      transceiver.localCapabilities = localCapabilities;
-      transceiver.sendEncodingParameters = sendEncodingParameters;
-    });
-
-    // always offer BUNDLE and dispose on return if not supported.
-    if (pc._config.bundlePolicy !== 'max-compat') {
-      sdp$$1 += 'a=group:BUNDLE ' + pc.transceivers.map(function(t) {
-        return t.mid;
-      }).join(' ') + '\r\n';
-    }
-    sdp$$1 += 'a=ice-options:trickle\r\n';
-
-    pc.transceivers.forEach(function(transceiver, sdpMLineIndex) {
-      sdp$$1 += writeMediaSection(transceiver, transceiver.localCapabilities,
-          'offer', transceiver.stream, pc._dtlsRole);
-      sdp$$1 += 'a=rtcp-rsize\r\n';
-
-      if (transceiver.iceGatherer && pc.iceGatheringState !== 'new' &&
-          (sdpMLineIndex === 0 || !pc.usingBundle)) {
-        transceiver.iceGatherer.getLocalCandidates().forEach(function(cand) {
-          cand.component = 1;
-          sdp$$1 += 'a=' + sdp.writeCandidate(cand) + '\r\n';
-        });
-
-        if (transceiver.iceGatherer.state === 'completed') {
-          sdp$$1 += 'a=end-of-candidates\r\n';
-        }
-      }
-    });
-
-    var desc = new window.RTCSessionDescription({
-      type: 'offer',
-      sdp: sdp$$1
-    });
-    return Promise.resolve(desc);
-  };
-
-  RTCPeerConnection.prototype.createAnswer = function() {
-    var pc = this;
-
-    if (pc._isClosed) {
-      return Promise.reject(makeError('InvalidStateError',
-          'Can not call createAnswer after close'));
-    }
-
-    if (!(pc.signalingState === 'have-remote-offer' ||
-        pc.signalingState === 'have-local-pranswer')) {
-      return Promise.reject(makeError('InvalidStateError',
-          'Can not call createAnswer in signalingState ' + pc.signalingState));
-    }
-
-    var sdp$$1 = sdp.writeSessionBoilerplate(pc._sdpSessionId,
-        pc._sdpSessionVersion++);
-    if (pc.usingBundle) {
-      sdp$$1 += 'a=group:BUNDLE ' + pc.transceivers.map(function(t) {
-        return t.mid;
-      }).join(' ') + '\r\n';
-    }
-    sdp$$1 += 'a=ice-options:trickle\r\n';
-
-    var mediaSectionsInOffer = sdp.getMediaSections(
-        pc._remoteDescription.sdp).length;
-    pc.transceivers.forEach(function(transceiver, sdpMLineIndex) {
-      if (sdpMLineIndex + 1 > mediaSectionsInOffer) {
-        return;
-      }
-      if (transceiver.rejected) {
-        if (transceiver.kind === 'application') {
-          if (transceiver.protocol === 'DTLS/SCTP') { // legacy fmt
-            sdp$$1 += 'm=application 0 DTLS/SCTP 5000\r\n';
-          } else {
-            sdp$$1 += 'm=application 0 ' + transceiver.protocol +
-                ' webrtc-datachannel\r\n';
-          }
-        } else if (transceiver.kind === 'audio') {
-          sdp$$1 += 'm=audio 0 UDP/TLS/RTP/SAVPF 0\r\n' +
-              'a=rtpmap:0 PCMU/8000\r\n';
-        } else if (transceiver.kind === 'video') {
-          sdp$$1 += 'm=video 0 UDP/TLS/RTP/SAVPF 120\r\n' +
-              'a=rtpmap:120 VP8/90000\r\n';
-        }
-        sdp$$1 += 'c=IN IP4 0.0.0.0\r\n' +
-            'a=inactive\r\n' +
-            'a=mid:' + transceiver.mid + '\r\n';
-        return;
-      }
-
-      // FIXME: look at direction.
-      if (transceiver.stream) {
-        var localTrack;
-        if (transceiver.kind === 'audio') {
-          localTrack = transceiver.stream.getAudioTracks()[0];
-        } else if (transceiver.kind === 'video') {
-          localTrack = transceiver.stream.getVideoTracks()[0];
-        }
-        if (localTrack) {
-          // add RTX
-          if (edgeVersion >= 15019 && transceiver.kind === 'video' &&
-              !transceiver.sendEncodingParameters[0].rtx) {
-            transceiver.sendEncodingParameters[0].rtx = {
-              ssrc: transceiver.sendEncodingParameters[0].ssrc + 1
-            };
-          }
-        }
-      }
-
-      // Calculate intersection of capabilities.
-      var commonCapabilities = getCommonCapabilities(
-          transceiver.localCapabilities,
-          transceiver.remoteCapabilities);
-
-      var hasRtx = commonCapabilities.codecs.filter(function(c) {
-        return c.name.toLowerCase() === 'rtx';
-      }).length;
-      if (!hasRtx && transceiver.sendEncodingParameters[0].rtx) {
-        delete transceiver.sendEncodingParameters[0].rtx;
-      }
-
-      sdp$$1 += writeMediaSection(transceiver, commonCapabilities,
-          'answer', transceiver.stream, pc._dtlsRole);
-      if (transceiver.rtcpParameters &&
-          transceiver.rtcpParameters.reducedSize) {
-        sdp$$1 += 'a=rtcp-rsize\r\n';
-      }
-    });
-
-    var desc = new window.RTCSessionDescription({
-      type: 'answer',
-      sdp: sdp$$1
-    });
-    return Promise.resolve(desc);
-  };
-
-  RTCPeerConnection.prototype.addIceCandidate = function(candidate) {
-    var pc = this;
-    var sections;
-    if (candidate && !(candidate.sdpMLineIndex !== undefined ||
-        candidate.sdpMid)) {
-      return Promise.reject(new TypeError('sdpMLineIndex or sdpMid required'));
-    }
-
-    // TODO: needs to go into ops queue.
-    return new Promise(function(resolve, reject) {
-      if (!pc._remoteDescription) {
-        return reject(makeError('InvalidStateError',
-            'Can not add ICE candidate without a remote description'));
-      } else if (!candidate || candidate.candidate === '') {
-        for (var j = 0; j < pc.transceivers.length; j++) {
-          if (pc.transceivers[j].rejected) {
-            continue;
-          }
-          pc.transceivers[j].iceTransport.addRemoteCandidate({});
-          sections = sdp.getMediaSections(pc._remoteDescription.sdp);
-          sections[j] += 'a=end-of-candidates\r\n';
-          pc._remoteDescription.sdp =
-              sdp.getDescription(pc._remoteDescription.sdp) +
-              sections.join('');
-          if (pc.usingBundle) {
-            break;
-          }
-        }
-      } else {
-        var sdpMLineIndex = candidate.sdpMLineIndex;
-        if (candidate.sdpMid) {
-          for (var i = 0; i < pc.transceivers.length; i++) {
-            if (pc.transceivers[i].mid === candidate.sdpMid) {
-              sdpMLineIndex = i;
-              break;
-            }
-          }
-        }
-        var transceiver = pc.transceivers[sdpMLineIndex];
-        if (transceiver) {
-          if (transceiver.rejected) {
-            return resolve();
-          }
-          var cand = Object.keys(candidate.candidate).length > 0 ?
-              sdp.parseCandidate(candidate.candidate) : {};
-          // Ignore Chrome's invalid candidates since Edge does not like them.
-          if (cand.protocol === 'tcp' && (cand.port === 0 || cand.port === 9)) {
-            return resolve();
-          }
-          // Ignore RTCP candidates, we assume RTCP-MUX.
-          if (cand.component && cand.component !== 1) {
-            return resolve();
-          }
-          // when using bundle, avoid adding candidates to the wrong
-          // ice transport. And avoid adding candidates added in the SDP.
-          if (sdpMLineIndex === 0 || (sdpMLineIndex > 0 &&
-              transceiver.iceTransport !== pc.transceivers[0].iceTransport)) {
-            if (!maybeAddCandidate(transceiver.iceTransport, cand)) {
-              return reject(makeError('OperationError',
-                  'Can not add ICE candidate'));
-            }
-          }
-
-          // update the remoteDescription.
-          var candidateString = candidate.candidate.trim();
-          if (candidateString.indexOf('a=') === 0) {
-            candidateString = candidateString.substr(2);
-          }
-          sections = sdp.getMediaSections(pc._remoteDescription.sdp);
-          sections[sdpMLineIndex] += 'a=' +
-              (cand.type ? candidateString : 'end-of-candidates')
-              + '\r\n';
-          pc._remoteDescription.sdp =
-              sdp.getDescription(pc._remoteDescription.sdp) +
-              sections.join('');
-        } else {
-          return reject(makeError('OperationError',
-              'Can not add ICE candidate'));
-        }
-      }
-      resolve();
-    });
-  };
-
-  RTCPeerConnection.prototype.getStats = function(selector) {
-    if (selector && selector instanceof window.MediaStreamTrack) {
-      var senderOrReceiver = null;
-      this.transceivers.forEach(function(transceiver) {
-        if (transceiver.rtpSender &&
-            transceiver.rtpSender.track === selector) {
-          senderOrReceiver = transceiver.rtpSender;
-        } else if (transceiver.rtpReceiver &&
-            transceiver.rtpReceiver.track === selector) {
-          senderOrReceiver = transceiver.rtpReceiver;
-        }
-      });
-      if (!senderOrReceiver) {
-        throw makeError('InvalidAccessError', 'Invalid selector.');
-      }
-      return senderOrReceiver.getStats();
-    }
-
-    var promises = [];
-    this.transceivers.forEach(function(transceiver) {
-      ['rtpSender', 'rtpReceiver', 'iceGatherer', 'iceTransport',
-          'dtlsTransport'].forEach(function(method) {
-            if (transceiver[method]) {
-              promises.push(transceiver[method].getStats());
-            }
-          });
-    });
-    return Promise.all(promises).then(function(allStats) {
-      var results = new Map();
-      allStats.forEach(function(stats) {
-        stats.forEach(function(stat) {
-          results.set(stat.id, stat);
-        });
-      });
-      return results;
-    });
-  };
-
-  // fix low-level stat names and return Map instead of object.
-  var ortcObjects = ['RTCRtpSender', 'RTCRtpReceiver', 'RTCIceGatherer',
-    'RTCIceTransport', 'RTCDtlsTransport'];
-  ortcObjects.forEach(function(ortcObjectName) {
-    var obj = window[ortcObjectName];
-    if (obj && obj.prototype && obj.prototype.getStats) {
-      var nativeGetstats = obj.prototype.getStats;
-      obj.prototype.getStats = function() {
-        return nativeGetstats.apply(this)
-        .then(function(nativeStats) {
-          var mapStats = new Map();
-          Object.keys(nativeStats).forEach(function(id) {
-            nativeStats[id].type = fixStatsType(nativeStats[id]);
-            mapStats.set(id, nativeStats[id]);
-          });
-          return mapStats;
-        });
-      };
-    }
-  });
-
-  // legacy callback shims. Should be moved to adapter.js some days.
-  var methods = ['createOffer', 'createAnswer'];
-  methods.forEach(function(method) {
-    var nativeMethod = RTCPeerConnection.prototype[method];
-    RTCPeerConnection.prototype[method] = function() {
-      var args = arguments;
-      if (typeof args[0] === 'function' ||
-          typeof args[1] === 'function') { // legacy
-        return nativeMethod.apply(this, [arguments[2]])
-        .then(function(description) {
-          if (typeof args[0] === 'function') {
-            args[0].apply(null, [description]);
-          }
-        }, function(error) {
-          if (typeof args[1] === 'function') {
-            args[1].apply(null, [error]);
-          }
-        });
-      }
-      return nativeMethod.apply(this, arguments);
-    };
-  });
-
-  methods = ['setLocalDescription', 'setRemoteDescription', 'addIceCandidate'];
-  methods.forEach(function(method) {
-    var nativeMethod = RTCPeerConnection.prototype[method];
-    RTCPeerConnection.prototype[method] = function() {
-      var args = arguments;
-      if (typeof args[1] === 'function' ||
-          typeof args[2] === 'function') { // legacy
-        return nativeMethod.apply(this, arguments)
-        .then(function() {
-          if (typeof args[1] === 'function') {
-            args[1].apply(null);
-          }
-        }, function(error) {
-          if (typeof args[2] === 'function') {
-            args[2].apply(null, [error]);
-          }
-        });
-      }
-      return nativeMethod.apply(this, arguments);
-    };
-  });
-
-  // getStats is special. It doesn't have a spec legacy method yet we support
-  // getStats(something, cb) without error callbacks.
-  ['getStats'].forEach(function(method) {
-    var nativeMethod = RTCPeerConnection.prototype[method];
-    RTCPeerConnection.prototype[method] = function() {
-      var args = arguments;
-      if (typeof args[1] === 'function') {
-        return nativeMethod.apply(this, arguments)
-        .then(function() {
-          if (typeof args[1] === 'function') {
-            args[1].apply(null);
-          }
-        });
-      }
-      return nativeMethod.apply(this, arguments);
-    };
-  });
-
-  return RTCPeerConnection;
-};
-
-/*
- *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-
-function shimGetUserMedia$1(window) {
-  const navigator = window && window.navigator;
-
-  const shimError_ = function(e) {
-    return {
-      name: {PermissionDeniedError: 'NotAllowedError'}[e.name] || e.name,
-      message: e.message,
-      constraint: e.constraint,
-      toString() {
-        return this.name;
-      }
-    };
-  };
-
-  // getUserMedia error shim.
-  const origGetUserMedia = navigator.mediaDevices.getUserMedia.
-      bind(navigator.mediaDevices);
-  navigator.mediaDevices.getUserMedia = function(c) {
-    return origGetUserMedia(c).catch(e => Promise.reject(shimError_(e)));
-  };
-}
-
-/*
- *  Copyright (c) 2018 The adapter.js project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-
-function shimGetDisplayMedia$1(window) {
-  if (!('getDisplayMedia' in window.navigator)) {
-    return;
-  }
-  if (!(window.navigator.mediaDevices)) {
-    return;
-  }
-  if (window.navigator.mediaDevices &&
-    'getDisplayMedia' in window.navigator.mediaDevices) {
-    return;
-  }
-  window.navigator.mediaDevices.getDisplayMedia =
-    window.navigator.getDisplayMedia.bind(window.navigator);
-}
-
-/*
- *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-
-function shimPeerConnection$1(window) {
-  const browserDetails = detectBrowser(window);
-
-  if (window.RTCIceGatherer) {
-    if (!window.RTCIceCandidate) {
-      window.RTCIceCandidate = function(args) {
-        return args;
-      };
-    }
-    if (!window.RTCSessionDescription) {
-      window.RTCSessionDescription = function(args) {
-        return args;
-      };
-    }
-    // this adds an additional event listener to MediaStrackTrack that signals
-    // when a tracks enabled property was changed. Workaround for a bug in
-    // addStream, see below. No longer required in 15025+
-    if (browserDetails.version < 15025) {
-      const origMSTEnabled = Object.getOwnPropertyDescriptor(
-          window.MediaStreamTrack.prototype, 'enabled');
-      Object.defineProperty(window.MediaStreamTrack.prototype, 'enabled', {
-        set(value) {
-          origMSTEnabled.set.call(this, value);
-          const ev = new Event('enabled');
-          ev.enabled = value;
-          this.dispatchEvent(ev);
-        }
-      });
-    }
-  }
-
-  // ORTC defines the DTMF sender a bit different.
-  // https://github.com/w3c/ortc/issues/714
-  if (window.RTCRtpSender && !('dtmf' in window.RTCRtpSender.prototype)) {
-    Object.defineProperty(window.RTCRtpSender.prototype, 'dtmf', {
-      get() {
-        if (this._dtmf === undefined) {
-          if (this.track.kind === 'audio') {
-            this._dtmf = new window.RTCDtmfSender(this);
-          } else if (this.track.kind === 'video') {
-            this._dtmf = null;
-          }
-        }
-        return this._dtmf;
-      }
-    });
-  }
-  // Edge currently only implements the RTCDtmfSender, not the
-  // RTCDTMFSender alias. See http://draft.ortc.org/#rtcdtmfsender2*
-  if (window.RTCDtmfSender && !window.RTCDTMFSender) {
-    window.RTCDTMFSender = window.RTCDtmfSender;
-  }
-
-  const RTCPeerConnectionShim = rtcpeerconnection(window,
-      browserDetails.version);
-  window.RTCPeerConnection = function(config) {
-    if (config && config.iceServers) {
-      config.iceServers = filterIceServers(config.iceServers,
-        browserDetails.version);
-      log('ICE servers after filtering:', config.iceServers);
-    }
-    return new RTCPeerConnectionShim(config);
-  };
-  window.RTCPeerConnection.prototype = RTCPeerConnectionShim.prototype;
-}
-
-function shimReplaceTrack(window) {
-  // ORTC has replaceTrack -- https://github.com/w3c/ortc/issues/614
-  if (window.RTCRtpSender &&
-      !('replaceTrack' in window.RTCRtpSender.prototype)) {
-    window.RTCRtpSender.prototype.replaceTrack =
-        window.RTCRtpSender.prototype.setTrack;
-  }
-}
-
-var edgeShim = /*#__PURE__*/Object.freeze({
-	shimPeerConnection: shimPeerConnection$1,
-	shimReplaceTrack: shimReplaceTrack,
-	shimGetUserMedia: shimGetUserMedia$1,
-	shimGetDisplayMedia: shimGetDisplayMedia$1
-});
-
-/*
- *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-
-function shimGetUserMedia$2(window) {
-  const browserDetails = detectBrowser(window);
-  const navigator = window && window.navigator;
-  const MediaStreamTrack = window && window.MediaStreamTrack;
-
-  navigator.getUserMedia = function(constraints, onSuccess, onError) {
-    // Replace Firefox 44+'s deprecation warning with unprefixed version.
-    deprecated('navigator.getUserMedia',
-        'navigator.mediaDevices.getUserMedia');
-    navigator.mediaDevices.getUserMedia(constraints).then(onSuccess, onError);
-  };
-
-  if (!(browserDetails.version > 55 &&
-      'autoGainControl' in navigator.mediaDevices.getSupportedConstraints())) {
-    const remap = function(obj, a, b) {
-      if (a in obj && !(b in obj)) {
-        obj[b] = obj[a];
-        delete obj[a];
-      }
-    };
-
-    const nativeGetUserMedia = navigator.mediaDevices.getUserMedia.
-        bind(navigator.mediaDevices);
-    navigator.mediaDevices.getUserMedia = function(c) {
-      if (typeof c === 'object' && typeof c.audio === 'object') {
-        c = JSON.parse(JSON.stringify(c));
-        remap(c.audio, 'autoGainControl', 'mozAutoGainControl');
-        remap(c.audio, 'noiseSuppression', 'mozNoiseSuppression');
-      }
-      return nativeGetUserMedia(c);
-    };
-
-    if (MediaStreamTrack && MediaStreamTrack.prototype.getSettings) {
-      const nativeGetSettings = MediaStreamTrack.prototype.getSettings;
-      MediaStreamTrack.prototype.getSettings = function() {
-        const obj = nativeGetSettings.apply(this, arguments);
-        remap(obj, 'mozAutoGainControl', 'autoGainControl');
-        remap(obj, 'mozNoiseSuppression', 'noiseSuppression');
-        return obj;
-      };
-    }
-
-    if (MediaStreamTrack && MediaStreamTrack.prototype.applyConstraints) {
-      const nativeApplyConstraints =
-        MediaStreamTrack.prototype.applyConstraints;
-      MediaStreamTrack.prototype.applyConstraints = function(c) {
-        if (this.kind === 'audio' && typeof c === 'object') {
-          c = JSON.parse(JSON.stringify(c));
-          remap(c, 'autoGainControl', 'mozAutoGainControl');
-          remap(c, 'noiseSuppression', 'mozNoiseSuppression');
-        }
-        return nativeApplyConstraints.apply(this, [c]);
-      };
-    }
-  }
-}
-
-/*
- *  Copyright (c) 2018 The adapter.js project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-
-function shimGetDisplayMedia$2(window, preferredMediaSource) {
-  if (window.navigator.mediaDevices &&
-    'getDisplayMedia' in window.navigator.mediaDevices) {
-    return;
-  }
-  if (!(window.navigator.mediaDevices)) {
-    return;
-  }
-  window.navigator.mediaDevices.getDisplayMedia = function(constraints) {
-    if (!(constraints && constraints.video)) {
-      const err = new DOMException('getDisplayMedia without video ' +
-          'constraints is undefined');
-      err.name = 'NotFoundError';
-      // from https://heycam.github.io/webidl/#idl-DOMException-error-names
-      err.code = 8;
-      return Promise.reject(err);
-    }
-    if (constraints.video === true) {
-      constraints.video = {mediaSource: preferredMediaSource};
-    } else {
-      constraints.video.mediaSource = preferredMediaSource;
-    }
-    return window.navigator.mediaDevices.getUserMedia(constraints);
-  };
-}
-
-/*
- *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-
-function shimOnTrack$1(window) {
-  if (typeof window === 'object' && window.RTCTrackEvent &&
-      ('receiver' in window.RTCTrackEvent.prototype) &&
-      !('transceiver' in window.RTCTrackEvent.prototype)) {
-    Object.defineProperty(window.RTCTrackEvent.prototype, 'transceiver', {
-      get() {
-        return {receiver: this.receiver};
-      }
-    });
-  }
-}
-
-function shimPeerConnection$2(window) {
-  const browserDetails = detectBrowser(window);
-
-  if (typeof window !== 'object' ||
-      !(window.RTCPeerConnection || window.mozRTCPeerConnection)) {
-    return; // probably media.peerconnection.enabled=false in about:config
-  }
-  if (!window.RTCPeerConnection && window.mozRTCPeerConnection) {
-    // very basic support for old versions.
-    window.RTCPeerConnection = window.mozRTCPeerConnection;
-  }
-
-  // shim away need for obsolete RTCIceCandidate/RTCSessionDescription.
-  ['setLocalDescription', 'setRemoteDescription', 'addIceCandidate']
-      .forEach(function(method) {
-        const nativeMethod = window.RTCPeerConnection.prototype[method];
-        window.RTCPeerConnection.prototype[method] = function() {
-          arguments[0] = new ((method === 'addIceCandidate') ?
-              window.RTCIceCandidate :
-              window.RTCSessionDescription)(arguments[0]);
-          return nativeMethod.apply(this, arguments);
-        };
-      });
-
-  // support for addIceCandidate(null or undefined)
-  const nativeAddIceCandidate =
-      window.RTCPeerConnection.prototype.addIceCandidate;
-  window.RTCPeerConnection.prototype.addIceCandidate = function() {
-    if (!arguments[0]) {
-      if (arguments[1]) {
-        arguments[1].apply(null);
-      }
-      return Promise.resolve();
-    }
-    return nativeAddIceCandidate.apply(this, arguments);
-  };
-
-  const modernStatsTypes = {
-    inboundrtp: 'inbound-rtp',
-    outboundrtp: 'outbound-rtp',
-    candidatepair: 'candidate-pair',
-    localcandidate: 'local-candidate',
-    remotecandidate: 'remote-candidate'
-  };
-
-  const nativeGetStats = window.RTCPeerConnection.prototype.getStats;
-  window.RTCPeerConnection.prototype.getStats = function(
-    selector,
-    onSucc,
-    onErr
-  ) {
-    return nativeGetStats.apply(this, [selector || null])
-      .then(stats => {
-        if (browserDetails.version < 53 && !onSucc) {
-          // Shim only promise getStats with spec-hyphens in type names
-          // Leave callback version alone; misc old uses of forEach before Map
-          try {
-            stats.forEach(stat => {
-              stat.type = modernStatsTypes[stat.type] || stat.type;
-            });
-          } catch (e) {
-            if (e.name !== 'TypeError') {
-              throw e;
-            }
-            // Avoid TypeError: "type" is read-only, in old versions. 34-43ish
-            stats.forEach((stat, i) => {
-              stats.set(i, Object.assign({}, stat, {
-                type: modernStatsTypes[stat.type] || stat.type
-              }));
-            });
-          }
-        }
-        return stats;
-      })
-      .then(onSucc, onErr);
-  };
-}
-
-function shimSenderGetStats(window) {
-  if (!(typeof window === 'object' && window.RTCPeerConnection &&
-      window.RTCRtpSender)) {
-    return;
-  }
-  if (window.RTCRtpSender && 'getStats' in window.RTCRtpSender.prototype) {
-    return;
-  }
-  const origGetSenders = window.RTCPeerConnection.prototype.getSenders;
-  if (origGetSenders) {
-    window.RTCPeerConnection.prototype.getSenders = function() {
-      const senders = origGetSenders.apply(this, []);
-      senders.forEach(sender => sender._pc = this);
-      return senders;
-    };
-  }
-
-  const origAddTrack = window.RTCPeerConnection.prototype.addTrack;
-  if (origAddTrack) {
-    window.RTCPeerConnection.prototype.addTrack = function() {
-      const sender = origAddTrack.apply(this, arguments);
-      sender._pc = this;
-      return sender;
-    };
-  }
-  window.RTCRtpSender.prototype.getStats = function() {
-    return this.track ? this._pc.getStats(this.track) :
-        Promise.resolve(new Map());
-  };
-}
-
-function shimReceiverGetStats(window) {
-  if (!(typeof window === 'object' && window.RTCPeerConnection &&
-      window.RTCRtpSender)) {
-    return;
-  }
-  if (window.RTCRtpSender && 'getStats' in window.RTCRtpReceiver.prototype) {
-    return;
-  }
-  const origGetReceivers = window.RTCPeerConnection.prototype.getReceivers;
-  if (origGetReceivers) {
-    window.RTCPeerConnection.prototype.getReceivers = function() {
-      const receivers = origGetReceivers.apply(this, []);
-      receivers.forEach(receiver => receiver._pc = this);
-      return receivers;
-    };
-  }
-  wrapPeerConnectionEvent(window, 'track', e => {
-    e.receiver._pc = e.srcElement;
-    return e;
-  });
-  window.RTCRtpReceiver.prototype.getStats = function() {
-    return this._pc.getStats(this.track);
-  };
-}
-
-function shimRemoveStream(window) {
-  if (!window.RTCPeerConnection ||
-      'removeStream' in window.RTCPeerConnection.prototype) {
-    return;
-  }
-  window.RTCPeerConnection.prototype.removeStream = function(stream) {
-    deprecated('removeStream', 'removeTrack');
-    this.getSenders().forEach(sender => {
-      if (sender.track && stream.getTracks().includes(sender.track)) {
-        this.removeTrack(sender);
-      }
-    });
-  };
-}
-
-function shimRTCDataChannel(window) {
-  // rename DataChannel to RTCDataChannel (native fix in FF60):
-  // https://bugzilla.mozilla.org/show_bug.cgi?id=1173851
-  if (window.DataChannel && !window.RTCDataChannel) {
-    window.RTCDataChannel = window.DataChannel;
-  }
-}
-
-var firefoxShim = /*#__PURE__*/Object.freeze({
-	shimOnTrack: shimOnTrack$1,
-	shimPeerConnection: shimPeerConnection$2,
-	shimSenderGetStats: shimSenderGetStats,
-	shimReceiverGetStats: shimReceiverGetStats,
-	shimRemoveStream: shimRemoveStream,
-	shimRTCDataChannel: shimRTCDataChannel,
-	shimGetUserMedia: shimGetUserMedia$2,
-	shimGetDisplayMedia: shimGetDisplayMedia$2
-});
-
-/*
- *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-
-function shimLocalStreamsAPI(window) {
-  if (typeof window !== 'object' || !window.RTCPeerConnection) {
-    return;
-  }
-  if (!('getLocalStreams' in window.RTCPeerConnection.prototype)) {
-    window.RTCPeerConnection.prototype.getLocalStreams = function() {
-      if (!this._localStreams) {
-        this._localStreams = [];
-      }
-      return this._localStreams;
-    };
-  }
-  if (!('addStream' in window.RTCPeerConnection.prototype)) {
-    const _addTrack = window.RTCPeerConnection.prototype.addTrack;
-    window.RTCPeerConnection.prototype.addStream = function(stream) {
-      if (!this._localStreams) {
-        this._localStreams = [];
-      }
-      if (!this._localStreams.includes(stream)) {
-        this._localStreams.push(stream);
-      }
-      stream.getTracks().forEach(track => _addTrack.call(this, track, stream));
-    };
-
-    window.RTCPeerConnection.prototype.addTrack = function(track, stream) {
-      if (stream) {
-        if (!this._localStreams) {
-          this._localStreams = [stream];
-        } else if (!this._localStreams.includes(stream)) {
-          this._localStreams.push(stream);
-        }
-      }
-      return _addTrack.call(this, track, stream);
-    };
-  }
-  if (!('removeStream' in window.RTCPeerConnection.prototype)) {
-    window.RTCPeerConnection.prototype.removeStream = function(stream) {
-      if (!this._localStreams) {
-        this._localStreams = [];
-      }
-      const index = this._localStreams.indexOf(stream);
-      if (index === -1) {
-        return;
-      }
-      this._localStreams.splice(index, 1);
-      const tracks = stream.getTracks();
-      this.getSenders().forEach(sender => {
-        if (tracks.includes(sender.track)) {
-          this.removeTrack(sender);
-        }
-      });
-    };
-  }
-}
-
-function shimRemoteStreamsAPI(window) {
-  if (typeof window !== 'object' || !window.RTCPeerConnection) {
-    return;
-  }
-  if (!('getRemoteStreams' in window.RTCPeerConnection.prototype)) {
-    window.RTCPeerConnection.prototype.getRemoteStreams = function() {
-      return this._remoteStreams ? this._remoteStreams : [];
-    };
-  }
-  if (!('onaddstream' in window.RTCPeerConnection.prototype)) {
-    Object.defineProperty(window.RTCPeerConnection.prototype, 'onaddstream', {
-      get() {
-        return this._onaddstream;
-      },
-      set(f) {
-        if (this._onaddstream) {
-          this.removeEventListener('addstream', this._onaddstream);
-          this.removeEventListener('track', this._onaddstreampoly);
-        }
-        this.addEventListener('addstream', this._onaddstream = f);
-        this.addEventListener('track', this._onaddstreampoly = (e) => {
-          e.streams.forEach(stream => {
-            if (!this._remoteStreams) {
-              this._remoteStreams = [];
-            }
-            if (this._remoteStreams.includes(stream)) {
-              return;
-            }
-            this._remoteStreams.push(stream);
-            const event = new Event('addstream');
-            event.stream = stream;
-            this.dispatchEvent(event);
-          });
-        });
-      }
-    });
-    const origSetRemoteDescription =
-      window.RTCPeerConnection.prototype.setRemoteDescription;
-    window.RTCPeerConnection.prototype.setRemoteDescription = function() {
-      const pc = this;
-      if (!this._onaddstreampoly) {
-        this.addEventListener('track', this._onaddstreampoly = function(e) {
-          e.streams.forEach(stream => {
-            if (!pc._remoteStreams) {
-              pc._remoteStreams = [];
-            }
-            if (pc._remoteStreams.indexOf(stream) >= 0) {
-              return;
-            }
-            pc._remoteStreams.push(stream);
-            const event = new Event('addstream');
-            event.stream = stream;
-            pc.dispatchEvent(event);
-          });
-        });
-      }
-      return origSetRemoteDescription.apply(pc, arguments);
-    };
-  }
-}
-
-function shimCallbacksAPI(window) {
-  if (typeof window !== 'object' || !window.RTCPeerConnection) {
-    return;
-  }
-  const prototype = window.RTCPeerConnection.prototype;
-  const createOffer = prototype.createOffer;
-  const createAnswer = prototype.createAnswer;
-  const setLocalDescription = prototype.setLocalDescription;
-  const setRemoteDescription = prototype.setRemoteDescription;
-  const addIceCandidate = prototype.addIceCandidate;
-
-  prototype.createOffer = function(successCallback, failureCallback) {
-    const options = (arguments.length >= 2) ? arguments[2] : arguments[0];
-    const promise = createOffer.apply(this, [options]);
-    if (!failureCallback) {
-      return promise;
-    }
-    promise.then(successCallback, failureCallback);
-    return Promise.resolve();
-  };
-
-  prototype.createAnswer = function(successCallback, failureCallback) {
-    const options = (arguments.length >= 2) ? arguments[2] : arguments[0];
-    const promise = createAnswer.apply(this, [options]);
-    if (!failureCallback) {
-      return promise;
-    }
-    promise.then(successCallback, failureCallback);
-    return Promise.resolve();
-  };
-
-  let withCallback = function(description, successCallback, failureCallback) {
-    const promise = setLocalDescription.apply(this, [description]);
-    if (!failureCallback) {
-      return promise;
-    }
-    promise.then(successCallback, failureCallback);
-    return Promise.resolve();
-  };
-  prototype.setLocalDescription = withCallback;
-
-  withCallback = function(description, successCallback, failureCallback) {
-    const promise = setRemoteDescription.apply(this, [description]);
-    if (!failureCallback) {
-      return promise;
-    }
-    promise.then(successCallback, failureCallback);
-    return Promise.resolve();
-  };
-  prototype.setRemoteDescription = withCallback;
-
-  withCallback = function(candidate, successCallback, failureCallback) {
-    const promise = addIceCandidate.apply(this, [candidate]);
-    if (!failureCallback) {
-      return promise;
-    }
-    promise.then(successCallback, failureCallback);
-    return Promise.resolve();
-  };
-  prototype.addIceCandidate = withCallback;
-}
-
-function shimGetUserMedia$3(window) {
-  const navigator = window && window.navigator;
-
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    // shim not needed in Safari 12.1
-    const mediaDevices = navigator.mediaDevices;
-    const _getUserMedia = mediaDevices.getUserMedia.bind(mediaDevices);
-    navigator.mediaDevices.getUserMedia = (constraints) => {
-      return _getUserMedia(shimConstraints(constraints));
-    };
-  }
-
-  if (!navigator.getUserMedia && navigator.mediaDevices &&
-    navigator.mediaDevices.getUserMedia) {
-    navigator.getUserMedia = function(constraints, cb, errcb) {
-      navigator.mediaDevices.getUserMedia(constraints)
-      .then(cb, errcb);
-    }.bind(navigator);
-  }
-}
-
-function shimConstraints(constraints) {
-  if (constraints && constraints.video !== undefined) {
-    return Object.assign({},
-      constraints,
-      {video: compactObject(constraints.video)}
-    );
-  }
-
-  return constraints;
-}
-
-function shimRTCIceServerUrls(window) {
-  // migrate from non-spec RTCIceServer.url to RTCIceServer.urls
-  const OrigPeerConnection = window.RTCPeerConnection;
-  window.RTCPeerConnection = function(pcConfig, pcConstraints) {
-    if (pcConfig && pcConfig.iceServers) {
-      const newIceServers = [];
-      for (let i = 0; i < pcConfig.iceServers.length; i++) {
-        let server = pcConfig.iceServers[i];
-        if (!server.hasOwnProperty('urls') &&
-            server.hasOwnProperty('url')) {
-          deprecated('RTCIceServer.url', 'RTCIceServer.urls');
-          server = JSON.parse(JSON.stringify(server));
-          server.urls = server.url;
-          delete server.url;
-          newIceServers.push(server);
-        } else {
-          newIceServers.push(pcConfig.iceServers[i]);
-        }
-      }
-      pcConfig.iceServers = newIceServers;
-    }
-    return new OrigPeerConnection(pcConfig, pcConstraints);
-  };
-  window.RTCPeerConnection.prototype = OrigPeerConnection.prototype;
-  // wrap static methods. Currently just generateCertificate.
-  if ('generateCertificate' in window.RTCPeerConnection) {
-    Object.defineProperty(window.RTCPeerConnection, 'generateCertificate', {
-      get() {
-        return OrigPeerConnection.generateCertificate;
-      }
-    });
-  }
-}
-
-function shimTrackEventTransceiver(window) {
-  // Add event.transceiver member over deprecated event.receiver
-  if (typeof window === 'object' && window.RTCPeerConnection &&
-      ('receiver' in window.RTCTrackEvent.prototype) &&
-      // can't check 'transceiver' in window.RTCTrackEvent.prototype, as it is
-      // defined for some reason even when window.RTCTransceiver is not.
-      !window.RTCTransceiver) {
-    Object.defineProperty(window.RTCTrackEvent.prototype, 'transceiver', {
-      get() {
-        return {receiver: this.receiver};
-      }
-    });
-  }
-}
-
-function shimCreateOfferLegacy(window) {
-  const origCreateOffer = window.RTCPeerConnection.prototype.createOffer;
-  window.RTCPeerConnection.prototype.createOffer = function(offerOptions) {
-    if (offerOptions) {
-      if (typeof offerOptions.offerToReceiveAudio !== 'undefined') {
-        // support bit values
-        offerOptions.offerToReceiveAudio = !!offerOptions.offerToReceiveAudio;
-      }
-      const audioTransceiver = this.getTransceivers().find(transceiver =>
-        transceiver.sender.track &&
-        transceiver.sender.track.kind === 'audio');
-      if (offerOptions.offerToReceiveAudio === false && audioTransceiver) {
-        if (audioTransceiver.direction === 'sendrecv') {
-          if (audioTransceiver.setDirection) {
-            audioTransceiver.setDirection('sendonly');
-          } else {
-            audioTransceiver.direction = 'sendonly';
-          }
-        } else if (audioTransceiver.direction === 'recvonly') {
-          if (audioTransceiver.setDirection) {
-            audioTransceiver.setDirection('inactive');
-          } else {
-            audioTransceiver.direction = 'inactive';
-          }
-        }
-      } else if (offerOptions.offerToReceiveAudio === true &&
-          !audioTransceiver) {
-        this.addTransceiver('audio');
-      }
-
-      if (typeof offerOptions.offerToReceiveVideo !== 'undefined') {
-        // support bit values
-        offerOptions.offerToReceiveVideo = !!offerOptions.offerToReceiveVideo;
-      }
-      const videoTransceiver = this.getTransceivers().find(transceiver =>
-        transceiver.sender.track &&
-        transceiver.sender.track.kind === 'video');
-      if (offerOptions.offerToReceiveVideo === false && videoTransceiver) {
-        if (videoTransceiver.direction === 'sendrecv') {
-          if (videoTransceiver.setDirection) {
-            videoTransceiver.setDirection('sendonly');
-          } else {
-            videoTransceiver.direction = 'sendonly';
-          }
-        } else if (videoTransceiver.direction === 'recvonly') {
-          if (videoTransceiver.setDirection) {
-            videoTransceiver.setDirection('inactive');
-          } else {
-            videoTransceiver.direction = 'inactive';
-          }
-        }
-      } else if (offerOptions.offerToReceiveVideo === true &&
-          !videoTransceiver) {
-        this.addTransceiver('video');
-      }
-    }
-    return origCreateOffer.apply(this, arguments);
-  };
-}
-
-var safariShim = /*#__PURE__*/Object.freeze({
-	shimLocalStreamsAPI: shimLocalStreamsAPI,
-	shimRemoteStreamsAPI: shimRemoteStreamsAPI,
-	shimCallbacksAPI: shimCallbacksAPI,
-	shimGetUserMedia: shimGetUserMedia$3,
-	shimConstraints: shimConstraints,
-	shimRTCIceServerUrls: shimRTCIceServerUrls,
-	shimTrackEventTransceiver: shimTrackEventTransceiver,
-	shimCreateOfferLegacy: shimCreateOfferLegacy
-});
-
-/*
- *  Copyright (c) 2017 The WebRTC project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-
-function shimRTCIceCandidate(window) {
-  // foundation is arbitrarily chosen as an indicator for full support for
-  // https://w3c.github.io/webrtc-pc/#rtcicecandidate-interface
-  if (!window.RTCIceCandidate || (window.RTCIceCandidate && 'foundation' in
-      window.RTCIceCandidate.prototype)) {
-    return;
-  }
-
-  const NativeRTCIceCandidate = window.RTCIceCandidate;
-  window.RTCIceCandidate = function(args) {
-    // Remove the a= which shouldn't be part of the candidate string.
-    if (typeof args === 'object' && args.candidate &&
-        args.candidate.indexOf('a=') === 0) {
-      args = JSON.parse(JSON.stringify(args));
-      args.candidate = args.candidate.substr(2);
-    }
-
-    if (args.candidate && args.candidate.length) {
-      // Augment the native candidate with the parsed fields.
-      const nativeCandidate = new NativeRTCIceCandidate(args);
-      const parsedCandidate = sdp.parseCandidate(args.candidate);
-      const augmentedCandidate = Object.assign(nativeCandidate,
-          parsedCandidate);
-
-      // Add a serializer that does not serialize the extra attributes.
-      augmentedCandidate.toJSON = function() {
-        return {
-          candidate: augmentedCandidate.candidate,
-          sdpMid: augmentedCandidate.sdpMid,
-          sdpMLineIndex: augmentedCandidate.sdpMLineIndex,
-          usernameFragment: augmentedCandidate.usernameFragment,
-        };
-      };
-      return augmentedCandidate;
-    }
-    return new NativeRTCIceCandidate(args);
-  };
-  window.RTCIceCandidate.prototype = NativeRTCIceCandidate.prototype;
-
-  // Hook up the augmented candidate in onicecandidate and
-  // addEventListener('icecandidate', ...)
-  wrapPeerConnectionEvent(window, 'icecandidate', e => {
-    if (e.candidate) {
-      Object.defineProperty(e, 'candidate', {
-        value: new window.RTCIceCandidate(e.candidate),
-        writable: 'false'
-      });
-    }
-    return e;
-  });
-}
-
-function shimMaxMessageSize(window) {
-  if (window.RTCSctpTransport || !window.RTCPeerConnection) {
-    return;
-  }
-  const browserDetails = detectBrowser(window);
-
-  if (!('sctp' in window.RTCPeerConnection.prototype)) {
-    Object.defineProperty(window.RTCPeerConnection.prototype, 'sctp', {
-      get() {
-        return typeof this._sctp === 'undefined' ? null : this._sctp;
-      }
-    });
-  }
-
-  const sctpInDescription = function(description) {
-    const sections = sdp.splitSections(description.sdp);
-    sections.shift();
-    return sections.some(mediaSection => {
-      const mLine = sdp.parseMLine(mediaSection);
-      return mLine && mLine.kind === 'application'
-          && mLine.protocol.indexOf('SCTP') !== -1;
-    });
-  };
-
-  const getRemoteFirefoxVersion = function(description) {
-    // TODO: Is there a better solution for detecting Firefox?
-    const match = description.sdp.match(/mozilla...THIS_IS_SDPARTA-(\d+)/);
-    if (match === null || match.length < 2) {
-      return -1;
-    }
-    const version = parseInt(match[1], 10);
-    // Test for NaN (yes, this is ugly)
-    return version !== version ? -1 : version;
-  };
-
-  const getCanSendMaxMessageSize = function(remoteIsFirefox) {
-    // Every implementation we know can send at least 64 KiB.
-    // Note: Although Chrome is technically able to send up to 256 KiB, the
-    //       data does not reach the other peer reliably.
-    //       See: https://bugs.chromium.org/p/webrtc/issues/detail?id=8419
-    let canSendMaxMessageSize = 65536;
-    if (browserDetails.browser === 'firefox') {
-      if (browserDetails.version < 57) {
-        if (remoteIsFirefox === -1) {
-          // FF < 57 will send in 16 KiB chunks using the deprecated PPID
-          // fragmentation.
-          canSendMaxMessageSize = 16384;
-        } else {
-          // However, other FF (and RAWRTC) can reassemble PPID-fragmented
-          // messages. Thus, supporting ~2 GiB when sending.
-          canSendMaxMessageSize = 2147483637;
-        }
-      } else if (browserDetails.version < 60) {
-        // Currently, all FF >= 57 will reset the remote maximum message size
-        // to the default value when a data channel is created at a later
-        // stage. :(
-        // See: https://bugzilla.mozilla.org/show_bug.cgi?id=1426831
-        canSendMaxMessageSize =
-          browserDetails.version === 57 ? 65535 : 65536;
-      } else {
-        // FF >= 60 supports sending ~2 GiB
-        canSendMaxMessageSize = 2147483637;
-      }
-    }
-    return canSendMaxMessageSize;
-  };
-
-  const getMaxMessageSize = function(description, remoteIsFirefox) {
-    // Note: 65536 bytes is the default value from the SDP spec. Also,
-    //       every implementation we know supports receiving 65536 bytes.
-    let maxMessageSize = 65536;
-
-    // FF 57 has a slightly incorrect default remote max message size, so
-    // we need to adjust it here to avoid a failure when sending.
-    // See: https://bugzilla.mozilla.org/show_bug.cgi?id=1425697
-    if (browserDetails.browser === 'firefox'
-         && browserDetails.version === 57) {
-      maxMessageSize = 65535;
-    }
-
-    const match = sdp.matchPrefix(description.sdp,
-      'a=max-message-size:');
-    if (match.length > 0) {
-      maxMessageSize = parseInt(match[0].substr(19), 10);
-    } else if (browserDetails.browser === 'firefox' &&
-                remoteIsFirefox !== -1) {
-      // If the maximum message size is not present in the remote SDP and
-      // both local and remote are Firefox, the remote peer can receive
-      // ~2 GiB.
-      maxMessageSize = 2147483637;
-    }
-    return maxMessageSize;
-  };
-
-  const origSetRemoteDescription =
-      window.RTCPeerConnection.prototype.setRemoteDescription;
-  window.RTCPeerConnection.prototype.setRemoteDescription = function() {
-    this._sctp = null;
-
-    if (sctpInDescription(arguments[0])) {
-      // Check if the remote is FF.
-      const isFirefox = getRemoteFirefoxVersion(arguments[0]);
-
-      // Get the maximum message size the local peer is capable of sending
-      const canSendMMS = getCanSendMaxMessageSize(isFirefox);
-
-      // Get the maximum message size of the remote peer.
-      const remoteMMS = getMaxMessageSize(arguments[0], isFirefox);
-
-      // Determine final maximum message size
-      let maxMessageSize;
-      if (canSendMMS === 0 && remoteMMS === 0) {
-        maxMessageSize = Number.POSITIVE_INFINITY;
-      } else if (canSendMMS === 0 || remoteMMS === 0) {
-        maxMessageSize = Math.max(canSendMMS, remoteMMS);
-      } else {
-        maxMessageSize = Math.min(canSendMMS, remoteMMS);
-      }
-
-      // Create a dummy RTCSctpTransport object and the 'maxMessageSize'
-      // attribute.
-      const sctp = {};
-      Object.defineProperty(sctp, 'maxMessageSize', {
-        get() {
-          return maxMessageSize;
-        }
-      });
-      this._sctp = sctp;
-    }
-
-    return origSetRemoteDescription.apply(this, arguments);
-  };
-}
-
-function shimSendThrowTypeError(window) {
-  if (!(window.RTCPeerConnection &&
-      'createDataChannel' in window.RTCPeerConnection.prototype)) {
-    return;
-  }
-
-  // Note: Although Firefox >= 57 has a native implementation, the maximum
-  //       message size can be reset for all data channels at a later stage.
-  //       See: https://bugzilla.mozilla.org/show_bug.cgi?id=1426831
-
-  function wrapDcSend(dc, pc) {
-    const origDataChannelSend = dc.send;
-    dc.send = function() {
-      const data = arguments[0];
-      const length = data.length || data.size || data.byteLength;
-      if (dc.readyState === 'open' &&
-          pc.sctp && length > pc.sctp.maxMessageSize) {
-        throw new TypeError('Message too large (can send a maximum of ' +
-          pc.sctp.maxMessageSize + ' bytes)');
-      }
-      return origDataChannelSend.apply(dc, arguments);
-    };
-  }
-  const origCreateDataChannel =
-    window.RTCPeerConnection.prototype.createDataChannel;
-  window.RTCPeerConnection.prototype.createDataChannel = function() {
-    const dataChannel = origCreateDataChannel.apply(this, arguments);
-    wrapDcSend(dataChannel, this);
-    return dataChannel;
-  };
-  wrapPeerConnectionEvent(window, 'datachannel', e => {
-    wrapDcSend(e.channel, e.target);
-    return e;
-  });
-}
-
-
-/* shims RTCConnectionState by pretending it is the same as iceConnectionState.
- * See https://bugs.chromium.org/p/webrtc/issues/detail?id=6145#c12
- * for why this is a valid hack in Chrome. In Firefox it is slightly incorrect
- * since DTLS failures would be hidden. See
- * https://bugzilla.mozilla.org/show_bug.cgi?id=1265827
- * for the Firefox tracking bug.
- */
-function shimConnectionState(window) {
-  if (!window.RTCPeerConnection ||
-      'connectionState' in window.RTCPeerConnection.prototype) {
-    return;
-  }
-  const proto = window.RTCPeerConnection.prototype;
-  Object.defineProperty(proto, 'connectionState', {
-    get() {
-      return {
-        completed: 'connected',
-        checking: 'connecting'
-      }[this.iceConnectionState] || this.iceConnectionState;
-    },
-    enumerable: true,
-    configurable: true
-  });
-  Object.defineProperty(proto, 'onconnectionstatechange', {
-    get() {
-      return this._onconnectionstatechange || null;
-    },
-    set(cb) {
-      if (this._onconnectionstatechange) {
-        this.removeEventListener('connectionstatechange',
-            this._onconnectionstatechange);
-        delete this._onconnectionstatechange;
-      }
-      if (cb) {
-        this.addEventListener('connectionstatechange',
-            this._onconnectionstatechange = cb);
-      }
-    },
-    enumerable: true,
-    configurable: true
-  });
-
-  ['setLocalDescription', 'setRemoteDescription'].forEach((method) => {
-    const origMethod = proto[method];
-    proto[method] = function() {
-      if (!this._connectionstatechangepoly) {
-        this._connectionstatechangepoly = e => {
-          const pc = e.target;
-          if (pc._lastConnectionState !== pc.connectionState) {
-            pc._lastConnectionState = pc.connectionState;
-            const newEvent = new Event('connectionstatechange', e);
-            pc.dispatchEvent(newEvent);
-          }
-          return e;
-        };
-        this.addEventListener('iceconnectionstatechange',
-          this._connectionstatechangepoly);
-      }
-      return origMethod.apply(this, arguments);
-    };
-  });
-}
-
-function removeAllowExtmapMixed(window) {
-  /* remove a=extmap-allow-mixed for Chrome < M71 */
-  if (!window.RTCPeerConnection) {
-    return;
-  }
-  const browserDetails = detectBrowser(window);
-  if (browserDetails.browser === 'chrome' && browserDetails.version >= 71) {
-    return;
-  }
-  const nativeSRD = window.RTCPeerConnection.prototype.setRemoteDescription;
-  window.RTCPeerConnection.prototype.setRemoteDescription = function(desc) {
-    if (desc && desc.sdp && desc.sdp.indexOf('\na=extmap-allow-mixed') !== -1) {
-      desc.sdp = desc.sdp.split('\n').filter((line) => {
-        return line.trim() !== 'a=extmap-allow-mixed';
-      }).join('\n');
-    }
-    return nativeSRD.apply(this, arguments);
-  };
-}
-
-var commonShim = /*#__PURE__*/Object.freeze({
-	shimRTCIceCandidate: shimRTCIceCandidate,
-	shimMaxMessageSize: shimMaxMessageSize,
-	shimSendThrowTypeError: shimSendThrowTypeError,
-	shimConnectionState: shimConnectionState,
-	removeAllowExtmapMixed: removeAllowExtmapMixed
-});
-
-/*
- *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-
-// Shimming starts here.
-function adapterFactory({window} = {}, options = {
-  shimChrome: true,
-  shimFirefox: true,
-  shimEdge: true,
-  shimSafari: true,
-}) {
-  // Utils.
-  const logging = log;
-  const browserDetails = detectBrowser(window);
-
-  const adapter = {
-    browserDetails,
-    commonShim,
-    extractVersion: extractVersion,
-    disableLog: disableLog,
-    disableWarnings: disableWarnings
-  };
-
-  // Shim browser if found.
-  switch (browserDetails.browser) {
-    case 'chrome':
-      if (!chromeShim || !shimPeerConnection ||
-          !options.shimChrome) {
-        logging('Chrome shim is not included in this adapter release.');
-        return adapter;
-      }
-      logging('adapter.js shimming chrome.');
-      // Export to the adapter global object visible in the browser.
-      adapter.browserShim = chromeShim;
-
-      shimGetUserMedia(window);
-      shimMediaStream(window);
-      shimPeerConnection(window);
-      shimOnTrack(window);
-      shimAddTrackRemoveTrack(window);
-      shimGetSendersWithDtmf(window);
-      shimSenderReceiverGetStats(window);
-      fixNegotiationNeeded(window);
-
-      shimRTCIceCandidate(window);
-      shimConnectionState(window);
-      shimMaxMessageSize(window);
-      shimSendThrowTypeError(window);
-      removeAllowExtmapMixed(window);
-      break;
-    case 'firefox':
-      if (!firefoxShim || !shimPeerConnection$2 ||
-          !options.shimFirefox) {
-        logging('Firefox shim is not included in this adapter release.');
-        return adapter;
-      }
-      logging('adapter.js shimming firefox.');
-      // Export to the adapter global object visible in the browser.
-      adapter.browserShim = firefoxShim;
-
-      shimGetUserMedia$2(window);
-      shimPeerConnection$2(window);
-      shimOnTrack$1(window);
-      shimRemoveStream(window);
-      shimSenderGetStats(window);
-      shimReceiverGetStats(window);
-      shimRTCDataChannel(window);
-
-      shimRTCIceCandidate(window);
-      shimConnectionState(window);
-      shimMaxMessageSize(window);
-      shimSendThrowTypeError(window);
-      break;
-    case 'edge':
-      if (!edgeShim || !shimPeerConnection$1 || !options.shimEdge) {
-        logging('MS edge shim is not included in this adapter release.');
-        return adapter;
-      }
-      logging('adapter.js shimming edge.');
-      // Export to the adapter global object visible in the browser.
-      adapter.browserShim = edgeShim;
-
-      shimGetUserMedia$1(window);
-      shimGetDisplayMedia$1(window);
-      shimPeerConnection$1(window);
-      shimReplaceTrack(window);
-
-      // the edge shim implements the full RTCIceCandidate object.
-
-      shimMaxMessageSize(window);
-      shimSendThrowTypeError(window);
-      break;
-    case 'safari':
-      if (!safariShim || !options.shimSafari) {
-        logging('Safari shim is not included in this adapter release.');
-        return adapter;
-      }
-      logging('adapter.js shimming safari.');
-      // Export to the adapter global object visible in the browser.
-      adapter.browserShim = safariShim;
-
-      shimRTCIceServerUrls(window);
-      shimCreateOfferLegacy(window);
-      shimCallbacksAPI(window);
-      shimLocalStreamsAPI(window);
-      shimRemoteStreamsAPI(window);
-      shimTrackEventTransceiver(window);
-      shimGetUserMedia$3(window);
-
-      shimRTCIceCandidate(window);
-      shimMaxMessageSize(window);
-      shimSendThrowTypeError(window);
-      removeAllowExtmapMixed(window);
-      break;
-    default:
-      logging('Unsupported browser!');
-      break;
-  }
-
-  return adapter;
-}
-
-/*
- *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
- *
- *  Use of this source code is governed by a BSD-style license
- *  that can be found in the LICENSE file in the root of the source
- *  tree.
- */
-
-const adapter = adapterFactory({window});
-
 var msgPack$1 = msgpack_min;
 var Peer = simplepeer_min;
 window.simpPeer = Peer;
-console.log("msg pack", msgpacklite);
+console.log('msg pack', msgpacklite);
 
 class PeerBinary extends Peer {
   constructor(options) {
@@ -12557,13 +7567,14 @@ class PeerBinary extends Peer {
     this._registerDataMessage();
     this.unchunker = new UnChunker(); //
     this.unchunker.onData = val => {
-      this.emit("dataBig", val);
+      this.emit('dataBig', val);
     };
+    this.peerID = options.peerID;
   }
 
   //want to overide these 2 functions I think.
   _registerDataMessage(event) {
-    this.on("data", data => {
+    this.on('data', data => {
       //when its done with a complete chunk, call this.emit('dataBig', completed)
       this.unchunker.registerChunk(data);
     });
@@ -12587,7 +7598,7 @@ class UnChunker {
     this.payloads = {};
     this.payloadCount = 0;
     this.onData = function(val) {
-      console.log("default, data is ready:", val);
+      console.log('default, data is ready:', val);
     };
   }
 
@@ -12609,10 +7620,10 @@ class UnChunker {
         }
       } catch (err) {
         console.error(err);
-        console.error("val:", msg);
+        console.error('val:', msg);
       }
     } else {
-      console.warn("not my type", msg);
+      console.warn('not my type', msg);
       //console.warn(this._ab2str(msg))
     }
     return null;
@@ -12622,7 +7633,7 @@ class UnChunker {
     this.payloads[id] = Object.assign(header, {
       count: header.chunkCount,
       chunks: [],
-      lastUpdate: new Date()
+      lastUpdate: new Date(),
     });
     this.payloadCount++;
   }
@@ -12656,7 +7667,7 @@ class UnChunker {
       this._removePayload(payloadID);
     } catch (err) {
       console.error(err);
-      console.error("buffer", result);
+      console.error('buffer', result);
     }
   }
 
@@ -12666,7 +7677,7 @@ class UnChunker {
   }
 
   parseHeader(data) {
-    if (typeof data == "object" && !(data instanceof Uint8Array)) {
+    if (typeof data == 'object' && !(data instanceof Uint8Array)) {
       if (data.chunkCount && data.chunkCount > 0) {
         return data;
       }
@@ -13563,7 +8574,7 @@ var store = _global[SHARED] || (_global[SHARED] = {});
   return store[key] || (store[key] = value !== undefined ? value : {});
 })('versions', []).push({
   version: _core.version,
-  mode: _library ? 'pure' : 'global',
+  mode: 'global',
   copyright: '© 2019 Denis Pushkarev (zloirock.ru)'
 });
 });
@@ -14762,31 +9773,6 @@ var __assign = function() {
     return __assign.apply(this, arguments);
 };
 
-function __rest(s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) if (e.indexOf(p[i]) < 0)
-            t[p[i]] = s[p[i]];
-    return t;
-}
-
-function __decorate(decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-}
-
-function __param(paramIndex, decorator) {
-    return function (target, key) { decorator(target, key, paramIndex); }
-}
-
-function __metadata(metadataKey, metadataValue) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(metadataKey, metadataValue);
-}
-
 function __awaiter(thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -14824,21 +9810,6 @@ function __generator(thisArg, body) {
     }
 }
 
-function __exportStar(m, exports) {
-    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
-}
-
-function __values(o) {
-    var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
-    if (m) return m.call(o);
-    return {
-        next: function () {
-            if (o && i >= o.length) o = void 0;
-            return { value: o && o[i++], done: !o };
-        }
-    };
-}
-
 function __read(o, n) {
     var m = typeof Symbol === "function" && o[Symbol.iterator];
     if (!m) return o;
@@ -14861,80 +9832,6 @@ function __spread() {
         ar = ar.concat(__read(arguments[i]));
     return ar;
 }
-
-function __await(v) {
-    return this instanceof __await ? (this.v = v, this) : new __await(v);
-}
-
-function __asyncGenerator(thisArg, _arguments, generator) {
-    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
-    var g = generator.apply(thisArg, _arguments || []), i, q = [];
-    return i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i;
-    function verb(n) { if (g[n]) i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; }
-    function resume(n, v) { try { step(g[n](v)); } catch (e) { settle(q[0][3], e); } }
-    function step(r) { r.value instanceof __await ? Promise.resolve(r.value.v).then(fulfill, reject) : settle(q[0][2], r); }
-    function fulfill(value) { resume("next", value); }
-    function reject(value) { resume("throw", value); }
-    function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
-}
-
-function __asyncDelegator(o) {
-    var i, p;
-    return i = {}, verb("next"), verb("throw", function (e) { throw e; }), verb("return"), i[Symbol.iterator] = function () { return this; }, i;
-    function verb(n, f) { i[n] = o[n] ? function (v) { return (p = !p) ? { value: __await(o[n](v)), done: n === "return" } : f ? f(v) : v; } : f; }
-}
-
-function __asyncValues(o) {
-    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
-    var m = o[Symbol.asyncIterator], i;
-    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
-    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
-    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
-}
-
-function __makeTemplateObject(cooked, raw) {
-    if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
-    return cooked;
-}
-function __importStar(mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result.default = mod;
-    return result;
-}
-
-function __importDefault(mod) {
-    return (mod && mod.__esModule) ? mod : { default: mod };
-}
-
-var tslib_1 = /*#__PURE__*/Object.freeze({
-	__extends: __extends,
-	get __assign () { return __assign; },
-	__rest: __rest,
-	__decorate: __decorate,
-	__param: __param,
-	__metadata: __metadata,
-	__awaiter: __awaiter,
-	__generator: __generator,
-	__exportStar: __exportStar,
-	__values: __values,
-	__read: __read,
-	__spread: __spread,
-	__await: __await,
-	__asyncGenerator: __asyncGenerator,
-	__asyncDelegator: __asyncDelegator,
-	__asyncValues: __asyncValues,
-	__makeTemplateObject: __makeTemplateObject,
-	__importStar: __importStar,
-	__importDefault: __importDefault
-});
-
-var index_cjs = createCommonjsModule(function (module, exports) {
-
-Object.defineProperty(exports, '__esModule', { value: true });
-
-
 
 /**
  * @license
@@ -15507,12 +10404,6 @@ var isNodeSdk = function () {
 var ERROR_NAME = 'FirebaseError';
 var captureStackTrace = Error
     .captureStackTrace;
-// Export for faking in tests
-function patchCapture(captureFake) {
-    var result = captureStackTrace;
-    captureStackTrace = captureFake;
-    return result;
-}
 var FirebaseError = /** @class */ (function () {
     function FirebaseError(code, message) {
         this.code = code;
@@ -15665,53 +10556,6 @@ var decode = function (token) {
     };
 };
 /**
- * Decodes a Firebase auth. token and checks the validity of its time-based claims. Will return true if the
- * token is within the time window authorized by the 'nbf' (not-before) and 'iat' (issued-at) claims.
- *
- * Notes:
- * - May return a false negative if there's no native base64 decoding support.
- * - Doesn't check if the token is actually valid.
- *
- * @param {?string} token
- * @return {boolean}
- */
-var isValidTimestamp = function (token) {
-    var claims = decode(token).claims, now = Math.floor(new Date().getTime() / 1000), validSince, validUntil;
-    if (typeof claims === 'object') {
-        if (claims.hasOwnProperty('nbf')) {
-            validSince = claims['nbf'];
-        }
-        else if (claims.hasOwnProperty('iat')) {
-            validSince = claims['iat'];
-        }
-        if (claims.hasOwnProperty('exp')) {
-            validUntil = claims['exp'];
-        }
-        else {
-            // token will expire after 24h by default
-            validUntil = validSince + 86400;
-        }
-    }
-    return (now && validSince && validUntil && now >= validSince && now <= validUntil);
-};
-/**
- * Decodes a Firebase auth. token and returns its issued at time if valid, null otherwise.
- *
- * Notes:
- * - May return null if there's no native base64 decoding support.
- * - Doesn't check if the token is actually valid.
- *
- * @param {?string} token
- * @return {?number}
- */
-var issuedAtTime = function (token) {
-    var claims = decode(token).claims;
-    if (typeof claims === 'object' && claims.hasOwnProperty('iat')) {
-        return claims['iat'];
-    }
-    return null;
-};
-/**
  * Decodes a Firebase auth. token and checks the validity of its format. Expects a valid issued-at time.
  *
  * Notes:
@@ -15798,16 +10642,6 @@ var extend = function (objTo, objFrom) {
  */
 var clone = function (obj) {
     return extend({}, obj);
-};
-/**
- * Returns true if obj has typeof "object" and is not null.  Unlike goog.isObject(), does not return true
- * for functions.
- *
- * @param obj {*} A potential object.
- * @returns {boolean} True if it's an object.
- */
-var isNonNullObject = function (obj) {
-    return typeof obj === 'object' && obj !== null;
 };
 var isEmpty = function (obj) {
     for (var key in obj) {
@@ -15911,23 +10745,6 @@ var querystring = function (querystringParams) {
     });
     return params.length ? '&' + params.join('&') : '';
 };
-/**
- * Decodes a querystring (e.g. ?arg=val&arg2=val2) into a params object (e.g. {arg: 'val', arg2: 'val2'})
- *
- * @param {string} querystring
- * @return {!Object}
- */
-var querystringDecode = function (querystring) {
-    var obj = {};
-    var tokens = querystring.replace(/^\?/, '').split('&');
-    tokens.forEach(function (token) {
-        if (token) {
-            var key = token.split('=');
-            obj[key[0]] = key[1];
-        }
-    });
-    return obj;
-};
 
 /**
  * @license
@@ -16022,7 +10839,7 @@ var Hash = /** @class */ (function () {
  * @struct
  */
 var Sha1 = /** @class */ (function (_super) {
-    tslib_1.__extends(Sha1, _super);
+    __extends(Sha1, _super);
     function Sha1() {
         var _this = _super.call(this) || this;
         /**
@@ -16331,13 +11148,13 @@ var ObserverProxy = /** @class */ (function () {
             };
         }
         if (observer.next === undefined) {
-            observer.next = noop;
+            observer.next = noop$1;
         }
         if (observer.error === undefined) {
-            observer.error = noop;
+            observer.error = noop$1;
         }
         if (observer.complete === undefined) {
-            observer.complete = noop;
+            observer.complete = noop$1;
         }
         var unsub = this.unsubscribeOne.bind(this, this.observers.length);
         // Attempt to subscribe to a terminated Observable - we
@@ -16424,24 +11241,6 @@ var ObserverProxy = /** @class */ (function () {
     };
     return ObserverProxy;
 }());
-/** Turn synchronous function into one called asynchronously. */
-function async(fn, onError) {
-    return function () {
-        var args = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            args[_i] = arguments[_i];
-        }
-        Promise.resolve(true)
-            .then(function () {
-            fn.apply(void 0, args);
-        })
-            .catch(function (error) {
-            if (onError) {
-                onError(error);
-            }
-        });
-    };
-}
 /**
  * Return true if the object passed in implements any of the named methods.
  */
@@ -16457,7 +11256,7 @@ function implementsAnyMethods(obj, methods) {
     }
     return false;
 }
-function noop() {
+function noop$1() {
     // do nothing
 }
 
@@ -16534,21 +11333,6 @@ function errorPrefix(fnName, argumentNumber, optional) {
     var error = fnName + ' failed: ';
     error += argName + ' argument ';
     return error;
-}
-/**
- * @param {!string} fnName
- * @param {!number} argumentNumber
- * @param {!string} namespace
- * @param {boolean} optional
- */
-function validateNamespace(fnName, argumentNumber, namespace, optional) {
-    if (optional && !namespace)
-        return;
-    if (typeof namespace !== 'string') {
-        //TODO: I should do more validation here. We only allow certain chars in namespaces.
-        throw new Error(errorPrefix(fnName, argumentNumber, optional) +
-            'must be a valid firebase namespace.');
-    }
 }
 function validateCallback(fnName, argumentNumber, callback, optional) {
     if (optional && !callback)
@@ -16670,135 +11454,7 @@ var stringLength = function (str) {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-exports.assert = assert;
-exports.assertionError = assertionError;
-exports.base64 = base64;
-exports.base64Decode = base64Decode;
-exports.base64Encode = base64Encode;
-exports.CONSTANTS = CONSTANTS;
-exports.deepCopy = deepCopy;
-exports.deepExtend = deepExtend;
-exports.patchProperty = patchProperty;
-exports.Deferred = Deferred;
-exports.getUA = getUA;
-exports.isMobileCordova = isMobileCordova;
-exports.isNodeSdk = isNodeSdk;
-exports.isReactNative = isReactNative;
-exports.ErrorFactory = ErrorFactory;
-exports.FirebaseError = FirebaseError;
-exports.patchCapture = patchCapture;
-exports.jsonEval = jsonEval;
-exports.stringify = stringify;
-exports.decode = decode;
-exports.isAdmin = isAdmin;
-exports.issuedAtTime = issuedAtTime;
-exports.isValidFormat = isValidFormat;
-exports.isValidTimestamp = isValidTimestamp;
-exports.clone = clone;
-exports.contains = contains;
-exports.every = every;
-exports.extend = extend;
-exports.findKey = findKey;
-exports.findValue = findValue;
-exports.forEach = forEach;
-exports.getAnyKey = getAnyKey;
-exports.getCount = getCount;
-exports.getValues = getValues;
-exports.isEmpty = isEmpty;
-exports.isNonNullObject = isNonNullObject;
-exports.map = map;
-exports.safeGet = safeGet;
-exports.querystring = querystring;
-exports.querystringDecode = querystringDecode;
-exports.Sha1 = Sha1;
-exports.async = async;
-exports.createSubscribe = createSubscribe;
-exports.errorPrefix = errorPrefix;
-exports.validateArgCount = validateArgCount;
-exports.validateCallback = validateCallback;
-exports.validateContextObject = validateContextObject;
-exports.validateNamespace = validateNamespace;
-exports.stringLength = stringLength;
-exports.stringToByteArray = stringToByteArray$1;
-
-});
-
-unwrapExports(index_cjs);
-var index_cjs_1 = index_cjs.assert;
-var index_cjs_2 = index_cjs.assertionError;
-var index_cjs_3 = index_cjs.base64;
-var index_cjs_4 = index_cjs.base64Decode;
-var index_cjs_5 = index_cjs.base64Encode;
-var index_cjs_6 = index_cjs.CONSTANTS;
-var index_cjs_7 = index_cjs.deepCopy;
-var index_cjs_8 = index_cjs.deepExtend;
-var index_cjs_9 = index_cjs.patchProperty;
-var index_cjs_10 = index_cjs.Deferred;
-var index_cjs_11 = index_cjs.getUA;
-var index_cjs_12 = index_cjs.isMobileCordova;
-var index_cjs_13 = index_cjs.isNodeSdk;
-var index_cjs_14 = index_cjs.isReactNative;
-var index_cjs_15 = index_cjs.ErrorFactory;
-var index_cjs_16 = index_cjs.FirebaseError;
-var index_cjs_17 = index_cjs.patchCapture;
-var index_cjs_18 = index_cjs.jsonEval;
-var index_cjs_19 = index_cjs.stringify;
-var index_cjs_20 = index_cjs.decode;
-var index_cjs_21 = index_cjs.isAdmin;
-var index_cjs_22 = index_cjs.issuedAtTime;
-var index_cjs_23 = index_cjs.isValidFormat;
-var index_cjs_24 = index_cjs.isValidTimestamp;
-var index_cjs_25 = index_cjs.clone;
-var index_cjs_26 = index_cjs.contains;
-var index_cjs_27 = index_cjs.every;
-var index_cjs_28 = index_cjs.extend;
-var index_cjs_29 = index_cjs.findKey;
-var index_cjs_30 = index_cjs.findValue;
-var index_cjs_31 = index_cjs.forEach;
-var index_cjs_32 = index_cjs.getAnyKey;
-var index_cjs_33 = index_cjs.getCount;
-var index_cjs_34 = index_cjs.getValues;
-var index_cjs_35 = index_cjs.isEmpty;
-var index_cjs_36 = index_cjs.isNonNullObject;
-var index_cjs_37 = index_cjs.map;
-var index_cjs_38 = index_cjs.safeGet;
-var index_cjs_39 = index_cjs.querystring;
-var index_cjs_40 = index_cjs.querystringDecode;
-var index_cjs_41 = index_cjs.Sha1;
-var index_cjs_42 = index_cjs.async;
-var index_cjs_43 = index_cjs.createSubscribe;
-var index_cjs_44 = index_cjs.errorPrefix;
-var index_cjs_45 = index_cjs.validateArgCount;
-var index_cjs_46 = index_cjs.validateCallback;
-var index_cjs_47 = index_cjs.validateContextObject;
-var index_cjs_48 = index_cjs.validateNamespace;
-var index_cjs_49 = index_cjs.stringLength;
-var index_cjs_50 = index_cjs.stringToByteArray;
-
-var index_cjs$2 = createCommonjsModule(function (module, exports) {
-
-Object.defineProperty(exports, '__esModule', { value: true });
-
-
-
-/**
- * @license
- * Copyright 2017 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-var contains = function (obj, key) {
+var contains$1 = function (obj, key) {
     return Object.prototype.hasOwnProperty.call(obj, key);
 };
 var DEFAULT_ENTRY_NAME = '[DEFAULT]';
@@ -16817,7 +11473,7 @@ var FirebaseAppImpl = /** @class */ (function () {
         this.name_ = config.name;
         this._automaticDataCollectionEnabled =
             config.automaticDataCollectionEnabled || false;
-        this.options_ = index_cjs.deepCopy(options);
+        this.options_ = deepCopy(options);
         this.INTERNAL = {
             getUid: function () { return null; },
             getToken: function () { return Promise.resolve(null); },
@@ -16922,7 +11578,7 @@ var FirebaseAppImpl = /** @class */ (function () {
     FirebaseAppImpl.prototype.extendApp = function (props) {
         var _this = this;
         // Copy the object onto the FirebaseAppImpl prototype
-        index_cjs.deepExtend(this, props);
+        deepExtend(this, props);
         /**
          * If the app has overwritten the addAuthTokenListener stub, forward
          * the active token listeners on to the true fxn.
@@ -16980,13 +11636,13 @@ function createFirebaseNamespace() {
             registerService: registerService,
             createFirebaseNamespace: createFirebaseNamespace,
             extendNamespace: extendNamespace,
-            createSubscribe: index_cjs.createSubscribe,
-            ErrorFactory: index_cjs.ErrorFactory,
+            createSubscribe: createSubscribe,
+            ErrorFactory: ErrorFactory,
             removeApp: removeApp,
             factories: factories,
             useAsService: useAsService,
             Promise: Promise,
-            deepExtend: index_cjs.deepExtend
+            deepExtend: deepExtend
         }
     };
     // Inject a circular default export to allow Babel users who were previously
@@ -16999,7 +11655,7 @@ function createFirebaseNamespace() {
     //
     //   import * as firebase from 'firebase';
     //   which becomes: var firebase = require('firebase');
-    index_cjs.patchProperty(namespace, 'default', namespace);
+    patchProperty(namespace, 'default', namespace);
     // firebase.apps is a read-only getter.
     Object.defineProperty(namespace, 'apps', {
         get: getApps
@@ -17018,12 +11674,12 @@ function createFirebaseNamespace() {
      */
     function app(name) {
         name = name || DEFAULT_ENTRY_NAME;
-        if (!contains(apps_, name)) {
+        if (!contains$1(apps_, name)) {
             error('no-app', { name: name });
         }
         return apps_[name];
     }
-    index_cjs.patchProperty(app, 'App', FirebaseAppImpl);
+    patchProperty(app, 'App', FirebaseAppImpl);
     function initializeApp(options, rawConfig) {
         if (rawConfig === void 0) { rawConfig = {}; }
         if (typeof rawConfig !== 'object' || rawConfig === null) {
@@ -17038,7 +11694,7 @@ function createFirebaseNamespace() {
         if (typeof name !== 'string' || !name) {
             error('bad-app-name', { name: name + '' });
         }
-        if (contains(apps_, name)) {
+        if (contains$1(apps_, name)) {
             error('duplicate-app', { name: name });
         }
         var app = new FirebaseAppImpl(options, config, namespace);
@@ -17088,7 +11744,7 @@ function createFirebaseNamespace() {
         };
         // ... and a container for service-level properties.
         if (serviceProperties !== undefined) {
-            index_cjs.deepExtend(serviceNamespace, serviceProperties);
+            deepExtend(serviceNamespace, serviceProperties);
         }
         // Monkey-patch the serviceNamespace onto the firebase namespace
         namespace[name] = serviceNamespace;
@@ -17109,7 +11765,7 @@ function createFirebaseNamespace() {
      * firebase.INTERNAL.extendNamespace()
      */
     function extendNamespace(props) {
-        index_cjs.deepExtend(namespace, props);
+        deepExtend(namespace, props);
     }
     function callAppHooks(app, eventName) {
         Object.keys(factories).forEach(function (serviceName) {
@@ -17154,7 +11810,7 @@ var errors = {
     'invalid-app-argument': 'firebase.{$name}() takes either no argument or a ' +
         'Firebase App instance.'
 };
-var appErrors = new index_cjs.ErrorFactory('app', 'Firebase', errors);
+var appErrors = new ErrorFactory('app', 'Firebase', errors);
 
 /**
  * @license
@@ -17176,20 +11832,12 @@ var appErrors = new index_cjs.ErrorFactory('app', 'Firebase', errors);
 var isNode = false;
 try {
     isNode =
-        Object.prototype.toString.call(commonjsGlobal.process) === '[object process]';
+        Object.prototype.toString.call(global.process) === '[object process]';
 }
 catch (e) { }
 isNode &&
     console.warn("\nWarning: This is a browser-targeted Firebase bundle but it appears it is being\nrun in a Node environment.  If running in a Node environment, make sure you\nare using the bundle specified by the \"main\" field in package.json.\n\nIf you are using Webpack, you can specify \"main\" as the first item in\n\"resolve.mainFields\":\nhttps://webpack.js.org/configuration/resolve/#resolvemainfields\n\nIf using Rollup, use the rollup-plugin-node-resolve plugin and set \"module\"\nto false and \"main\" to true:\nhttps://github.com/rollup/rollup-plugin-node-resolve\n");
 var firebase = createFirebaseNamespace();
-
-exports.firebase = firebase;
-exports.default = firebase;
-
-});
-
-var firebase = unwrapExports(index_cjs$2);
-var index_cjs_1$1 = index_cjs$2.firebase;
 
 (function() {var g,aa=aa||{},k=this;function l(a){return "string"==typeof a}function ba(a){return "boolean"==typeof a}var ca=/^[\w+/_-]+[=]{0,2}$/,da=null;function ea(){}
 function fa(a){var b=typeof a;if("object"==b)if(a){if(a instanceof Array)return "array";if(a instanceof Object)return b;var c=Object.prototype.toString.call(a);if("[object Window]"==c)return "object";if("[object Array]"==c||"number"==typeof a.length&&"undefined"!=typeof a.splice&&"undefined"!=typeof a.propertyIsEnumerable&&!a.propertyIsEnumerable("splice"))return "array";if("[object Function]"==c||"undefined"!=typeof a.call&&"undefined"!=typeof a.propertyIsEnumerable&&!a.propertyIsEnumerable("call"))return "function"}else return "null";
@@ -17525,10 +12173,6 @@ firebase.INTERNAL.registerService("auth",function(a,c){a=new fm(a);c({INTERNAL:{
  * limitations under the License.
  */
 /**
- * A container for all of the Logger instances
- */
-var instances = [];
-/**
  * The JS SDK supports 5 log levels and also allows a user the ability to
  * silence the logs altogether.
  *
@@ -17608,10 +12252,6 @@ var Logger = /** @class */ (function () {
          * The log handler for the Logger instance.
          */
         this._logHandler = defaultLogHandler;
-        /**
-         * Capture the current instance for later use
-         */
-        instances.push(this);
     }
     Object.defineProperty(Logger.prototype, "logLevel", {
         get: function () {
@@ -17696,45 +12336,6 @@ var Logger = /** @class */ (function () {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-function setLogLevel(level) {
-    instances.forEach(function (inst) {
-        inst.logLevel = level;
-    });
-}
-
-var index_esm = /*#__PURE__*/Object.freeze({
-	setLogLevel: setLogLevel,
-	Logger: Logger,
-	get LogLevel () { return LogLevel; }
-});
-
-var index_cjs$3 = createCommonjsModule(function (module, exports) {
-
-Object.defineProperty(exports, '__esModule', { value: true });
-
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var firebase = _interopDefault(index_cjs$2);
-
-
-
-
-/**
- * @license
- * Copyright 2017 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 /**
  * Wraps a DOM Storage object and:
  * - automatically encode objects as JSON strings before storing them to allow us to store arbitrary types.
@@ -17763,7 +12364,7 @@ var DOMStorageWrapper = /** @class */ (function () {
             this.domStorage_.removeItem(this.prefixedName_(key));
         }
         else {
-            this.domStorage_.setItem(this.prefixedName_(key), index_cjs.stringify(value));
+            this.domStorage_.setItem(this.prefixedName_(key), stringify(value));
         }
     };
     /**
@@ -17776,7 +12377,7 @@ var DOMStorageWrapper = /** @class */ (function () {
             return null;
         }
         else {
-            return index_cjs.jsonEval(storedVal);
+            return jsonEval(storedVal);
         }
     };
     /**
@@ -17834,7 +12435,7 @@ var MemoryStorage = /** @class */ (function () {
         }
     };
     MemoryStorage.prototype.get = function (key) {
-        if (index_cjs.contains(this.cache_, key)) {
+        if (contains(this.cache_, key)) {
             return this.cache_[key];
         }
         return null;
@@ -17909,7 +12510,7 @@ var SessionStorage = createStoragefor('sessionStorage');
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var logClient = new index_esm.Logger('@firebase/database');
+var logClient = new Logger('@firebase/database');
 /**
  * Returns a locally-unique ID (generated by just incrementing up from 0 each time its called).
  * @type {function(): number} Generated ID.
@@ -17926,11 +12527,11 @@ var LUIDGenerator = (function () {
  * @return {!string} The resulting hash
  */
 var sha1 = function (str) {
-    var utf8Bytes = index_cjs.stringToByteArray(str);
-    var sha1 = new index_cjs.Sha1();
+    var utf8Bytes = stringToByteArray$1(str);
+    var sha1 = new Sha1();
     sha1.update(utf8Bytes);
     var sha1Bytes = sha1.digest();
-    return index_cjs.base64.encodeByteArray(sha1Bytes);
+    return base64.encodeByteArray(sha1Bytes);
 };
 /**
  * @param {...*} var_args
@@ -17951,7 +12552,7 @@ var buildLogMessage_ = function () {
             message += buildLogMessage_.apply(null, var_args[i]);
         }
         else if (typeof var_args[i] === 'object') {
-            message += index_cjs.stringify(var_args[i]);
+            message += stringify(var_args[i]);
         }
         else {
             message += var_args[i];
@@ -17977,9 +12578,9 @@ var firstLog_ = true;
  * @param {boolean=} persistent Whether or not to persist logging settings across refreshes
  */
 var enableLogging = function (logger_, persistent) {
-    index_cjs.assert(!persistent || (logger_ === true || logger_ === false), "Can't turn on custom loggers persistently.");
+    assert(!persistent || (logger_ === true || logger_ === false), "Can't turn on custom loggers persistently.");
     if (logger_ === true) {
-        logClient.logLevel = index_esm.LogLevel.VERBOSE;
+        logClient.logLevel = LogLevel.VERBOSE;
         logger = logClient.log.bind(logClient);
         if (persistent)
             SessionStorage.set('logging_enabled', true);
@@ -18027,7 +12628,7 @@ var logWrapper = function (prefix) {
 /**
  * @param {...string} var_args
  */
-var error = function () {
+var error$1 = function () {
     var var_args = [];
     for (var _i = 0; _i < arguments.length; _i++) {
         var_args[_i] = arguments[_i];
@@ -18087,7 +12688,7 @@ var isInvalidJSONNumber = function (data) {
  * @param {function()} fn
  */
 var executeWhenDOMReady = function (fn) {
-    if (index_cjs.isNodeSdk() || document.readyState === 'complete') {
+    if (isNodeSdk() || document.readyState === 'complete') {
         fn();
     }
     else {
@@ -18193,7 +12794,7 @@ var requireKey = function (key, obj) {
         return obj[key];
     }
     else {
-        throw new Error('Missing required key (' + key + ') in object: ' + index_cjs.stringify(obj));
+        throw new Error('Missing required key (' + key + ') in object: ' + stringify(obj));
     }
 };
 /**
@@ -18202,7 +12803,7 @@ var requireKey = function (key, obj) {
  */
 var ObjectToUniqueKey = function (obj) {
     if (typeof obj !== 'object' || obj === null)
-        return index_cjs.stringify(obj);
+        return stringify(obj);
     var keys = [];
     for (var k in obj) {
         keys.push(k);
@@ -18213,7 +12814,7 @@ var ObjectToUniqueKey = function (obj) {
     for (var i = 0; i < keys.length; i++) {
         if (i !== 0)
             key += ',';
-        key += index_cjs.stringify(keys[i]);
+        key += stringify(keys[i]);
         key += ':';
         key += ObjectToUniqueKey(obj[keys[i]]);
     }
@@ -18261,7 +12862,7 @@ var each = function (obj, fn) {
          * a single impl that does a key, value callback. So we invert
          * to not have to touch the `each` code points
          */
-        index_cjs.forEach(obj, function (key, val) { return fn(val, key); });
+        forEach(obj, function (key, val) { return fn(val, key); });
     }
 };
 /**
@@ -18272,7 +12873,7 @@ var each = function (obj, fn) {
  * @return {string}
  */
 var doubleToIEEE754String = function (v) {
-    index_cjs.assert(!isInvalidJSONNumber(v), 'Invalid JSON number'); // MJL
+    assert(!isInvalidJSONNumber(v), 'Invalid JSON number'); // MJL
     var ebits = 11, fbits = 52;
     var bias = (1 << (ebits - 1)) - 1, s, e, f, ln, i, bits, str;
     // Compute sign, exponent, fraction
@@ -18698,7 +13299,7 @@ var ValidationPath = /** @class */ (function () {
         /** @type {number} Initialize to number of '/' chars needed in path. */
         this.byteLength_ = Math.max(1, this.parts_.length);
         for (var i = 0; i < this.parts_.length; i++) {
-            this.byteLength_ += index_cjs.stringLength(this.parts_[i]);
+            this.byteLength_ += stringLength(this.parts_[i]);
         }
         this.checkValid_();
     }
@@ -18725,12 +13326,12 @@ var ValidationPath = /** @class */ (function () {
             this.byteLength_ += 1;
         }
         this.parts_.push(child);
-        this.byteLength_ += index_cjs.stringLength(child);
+        this.byteLength_ += stringLength(child);
         this.checkValid_();
     };
     ValidationPath.prototype.pop = function () {
         var last = this.parts_.pop();
-        this.byteLength_ -= index_cjs.stringLength(last);
+        this.byteLength_ -= stringLength(last);
         // Un-count the previous '/'
         if (this.parts_.length > 0) {
             this.byteLength_ -= 1;
@@ -18859,8 +13460,8 @@ var RepoInfo = /** @class */ (function () {
      * @return {string} The URL for this repo
      */
     RepoInfo.prototype.connectionURL = function (type, params) {
-        index_cjs.assert(typeof type === 'string', 'typeof type must == string');
-        index_cjs.assert(typeof params === 'object', 'typeof params must == object');
+        assert(typeof type === 'string', 'typeof type must == string');
+        assert(typeof params === 'object', 'typeof params must == object');
         var connURL;
         if (type === WEBSOCKET) {
             connURL =
@@ -18877,7 +13478,7 @@ var RepoInfo = /** @class */ (function () {
             params['ns'] = this.namespace;
         }
         var pairs = [];
-        index_cjs.forEach(params, function (key, value) {
+        forEach(params, function (key, value) {
             pairs.push(key + '=' + value);
         });
         return connURL + pairs.join('&');
@@ -19122,7 +13723,7 @@ var isValidPriority = function (priority) {
     return (priority === null ||
         typeof priority === 'string' ||
         (typeof priority === 'number' && !isInvalidJSONNumber(priority)) ||
-        (priority && typeof priority === 'object' && index_cjs.contains(priority, '.sv')));
+        (priority && typeof priority === 'object' && contains(priority, '.sv')));
 };
 /**
  * Pre-validate a datum passed as an argument to Firebase function.
@@ -19136,7 +13737,7 @@ var isValidPriority = function (priority) {
 var validateFirebaseDataArg = function (fnName, argumentNumber, data, path, optional) {
     if (optional && data === undefined)
         return;
-    validateFirebaseData(index_cjs.errorPrefix(fnName, argumentNumber, optional), data, path);
+    validateFirebaseData(errorPrefix(fnName, argumentNumber, optional), data, path);
 };
 /**
  * Validate a data object client-side before sending to server.
@@ -19145,26 +13746,26 @@ var validateFirebaseDataArg = function (fnName, argumentNumber, data, path, opti
  * @param {*} data
  * @param {!Path|!ValidationPath} path_
  */
-var validateFirebaseData = function (errorPrefix, data, path_) {
-    var path = path_ instanceof Path ? new ValidationPath(path_, errorPrefix) : path_;
+var validateFirebaseData = function (errorPrefix$$1, data, path_) {
+    var path = path_ instanceof Path ? new ValidationPath(path_, errorPrefix$$1) : path_;
     if (data === undefined) {
-        throw new Error(errorPrefix + 'contains undefined ' + path.toErrorString());
+        throw new Error(errorPrefix$$1 + 'contains undefined ' + path.toErrorString());
     }
     if (typeof data === 'function') {
-        throw new Error(errorPrefix +
+        throw new Error(errorPrefix$$1 +
             'contains a function ' +
             path.toErrorString() +
             ' with contents = ' +
             data.toString());
     }
     if (isInvalidJSONNumber(data)) {
-        throw new Error(errorPrefix + 'contains ' + data.toString() + ' ' + path.toErrorString());
+        throw new Error(errorPrefix$$1 + 'contains ' + data.toString() + ' ' + path.toErrorString());
     }
     // Check max leaf size, but try to avoid the utf8 conversion if we can.
     if (typeof data === 'string' &&
         data.length > MAX_LEAF_SIZE_ / 3 &&
-        index_cjs.stringLength(data) > MAX_LEAF_SIZE_) {
-        throw new Error(errorPrefix +
+        stringLength(data) > MAX_LEAF_SIZE_) {
+        throw new Error(errorPrefix$$1 +
             'contains a string greater than ' +
             MAX_LEAF_SIZE_ +
             ' utf8 bytes ' +
@@ -19177,14 +13778,14 @@ var validateFirebaseData = function (errorPrefix, data, path_) {
     // to save extra walking of large objects.
     if (data && typeof data === 'object') {
         var hasDotValue_1 = false, hasActualChild_1 = false;
-        index_cjs.forEach(data, function (key, value) {
+        forEach(data, function (key, value) {
             if (key === '.value') {
                 hasDotValue_1 = true;
             }
             else if (key !== '.priority' && key !== '.sv') {
                 hasActualChild_1 = true;
                 if (!isValidKey(key)) {
-                    throw new Error(errorPrefix +
+                    throw new Error(errorPrefix$$1 +
                         ' contains an invalid key (' +
                         key +
                         ') ' +
@@ -19194,11 +13795,11 @@ var validateFirebaseData = function (errorPrefix, data, path_) {
                 }
             }
             path.push(key);
-            validateFirebaseData(errorPrefix, value, path);
+            validateFirebaseData(errorPrefix$$1, value, path);
             path.pop();
         });
         if (hasDotValue_1 && hasActualChild_1) {
-            throw new Error(errorPrefix +
+            throw new Error(errorPrefix$$1 +
                 ' contains ".value" child ' +
                 path.toErrorString() +
                 ' in addition to actual children.');
@@ -19211,7 +13812,7 @@ var validateFirebaseData = function (errorPrefix, data, path_) {
  * @param {string} errorPrefix
  * @param {Array<!Path>} mergePaths
  */
-var validateFirebaseMergePaths = function (errorPrefix, mergePaths) {
+var validateFirebaseMergePaths = function (errorPrefix$$1, mergePaths) {
     var i, curPath;
     for (i = 0; i < mergePaths.length; i++) {
         curPath = mergePaths[i];
@@ -19219,7 +13820,7 @@ var validateFirebaseMergePaths = function (errorPrefix, mergePaths) {
         for (var j = 0; j < keys.length; j++) {
             if (keys[j] === '.priority' && j === keys.length - 1) ;
             else if (!isValidKey(keys[j])) {
-                throw new Error(errorPrefix +
+                throw new Error(errorPrefix$$1 +
                     'contains an invalid key (' +
                     keys[j] +
                     ') in path ' +
@@ -19237,7 +13838,7 @@ var validateFirebaseMergePaths = function (errorPrefix, mergePaths) {
     for (i = 0; i < mergePaths.length; i++) {
         curPath = mergePaths[i];
         if (prevPath !== null && prevPath.contains(curPath)) {
-            throw new Error(errorPrefix +
+            throw new Error(errorPrefix$$1 +
                 'contains a path ' +
                 prevPath.toString() +
                 ' that is ancestor of another path ' +
@@ -19259,17 +13860,17 @@ var validateFirebaseMergePaths = function (errorPrefix, mergePaths) {
 var validateFirebaseMergeDataArg = function (fnName, argumentNumber, data, path, optional) {
     if (optional && data === undefined)
         return;
-    var errorPrefix = index_cjs.errorPrefix(fnName, argumentNumber, optional);
+    var errorPrefix$1 = errorPrefix(fnName, argumentNumber, optional);
     if (!(data && typeof data === 'object') || Array.isArray(data)) {
-        throw new Error(errorPrefix + ' must be an object containing the children to replace.');
+        throw new Error(errorPrefix$1 + ' must be an object containing the children to replace.');
     }
     var mergePaths = [];
-    index_cjs.forEach(data, function (key, value) {
+    forEach(data, function (key, value) {
         var curPath = new Path(key);
-        validateFirebaseData(errorPrefix, value, path.child(curPath));
+        validateFirebaseData(errorPrefix$1, value, path.child(curPath));
         if (curPath.getBack() === '.priority') {
             if (!isValidPriority(value)) {
-                throw new Error(errorPrefix +
+                throw new Error(errorPrefix$1 +
                     "contains an invalid value for '" +
                     curPath.toString() +
                     "', which must be a valid " +
@@ -19278,20 +13879,20 @@ var validateFirebaseMergeDataArg = function (fnName, argumentNumber, data, path,
         }
         mergePaths.push(curPath);
     });
-    validateFirebaseMergePaths(errorPrefix, mergePaths);
+    validateFirebaseMergePaths(errorPrefix$1, mergePaths);
 };
 var validatePriority = function (fnName, argumentNumber, priority, optional) {
     if (optional && priority === undefined)
         return;
     if (isInvalidJSONNumber(priority))
-        throw new Error(index_cjs.errorPrefix(fnName, argumentNumber, optional) +
+        throw new Error(errorPrefix(fnName, argumentNumber, optional) +
             'is ' +
             priority.toString() +
             ', but must be a valid Firebase priority (a string, finite number, ' +
             'server value, or null).');
     // Special case to allow importing data with a .sv.
     if (!isValidPriority(priority))
-        throw new Error(index_cjs.errorPrefix(fnName, argumentNumber, optional) +
+        throw new Error(errorPrefix(fnName, argumentNumber, optional) +
             'must be a valid Firebase priority ' +
             '(a string, finite number, server value, or null).');
 };
@@ -19306,7 +13907,7 @@ var validateEventType = function (fnName, argumentNumber, eventType, optional) {
         case 'child_moved':
             break;
         default:
-            throw new Error(index_cjs.errorPrefix(fnName, argumentNumber, optional) +
+            throw new Error(errorPrefix(fnName, argumentNumber, optional) +
                 'must be a valid event type = "value", "child_added", "child_removed", ' +
                 '"child_changed", or "child_moved".');
     }
@@ -19315,7 +13916,7 @@ var validateKey = function (fnName, argumentNumber, key, optional) {
     if (optional && key === undefined)
         return;
     if (!isValidKey(key))
-        throw new Error(index_cjs.errorPrefix(fnName, argumentNumber, optional) +
+        throw new Error(errorPrefix(fnName, argumentNumber, optional) +
             'was an invalid key = "' +
             key +
             '".  Firebase keys must be non-empty strings and ' +
@@ -19325,7 +13926,7 @@ var validatePathString = function (fnName, argumentNumber, pathString, optional)
     if (optional && pathString === undefined)
         return;
     if (!isValidPathString(pathString))
-        throw new Error(index_cjs.errorPrefix(fnName, argumentNumber, optional) +
+        throw new Error(errorPrefix(fnName, argumentNumber, optional) +
             'was an invalid path = "' +
             pathString +
             '". Paths must be non-empty strings and ' +
@@ -19351,7 +13952,7 @@ var validateUrl = function (fnName, argumentNumber, parsedUrl) {
         (!isValidKey(parsedUrl.repoInfo.namespace) &&
             parsedUrl.repoInfo.host.split(':')[0] !== 'localhost') ||
         (pathString.length !== 0 && !isValidRootPathString(pathString))) {
-        throw new Error(index_cjs.errorPrefix(fnName, argumentNumber, false) +
+        throw new Error(errorPrefix(fnName, argumentNumber, false) +
             'must be a valid firebase URL and ' +
             'the path can\'t contain ".", "#", "$", "[", or "]".');
     }
@@ -19360,7 +13961,7 @@ var validateBoolean = function (fnName, argumentNumber, bool, optional) {
     if (optional && bool === undefined)
         return;
     if (typeof bool !== 'boolean')
-        throw new Error(index_cjs.errorPrefix(fnName, argumentNumber, optional) + 'must be a boolean.');
+        throw new Error(errorPrefix(fnName, argumentNumber, optional) + 'must be a boolean.');
 };
 
 /**
@@ -19396,9 +13997,9 @@ var OnDisconnect = /** @class */ (function () {
      * @return {!firebase.Promise}
      */
     OnDisconnect.prototype.cancel = function (onComplete) {
-        index_cjs.validateArgCount('OnDisconnect.cancel', 0, 1, arguments.length);
-        index_cjs.validateCallback('OnDisconnect.cancel', 1, onComplete, true);
-        var deferred = new index_cjs.Deferred();
+        validateArgCount('OnDisconnect.cancel', 0, 1, arguments.length);
+        validateCallback('OnDisconnect.cancel', 1, onComplete, true);
+        var deferred = new Deferred();
         this.repo_.onDisconnectCancel(this.path_, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -19407,10 +14008,10 @@ var OnDisconnect = /** @class */ (function () {
      * @return {!firebase.Promise}
      */
     OnDisconnect.prototype.remove = function (onComplete) {
-        index_cjs.validateArgCount('OnDisconnect.remove', 0, 1, arguments.length);
+        validateArgCount('OnDisconnect.remove', 0, 1, arguments.length);
         validateWritablePath('OnDisconnect.remove', this.path_);
-        index_cjs.validateCallback('OnDisconnect.remove', 1, onComplete, true);
-        var deferred = new index_cjs.Deferred();
+        validateCallback('OnDisconnect.remove', 1, onComplete, true);
+        var deferred = new Deferred();
         this.repo_.onDisconnectSet(this.path_, null, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -19420,11 +14021,11 @@ var OnDisconnect = /** @class */ (function () {
      * @return {!firebase.Promise}
      */
     OnDisconnect.prototype.set = function (value, onComplete) {
-        index_cjs.validateArgCount('OnDisconnect.set', 1, 2, arguments.length);
+        validateArgCount('OnDisconnect.set', 1, 2, arguments.length);
         validateWritablePath('OnDisconnect.set', this.path_);
         validateFirebaseDataArg('OnDisconnect.set', 1, value, this.path_, false);
-        index_cjs.validateCallback('OnDisconnect.set', 2, onComplete, true);
-        var deferred = new index_cjs.Deferred();
+        validateCallback('OnDisconnect.set', 2, onComplete, true);
+        var deferred = new Deferred();
         this.repo_.onDisconnectSet(this.path_, value, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -19435,12 +14036,12 @@ var OnDisconnect = /** @class */ (function () {
      * @return {!firebase.Promise}
      */
     OnDisconnect.prototype.setWithPriority = function (value, priority, onComplete) {
-        index_cjs.validateArgCount('OnDisconnect.setWithPriority', 2, 3, arguments.length);
+        validateArgCount('OnDisconnect.setWithPriority', 2, 3, arguments.length);
         validateWritablePath('OnDisconnect.setWithPriority', this.path_);
         validateFirebaseDataArg('OnDisconnect.setWithPriority', 1, value, this.path_, false);
         validatePriority('OnDisconnect.setWithPriority', 2, priority, false);
-        index_cjs.validateCallback('OnDisconnect.setWithPriority', 3, onComplete, true);
-        var deferred = new index_cjs.Deferred();
+        validateCallback('OnDisconnect.setWithPriority', 3, onComplete, true);
+        var deferred = new Deferred();
         this.repo_.onDisconnectSetWithPriority(this.path_, value, priority, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -19450,7 +14051,7 @@ var OnDisconnect = /** @class */ (function () {
      * @return {!firebase.Promise}
      */
     OnDisconnect.prototype.update = function (objectToMerge, onComplete) {
-        index_cjs.validateArgCount('OnDisconnect.update', 1, 2, arguments.length);
+        validateArgCount('OnDisconnect.update', 1, 2, arguments.length);
         validateWritablePath('OnDisconnect.update', this.path_);
         if (Array.isArray(objectToMerge)) {
             var newObjectToMerge = {};
@@ -19462,8 +14063,8 @@ var OnDisconnect = /** @class */ (function () {
                 'existing data, or an Object with integer keys if you really do want to only update some of the children.');
         }
         validateFirebaseMergeDataArg('OnDisconnect.update', 1, objectToMerge, this.path_, false);
-        index_cjs.validateCallback('OnDisconnect.update', 2, onComplete, true);
-        var deferred = new index_cjs.Deferred();
+        validateCallback('OnDisconnect.update', 2, onComplete, true);
+        var deferred = new Deferred();
         this.repo_.onDisconnectUpdate(this.path_, objectToMerge, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -19501,7 +14102,7 @@ var TransactionResult = /** @class */ (function () {
     // Do not create public documentation. This is intended to make JSON serialization work but is otherwise unnecessary
     // for end-users
     TransactionResult.prototype.toJSON = function () {
-        index_cjs.validateArgCount('TransactionResult.toJSON', 0, 1, arguments.length);
+        validateArgCount('TransactionResult.toJSON', 0, 1, arguments.length);
         return { committed: this.committed, snapshot: this.snapshot.toJSON() };
     };
     return TransactionResult;
@@ -19559,7 +14160,7 @@ var nextPushId = (function () {
             // the upper bits.
             now = Math.floor(now / 64);
         }
-        index_cjs.assert(now === 0, 'Cannot push at time == 0');
+        assert(now === 0, 'Cannot push at time == 0');
         var id = timeStampChars.join('');
         if (!duplicateTime) {
             for (i = 0; i < 12; i++) {
@@ -19577,7 +14178,7 @@ var nextPushId = (function () {
         for (i = 0; i < 12; i++) {
             id += PUSH_CHARS.charAt(lastRandChars[i]);
         }
-        index_cjs.assert(id.length === 20, 'nextPushId: Length should be 20.');
+        assert(id.length === 20, 'nextPushId: Length should be 20.');
         return id;
     };
 })();
@@ -19693,7 +14294,7 @@ var Index = /** @class */ (function () {
  */
 var __EMPTY_NODE;
 var KeyIndex = /** @class */ (function (_super) {
-    tslib_1.__extends(KeyIndex, _super);
+    __extends(KeyIndex, _super);
     function KeyIndex() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -19719,7 +14320,7 @@ var KeyIndex = /** @class */ (function (_super) {
     KeyIndex.prototype.isDefinedOn = function (node) {
         // We could probably return true here (since every node has a key), but it's never called
         // so just leaving unimplemented for now.
-        throw index_cjs.assertionError('KeyIndex.isDefinedOn not expected to be called.');
+        throw assertionError('KeyIndex.isDefinedOn not expected to be called.');
     };
     /**
      * @inheritDoc
@@ -19747,7 +14348,7 @@ var KeyIndex = /** @class */ (function (_super) {
      * @return {!NamedNode}
      */
     KeyIndex.prototype.makePost = function (indexValue, name) {
-        index_cjs.assert(typeof indexValue === 'string', 'KeyIndex indexValue must always be a string.');
+        assert(typeof indexValue === 'string', 'KeyIndex indexValue must always be a string.');
         // We just use empty node, but it'll never be compared, since our comparator only looks at name.
         return new NamedNode(indexValue, __EMPTY_NODE);
     };
@@ -19799,15 +14400,15 @@ var priorityHashText = function (priority) {
 var validatePriorityNode = function (priorityNode) {
     if (priorityNode.isLeafNode()) {
         var val = priorityNode.val();
-        index_cjs.assert(typeof val === 'string' ||
+        assert(typeof val === 'string' ||
             typeof val === 'number' ||
-            (typeof val === 'object' && index_cjs.contains(val, '.sv')), 'Priority must be a string or number.');
+            (typeof val === 'object' && contains(val, '.sv')), 'Priority must be a string or number.');
     }
     else {
-        index_cjs.assert(priorityNode === MAX_NODE || priorityNode.isEmpty(), 'priority of unexpected type.');
+        assert(priorityNode === MAX_NODE || priorityNode.isEmpty(), 'priority of unexpected type.');
     }
     // Don't call getPriority() on MAX_NODE to avoid hitting assertion.
-    index_cjs.assert(priorityNode === MAX_NODE || priorityNode.getPriority().isEmpty(), "Priority nodes can't have a priority of their own.");
+    assert(priorityNode === MAX_NODE || priorityNode.getPriority().isEmpty(), "Priority nodes can't have a priority of their own.");
 };
 
 /**
@@ -19844,7 +14445,7 @@ var LeafNode = /** @class */ (function () {
         this.value_ = value_;
         this.priorityNode_ = priorityNode_;
         this.lazyHash_ = null;
-        index_cjs.assert(this.value_ !== undefined && this.value_ !== null, "LeafNode shouldn't be created with null/undefined value.");
+        assert(this.value_ !== undefined && this.value_ !== null, "LeafNode shouldn't be created with null/undefined value.");
         validatePriorityNode(this.priorityNode_);
     }
     Object.defineProperty(LeafNode, "__childrenNodeConstructor", {
@@ -19923,7 +14524,7 @@ var LeafNode = /** @class */ (function () {
             return this;
         }
         else {
-            index_cjs.assert(front !== '.priority' || path.getLength() === 1, '.priority must be the last token in a path');
+            assert(front !== '.priority' || path.getLength() === 1, '.priority must be the last token in a path');
             return this.updateImmediateChild(front, LeafNode.__childrenNodeConstructor.EMPTY_NODE.updateChild(path.popFront(), newChildNode));
         }
     };
@@ -19990,7 +14591,7 @@ var LeafNode = /** @class */ (function () {
             return -1;
         }
         else {
-            index_cjs.assert(other.isLeafNode(), 'Unknown node type');
+            assert(other.isLeafNode(), 'Unknown node type');
             return this.compareToLeafNode_(other);
         }
     };
@@ -20005,8 +14606,8 @@ var LeafNode = /** @class */ (function () {
         var thisLeafType = typeof this.value_;
         var otherIndex = LeafNode.VALUE_TYPE_ORDER.indexOf(otherLeafType);
         var thisIndex = LeafNode.VALUE_TYPE_ORDER.indexOf(thisLeafType);
-        index_cjs.assert(otherIndex >= 0, 'Unknown leaf type: ' + otherLeafType);
-        index_cjs.assert(thisIndex >= 0, 'Unknown leaf type: ' + thisLeafType);
+        assert(otherIndex >= 0, 'Unknown leaf type: ' + otherLeafType);
+        assert(thisIndex >= 0, 'Unknown leaf type: ' + thisLeafType);
         if (otherIndex === thisIndex) {
             // Same type, compare values
             if (thisLeafType === 'object') {
@@ -20101,7 +14702,7 @@ function setMaxNode$1(val) {
  * @private
  */
 var PriorityIndex = /** @class */ (function (_super) {
-    tslib_1.__extends(PriorityIndex, _super);
+    __extends(PriorityIndex, _super);
     function PriorityIndex() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -20976,7 +15577,7 @@ var IndexMap = /** @class */ (function () {
          * @const
          */
         get: function () {
-            index_cjs.assert(fallbackObject && PRIORITY_INDEX, 'ChildrenNode.ts has not been loaded');
+            assert(fallbackObject && PRIORITY_INDEX, 'ChildrenNode.ts has not been loaded');
             _defaultIndexMap =
                 _defaultIndexMap ||
                     new IndexMap({ '.priority': fallbackObject }, { '.priority': PRIORITY_INDEX });
@@ -20991,7 +15592,7 @@ var IndexMap = /** @class */ (function () {
      * @return {?SortedMap.<NamedNode, Node>}
      */
     IndexMap.prototype.get = function (indexKey) {
-        var sortedMap = index_cjs.safeGet(this.indexes_, indexKey);
+        var sortedMap = safeGet(this.indexes_, indexKey);
         if (!sortedMap)
             throw new Error('No index defined for ' + indexKey);
         if (sortedMap === fallbackObject) {
@@ -21008,7 +15609,7 @@ var IndexMap = /** @class */ (function () {
      * @return {boolean}
      */
     IndexMap.prototype.hasIndex = function (indexDefinition) {
-        return index_cjs.contains(this.indexSet_, indexDefinition.toString());
+        return contains(this.indexSet_, indexDefinition.toString());
     };
     /**
      * @param {!Index} indexDefinition
@@ -21016,7 +15617,7 @@ var IndexMap = /** @class */ (function () {
      * @return {!IndexMap}
      */
     IndexMap.prototype.addIndex = function (indexDefinition, existingChildren) {
-        index_cjs.assert(indexDefinition !== KEY_INDEX, "KeyIndex always exists and isn't meant to be added to the IndexMap.");
+        assert(indexDefinition !== KEY_INDEX, "KeyIndex always exists and isn't meant to be added to the IndexMap.");
         var childList = [];
         var sawIndexedValue = false;
         var iter = existingChildren.getIterator(NamedNode.Wrap);
@@ -21035,9 +15636,9 @@ var IndexMap = /** @class */ (function () {
             newIndex = fallbackObject;
         }
         var indexName = indexDefinition.toString();
-        var newIndexSet = index_cjs.clone(this.indexSet_);
+        var newIndexSet = clone(this.indexSet_);
         newIndexSet[indexName] = indexDefinition;
-        var newIndexes = index_cjs.clone(this.indexes_);
+        var newIndexes = clone(this.indexes_);
         newIndexes[indexName] = newIndex;
         return new IndexMap(newIndexes, newIndexSet);
     };
@@ -21049,9 +15650,9 @@ var IndexMap = /** @class */ (function () {
      */
     IndexMap.prototype.addToIndexes = function (namedNode, existingChildren) {
         var _this = this;
-        var newIndexes = index_cjs.map(this.indexes_, function (indexedChildren, indexName) {
-            var index = index_cjs.safeGet(_this.indexSet_, indexName);
-            index_cjs.assert(index, 'Missing index implementation for ' + indexName);
+        var newIndexes = map(this.indexes_, function (indexedChildren, indexName) {
+            var index = safeGet(_this.indexSet_, indexName);
+            assert(index, 'Missing index implementation for ' + indexName);
             if (indexedChildren === fallbackObject) {
                 // Check to see if we need to index everything
                 if (index.isDefinedOn(namedNode.node)) {
@@ -21091,7 +15692,7 @@ var IndexMap = /** @class */ (function () {
      * @return {!IndexMap}
      */
     IndexMap.prototype.removeFromIndexes = function (namedNode, existingChildren) {
-        var newIndexes = index_cjs.map(this.indexes_, function (indexedChildren) {
+        var newIndexes = map(this.indexes_, function (indexedChildren) {
             if (indexedChildren === fallbackObject) {
                 // This is the fallback. Just return it, nothing to do in this case
                 return indexedChildren;
@@ -21183,7 +15784,7 @@ var ChildrenNode = /** @class */ (function () {
             validatePriorityNode(this.priorityNode_);
         }
         if (this.children_.isEmpty()) {
-            index_cjs.assert(!this.priorityNode_ || this.priorityNode_.isEmpty(), 'An empty node cannot have a priority');
+            assert(!this.priorityNode_ || this.priorityNode_.isEmpty(), 'An empty node cannot have a priority');
         }
     }
     Object.defineProperty(ChildrenNode, "EMPTY_NODE", {
@@ -21236,7 +15837,7 @@ var ChildrenNode = /** @class */ (function () {
     };
     /** @inheritDoc */
     ChildrenNode.prototype.updateImmediateChild = function (childName, newChildNode) {
-        index_cjs.assert(newChildNode, 'We should always be passing snapshot nodes');
+        assert(newChildNode, 'We should always be passing snapshot nodes');
         if (childName === '.priority') {
             return this.updatePriority(newChildNode);
         }
@@ -21262,7 +15863,7 @@ var ChildrenNode = /** @class */ (function () {
             return newChildNode;
         }
         else {
-            index_cjs.assert(path.getFront() !== '.priority' || path.getLength() === 1, '.priority must be the last token in a path');
+            assert(path.getFront() !== '.priority' || path.getLength() === 1, '.priority must be the last token in a path');
             var newImmediateChild = this.getImmediateChild(front).updateChild(path.popFront(), newChildNode);
             return this.updateImmediateChild(front, newImmediateChild);
         }
@@ -21566,7 +16167,7 @@ var ChildrenNode = /** @class */ (function () {
  * @private
  */
 var MaxNode = /** @class */ (function (_super) {
-    tslib_1.__extends(MaxNode, _super);
+    __extends(MaxNode, _super);
     function MaxNode() {
         return _super.call(this, new SortedMap(NAME_COMPARATOR), ChildrenNode.EMPTY_NODE, IndexMap.Default) || this;
     }
@@ -21647,7 +16248,7 @@ function nodeFromJSON$1(json, priority) {
     if (typeof json === 'object' && '.priority' in json) {
         priority = json['.priority'];
     }
-    index_cjs.assert(priority === null ||
+    assert(priority === null ||
         typeof priority === 'string' ||
         typeof priority === 'number' ||
         (typeof priority === 'object' && '.sv' in priority), 'Invalid priority type found: ' + typeof priority);
@@ -21663,7 +16264,7 @@ function nodeFromJSON$1(json, priority) {
         var children_1 = [];
         var childrenHavePriority_1 = false;
         var hinzeJsonObj_1 = json;
-        index_cjs.forEach(hinzeJsonObj_1, function (key, child) {
+        forEach(hinzeJsonObj_1, function (key, child) {
             if (typeof key !== 'string' || key.substring(0, 1) !== '.') {
                 // Ignore metadata nodes
                 var childNode = nodeFromJSON$1(hinzeJsonObj_1[key]);
@@ -21689,8 +16290,8 @@ function nodeFromJSON$1(json, priority) {
     else {
         var node_1 = ChildrenNode.EMPTY_NODE;
         var jsonObj_1 = json;
-        index_cjs.forEach(jsonObj_1, function (key, childData) {
-            if (index_cjs.contains(jsonObj_1, key)) {
+        forEach(jsonObj_1, function (key, childData) {
+            if (contains(jsonObj_1, key)) {
                 if (key.substring(0, 1) !== '.') {
                     // ignore metadata nodes.
                     var childNode = nodeFromJSON$1(childData);
@@ -21726,7 +16327,7 @@ setNodeFromJSON(nodeFromJSON$1);
  * @private
  */
 var ValueIndex = /** @class */ (function (_super) {
-    tslib_1.__extends(ValueIndex, _super);
+    __extends(ValueIndex, _super);
     function ValueIndex() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -21807,11 +16408,11 @@ var VALUE_INDEX = new ValueIndex();
  * @extends {Index}
  */
 var PathIndex = /** @class */ (function (_super) {
-    tslib_1.__extends(PathIndex, _super);
+    __extends(PathIndex, _super);
     function PathIndex(indexPath_) {
         var _this = _super.call(this) || this;
         _this.indexPath_ = indexPath_;
-        index_cjs.assert(!indexPath_.isEmpty() && indexPath_.getFront() !== '.priority', "Can't create PathIndex with empty path or .priority key");
+        assert(!indexPath_.isEmpty() && indexPath_.getFront() !== '.priority', "Can't create PathIndex with empty path or .priority key");
         return _this;
     }
     /**
@@ -21904,7 +16505,7 @@ var DataSnapshot = /** @class */ (function () {
      * @return {*} JSON representation of the DataSnapshot contents, or null if empty.
      */
     DataSnapshot.prototype.val = function () {
-        index_cjs.validateArgCount('DataSnapshot.val', 0, 0, arguments.length);
+        validateArgCount('DataSnapshot.val', 0, 0, arguments.length);
         return this.node_.val();
     };
     /**
@@ -21913,14 +16514,14 @@ var DataSnapshot = /** @class */ (function () {
      * @return {*} JSON representation of the DataSnapshot contents, or null if empty.
      */
     DataSnapshot.prototype.exportVal = function () {
-        index_cjs.validateArgCount('DataSnapshot.exportVal', 0, 0, arguments.length);
+        validateArgCount('DataSnapshot.exportVal', 0, 0, arguments.length);
         return this.node_.val(true);
     };
     // Do not create public documentation. This is intended to make JSON serialization work but is otherwise unnecessary
     // for end-users
     DataSnapshot.prototype.toJSON = function () {
         // Optional spacer argument is unnecessary because we're depending on recursion rather than stringifying the content
-        index_cjs.validateArgCount('DataSnapshot.toJSON', 0, 1, arguments.length);
+        validateArgCount('DataSnapshot.toJSON', 0, 1, arguments.length);
         return this.exportVal();
     };
     /**
@@ -21929,7 +16530,7 @@ var DataSnapshot = /** @class */ (function () {
      * @return {boolean} Whether the snapshot contains a non-null value, or is empty.
      */
     DataSnapshot.prototype.exists = function () {
-        index_cjs.validateArgCount('DataSnapshot.exists', 0, 0, arguments.length);
+        validateArgCount('DataSnapshot.exists', 0, 0, arguments.length);
         return !this.node_.isEmpty();
     };
     /**
@@ -21939,7 +16540,7 @@ var DataSnapshot = /** @class */ (function () {
      * @return {!DataSnapshot} DataSnapshot for child node.
      */
     DataSnapshot.prototype.child = function (childPathString) {
-        index_cjs.validateArgCount('DataSnapshot.child', 0, 1, arguments.length);
+        validateArgCount('DataSnapshot.child', 0, 1, arguments.length);
         // Ensure the childPath is a string (can be a number)
         childPathString = String(childPathString);
         validatePathString('DataSnapshot.child', 1, childPathString, false);
@@ -21954,7 +16555,7 @@ var DataSnapshot = /** @class */ (function () {
      * @return {boolean} Whether the child exists.
      */
     DataSnapshot.prototype.hasChild = function (childPathString) {
-        index_cjs.validateArgCount('DataSnapshot.hasChild', 1, 1, arguments.length);
+        validateArgCount('DataSnapshot.hasChild', 1, 1, arguments.length);
         validatePathString('DataSnapshot.hasChild', 1, childPathString, false);
         var childPath = new Path(childPathString);
         return !this.node_.getChild(childPath).isEmpty();
@@ -21965,7 +16566,7 @@ var DataSnapshot = /** @class */ (function () {
      * @return {string|number|null} The priority.
      */
     DataSnapshot.prototype.getPriority = function () {
-        index_cjs.validateArgCount('DataSnapshot.getPriority', 0, 0, arguments.length);
+        validateArgCount('DataSnapshot.getPriority', 0, 0, arguments.length);
         // typecast here because we never return deferred values or internal priorities (MAX_PRIORITY)
         return this.node_.getPriority().val();
     };
@@ -21979,8 +16580,8 @@ var DataSnapshot = /** @class */ (function () {
      */
     DataSnapshot.prototype.forEach = function (action) {
         var _this = this;
-        index_cjs.validateArgCount('DataSnapshot.forEach', 1, 1, arguments.length);
-        index_cjs.validateCallback('DataSnapshot.forEach', 1, action, false);
+        validateArgCount('DataSnapshot.forEach', 1, 1, arguments.length);
+        validateCallback('DataSnapshot.forEach', 1, action, false);
         if (this.node_.isLeafNode())
             return false;
         var childrenNode = this.node_;
@@ -21994,7 +16595,7 @@ var DataSnapshot = /** @class */ (function () {
      * @return {boolean} True if the DataSnapshot contains 1 or more child nodes.
      */
     DataSnapshot.prototype.hasChildren = function () {
-        index_cjs.validateArgCount('DataSnapshot.hasChildren', 0, 0, arguments.length);
+        validateArgCount('DataSnapshot.hasChildren', 0, 0, arguments.length);
         if (this.node_.isLeafNode())
             return false;
         else
@@ -22012,14 +16613,14 @@ var DataSnapshot = /** @class */ (function () {
      * @return {number} The number of children that this DataSnapshot contains.
      */
     DataSnapshot.prototype.numChildren = function () {
-        index_cjs.validateArgCount('DataSnapshot.numChildren', 0, 0, arguments.length);
+        validateArgCount('DataSnapshot.numChildren', 0, 0, arguments.length);
         return this.node_.numChildren();
     };
     /**
      * @return {Reference} The Firebase reference for the location this snapshot's data came from.
      */
     DataSnapshot.prototype.getRef = function () {
-        index_cjs.validateArgCount('DataSnapshot.ref', 0, 0, arguments.length);
+        validateArgCount('DataSnapshot.ref', 0, 0, arguments.length);
         return this.ref_;
     };
     Object.defineProperty(DataSnapshot.prototype, "ref", {
@@ -22097,7 +16698,7 @@ var DataEvent = /** @class */ (function () {
             ':' +
             this.eventType +
             ':' +
-            index_cjs.stringify(this.snapshot.exportVal()));
+            stringify(this.snapshot.exportVal()));
     };
     return DataEvent;
 }());
@@ -22188,7 +16789,7 @@ var ValueEventRegistration = /** @class */ (function () {
     ValueEventRegistration.prototype.getEventRunner = function (eventData) {
         var ctx = this.context_;
         if (eventData.getEventType() === 'cancel') {
-            index_cjs.assert(this.cancelCallback_, 'Raising a cancel event on a listener with no cancel callback');
+            assert(this.cancelCallback_, 'Raising a cancel event on a listener with no cancel callback');
             var cancelCB_1 = this.cancelCallback_;
             return function () {
                 // We know that error exists, we checked above that this is a cancel event
@@ -22263,7 +16864,7 @@ var ChildEventRegistration = /** @class */ (function () {
         var eventToCheck = eventType === 'children_added' ? 'child_added' : eventType;
         eventToCheck =
             eventToCheck === 'children_removed' ? 'child_removed' : eventToCheck;
-        return index_cjs.contains(this.callbacks_, eventToCheck);
+        return contains(this.callbacks_, eventToCheck);
     };
     /**
      * @inheritDoc
@@ -22280,7 +16881,7 @@ var ChildEventRegistration = /** @class */ (function () {
      * @inheritDoc
      */
     ChildEventRegistration.prototype.createEvent = function (change, query) {
-        index_cjs.assert(change.childName != null, 'Child events should have a childName.');
+        assert(change.childName != null, 'Child events should have a childName.');
         var ref = query.getRef().child(/** @type {!string} */ (change.childName));
         var index = query.getQueryParams().getIndex();
         return new DataEvent(change.type, this, new DataSnapshot(change.snapshotNode, ref, index), change.prevName);
@@ -22291,7 +16892,7 @@ var ChildEventRegistration = /** @class */ (function () {
     ChildEventRegistration.prototype.getEventRunner = function (eventData) {
         var ctx = this.context_;
         if (eventData.getEventType() === 'cancel') {
-            index_cjs.assert(this.cancelCallback_, 'Raising a cancel event on a listener with no cancel callback');
+            assert(this.cancelCallback_, 'Raising a cancel event on a listener with no cancel callback');
             var cancelCB_2 = this.cancelCallback_;
             return function () {
                 // We know that error exists, we checked above that this is a cancel event
@@ -22314,15 +16915,15 @@ var ChildEventRegistration = /** @class */ (function () {
                 return true;
             }
             else if (this.context_ === other.context_) {
-                var otherCount = index_cjs.getCount(other.callbacks_);
-                var thisCount = index_cjs.getCount(this.callbacks_);
+                var otherCount = getCount(other.callbacks_);
+                var thisCount = getCount(this.callbacks_);
                 if (otherCount === thisCount) {
                     // If count is 1, do an exact match on eventType, if either is defined but null, it's a match.
                     //  If event types don't match, not a match
                     // If count is not 1, exact match across all
                     if (otherCount === 1) {
-                        var otherKey /** @type {!string} */ = index_cjs.getAnyKey(other.callbacks_);
-                        var thisKey /** @type {!string} */ = index_cjs.getAnyKey(this.callbacks_);
+                        var otherKey /** @type {!string} */ = getAnyKey(other.callbacks_);
+                        var thisKey /** @type {!string} */ = getAnyKey(this.callbacks_);
                         return (thisKey === otherKey &&
                             (!other.callbacks_[otherKey] ||
                                 !this.callbacks_[thisKey] ||
@@ -22330,7 +16931,7 @@ var ChildEventRegistration = /** @class */ (function () {
                     }
                     else {
                         // Exact match on each key.
-                        return index_cjs.every(this.callbacks_, function (eventType, cb) { return other.callbacks_[eventType] === cb; });
+                        return every(this.callbacks_, function (eventType, cb) { return other.callbacks_[eventType] === cb; });
                     }
                 }
             }
@@ -22378,7 +16979,7 @@ var Query = /** @class */ (function () {
     }
     Object.defineProperty(Query, "__referenceConstructor", {
         get: function () {
-            index_cjs.assert(__referenceConstructor, 'Reference.ts has not been loaded');
+            assert(__referenceConstructor, 'Reference.ts has not been loaded');
             return __referenceConstructor;
         },
         set: function (val) {
@@ -22433,7 +17034,7 @@ var Query = /** @class */ (function () {
             }
         }
         else {
-            index_cjs.assert(params.getIndex() instanceof PathIndex ||
+            assert(params.getIndex() instanceof PathIndex ||
                 params.getIndex() === VALUE_INDEX, 'unknown index type.');
             if ((startNode != null && typeof startNode === 'object') ||
                 (endNode != null && typeof endNode === 'object')) {
@@ -22475,7 +17076,7 @@ var Query = /** @class */ (function () {
      * @return {!Reference}
      */
     Query.prototype.getRef = function () {
-        index_cjs.validateArgCount('Query.ref', 0, 0, arguments.length);
+        validateArgCount('Query.ref', 0, 0, arguments.length);
         // This is a slight hack. We cannot goog.require('fb.api.Firebase'), since Firebase requires fb.api.Query.
         // However, we will always export 'Firebase' to the global namespace, so it's guaranteed to exist by the time this
         // method gets called.
@@ -22489,9 +17090,9 @@ var Query = /** @class */ (function () {
      * @return {!function(DataSnapshot, string=)}
      */
     Query.prototype.on = function (eventType, callback, cancelCallbackOrContext, context) {
-        index_cjs.validateArgCount('Query.on', 2, 4, arguments.length);
+        validateArgCount('Query.on', 2, 4, arguments.length);
         validateEventType('Query.on', 1, eventType, false);
-        index_cjs.validateCallback('Query.on', 2, callback, false);
+        validateCallback('Query.on', 2, callback, false);
         var ret = Query.getCancelAndContextArgs_('Query.on', cancelCallbackOrContext, context);
         if (eventType === 'value') {
             this.onValueEvent(callback, ret.cancel, ret.context);
@@ -22529,10 +17130,10 @@ var Query = /** @class */ (function () {
      * @param {Object=} context
      */
     Query.prototype.off = function (eventType, callback, context) {
-        index_cjs.validateArgCount('Query.off', 0, 3, arguments.length);
+        validateArgCount('Query.off', 0, 3, arguments.length);
         validateEventType('Query.off', 1, eventType, true);
-        index_cjs.validateCallback('Query.off', 2, callback, true);
-        index_cjs.validateContextObject('Query.off', 3, context, true);
+        validateCallback('Query.off', 2, callback, true);
+        validateContextObject('Query.off', 3, context, true);
         var container = null;
         var callbacks = null;
         if (eventType === 'value') {
@@ -22558,16 +17159,16 @@ var Query = /** @class */ (function () {
      */
     Query.prototype.once = function (eventType, userCallback, cancelOrContext, context) {
         var _this = this;
-        index_cjs.validateArgCount('Query.once', 1, 4, arguments.length);
+        validateArgCount('Query.once', 1, 4, arguments.length);
         validateEventType('Query.once', 1, eventType, false);
-        index_cjs.validateCallback('Query.once', 2, userCallback, true);
+        validateCallback('Query.once', 2, userCallback, true);
         var ret = Query.getCancelAndContextArgs_('Query.once', cancelOrContext, context);
         // TODO: Implement this more efficiently (in particular, use 'get' wire protocol for 'value' event)
         // TODO: consider actually wiring the callbacks into the promise. We cannot do this without a breaking change
         // because the API currently expects callbacks will be called synchronously if the data is cached, but this is
         // against the Promise specification.
         var firstCall = true;
-        var deferred = new index_cjs.Deferred();
+        var deferred = new Deferred();
         // A dummy error handler in case a user wasn't expecting promises
         deferred.promise.catch(function () { });
         var onceCallback = function (snapshot) {
@@ -22597,7 +17198,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.limitToFirst = function (limit) {
-        index_cjs.validateArgCount('Query.limitToFirst', 1, 1, arguments.length);
+        validateArgCount('Query.limitToFirst', 1, 1, arguments.length);
         if (typeof limit !== 'number' ||
             Math.floor(limit) !== limit ||
             limit <= 0) {
@@ -22615,7 +17216,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.limitToLast = function (limit) {
-        index_cjs.validateArgCount('Query.limitToLast', 1, 1, arguments.length);
+        validateArgCount('Query.limitToLast', 1, 1, arguments.length);
         if (typeof limit !== 'number' ||
             Math.floor(limit) !== limit ||
             limit <= 0) {
@@ -22633,7 +17234,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.orderByChild = function (path) {
-        index_cjs.validateArgCount('Query.orderByChild', 1, 1, arguments.length);
+        validateArgCount('Query.orderByChild', 1, 1, arguments.length);
         if (path === '$key') {
             throw new Error('Query.orderByChild: "$key" is invalid.  Use Query.orderByKey() instead.');
         }
@@ -22659,7 +17260,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.orderByKey = function () {
-        index_cjs.validateArgCount('Query.orderByKey', 0, 0, arguments.length);
+        validateArgCount('Query.orderByKey', 0, 0, arguments.length);
         this.validateNoPreviousOrderByCall_('Query.orderByKey');
         var newParams = this.queryParams_.orderBy(KEY_INDEX);
         Query.validateQueryEndpoints_(newParams);
@@ -22670,7 +17271,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.orderByPriority = function () {
-        index_cjs.validateArgCount('Query.orderByPriority', 0, 0, arguments.length);
+        validateArgCount('Query.orderByPriority', 0, 0, arguments.length);
         this.validateNoPreviousOrderByCall_('Query.orderByPriority');
         var newParams = this.queryParams_.orderBy(PRIORITY_INDEX);
         Query.validateQueryEndpoints_(newParams);
@@ -22681,7 +17282,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.orderByValue = function () {
-        index_cjs.validateArgCount('Query.orderByValue', 0, 0, arguments.length);
+        validateArgCount('Query.orderByValue', 0, 0, arguments.length);
         this.validateNoPreviousOrderByCall_('Query.orderByValue');
         var newParams = this.queryParams_.orderBy(VALUE_INDEX);
         Query.validateQueryEndpoints_(newParams);
@@ -22694,7 +17295,7 @@ var Query = /** @class */ (function () {
      */
     Query.prototype.startAt = function (value, name) {
         if (value === void 0) { value = null; }
-        index_cjs.validateArgCount('Query.startAt', 0, 2, arguments.length);
+        validateArgCount('Query.startAt', 0, 2, arguments.length);
         validateFirebaseDataArg('Query.startAt', 1, value, this.path, true);
         validateKey('Query.startAt', 2, name, true);
         var newParams = this.queryParams_.startAt(value, name);
@@ -22718,7 +17319,7 @@ var Query = /** @class */ (function () {
      */
     Query.prototype.endAt = function (value, name) {
         if (value === void 0) { value = null; }
-        index_cjs.validateArgCount('Query.endAt', 0, 2, arguments.length);
+        validateArgCount('Query.endAt', 0, 2, arguments.length);
         validateFirebaseDataArg('Query.endAt', 1, value, this.path, true);
         validateKey('Query.endAt', 2, name, true);
         var newParams = this.queryParams_.endAt(value, name);
@@ -22738,7 +17339,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.equalTo = function (value, name) {
-        index_cjs.validateArgCount('Query.equalTo', 1, 2, arguments.length);
+        validateArgCount('Query.equalTo', 1, 2, arguments.length);
         validateFirebaseDataArg('Query.equalTo', 1, value, this.path, false);
         validateKey('Query.equalTo', 2, name, true);
         if (this.queryParams_.hasStart()) {
@@ -22755,14 +17356,14 @@ var Query = /** @class */ (function () {
      * @return {!string} URL for this location.
      */
     Query.prototype.toString = function () {
-        index_cjs.validateArgCount('Query.toString', 0, 0, arguments.length);
+        validateArgCount('Query.toString', 0, 0, arguments.length);
         return this.repo.toString() + this.path.toUrlEncodedString();
     };
     // Do not create public documentation. This is intended to make JSON serialization work but is otherwise unnecessary
     // for end-users.
     Query.prototype.toJSON = function () {
         // An optional spacer argument is unnecessary for a string.
-        index_cjs.validateArgCount('Query.toJSON', 0, 1, arguments.length);
+        validateArgCount('Query.toJSON', 0, 1, arguments.length);
         return this.toString();
     };
     /**
@@ -22786,7 +17387,7 @@ var Query = /** @class */ (function () {
      * @return {boolean}
      */
     Query.prototype.isEqual = function (other) {
-        index_cjs.validateArgCount('Query.isEqual', 1, 1, arguments.length);
+        validateArgCount('Query.isEqual', 1, 1, arguments.length);
         if (!(other instanceof Query)) {
             var error = 'Query.isEqual failed: First argument must be an instance of firebase.database.Query.';
             throw new Error(error);
@@ -22808,9 +17409,9 @@ var Query = /** @class */ (function () {
         var ret = { cancel: null, context: null };
         if (cancelOrContext && context) {
             ret.cancel = cancelOrContext;
-            index_cjs.validateCallback(fnName, 3, ret.cancel, true);
+            validateCallback(fnName, 3, ret.cancel, true);
             ret.context = context;
-            index_cjs.validateContextObject(fnName, 4, ret.context, true);
+            validateContextObject(fnName, 4, ret.context, true);
         }
         else if (cancelOrContext) {
             // we have either a cancel callback or a context.
@@ -22822,7 +17423,7 @@ var Query = /** @class */ (function () {
                 ret.cancel = cancelOrContext;
             }
             else {
-                throw new Error(index_cjs.errorPrefix(fnName, 3, true) +
+                throw new Error(errorPrefix(fnName, 3, true) +
                     ' must either be a cancel callback or a context object.');
             }
         }
@@ -22875,7 +17476,7 @@ var CountedSet = /** @class */ (function () {
      * @return {boolean}
      */
     CountedSet.prototype.contains = function (key) {
-        return index_cjs.contains(this.set, key);
+        return contains(this.set, key);
     };
     /**
      * @param {!K} item
@@ -22901,20 +17502,20 @@ var CountedSet = /** @class */ (function () {
      * @return {boolean}
      */
     CountedSet.prototype.isEmpty = function () {
-        return index_cjs.isEmpty(this.set);
+        return isEmpty(this.set);
     };
     /**
      * @return {number} The number of items in the set
      */
     CountedSet.prototype.count = function () {
-        return index_cjs.getCount(this.set);
+        return getCount(this.set);
     };
     /**
      * Run a function on each k,v pair in the set
      * @param {function(K, V)} fn
      */
     CountedSet.prototype.each = function (fn) {
-        index_cjs.forEach(this.set, function (k, v) { return fn(k, v); });
+        forEach(this.set, function (k, v) { return fn(k, v); });
     };
     /**
      * Mostly for debugging
@@ -22922,7 +17523,7 @@ var CountedSet = /** @class */ (function () {
      */
     CountedSet.prototype.keys = function () {
         var keys = [];
-        index_cjs.forEach(this.set, function (k) {
+        forEach(this.set, function (k) {
             keys.push(k);
         });
         return keys;
@@ -23138,7 +17739,7 @@ var resolveDeferredValue = function (value, serverValues) {
         return value;
     }
     else {
-        index_cjs.assert('.sv' in value, 'Unexpected leaf node or priority contents');
+        assert('.sv' in value, 'Unexpected leaf node or priority contents');
         return serverValues[value['.sv']];
     }
 };
@@ -23235,7 +17836,7 @@ var OperationSource = /** @class */ (function () {
         this.fromServer = fromServer;
         this.queryId = queryId;
         this.tagged = tagged;
-        index_cjs.assert(!tagged || fromServer, 'Tagged queries must be from server.');
+        assert(!tagged || fromServer, 'Tagged queries must be from server.');
     }
     /**
      * @const
@@ -23303,11 +17904,11 @@ var AckUserWrite = /** @class */ (function () {
      */
     AckUserWrite.prototype.operationForChild = function (childName) {
         if (!this.path.isEmpty()) {
-            index_cjs.assert(this.path.getFront() === childName, 'operationForChild called for unrelated child.');
+            assert(this.path.getFront() === childName, 'operationForChild called for unrelated child.');
             return new AckUserWrite(this.path.popFront(), this.affectedTree, this.revert);
         }
         else if (this.affectedTree.value != null) {
-            index_cjs.assert(this.affectedTree.children.isEmpty(), 'affectedTree should not have overlapping affected paths.');
+            assert(this.affectedTree.children.isEmpty(), 'affectedTree should not have overlapping affected paths.');
             // All child locations are affected as well; just return same operation.
             return this;
         }
@@ -23369,7 +17970,7 @@ var ImmutableTree = /** @class */ (function () {
      */
     ImmutableTree.fromObject = function (obj) {
         var tree = ImmutableTree.Empty;
-        index_cjs.forEach(obj, function (childPath, childSnap) {
+        forEach(obj, function (childPath, childSnap) {
             tree = tree.set(new Path(childPath), childSnap);
         });
         return tree;
@@ -23805,7 +18406,7 @@ var Merge = /** @class */ (function () {
             }
         }
         else {
-            index_cjs.assert(this.path.getFront() === childName, "Can't get a merge for a child not on the path of the operation");
+            assert(this.path.getFront() === childName, "Can't get a merge for a child not on the path of the operation");
             return new Merge(this.source, this.path.popFront(), this.children);
         }
     };
@@ -24104,7 +18705,7 @@ var IndexedFilter = /** @class */ (function () {
         this.index_ = index_;
     }
     IndexedFilter.prototype.updateChild = function (snap, key, newChild, affectedPath, source, optChangeAccumulator) {
-        index_cjs.assert(snap.isIndexed(this.index_), 'A node must be indexed if only a child is updated');
+        assert(snap.isIndexed(this.index_), 'A node must be indexed if only a child is updated');
         var oldChild = snap.getImmediateChild(key);
         // Check if anything actually changed.
         if (oldChild.getChild(affectedPath).equals(newChild.getChild(affectedPath))) {
@@ -24124,7 +18725,7 @@ var IndexedFilter = /** @class */ (function () {
                     optChangeAccumulator.trackChildChange(Change.childRemovedChange(key, oldChild));
                 }
                 else {
-                    index_cjs.assert(snap.isLeafNode(), 'A child remove without an old child only makes sense on a leaf node');
+                    assert(snap.isLeafNode(), 'A child remove without an old child only makes sense on a leaf node');
                 }
             }
             else if (oldChild.isEmpty()) {
@@ -24231,11 +18832,11 @@ var ChildChangeAccumulator = /** @class */ (function () {
     ChildChangeAccumulator.prototype.trackChildChange = function (change) {
         var type = change.type;
         var childKey /** @type {!string} */ = change.childName;
-        index_cjs.assert(type == Change.CHILD_ADDED ||
+        assert(type == Change.CHILD_ADDED ||
             type == Change.CHILD_CHANGED ||
             type == Change.CHILD_REMOVED, 'Only child changes supported for tracking');
-        index_cjs.assert(childKey !== '.priority', 'Only non-priority child changes can be tracked.');
-        var oldChange = index_cjs.safeGet(this.changeMap_, childKey);
+        assert(childKey !== '.priority', 'Only non-priority child changes can be tracked.');
+        var oldChange = safeGet(this.changeMap_, childKey);
         if (oldChange) {
             var oldType = oldChange.type;
             if (type == Change.CHILD_ADDED && oldType == Change.CHILD_REMOVED) {
@@ -24258,7 +18859,7 @@ var ChildChangeAccumulator = /** @class */ (function () {
                 this.changeMap_[childKey] = Change.childChangedChange(childKey, change.snapshotNode, oldChange.oldSnap);
             }
             else {
-                throw index_cjs.assertionError('Illegal combination of changes: ' +
+                throw assertionError('Illegal combination of changes: ' +
                     change +
                     ' occurred after ' +
                     oldChange);
@@ -24272,7 +18873,7 @@ var ChildChangeAccumulator = /** @class */ (function () {
      * @return {!Array.<!Change>}
      */
     ChildChangeAccumulator.prototype.getChanges = function () {
-        return index_cjs.getValues(this.changeMap_);
+        return getValues(this.changeMap_);
     };
     return ChildChangeAccumulator;
 }());
@@ -24420,11 +19021,11 @@ var ViewProcessor = /** @class */ (function () {
      * @param {!ViewCache} viewCache
      */
     ViewProcessor.prototype.assertIndexed = function (viewCache) {
-        index_cjs.assert(viewCache
+        assert(viewCache
             .getEventCache()
             .getNode()
             .isIndexed(this.filter_.getIndex()), 'Event snap not indexed');
-        index_cjs.assert(viewCache
+        assert(viewCache
             .getServerCache()
             .getNode()
             .isIndexed(this.filter_.getIndex()), 'Server snap not indexed');
@@ -24445,7 +19046,7 @@ var ViewProcessor = /** @class */ (function () {
                 newViewCache = this.applyUserOverwrite_(oldViewCache, overwrite.path, overwrite.snap, writesCache, completeCache, accumulator);
             }
             else {
-                index_cjs.assert(overwrite.source.fromServer, 'Unknown source.');
+                assert(overwrite.source.fromServer, 'Unknown source.');
                 // We filter the node if it's a tagged update or the node has been previously filtered  and the
                 // update is not at the root in which case it is ok (and necessary) to mark the node unfiltered
                 // again
@@ -24462,7 +19063,7 @@ var ViewProcessor = /** @class */ (function () {
                 newViewCache = this.applyUserMerge_(oldViewCache, merge.path, merge.children, writesCache, completeCache, accumulator);
             }
             else {
-                index_cjs.assert(merge.source.fromServer, 'Unknown source.');
+                assert(merge.source.fromServer, 'Unknown source.');
                 // We filter the node if it's a tagged update or the node has been previously filtered
                 filterServerNode =
                     merge.source.tagged || oldViewCache.getServerCache().isFiltered();
@@ -24482,7 +19083,7 @@ var ViewProcessor = /** @class */ (function () {
             newViewCache = this.listenComplete_(oldViewCache, operation.path, writesCache, accumulator);
         }
         else {
-            throw index_cjs.assertionError('Unknown operation type: ' + operation.type);
+            throw assertionError('Unknown operation type: ' + operation.type);
         }
         var changes = accumulator.getChanges();
         ViewProcessor.maybeAddValueEvent_(oldViewCache, newViewCache, changes);
@@ -24533,7 +19134,7 @@ var ViewProcessor = /** @class */ (function () {
             var newEventCache = void 0, serverNode = void 0;
             if (changePath.isEmpty()) {
                 // TODO: figure out how this plays with "sliding ack windows"
-                index_cjs.assert(viewCache.getServerCache().isFullyInitialized(), 'If change path is empty, we must have complete server data');
+                assert(viewCache.getServerCache().isFullyInitialized(), 'If change path is empty, we must have complete server data');
                 if (viewCache.getServerCache().isFiltered()) {
                     // We need to special case this, because we need to only apply writes to complete children, or
                     // we might end up raising events for incomplete children. If the server data is filtered deep
@@ -24553,7 +19154,7 @@ var ViewProcessor = /** @class */ (function () {
             else {
                 var childKey = changePath.getFront();
                 if (childKey == '.priority') {
-                    index_cjs.assert(changePath.getLength() == 1, "Can't have a priority with additional path components");
+                    assert(changePath.getLength() == 1, "Can't have a priority with additional path components");
                     var oldEventNode = oldEventSnap.getNode();
                     serverNode = viewCache.getServerCache().getNode();
                     // we might have overwrites for this priority
@@ -24913,7 +19514,7 @@ var ViewProcessor = /** @class */ (function () {
                 }
                 else {
                     var serverChildren = viewCache.getServerCache().getNode();
-                    index_cjs.assert(serverChildren instanceof ChildrenNode, 'serverChildren would be complete if leaf node');
+                    assert(serverChildren instanceof ChildrenNode, 'serverChildren would be complete if leaf node');
                     newNode = writesCache.calcCompleteEventChildren(serverChildren);
                 }
                 newNode = newNode;
@@ -25072,7 +19673,7 @@ var EventGenerator = /** @class */ (function () {
      */
     EventGenerator.prototype.compareChanges_ = function (a, b) {
         if (a.childName == null || b.childName == null) {
-            throw index_cjs.assertionError('Should only compare child_ events.');
+            throw assertionError('Should only compare child_ events.');
         }
         var aWrapped = new NamedNode(a.childName, a.snapshotNode);
         var bWrapped = new NamedNode(b.childName, b.snapshotNode);
@@ -25190,7 +19791,7 @@ var View = /** @class */ (function () {
     View.prototype.removeEventRegistration = function (eventRegistration, cancelError) {
         var cancelEvents = [];
         if (cancelError) {
-            index_cjs.assert(eventRegistration == null, 'A cancel should cancel all event registrations.');
+            assert(eventRegistration == null, 'A cancel should cancel all event registrations.');
             var path_1 = this.query_.path;
             this.eventRegistrations_.forEach(function (registration) {
                 cancelError /** @type {!Error} */ = cancelError;
@@ -25231,13 +19832,13 @@ var View = /** @class */ (function () {
     View.prototype.applyOperation = function (operation, writesCache, completeServerCache) {
         if (operation.type === OperationType.MERGE &&
             operation.source.queryId !== null) {
-            index_cjs.assert(this.viewCache_.getCompleteServerSnap(), 'We should always have a full cache before handling merges');
-            index_cjs.assert(this.viewCache_.getCompleteEventSnap(), 'Missing event cache, even though we have a server cache');
+            assert(this.viewCache_.getCompleteServerSnap(), 'We should always have a full cache before handling merges');
+            assert(this.viewCache_.getCompleteEventSnap(), 'Missing event cache, even though we have a server cache');
         }
         var oldViewCache = this.viewCache_;
         var result = this.processor_.applyOperation(oldViewCache, operation, writesCache, completeServerCache);
         this.processor_.assertIndexed(result.viewCache);
-        index_cjs.assert(result.viewCache.getServerCache().isFullyInitialized() ||
+        assert(result.viewCache.getServerCache().isFullyInitialized() ||
             !oldViewCache.getServerCache().isFullyInitialized(), 'Once a server snap is complete, it should never go back');
         this.viewCache_ = result.viewCache;
         return this.generateEventsForChanges_(result.changes, result.viewCache.getEventCache().getNode(), null);
@@ -25318,11 +19919,11 @@ var SyncPoint = /** @class */ (function () {
     }
     Object.defineProperty(SyncPoint, "__referenceConstructor", {
         get: function () {
-            index_cjs.assert(__referenceConstructor$1, 'Reference.ts has not been loaded');
+            assert(__referenceConstructor$1, 'Reference.ts has not been loaded');
             return __referenceConstructor$1;
         },
         set: function (val) {
-            index_cjs.assert(!__referenceConstructor$1, '__referenceConstructor has already been defined');
+            assert(!__referenceConstructor$1, '__referenceConstructor has already been defined');
             __referenceConstructor$1 = val;
         },
         enumerable: true,
@@ -25332,7 +19933,7 @@ var SyncPoint = /** @class */ (function () {
      * @return {boolean}
      */
     SyncPoint.prototype.isEmpty = function () {
-        return index_cjs.isEmpty(this.views_);
+        return isEmpty(this.views_);
     };
     /**
      *
@@ -25344,13 +19945,13 @@ var SyncPoint = /** @class */ (function () {
     SyncPoint.prototype.applyOperation = function (operation, writesCache, optCompleteServerCache) {
         var queryId = operation.source.queryId;
         if (queryId !== null) {
-            var view = index_cjs.safeGet(this.views_, queryId);
-            index_cjs.assert(view != null, 'SyncTree gave us an op for an invalid query.');
+            var view = safeGet(this.views_, queryId);
+            assert(view != null, 'SyncTree gave us an op for an invalid query.');
             return view.applyOperation(operation, writesCache, optCompleteServerCache);
         }
         else {
             var events_1 = [];
-            index_cjs.forEach(this.views_, function (key, view) {
+            forEach(this.views_, function (key, view) {
                 events_1 = events_1.concat(view.applyOperation(operation, writesCache, optCompleteServerCache));
             });
             return events_1;
@@ -25368,7 +19969,7 @@ var SyncPoint = /** @class */ (function () {
      */
     SyncPoint.prototype.addEventRegistration = function (query, eventRegistration, writesCache, serverCache, serverCacheComplete) {
         var queryId = query.queryIdentifier();
-        var view = index_cjs.safeGet(this.views_, queryId);
+        var view = safeGet(this.views_, queryId);
         if (!view) {
             // TODO: make writesCache take flag for complete server node
             var eventCache = writesCache.calcCompleteEventCache(serverCacheComplete ? serverCache : null);
@@ -25413,7 +20014,7 @@ var SyncPoint = /** @class */ (function () {
         if (queryId === 'default') {
             // When you do ref.off(...), we search all views for the registration to remove.
             var self_1 = this;
-            index_cjs.forEach(this.views_, function (viewQueryId, view) {
+            forEach(this.views_, function (viewQueryId, view) {
                 cancelEvents = cancelEvents.concat(view.removeEventRegistration(eventRegistration, cancelError));
                 if (view.isEmpty()) {
                     delete self_1.views_[viewQueryId];
@@ -25429,7 +20030,7 @@ var SyncPoint = /** @class */ (function () {
         }
         else {
             // remove the callback from the specific view.
-            var view = index_cjs.safeGet(this.views_, queryId);
+            var view = safeGet(this.views_, queryId);
             if (view) {
                 cancelEvents = cancelEvents.concat(view.removeEventRegistration(eventRegistration, cancelError));
                 if (view.isEmpty()) {
@@ -25470,7 +20071,7 @@ var SyncPoint = /** @class */ (function () {
      */
     SyncPoint.prototype.getCompleteServerCache = function (path) {
         var serverCache = null;
-        index_cjs.forEach(this.views_, function (key, view) {
+        forEach(this.views_, function (key, view) {
             serverCache = serverCache || view.getCompleteServerCache(path);
         });
         return serverCache;
@@ -25486,7 +20087,7 @@ var SyncPoint = /** @class */ (function () {
         }
         else {
             var queryId = query.queryIdentifier();
-            return index_cjs.safeGet(this.views_, queryId);
+            return safeGet(this.views_, queryId);
         }
     };
     /**
@@ -25506,7 +20107,7 @@ var SyncPoint = /** @class */ (function () {
      * @return {?View}
      */
     SyncPoint.prototype.getCompleteView = function () {
-        var completeView = index_cjs.findValue(this.views_, function (view) {
+        var completeView = findValue(this.views_, function (view) {
             return view
                 .getQuery()
                 .getQueryParams()
@@ -25578,7 +20179,7 @@ var CompoundWrite = /** @class */ (function () {
      */
     CompoundWrite.prototype.addWrites = function (path, updates) {
         var newWrite = this;
-        index_cjs.forEach(updates, function (childKey, node) {
+        forEach(updates, function (childKey, node) {
             newWrite = newWrite.addWrite(path.child(childKey), node);
         });
         return newWrite;
@@ -25708,7 +20309,7 @@ var CompoundWrite = /** @class */ (function () {
                 if (childKey === '.priority') {
                     // Apply priorities at the end so we don't update priorities for either empty nodes or forget
                     // to apply priorities to empty nodes that are later filled
-                    index_cjs.assert(childTree.value !== null, 'Priority writes must always be leaf nodes');
+                    assert(childTree.value !== null, 'Priority writes must always be leaf nodes');
                     priorityWrite_1 = childTree.value;
                 }
                 else {
@@ -25787,7 +20388,7 @@ var WriteTree = /** @class */ (function () {
      * @param {boolean=} visible This is set to false by some transactions. It should be excluded from event caches
      */
     WriteTree.prototype.addOverwrite = function (path, snap, writeId, visible) {
-        index_cjs.assert(writeId > this.lastWriteId_, 'Stacking an older write on top of newer ones');
+        assert(writeId > this.lastWriteId_, 'Stacking an older write on top of newer ones');
         if (visible === undefined) {
             visible = true;
         }
@@ -25810,7 +20411,7 @@ var WriteTree = /** @class */ (function () {
      * @param {!number} writeId
      */
     WriteTree.prototype.addMerge = function (path, changedChildren, writeId) {
-        index_cjs.assert(writeId > this.lastWriteId_, 'Stacking an older merge on top of newer ones');
+        assert(writeId > this.lastWriteId_, 'Stacking an older merge on top of newer ones');
         this.allWrites_.push({
             path: path,
             children: changedChildren,
@@ -25850,7 +20451,7 @@ var WriteTree = /** @class */ (function () {
         var idx = this.allWrites_.findIndex(function (s) {
             return s.writeId === writeId;
         });
-        index_cjs.assert(idx >= 0, 'removeWrite called with nonexistent writeId.');
+        assert(idx >= 0, 'removeWrite called with nonexistent writeId.');
         var writeToRemove = this.allWrites_[idx];
         this.allWrites_.splice(idx, 1);
         var removedWriteWasVisible = writeToRemove.visible;
@@ -25886,7 +20487,7 @@ var WriteTree = /** @class */ (function () {
             }
             else {
                 var children = writeToRemove.children;
-                index_cjs.forEach(children, function (childName) {
+                forEach(children, function (childName) {
                     _this.visibleWrites_ = _this.visibleWrites_.removeWrite(writeToRemove.path.child(childName));
                 });
             }
@@ -26028,7 +20629,7 @@ var WriteTree = /** @class */ (function () {
      * @return {?Node}
      */
     WriteTree.prototype.calcEventCacheAfterServerOverwrite = function (treePath, childPath, existingEventSnap, existingServerSnap) {
-        index_cjs.assert(existingEventSnap || existingServerSnap, 'Either existingEventSnap or existingServerSnap must exist');
+        assert(existingEventSnap || existingServerSnap, 'Either existingEventSnap or existingServerSnap must exist');
         var path = treePath.child(childPath);
         if (this.visibleWrites_.hasCompleteWrite(path)) {
             // At this point we can probably guarantee that we're in case 2, meaning no events
@@ -26147,7 +20748,7 @@ var WriteTree = /** @class */ (function () {
         }
         else {
             // findKey can return undefined, so use !! to coerce to boolean
-            return !!index_cjs.findKey(writeRecord.children, function (childSnap, childName) {
+            return !!findKey(writeRecord.children, function (childSnap, childName) {
                 return writeRecord.path.child(childName).contains(path);
             });
         }
@@ -26216,7 +20817,7 @@ var WriteTree = /** @class */ (function () {
                             compoundWrite = compoundWrite.addWrites(Path.Empty, write.children);
                         }
                         else {
-                            var child = index_cjs.safeGet(write.children, relativePath.getFront());
+                            var child = safeGet(write.children, relativePath.getFront());
                             if (child) {
                                 // There exists a child in this node that matches the root path
                                 var deepNode = child.getChild(relativePath.popFront());
@@ -26226,7 +20827,7 @@ var WriteTree = /** @class */ (function () {
                     }
                 }
                 else {
-                    throw index_cjs.assertionError('WriteRecord should have .snap or .children');
+                    throw assertionError('WriteRecord should have .snap or .children');
                 }
             }
         }
@@ -26456,7 +21057,7 @@ var SyncTree = /** @class */ (function () {
                 affectedTree_1 = affectedTree_1.set(Path.Empty, true);
             }
             else {
-                index_cjs.forEach(write.children, function (pathString, node) {
+                forEach(write.children, function (pathString, node) {
                     affectedTree_1 = affectedTree_1.set(new Path(pathString), node);
                 });
             }
@@ -26607,7 +21208,7 @@ var SyncTree = /** @class */ (function () {
         if (!viewAlreadyExists && !query.getQueryParams().loadsAllData()) {
             // We need to track a tag for this query
             var queryKey = SyncTree.makeQueryKey_(query);
-            index_cjs.assert(!(queryKey in this.queryToTagMap_), 'View does not exist, but we have a tag');
+            assert(!(queryKey in this.queryToTagMap_), 'View does not exist, but we have a tag');
             var tag = SyncTree.getNextQueryTag_();
             this.queryToTagMap_[queryKey] = tag;
             // Coerce to string to avoid sparse arrays.
@@ -26745,7 +21346,7 @@ var SyncTree = /** @class */ (function () {
                 if (maybeChildSyncPoint) {
                     views_1 = maybeChildSyncPoint.getQueryViews();
                 }
-                index_cjs.forEach(childMap, function (key, childViews) {
+                forEach(childMap, function (key, childViews) {
                     views_1 = views_1.concat(childViews);
                 });
                 return views_1;
@@ -26803,7 +21404,7 @@ var SyncTree = /** @class */ (function () {
         // The root of this subtree has our query. We're here because we definitely need to send a listen for that, but we
         // may need to shadow other listens as well.
         if (tag) {
-            index_cjs.assert(!subtree.value.hasCompleteView(), "If we're adding a query, it shouldn't be shadowed");
+            assert(!subtree.value.hasCompleteView(), "If we're adding a query, it shouldn't be shadowed");
         }
         else {
             // Shadow everything at or below this location, this is a default listener.
@@ -26819,7 +21420,7 @@ var SyncTree = /** @class */ (function () {
                     if (maybeChildSyncPoint) {
                         queries_1 = queries_1.concat(maybeChildSyncPoint.getQueryViews().map(function (view) { return view.getQuery(); }));
                     }
-                    index_cjs.forEach(childMap, function (key, childQueries) {
+                    forEach(childMap, function (key, childQueries) {
                         queries_1 = queries_1.concat(childQueries);
                     });
                     return queries_1;
@@ -26883,7 +21484,7 @@ var SyncTree = /** @class */ (function () {
      */
     SyncTree.parseQueryKey_ = function (queryKey) {
         var splitIndex = queryKey.indexOf('$');
-        index_cjs.assert(splitIndex !== -1 && splitIndex < queryKey.length - 1, 'Bad queryKey.');
+        assert(splitIndex !== -1 && splitIndex < queryKey.length - 1, 'Bad queryKey.');
         return {
             queryId: queryKey.substr(splitIndex + 1),
             path: new Path(queryKey.substr(0, splitIndex))
@@ -26906,7 +21507,7 @@ var SyncTree = /** @class */ (function () {
      */
     SyncTree.prototype.tagForQuery_ = function (query) {
         var queryKey = SyncTree.makeQueryKey_(query);
-        return index_cjs.safeGet(this.queryToTagMap_, queryKey);
+        return safeGet(this.queryToTagMap_, queryKey);
     };
     /**
      * Static accessor for query tags.
@@ -26926,7 +21527,7 @@ var SyncTree = /** @class */ (function () {
      */
     SyncTree.prototype.applyTaggedOperation_ = function (queryPath, operation) {
         var syncPoint = this.syncPointTree_.get(queryPath);
-        index_cjs.assert(syncPoint, "Missing sync point for query tag that we're tracking");
+        assert(syncPoint, "Missing sync point for query tag that we're tracking");
         var writesCache = this.pendingWriteTree_.childWrites(queryPath);
         return syncPoint.applyOperation(operation, writesCache, 
         /*serverCache=*/ null);
@@ -27173,12 +21774,12 @@ var StatsCollection = /** @class */ (function () {
     }
     StatsCollection.prototype.incrementCounter = function (name, amount) {
         if (amount === void 0) { amount = 1; }
-        if (!index_cjs.contains(this.counters_, name))
+        if (!contains(this.counters_, name))
             this.counters_[name] = 0;
         this.counters_[name] += amount;
     };
     StatsCollection.prototype.get = function () {
-        return index_cjs.deepCopy(this.counters_);
+        return deepCopy(this.counters_);
     };
     return StatsCollection;
 }());
@@ -27250,9 +21851,9 @@ var StatsListener = /** @class */ (function () {
     }
     StatsListener.prototype.get = function () {
         var newStats = this.collection_.get();
-        var delta = index_cjs.clone(newStats);
+        var delta = clone(newStats);
         if (this.last_) {
-            index_cjs.forEach(this.last_, function (stat, value) {
+            forEach(this.last_, function (stat, value) {
                 delta[stat] = delta[stat] - value;
             });
         }
@@ -27309,8 +21910,8 @@ var StatsReporter = /** @class */ (function () {
         var stats = this.statsListener_.get();
         var reportedStats = {};
         var haveStatsToReport = false;
-        index_cjs.forEach(stats, function (stat, value) {
-            if (value > 0 && index_cjs.contains(_this.statsToReport_, stat)) {
+        forEach(stats, function (stat, value) {
+            if (value > 0 && contains(_this.statsToReport_, stat)) {
                 reportedStats[stat] = value;
                 haveStatsToReport = true;
             }
@@ -27518,7 +22119,7 @@ var EventEmitter = /** @class */ (function () {
     function EventEmitter(allowedEvents_) {
         this.allowedEvents_ = allowedEvents_;
         this.listeners_ = {};
-        index_cjs.assert(Array.isArray(allowedEvents_) && allowedEvents_.length > 0, 'Requires a non-empty array');
+        assert(Array.isArray(allowedEvents_) && allowedEvents_.length > 0, 'Requires a non-empty array');
     }
     /**
      * To be called by derived classes to trigger events.
@@ -27559,7 +22160,7 @@ var EventEmitter = /** @class */ (function () {
         }
     };
     EventEmitter.prototype.validateEventType_ = function (eventType) {
-        index_cjs.assert(this.allowedEvents_.find(function (et) {
+        assert(this.allowedEvents_.find(function (et) {
             return et === eventType;
         }), 'Unknown event: ' + eventType);
     };
@@ -27586,7 +22187,7 @@ var EventEmitter = /** @class */ (function () {
  * @extends {EventEmitter}
  */
 var VisibilityMonitor = /** @class */ (function (_super) {
-    tslib_1.__extends(VisibilityMonitor, _super);
+    __extends(VisibilityMonitor, _super);
     function VisibilityMonitor() {
         var _this = _super.call(this, ['visible']) || this;
         var hidden;
@@ -27635,7 +22236,7 @@ var VisibilityMonitor = /** @class */ (function (_super) {
      * @return {Array.<boolean>}
      */
     VisibilityMonitor.prototype.getInitialEvent = function (eventType) {
-        index_cjs.assert(eventType === 'visible', 'Unknown event type: ' + eventType);
+        assert(eventType === 'visible', 'Unknown event type: ' + eventType);
         return [this.visible_];
     };
     return VisibilityMonitor;
@@ -27667,7 +22268,7 @@ var VisibilityMonitor = /** @class */ (function (_super) {
  * @extends {EventEmitter}
  */
 var OnlineMonitor = /** @class */ (function (_super) {
-    tslib_1.__extends(OnlineMonitor, _super);
+    __extends(OnlineMonitor, _super);
     function OnlineMonitor() {
         var _this = _super.call(this, ['online']) || this;
         _this.online_ = true;
@@ -27677,7 +22278,7 @@ var OnlineMonitor = /** @class */ (function (_super) {
         // for Cordova.
         if (typeof window !== 'undefined' &&
             typeof window.addEventListener !== 'undefined' &&
-            !index_cjs.isMobileCordova()) {
+            !isMobileCordova()) {
             window.addEventListener('online', function () {
                 if (!_this.online_) {
                     _this.online_ = true;
@@ -27701,7 +22302,7 @@ var OnlineMonitor = /** @class */ (function (_super) {
      * @return {Array.<boolean>}
      */
     OnlineMonitor.prototype.getInitialEvent = function (eventType) {
-        index_cjs.assert(eventType === 'online', 'Unknown event type: ' + eventType);
+        assert(eventType === 'online', 'Unknown event type: ' + eventType);
         return [this.online_];
     };
     /**
@@ -27958,7 +22559,7 @@ var BrowserPollConnection = /** @class */ (function () {
             if (_this.lastSessionId) {
                 urlParams[LAST_SESSION_PARAM] = _this.lastSessionId;
             }
-            if (!index_cjs.isNodeSdk() &&
+            if (!isNodeSdk() &&
                 typeof location !== 'undefined' &&
                 location.href &&
                 location.href.indexOf(FORGE_DOMAIN) !== -1) {
@@ -28000,7 +22601,7 @@ var BrowserPollConnection = /** @class */ (function () {
                 document.createElement != null &&
                 !isChromeExtensionContentScript() &&
                 !isWindowsStoreApp() &&
-                !index_cjs.isNodeSdk()));
+                !isNodeSdk()));
     };
     /**
      * No-op for polling
@@ -28056,11 +22657,11 @@ var BrowserPollConnection = /** @class */ (function () {
      * @param {!Object} data The JSON data to transmit.
      */
     BrowserPollConnection.prototype.send = function (data) {
-        var dataStr = index_cjs.stringify(data);
+        var dataStr = stringify(data);
         this.bytesSent += dataStr.length;
         this.stats_.incrementCounter('bytes_sent', dataStr.length);
         //first, lets get the base64-encoded data
-        var base64data = index_cjs.base64Encode(dataStr);
+        var base64data = base64Encode(dataStr);
         //We can only fit a certain amount in each URL, so we need to split this request
         //up into multiple pieces if it doesn't fit in one request.
         var dataSegs = splitStringBySize(base64data, MAX_PAYLOAD_SIZE);
@@ -28079,7 +22680,7 @@ var BrowserPollConnection = /** @class */ (function () {
      * @param {!string} pw
      */
     BrowserPollConnection.prototype.addDisconnectPingFrame = function (id, pw) {
-        if (index_cjs.isNodeSdk())
+        if (isNodeSdk())
             return;
         this.myDisconnFrame = document.createElement('iframe');
         var urlParams = {};
@@ -28097,7 +22698,7 @@ var BrowserPollConnection = /** @class */ (function () {
      */
     BrowserPollConnection.prototype.incrementIncomingBytes_ = function (args) {
         // TODO: This is an annoying perf hit just to track the number of incoming bytes.  Maybe it should be opt-in.
-        var bytesReceived = index_cjs.stringify(args).length;
+        var bytesReceived = stringify(args).length;
         this.bytesReceived += bytesReceived;
         this.stats_.incrementCounter('bytes_received', bytesReceived);
     };
@@ -28134,7 +22735,7 @@ var FirebaseIFrameScriptHolder = /** @class */ (function () {
         // This gets set to false when we're "closing down" the connection (e.g. we're switching transports but there's still
         // incoming data from the server that we're waiting for).
         this.sendNewPolls = true;
-        if (!index_cjs.isNodeSdk()) {
+        if (!isNodeSdk()) {
             //Each script holder registers a couple of uniquely named callbacks with the window. These are called from the
             //iframes where we put the long-polling script tags. We have two callbacks:
             //   1) Command Callback - Triggered for control issues, like starting a connection.
@@ -28238,7 +22839,7 @@ var FirebaseIFrameScriptHolder = /** @class */ (function () {
                 }
             }, Math.floor(0));
         }
-        if (index_cjs.isNodeSdk() && this.myID) {
+        if (isNodeSdk() && this.myID) {
             var urlParams = {};
             urlParams[FIREBASE_LONGPOLL_DISCONN_FRAME_PARAM] = 't';
             urlParams[FIREBASE_LONGPOLL_ID_PARAM] = this.myID;
@@ -28374,7 +22975,7 @@ var FirebaseIFrameScriptHolder = /** @class */ (function () {
      */
     FirebaseIFrameScriptHolder.prototype.addTag = function (url, loadCB) {
         var _this = this;
-        if (index_cjs.isNodeSdk()) {
+        if (isNodeSdk()) {
             this.doNodeLongPoll(url, loadCB);
         }
         else {
@@ -28473,7 +23074,7 @@ var WebSocketConnection = /** @class */ (function () {
     WebSocketConnection.connectionURL_ = function (repoInfo, transportSessionId, lastSessionId) {
         var urlParams = {};
         urlParams[VERSION_PARAM] = PROTOCOL_VERSION;
-        if (!index_cjs.isNodeSdk() &&
+        if (!isNodeSdk() &&
             typeof location !== 'undefined' &&
             location.href &&
             location.href.indexOf(FORGE_DOMAIN) !== -1) {
@@ -28501,8 +23102,8 @@ var WebSocketConnection = /** @class */ (function () {
         // Assume failure until proven otherwise.
         PersistentStorage.set('previous_websocket_failure', true);
         try {
-            if (index_cjs.isNodeSdk()) {
-                var device = index_cjs.CONSTANTS.NODE_ADMIN ? 'AdminNode' : 'Node';
+            if (isNodeSdk()) {
+                var device = 'Node';
                 // UA Format: Firebase/<wire_protocol>/<sdk_version>/<platform>/<device>
                 var options = {
                     headers: {
@@ -28593,7 +23194,7 @@ var WebSocketConnection = /** @class */ (function () {
         if (this.frames.length == this.totalFrames) {
             var fullMess = this.frames.join('');
             this.frames = null;
-            var jsonMess = index_cjs.jsonEval(fullMess);
+            var jsonMess = jsonEval(fullMess);
             //handle the message
             this.onMessage(jsonMess);
         }
@@ -28613,7 +23214,7 @@ var WebSocketConnection = /** @class */ (function () {
      * @private
      */
     WebSocketConnection.prototype.extractFrameCount_ = function (data) {
-        index_cjs.assert(this.frames === null, 'We already have a frame buffer');
+        assert(this.frames === null, 'We already have a frame buffer');
         // TODO: The server is only supposed to send up to 9999 frames (i.e. length <= 4), but that isn't being enforced
         // currently.  So allowing larger frame counts (length <= 6).  See https://app.asana.com/0/search/8688598998380/8237608042508
         if (data.length <= 6) {
@@ -28655,7 +23256,7 @@ var WebSocketConnection = /** @class */ (function () {
      */
     WebSocketConnection.prototype.send = function (data) {
         this.resetKeepAlive();
-        var dataStr = index_cjs.stringify(data);
+        var dataStr = stringify(data);
         this.bytesSent += dataStr.length;
         this.stats_.incrementCounter('bytes_sent', dataStr.length);
         //We can only fit a certain amount in each websocket frame, so we need to split this request
@@ -29135,7 +23736,7 @@ var Connection = /** @class */ (function () {
                 this.onReset_(payload);
             }
             else if (cmd === CONTROL_ERROR) {
-                error('Server Error: ' + payload);
+                error$1('Server Error: ' + payload);
             }
             else if (cmd === CONTROL_PONG) {
                 this.log_('got pong on primary.');
@@ -29143,7 +23744,7 @@ var Connection = /** @class */ (function () {
                 this.sendPingOnPrimaryIfNecessary_();
             }
             else {
-                error('Unknown control packet command: ' + cmd);
+                error$1('Unknown control packet command: ' + cmd);
             }
         }
     };
@@ -29426,7 +24027,7 @@ var INVALID_AUTH_TOKEN_THRESHOLD = 3;
  * in quotes to make sure the closure compiler does not minify them.
  */
 var PersistentConnection = /** @class */ (function (_super) {
-    tslib_1.__extends(PersistentConnection, _super);
+    __extends(PersistentConnection, _super);
     /**
      * @implements {ServerActions}
      * @param {!RepoInfo} repoInfo_ Data about the namespace we are connecting to
@@ -29477,7 +24078,7 @@ var PersistentConnection = /** @class */ (function (_super) {
         _this.firstConnection_ = true;
         _this.lastConnectionAttemptTime_ = null;
         _this.lastConnectionEstablishedTime_ = null;
-        if (authOverride_ && !index_cjs.isNodeSdk()) {
+        if (authOverride_ && !isNodeSdk()) {
             throw new Error('Auth override specified in options, but not supported on non Node.js platforms');
         }
         _this.scheduleConnect_(0);
@@ -29496,8 +24097,8 @@ var PersistentConnection = /** @class */ (function (_super) {
     PersistentConnection.prototype.sendRequest = function (action, body, onResponse) {
         var curReqNum = ++this.requestNumber_;
         var msg = { r: curReqNum, a: action, b: body };
-        this.log_(index_cjs.stringify(msg));
-        index_cjs.assert(this.connected_, "sendRequest call when we're not connected not allowed.");
+        this.log_(stringify(msg));
+        assert(this.connected_, "sendRequest call when we're not connected not allowed.");
         this.realtime_.sendRequest(msg);
         if (onResponse) {
             this.requestCBHash_[curReqNum] = onResponse;
@@ -29511,9 +24112,9 @@ var PersistentConnection = /** @class */ (function (_super) {
         var pathString = query.path.toString();
         this.log_('Listen called for ' + pathString + ' ' + queryId);
         this.listens_[pathString] = this.listens_[pathString] || {};
-        index_cjs.assert(query.getQueryParams().isDefault() ||
+        assert(query.getQueryParams().isDefault() ||
             !query.getQueryParams().loadsAllData(), 'listen() called for non-default but complete query');
-        index_cjs.assert(!this.listens_[pathString][queryId], 'listen() called twice for same path/queryId.');
+        assert(!this.listens_[pathString][queryId], 'listen() called twice for same path/queryId.');
         var listenSpec = {
             onComplete: onComplete,
             hashFn: currentHashFn,
@@ -29570,8 +24171,8 @@ var PersistentConnection = /** @class */ (function (_super) {
      * @private
      */
     PersistentConnection.warnOnListenWarnings_ = function (payload, query) {
-        if (payload && typeof payload === 'object' && index_cjs.contains(payload, 'w')) {
-            var warnings = index_cjs.safeGet(payload, 'w');
+        if (payload && typeof payload === 'object' && contains(payload, 'w')) {
+            var warnings = safeGet(payload, 'w');
             if (Array.isArray(warnings) && ~warnings.indexOf('no_index')) {
                 var indexSpec = '".indexOn": "' +
                     query
@@ -29612,7 +24213,7 @@ var PersistentConnection = /** @class */ (function (_super) {
         // NOTE: This isn't intended to be bulletproof (a malicious developer can always just modify the client).
         // Additionally, we don't bother resetting the max delay back to the default if auth fails / expires.
         var isFirebaseSecret = credential && credential.length === 40;
-        if (isFirebaseSecret || index_cjs.isAdmin(credential)) {
+        if (isFirebaseSecret || isAdmin(credential)) {
             this.log_('Admin auth credential detected.  Reducing max reconnect time.');
             this.maxReconnectDelay_ = RECONNECT_MAX_DELAY_FOR_ADMINS;
         }
@@ -29625,7 +24226,7 @@ var PersistentConnection = /** @class */ (function (_super) {
         var _this = this;
         if (this.connected_ && this.authToken_) {
             var token_1 = this.authToken_;
-            var authMethod = index_cjs.isValidFormat(token_1) ? 'auth' : 'gauth';
+            var authMethod = isValidFormat(token_1) ? 'auth' : 'gauth';
             var requestData = { cred: token_1 };
             if (this.authOverride_ === null) {
                 requestData['noauth'] = true;
@@ -29655,7 +24256,7 @@ var PersistentConnection = /** @class */ (function (_super) {
         var pathString = query.path.toString();
         var queryId = query.queryIdentifier();
         this.log_('Unlisten called for ' + pathString + ' ' + queryId);
-        index_cjs.assert(query.getQueryParams().isDefault() ||
+        assert(query.getQueryParams().isDefault() ||
             !query.getQueryParams().loadsAllData(), 'unlisten() called for non-default but complete query');
         var listen = this.removeListen_(pathString, queryId);
         if (listen && this.connected_) {
@@ -29809,7 +24410,7 @@ var PersistentConnection = /** @class */ (function (_super) {
     PersistentConnection.prototype.onDataMessage_ = function (message) {
         if ('r' in message) {
             // this is a response
-            this.log_('from server: ' + index_cjs.stringify(message));
+            this.log_('from server: ' + stringify(message));
             var reqNum = message['r'];
             var onResponse = this.requestCBHash_[reqNum];
             if (onResponse) {
@@ -29840,8 +24441,8 @@ var PersistentConnection = /** @class */ (function (_super) {
         else if (action === 'sd')
             this.onSecurityDebugPacket_(body);
         else
-            error('Unrecognized action received from server: ' +
-                index_cjs.stringify(action) +
+            error$1('Unrecognized action received from server: ' +
+                stringify(action) +
                 '\nAre you using the latest client?');
     };
     PersistentConnection.prototype.onReady_ = function (timestamp, sessionId) {
@@ -29859,7 +24460,7 @@ var PersistentConnection = /** @class */ (function (_super) {
     };
     PersistentConnection.prototype.scheduleConnect_ = function (timeout) {
         var _this = this;
-        index_cjs.assert(!this.realtime_, "Scheduling a connect when we're already connected/ing?");
+        assert(!this.realtime_, "Scheduling a connect when we're already connected/ing?");
         if (this.establishConnectionTimer_) {
             clearTimeout(this.establishConnectionTimer_);
         }
@@ -29956,7 +24557,7 @@ var PersistentConnection = /** @class */ (function (_super) {
                 }
             };
             var sendRequestFn = function (msg) {
-                index_cjs.assert(connection_1, "sendRequest call when we're not connected not allowed.");
+                assert(connection_1, "sendRequest call when we're not connected not allowed.");
                 connection_1.sendRequest(msg);
             };
             this.realtime_ = {
@@ -29985,12 +24586,6 @@ var PersistentConnection = /** @class */ (function (_super) {
                 .then(null, function (error) {
                 self_1.log_('Failed to get token: ' + error);
                 if (!canceled_1) {
-                    if (index_cjs.CONSTANTS.NODE_ADMIN) {
-                        // This may be a critical error for the Admin Node.js SDK, so log a warning.
-                        // But getToken() may also just have temporarily failed, so we still want to
-                        // continue retrying.
-                        warn(error);
-                    }
                     closeFn_1();
                 }
             });
@@ -30021,7 +24616,7 @@ var PersistentConnection = /** @class */ (function (_super) {
     PersistentConnection.prototype.resume = function (reason) {
         log('Resuming connection for reason: ' + reason);
         delete this.interruptReasons_[reason];
-        if (index_cjs.isEmpty(this.interruptReasons_)) {
+        if (isEmpty(this.interruptReasons_)) {
             this.reconnectDelay_ = RECONNECT_MIN_DELAY;
             if (!this.realtime_) {
                 this.scheduleConnect_(0);
@@ -30076,7 +24671,7 @@ var PersistentConnection = /** @class */ (function (_super) {
         if (this.listens_[normalizedPathString] !== undefined) {
             listen = this.listens_[normalizedPathString][queryId];
             delete this.listens_[normalizedPathString][queryId];
-            if (index_cjs.getCount(this.listens_[normalizedPathString]) === 0) {
+            if (getCount(this.listens_[normalizedPathString]) === 0) {
                 delete this.listens_[normalizedPathString];
             }
         }
@@ -30121,8 +24716,8 @@ var PersistentConnection = /** @class */ (function (_super) {
         this.tryAuth();
         // Puts depend on having received the corresponding data update from the server before they complete, so we must
         // make sure to send listens before puts.
-        index_cjs.forEach(this.listens_, function (pathString, queries) {
-            index_cjs.forEach(queries, function (key, listenSpec) {
+        forEach(this.listens_, function (pathString, queries) {
+            forEach(queries, function (key, listenSpec) {
                 _this.sendListen_(listenSpec);
             });
         });
@@ -30142,17 +24737,11 @@ var PersistentConnection = /** @class */ (function (_super) {
     PersistentConnection.prototype.sendConnectStats_ = function () {
         var stats = {};
         var clientName = 'js';
-        if (index_cjs.CONSTANTS.NODE_ADMIN) {
-            clientName = 'admin_node';
-        }
-        else if (index_cjs.CONSTANTS.NODE_CLIENT) {
-            clientName = 'node';
-        }
         stats['sdk.' + clientName + '.' + firebase.SDK_VERSION.replace(/\./g, '-')] = 1;
-        if (index_cjs.isMobileCordova()) {
+        if (isMobileCordova()) {
             stats['framework.cordova'] = 1;
         }
-        else if (index_cjs.isReactNative()) {
+        else if (isReactNative()) {
             stats['framework.reactnative'] = 1;
         }
         this.reportStats(stats);
@@ -30163,7 +24752,7 @@ var PersistentConnection = /** @class */ (function (_super) {
      */
     PersistentConnection.prototype.shouldReconnect_ = function () {
         var online = OnlineMonitor.getInstance().currentlyOnline();
-        return index_cjs.isEmpty(this.interruptReasons_) && online;
+        return isEmpty(this.interruptReasons_) && online;
     };
     /**
      * @private
@@ -30200,7 +24789,7 @@ var PersistentConnection = /** @class */ (function (_super) {
  * persistent connection (using WebSockets or long-polling)
  */
 var ReadonlyRestClient = /** @class */ (function (_super) {
-    tslib_1.__extends(ReadonlyRestClient, _super);
+    __extends(ReadonlyRestClient, _super);
     /**
      * @param {!RepoInfo} repoInfo_ Data about the namespace we are connecting to
      * @param {function(string, *, boolean, ?number)} onDataUpdate_ A callback for new data from the server
@@ -30237,7 +24826,7 @@ var ReadonlyRestClient = /** @class */ (function (_super) {
             return 'tag$' + tag;
         }
         else {
-            index_cjs.assert(query.getQueryParams().isDefault(), "should have a tag if it's not a default query.");
+            assert(query.getQueryParams().isDefault(), "should have a tag if it's not a default query.");
             return query.path.toString();
         }
     };
@@ -30262,7 +24851,7 @@ var ReadonlyRestClient = /** @class */ (function (_super) {
             if (error === null) {
                 _this.onDataUpdate_(pathString, data, /*isMerge=*/ false, tag);
             }
-            if (index_cjs.safeGet(_this.listens_, listenId) === thisListen) {
+            if (safeGet(_this.listens_, listenId) === thisListen) {
                 var status_1;
                 if (!error) {
                     status_1 = 'ok';
@@ -30312,7 +24901,7 @@ var ReadonlyRestClient = /** @class */ (function (_super) {
                 '?' +
                 'ns=' +
                 _this.repoInfo_.namespace +
-                index_cjs.querystring(queryStringParameters);
+                querystring(queryStringParameters);
             _this.log_('Sending REST request for ' + url);
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function () {
@@ -30321,7 +24910,7 @@ var ReadonlyRestClient = /** @class */ (function (_super) {
                     var res = null;
                     if (xhr.status >= 200 && xhr.status < 300) {
                         try {
-                            res = index_cjs.jsonEval(xhr.responseText);
+                            res = jsonEval(xhr.responseText);
                         }
                         catch (e) {
                             warn('Failed to parse JSON response for ' +
@@ -30409,7 +24998,7 @@ var Repo = /** @class */ (function () {
                     throw new Error('Only objects are supported for option databaseAuthVariableOverride');
                 }
                 try {
-                    index_cjs.stringify(authOverride);
+                    stringify(authOverride);
                 }
                 catch (e) {
                     throw new Error('Invalid authOverride provided: ' + e);
@@ -30506,7 +25095,7 @@ var Repo = /** @class */ (function () {
         var events = [];
         if (tag) {
             if (isMerge) {
-                var taggedChildren = index_cjs.map(data, function (raw) {
+                var taggedChildren = map(data, function (raw) {
                     return nodeFromJSON$1(raw);
                 });
                 events = this.serverSyncTree_.applyTaggedQueryMerge(path, taggedChildren, tag);
@@ -30517,7 +25106,7 @@ var Repo = /** @class */ (function () {
             }
         }
         else if (isMerge) {
-            var changedChildren = index_cjs.map(data, function (raw) {
+            var changedChildren = map(data, function (raw) {
                 return nodeFromJSON$1(raw);
             });
             events = this.serverSyncTree_.applyServerMerge(path, changedChildren);
@@ -30629,7 +25218,7 @@ var Repo = /** @class */ (function () {
         var empty = true;
         var serverValues = this.generateServerValues();
         var changedChildren = {};
-        index_cjs.forEach(childrenToMerge, function (changedKey, changedValue) {
+        forEach(childrenToMerge, function (changedKey, changedValue) {
             empty = false;
             var newNodeUnresolved = nodeFromJSON$1(changedValue);
             changedChildren[changedKey] = resolveDeferredValueSnapshot(newNodeUnresolved, serverValues);
@@ -30648,7 +25237,7 @@ var Repo = /** @class */ (function () {
                 _this.eventQueue_.raiseEventsForChangedPath(affectedPath, clearEvents);
                 _this.callOnCompleteCallback(onComplete, status, errorReason);
             });
-            index_cjs.forEach(childrenToMerge, function (changedPath) {
+            forEach(childrenToMerge, function (changedPath) {
                 var affectedPath = _this.abortTransactions_(path.child(changedPath));
                 _this.rerunTransactions_(affectedPath);
             });
@@ -30729,14 +25318,14 @@ var Repo = /** @class */ (function () {
      */
     Repo.prototype.onDisconnectUpdate = function (path, childrenToMerge, onComplete) {
         var _this = this;
-        if (index_cjs.isEmpty(childrenToMerge)) {
+        if (isEmpty(childrenToMerge)) {
             log("onDisconnect().update() called with empty data.  Don't do anything.");
             this.callOnCompleteCallback(onComplete, 'ok');
             return;
         }
         this.server_.onDisconnectMerge(path.toString(), childrenToMerge, function (status, errorReason) {
             if (status === 'ok') {
-                index_cjs.forEach(childrenToMerge, function (childName, childNode) {
+                forEach(childrenToMerge, function (childName, childNode) {
                     var newChildNode = nodeFromJSON$1(childNode);
                     _this.onDisconnect_.remember(path.child(childName), newChildNode);
                 });
@@ -30800,7 +25389,7 @@ var Repo = /** @class */ (function () {
         var longestName = Object.keys(stats).reduce(function (previousValue, currentValue) {
             return Math.max(currentValue.length, previousValue);
         }, 0);
-        index_cjs.forEach(stats, function (stat, value) {
+        forEach(stats, function (stat, value) {
             // pad stat names to be the same length (plus 2 extra spaces).
             for (var i = stat.length; i < longestName + 2; i++)
                 stat += ' ';
@@ -31180,7 +25769,7 @@ var LimitedFilter = /** @class */ (function () {
             cmp = this.index_.getCompare();
         }
         var oldEventCache = snap;
-        index_cjs.assert(oldEventCache.numChildren() == this.limit_, '');
+        assert(oldEventCache.numChildren() == this.limit_, '');
         var newChildNamedNode = new NamedNode(childKey, childSnap);
         var windowBoundary = this.reverse_
             ? oldEventCache.getFirstChild(this.index_)
@@ -31309,7 +25898,7 @@ var QueryParams = /** @class */ (function () {
      * @return {*}
      */
     QueryParams.prototype.getIndexStartValue = function () {
-        index_cjs.assert(this.startSet_, 'Only valid if start has been set');
+        assert(this.startSet_, 'Only valid if start has been set');
         return this.indexStartValue_;
     };
     /**
@@ -31318,7 +25907,7 @@ var QueryParams = /** @class */ (function () {
      * @return {!string}
      */
     QueryParams.prototype.getIndexStartName = function () {
-        index_cjs.assert(this.startSet_, 'Only valid if start has been set');
+        assert(this.startSet_, 'Only valid if start has been set');
         if (this.startNameSet_) {
             return this.indexStartName_;
         }
@@ -31337,7 +25926,7 @@ var QueryParams = /** @class */ (function () {
      * @return {*}
      */
     QueryParams.prototype.getIndexEndValue = function () {
-        index_cjs.assert(this.endSet_, 'Only valid if end has been set');
+        assert(this.endSet_, 'Only valid if end has been set');
         return this.indexEndValue_;
     };
     /**
@@ -31346,7 +25935,7 @@ var QueryParams = /** @class */ (function () {
      * @return {!string}
      */
     QueryParams.prototype.getIndexEndName = function () {
-        index_cjs.assert(this.endSet_, 'Only valid if end has been set');
+        assert(this.endSet_, 'Only valid if end has been set');
         if (this.endNameSet_) {
             return this.indexEndName_;
         }
@@ -31371,7 +25960,7 @@ var QueryParams = /** @class */ (function () {
      * @return {!number}
      */
     QueryParams.prototype.getLimit = function () {
-        index_cjs.assert(this.limitSet_, 'Only valid if limit has been set');
+        assert(this.limitSet_, 'Only valid if limit has been set');
         return this.limit_;
     };
     /**
@@ -31571,20 +26160,20 @@ var QueryParams = /** @class */ (function () {
             orderBy = REST_CONSTANTS.KEY_INDEX;
         }
         else {
-            index_cjs.assert(this.index_ instanceof PathIndex, 'Unrecognized index type!');
+            assert(this.index_ instanceof PathIndex, 'Unrecognized index type!');
             orderBy = this.index_.toString();
         }
-        qs[REST_CONSTANTS.ORDER_BY] = index_cjs.stringify(orderBy);
+        qs[REST_CONSTANTS.ORDER_BY] = stringify(orderBy);
         if (this.startSet_) {
-            qs[REST_CONSTANTS.START_AT] = index_cjs.stringify(this.indexStartValue_);
+            qs[REST_CONSTANTS.START_AT] = stringify(this.indexStartValue_);
             if (this.startNameSet_) {
-                qs[REST_CONSTANTS.START_AT] += ',' + index_cjs.stringify(this.indexStartName_);
+                qs[REST_CONSTANTS.START_AT] += ',' + stringify(this.indexStartName_);
             }
         }
         if (this.endSet_) {
-            qs[REST_CONSTANTS.END_AT] = index_cjs.stringify(this.indexEndValue_);
+            qs[REST_CONSTANTS.END_AT] = stringify(this.indexEndValue_);
             if (this.endNameSet_) {
-                qs[REST_CONSTANTS.END_AT] += ',' + index_cjs.stringify(this.indexEndName_);
+                qs[REST_CONSTANTS.END_AT] += ',' + stringify(this.indexEndName_);
             }
         }
         if (this.limitSet_) {
@@ -31656,7 +26245,7 @@ var QueryParams = /** @class */ (function () {
  * limitations under the License.
  */
 var Reference = /** @class */ (function (_super) {
-    tslib_1.__extends(Reference, _super);
+    __extends(Reference, _super);
     /**
      * Call options:
      *   new Reference(Repo, Path) or
@@ -31679,7 +26268,7 @@ var Reference = /** @class */ (function (_super) {
     }
     /** @return {?string} */
     Reference.prototype.getKey = function () {
-        index_cjs.validateArgCount('Reference.key', 0, 0, arguments.length);
+        validateArgCount('Reference.key', 0, 0, arguments.length);
         if (this.path.isEmpty())
             return null;
         else
@@ -31690,7 +26279,7 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Reference}
      */
     Reference.prototype.child = function (pathString) {
-        index_cjs.validateArgCount('Reference.child', 1, 1, arguments.length);
+        validateArgCount('Reference.child', 1, 1, arguments.length);
         if (typeof pathString === 'number') {
             pathString = String(pathString);
         }
@@ -31704,13 +26293,13 @@ var Reference = /** @class */ (function (_super) {
     };
     /** @return {?Reference} */
     Reference.prototype.getParent = function () {
-        index_cjs.validateArgCount('Reference.parent', 0, 0, arguments.length);
+        validateArgCount('Reference.parent', 0, 0, arguments.length);
         var parentPath = this.path.parent();
         return parentPath === null ? null : new Reference(this.repo, parentPath);
     };
     /** @return {!Reference} */
     Reference.prototype.getRoot = function () {
-        index_cjs.validateArgCount('Reference.root', 0, 0, arguments.length);
+        validateArgCount('Reference.root', 0, 0, arguments.length);
         var ref = this;
         while (ref.getParent() !== null) {
             ref = ref.getParent();
@@ -31727,11 +26316,11 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Promise}
      */
     Reference.prototype.set = function (newVal, onComplete) {
-        index_cjs.validateArgCount('Reference.set', 1, 2, arguments.length);
+        validateArgCount('Reference.set', 1, 2, arguments.length);
         validateWritablePath('Reference.set', this.path);
         validateFirebaseDataArg('Reference.set', 1, newVal, this.path, false);
-        index_cjs.validateCallback('Reference.set', 2, onComplete, true);
-        var deferred = new index_cjs.Deferred();
+        validateCallback('Reference.set', 2, onComplete, true);
+        var deferred = new Deferred();
         this.repo.setWithPriority(this.path, newVal, 
         /*priority=*/ null, deferred.wrapCallback(onComplete));
         return deferred.promise;
@@ -31742,7 +26331,7 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Promise}
      */
     Reference.prototype.update = function (objectToMerge, onComplete) {
-        index_cjs.validateArgCount('Reference.update', 1, 2, arguments.length);
+        validateArgCount('Reference.update', 1, 2, arguments.length);
         validateWritablePath('Reference.update', this.path);
         if (Array.isArray(objectToMerge)) {
             var newObjectToMerge = {};
@@ -31756,8 +26345,8 @@ var Reference = /** @class */ (function (_super) {
                 'only update some of the children.');
         }
         validateFirebaseMergeDataArg('Reference.update', 1, objectToMerge, this.path, false);
-        index_cjs.validateCallback('Reference.update', 2, onComplete, true);
-        var deferred = new index_cjs.Deferred();
+        validateCallback('Reference.update', 2, onComplete, true);
+        var deferred = new Deferred();
         this.repo.update(this.path, objectToMerge, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -31768,16 +26357,16 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Promise}
      */
     Reference.prototype.setWithPriority = function (newVal, newPriority, onComplete) {
-        index_cjs.validateArgCount('Reference.setWithPriority', 2, 3, arguments.length);
+        validateArgCount('Reference.setWithPriority', 2, 3, arguments.length);
         validateWritablePath('Reference.setWithPriority', this.path);
         validateFirebaseDataArg('Reference.setWithPriority', 1, newVal, this.path, false);
         validatePriority('Reference.setWithPriority', 2, newPriority, false);
-        index_cjs.validateCallback('Reference.setWithPriority', 3, onComplete, true);
+        validateCallback('Reference.setWithPriority', 3, onComplete, true);
         if (this.getKey() === '.length' || this.getKey() === '.keys')
             throw 'Reference.setWithPriority failed: ' +
                 this.getKey() +
                 ' is a read-only object.';
-        var deferred = new index_cjs.Deferred();
+        var deferred = new Deferred();
         this.repo.setWithPriority(this.path, newVal, newPriority, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -31786,9 +26375,9 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Promise}
      */
     Reference.prototype.remove = function (onComplete) {
-        index_cjs.validateArgCount('Reference.remove', 0, 1, arguments.length);
+        validateArgCount('Reference.remove', 0, 1, arguments.length);
         validateWritablePath('Reference.remove', this.path);
-        index_cjs.validateCallback('Reference.remove', 1, onComplete, true);
+        validateCallback('Reference.remove', 1, onComplete, true);
         return this.set(null, onComplete);
     };
     /**
@@ -31798,10 +26387,10 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Promise}
      */
     Reference.prototype.transaction = function (transactionUpdate, onComplete, applyLocally) {
-        index_cjs.validateArgCount('Reference.transaction', 1, 3, arguments.length);
+        validateArgCount('Reference.transaction', 1, 3, arguments.length);
         validateWritablePath('Reference.transaction', this.path);
-        index_cjs.validateCallback('Reference.transaction', 1, transactionUpdate, false);
-        index_cjs.validateCallback('Reference.transaction', 2, onComplete, true);
+        validateCallback('Reference.transaction', 1, transactionUpdate, false);
+        validateCallback('Reference.transaction', 2, onComplete, true);
         // NOTE: applyLocally is an internal-only option for now.  We need to decide if we want to keep it and how
         // to expose it.
         validateBoolean('Reference.transaction', 3, applyLocally, true);
@@ -31811,7 +26400,7 @@ var Reference = /** @class */ (function (_super) {
                 ' is a read-only object.';
         if (applyLocally === undefined)
             applyLocally = true;
-        var deferred = new index_cjs.Deferred();
+        var deferred = new Deferred();
         if (typeof onComplete === 'function') {
             deferred.promise.catch(function () { });
         }
@@ -31835,11 +26424,11 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Promise}
      */
     Reference.prototype.setPriority = function (priority, onComplete) {
-        index_cjs.validateArgCount('Reference.setPriority', 1, 2, arguments.length);
+        validateArgCount('Reference.setPriority', 1, 2, arguments.length);
         validateWritablePath('Reference.setPriority', this.path);
         validatePriority('Reference.setPriority', 1, priority, false);
-        index_cjs.validateCallback('Reference.setPriority', 2, onComplete, true);
-        var deferred = new index_cjs.Deferred();
+        validateCallback('Reference.setPriority', 2, onComplete, true);
+        var deferred = new Deferred();
         this.repo.setWithPriority(this.path.child('.priority'), priority, null, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -31849,10 +26438,10 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Reference}
      */
     Reference.prototype.push = function (value, onComplete) {
-        index_cjs.validateArgCount('Reference.push', 0, 2, arguments.length);
+        validateArgCount('Reference.push', 0, 2, arguments.length);
         validateWritablePath('Reference.push', this.path);
         validateFirebaseDataArg('Reference.push', 1, value, this.path, true);
-        index_cjs.validateCallback('Reference.push', 2, onComplete, true);
+        validateCallback('Reference.push', 2, onComplete, true);
         var now = this.repo.serverTime();
         var name = nextPushId(now);
         // push() returns a ThennableReference whose promise is fulfilled with a regular Reference.
@@ -31982,7 +26571,7 @@ var Tree = /** @class */ (function () {
         var path = pathObj instanceof Path ? pathObj : new Path(pathObj);
         var child = this, next;
         while ((next = path.getFront()) !== null) {
-            var childNode = index_cjs.safeGet(child.node_.children, next) || new TreeNode();
+            var childNode = safeGet(child.node_.children, next) || new TreeNode();
             child = new Tree(next, child, childNode);
             path = path.popFront();
         }
@@ -32002,7 +26591,7 @@ var Tree = /** @class */ (function () {
      * @param {!T} value Value to set.
      */
     Tree.prototype.setValue = function (value) {
-        index_cjs.assert(typeof value !== 'undefined', 'Cannot set value to undefined');
+        assert(typeof value !== 'undefined', 'Cannot set value to undefined');
         this.node_.value = value;
         this.updateParents_();
     };
@@ -32034,7 +26623,7 @@ var Tree = /** @class */ (function () {
      */
     Tree.prototype.forEachChild = function (action) {
         var _this = this;
-        index_cjs.forEach(this.node_.children, function (child, childTree) {
+        forEach(this.node_.children, function (child, childTree) {
             action(new Tree(child, _this, childTree));
         });
     };
@@ -32127,7 +26716,7 @@ var Tree = /** @class */ (function () {
      */
     Tree.prototype.updateChild_ = function (childName, child) {
         var childEmpty = child.isEmpty();
-        var childExists = index_cjs.contains(this.node_.children, childName);
+        var childExists = contains(this.node_.children, childName);
         if (childEmpty && childExists) {
             delete this.node_.children[childName];
             this.node_.childCount--;
@@ -32272,9 +26861,9 @@ Repo.prototype.startTransaction = function (path, transactionUpdate, onComplete,
         var priorityForNode = void 0;
         if (typeof newVal === 'object' &&
             newVal !== null &&
-            index_cjs.contains(newVal, '.priority')) {
-            priorityForNode = index_cjs.safeGet(newVal, '.priority');
-            index_cjs.assert(isValidPriority(priorityForNode), 'Invalid priority returned by transaction. ' +
+            contains(newVal, '.priority')) {
+            priorityForNode = safeGet(newVal, '.priority');
+            assert(isValidPriority(priorityForNode), 'Invalid priority returned by transaction. ' +
                 'Priority must be a valid string, finite number, server value, or null.');
         }
         else {
@@ -32323,7 +26912,7 @@ Repo.prototype.sendReadyTransactions_ = function (node) {
     }
     if (node.getValue() !== null) {
         var queue = this.buildTransactionQueue_(node);
-        index_cjs.assert(queue.length > 0, 'Sending zero length transaction queue');
+        assert(queue.length > 0, 'Sending zero length transaction queue');
         var allRun = queue.every(function (transaction) { return transaction.status === TransactionStatus.RUN; });
         // If they're all run (and not sent), we can send them.  Else, we must wait.
         if (allRun) {
@@ -32354,7 +26943,7 @@ Repo.prototype.sendTransactionQueue_ = function (path, queue) {
     var latestHash = latestState.hash();
     for (var i = 0; i < queue.length; i++) {
         var txn = queue[i];
-        index_cjs.assert(txn.status === TransactionStatus.RUN, 'tryToSendTransactionQueue_: items in queue should all be run.');
+        assert(txn.status === TransactionStatus.RUN, 'tryToSendTransactionQueue_: items in queue should all be run.');
         txn.status = TransactionStatus.SENT;
         txn.retryCount++;
         var relativePath = Path.relativePath(path, txn.path);
@@ -32462,7 +27051,7 @@ Repo.prototype.rerunTransactionQueue_ = function (queue, path) {
         var transaction = queue[i];
         var relativePath = Path.relativePath(path, transaction.path);
         var abortTransaction = false, abortReason = void 0;
-        index_cjs.assert(relativePath !== null, 'rerunTransactionsUnderNode_: relativePath should not be null.');
+        assert(relativePath !== null, 'rerunTransactionsUnderNode_: relativePath should not be null.');
         if (transaction.status === TransactionStatus.NEEDS_ABORT) {
             abortTransaction = true;
             abortReason = transaction.abortReason;
@@ -32484,7 +27073,7 @@ Repo.prototype.rerunTransactionQueue_ = function (queue, path) {
                     var newDataNode = nodeFromJSON$1(newData);
                     var hasExplicitPriority = typeof newData === 'object' &&
                         newData != null &&
-                        index_cjs.contains(newData, '.priority');
+                        contains(newData, '.priority');
                     if (!hasExplicitPriority) {
                         // Keep the old priority if there wasn't a priority explicitly specified.
                         newDataNode = newDataNode.updatePriority(currentNode.getPriority());
@@ -32657,14 +27246,14 @@ Repo.prototype.abortTransactionsOnNode_ = function (node) {
         for (var i = 0; i < queue.length; i++) {
             if (queue[i].status === TransactionStatus.SENT_NEEDS_ABORT) ;
             else if (queue[i].status === TransactionStatus.SENT) {
-                index_cjs.assert(lastSent === i - 1, 'All SENT items should be at beginning of queue.');
+                assert(lastSent === i - 1, 'All SENT items should be at beginning of queue.');
                 lastSent = i;
                 // Mark transaction for abort when it comes back.
                 queue[i].status = TransactionStatus.SENT_NEEDS_ABORT;
                 queue[i].abortReason = 'set';
             }
             else {
-                index_cjs.assert(queue[i].status === TransactionStatus.RUN, 'Unexpected transaction status in abort');
+                assert(queue[i].status === TransactionStatus.RUN, 'Unexpected transaction status in abort');
                 // We can abort it immediately.
                 queue[i].unwatcher();
                 events = events.concat(this.serverSyncTree_.ackUserWrite(queue[i].currentWriteId, true));
@@ -32774,9 +27363,9 @@ var RepoManager = /** @class */ (function () {
      * @param {!Repo} repo
      */
     RepoManager.prototype.deleteRepo = function (repo) {
-        var appRepos = index_cjs.safeGet(this.repos_, repo.app.name);
+        var appRepos = safeGet(this.repos_, repo.app.name);
         // This should never happen...
-        if (!appRepos || index_cjs.safeGet(appRepos, repo.repoInfo_.toURLString()) !== repo) {
+        if (!appRepos || safeGet(appRepos, repo.repoInfo_.toURLString()) !== repo) {
             fatal("Database " + repo.app.name + "(" + repo.repoInfo_ + ") has already been deleted.");
         }
         repo.interrupt();
@@ -32791,12 +27380,12 @@ var RepoManager = /** @class */ (function () {
      * @return {!Repo} The Repo object for the specified server / repoName.
      */
     RepoManager.prototype.createRepo = function (repoInfo, app) {
-        var appRepos = index_cjs.safeGet(this.repos_, app.name);
+        var appRepos = safeGet(this.repos_, app.name);
         if (!appRepos) {
             appRepos = {};
             this.repos_[app.name] = appRepos;
         }
-        var repo = index_cjs.safeGet(appRepos, repoInfo.toURLString());
+        var repo = safeGet(appRepos, repoInfo.toURLString());
         if (repo) {
             fatal('Database initialized multiple times. Please make sure the format of the database URL matches with each database() call.');
         }
@@ -32857,7 +27446,7 @@ var Database = /** @class */ (function () {
     });
     Database.prototype.ref = function (path) {
         this.checkDeleted_('ref');
-        index_cjs.validateArgCount('database.ref', 0, 1, arguments.length);
+        validateArgCount('database.ref', 0, 1, arguments.length);
         if (path instanceof Reference) {
             return this.refFromURL(path.toString());
         }
@@ -32874,7 +27463,7 @@ var Database = /** @class */ (function () {
         /** @const {string} */
         var apiName = 'database.refFromURL';
         this.checkDeleted_(apiName);
-        index_cjs.validateArgCount(apiName, 1, 1, arguments.length);
+        validateArgCount(apiName, 1, 1, arguments.length);
         var parsedURL = parseRepoInfo(url);
         validateUrl(apiName, 1, parsedURL);
         var repoInfo = parsedURL.repoInfo;
@@ -32899,12 +27488,12 @@ var Database = /** @class */ (function () {
     };
     // Make individual repo go offline.
     Database.prototype.goOffline = function () {
-        index_cjs.validateArgCount('database.goOffline', 0, 0, arguments.length);
+        validateArgCount('database.goOffline', 0, 0, arguments.length);
         this.checkDeleted_('goOffline');
         this.repo_.interrupt();
     };
     Database.prototype.goOnline = function () {
-        index_cjs.validateArgCount('database.goOnline', 0, 0, arguments.length);
+        validateArgCount('database.goOnline', 0, 0, arguments.length);
         this.checkDeleted_('goOnline');
         this.repo_.resume();
     };
@@ -32922,8 +27511,8 @@ var DatabaseInternals = /** @class */ (function () {
     }
     /** @return {Promise<void>} */
     DatabaseInternals.prototype.delete = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 this.database.checkDeleted_('delete');
                 RepoManager.getInstance().deleteRepo(this.database.repo_);
                 this.database.repo_ = null;
@@ -33114,32 +27703,11 @@ function registerDatabase(instance) {
         ServerValue: ServerValue,
         TEST_ACCESS: TEST_ACCESS
     }, null, true);
-    if (index_cjs.isNodeSdk()) {
+    if (isNodeSdk()) {
         module.exports = namespace;
     }
 }
 registerDatabase(firebase);
-
-exports.registerDatabase = registerDatabase;
-exports.Database = Database;
-exports.Query = Query;
-exports.Reference = Reference;
-exports.enableLogging = enableLogging;
-exports.ServerValue = ServerValue;
-exports.DataSnapshot = DataSnapshot;
-exports.OnDisconnect = OnDisconnect;
-
-});
-
-unwrapExports(index_cjs$3);
-var index_cjs_1$2 = index_cjs$3.registerDatabase;
-var index_cjs_2$1 = index_cjs$3.Database;
-var index_cjs_3$1 = index_cjs$3.Query;
-var index_cjs_4$1 = index_cjs$3.Reference;
-var index_cjs_5$1 = index_cjs$3.enableLogging;
-var index_cjs_6$1 = index_cjs$3.ServerValue;
-var index_cjs_7$1 = index_cjs$3.DataSnapshot;
-var index_cjs_8$1 = index_cjs$3.OnDisconnect;
 
 var commonjsGlobal$1 = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -33240,18 +27808,11 @@ function xc(a){Eb.call(this);var b=a.__sm__;if(b){a:{for(var c in b){a=c;break a
 */
 wc.prototype.createWebChannel=wc.prototype.a;Y.prototype.send=Y.prototype.Zc;Y.prototype.open=Y.prototype.Yc;Y.prototype.close=Y.prototype.close;Ab.NO_ERROR=0;Ab.TIMEOUT=8;Ab.HTTP_ERROR=6;Bb.COMPLETE="complete";Db.EventType=O;O.OPEN="a";O.CLOSE="b";O.ERROR="c";O.MESSAGE="d";I.prototype.listen=I.prototype.Lb;X.prototype.listenOnce=X.prototype.Mb;X.prototype.getLastError=X.prototype.dd;X.prototype.getLastErrorCode=X.prototype.Db;X.prototype.getStatus=X.prototype.aa;X.prototype.getStatusText=X.prototype.Fb;
 X.prototype.getResponseJson=X.prototype.Nc;X.prototype.getResponseText=X.prototype.va;X.prototype.send=X.prototype.xa;var tmp={createWebChannelTransport:zc,ErrorCode:Ab,EventType:Bb,WebChannel:Db,XhrIo:X};
-
-var index_cjs$5 = createCommonjsModule(function (module, exports) {
-
-Object.defineProperty(exports, '__esModule', { value: true });
-
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var firebase = _interopDefault(index_cjs$2);
-
-
-
-
+var tmp_1 = tmp.createWebChannelTransport;
+var tmp_2 = tmp.ErrorCode;
+var tmp_3 = tmp.EventType;
+var tmp_4 = tmp.WebChannel;
+var tmp_5 = tmp.XhrIo;
 
 /**
  * @license
@@ -33288,41 +27849,41 @@ var SDK_VERSION = firebase.SDK_VERSION;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var logClient = new index_esm.Logger('@firebase/firestore');
-var LogLevel;
-(function (LogLevel) {
-    LogLevel[LogLevel["DEBUG"] = 0] = "DEBUG";
-    LogLevel[LogLevel["ERROR"] = 1] = "ERROR";
-    LogLevel[LogLevel["SILENT"] = 2] = "SILENT";
-})(LogLevel || (LogLevel = {}));
+var logClient$1 = new Logger('@firebase/firestore');
+var LogLevel$1;
+(function (LogLevel$$1) {
+    LogLevel$$1[LogLevel$$1["DEBUG"] = 0] = "DEBUG";
+    LogLevel$$1[LogLevel$$1["ERROR"] = 1] = "ERROR";
+    LogLevel$$1[LogLevel$$1["SILENT"] = 2] = "SILENT";
+})(LogLevel$1 || (LogLevel$1 = {}));
 // Helper methods are needed because variables can't be exported as read/write
 function getLogLevel() {
-    if (logClient.logLevel === index_esm.LogLevel.DEBUG) {
-        return LogLevel.DEBUG;
+    if (logClient$1.logLevel === LogLevel.DEBUG) {
+        return LogLevel$1.DEBUG;
     }
-    else if (logClient.logLevel === index_esm.LogLevel.SILENT) {
-        return LogLevel.SILENT;
+    else if (logClient$1.logLevel === LogLevel.SILENT) {
+        return LogLevel$1.SILENT;
     }
     else {
-        return LogLevel.ERROR;
+        return LogLevel$1.ERROR;
     }
 }
-function setLogLevel(newLevel) {
+function setLogLevel$1(newLevel) {
     /**
      * Map the new log level to the associated Firebase Log Level
      */
     switch (newLevel) {
-        case LogLevel.DEBUG:
-            logClient.logLevel = index_esm.LogLevel.DEBUG;
+        case LogLevel$1.DEBUG:
+            logClient$1.logLevel = LogLevel.DEBUG;
             break;
-        case LogLevel.ERROR:
-            logClient.logLevel = index_esm.LogLevel.ERROR;
+        case LogLevel$1.ERROR:
+            logClient$1.logLevel = LogLevel.ERROR;
             break;
-        case LogLevel.SILENT:
-            logClient.logLevel = index_esm.LogLevel.SILENT;
+        case LogLevel$1.SILENT:
+            logClient$1.logLevel = LogLevel.SILENT;
             break;
         default:
-            logClient.error("Firestore (" + SDK_VERSION + "): Invalid value passed to `setLogLevel`");
+            logClient$1.error("Firestore (" + SDK_VERSION + "): Invalid value passed to `setLogLevel`");
     }
 }
 function debug(tag, msg) {
@@ -33330,19 +27891,19 @@ function debug(tag, msg) {
     for (var _i = 2; _i < arguments.length; _i++) {
         obj[_i - 2] = arguments[_i];
     }
-    if (logClient.logLevel <= index_esm.LogLevel.DEBUG) {
+    if (logClient$1.logLevel <= LogLevel.DEBUG) {
         var args = obj.map(argToString);
-        logClient.debug.apply(logClient, ["Firestore (" + SDK_VERSION + ") [" + tag + "]: " + msg].concat(args));
+        logClient$1.debug.apply(logClient$1, ["Firestore (" + SDK_VERSION + ") [" + tag + "]: " + msg].concat(args));
     }
 }
-function error(msg) {
+function error$2(msg) {
     var obj = [];
     for (var _i = 1; _i < arguments.length; _i++) {
         obj[_i - 1] = arguments[_i];
     }
-    if (logClient.logLevel <= index_esm.LogLevel.ERROR) {
+    if (logClient$1.logLevel <= LogLevel.ERROR) {
         var args = obj.map(argToString);
-        logClient.error.apply(logClient, ["Firestore (" + SDK_VERSION + "): " + msg].concat(args));
+        logClient$1.error.apply(logClient$1, ["Firestore (" + SDK_VERSION + "): " + msg].concat(args));
     }
 }
 /**
@@ -33391,7 +27952,7 @@ function fail(failure) {
     // Log the failure in addition to throw an exception, just in case the
     // exception is swallowed.
     var message = "FIRESTORE (" + SDK_VERSION + ") INTERNAL ASSERTION FAILED: " + failure;
-    error(message);
+    error$2(message);
     // NOTE: We don't use FirestoreError here because these are internal failures
     // that cannot be handled by the user. (Also it would create a circular
     // dependency between the error and assert modules which doesn't work.)
@@ -33401,7 +27962,7 @@ function fail(failure) {
  * Fails if the given assertion condition is false, throwing an Error with the
  * given message if it did.
  */
-function assert(assertion, message) {
+function assert$1(assertion, message) {
     if (!assertion) {
         fail(message);
     }
@@ -33590,7 +28151,7 @@ var Code = {
  * and compatible `code` and `message` fields.)
  */
 var FirestoreError = /** @class */ (function (_super) {
-    tslib_1.__extends(FirestoreError, _super);
+    __extends(FirestoreError, _super);
     function FirestoreError(code, message) {
         var _this = _super.call(this, message) || this;
         _this.code = code;
@@ -33669,7 +28230,7 @@ function makeConstructorPrivate(cls, optionalMessage) {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-function contains(obj, key) {
+function contains$2(obj, key) {
     return Object.prototype.hasOwnProperty.call(obj, key);
 }
 /** Returns the given value if it's defined or the defaultValue otherwise. */
@@ -33688,18 +28249,18 @@ function forEachNumber(obj, fn) {
 }
 function values(obj) {
     var vs = [];
-    forEach(obj, function (_, v) { return vs.push(v); });
+    forEach$1(obj, function (_, v) { return vs.push(v); });
     return vs;
 }
-function forEach(obj, fn) {
+function forEach$1(obj, fn) {
     for (var key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
             fn(key, obj[key]);
         }
     }
 }
-function isEmpty(obj) {
-    assert(obj != null && typeof obj === 'object', 'isEmpty() expects object parameter.');
+function isEmpty$1(obj) {
+    assert$1(obj != null && typeof obj === 'object', 'isEmpty() expects object parameter.');
     for (var key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
             return false;
@@ -33708,7 +28269,7 @@ function isEmpty(obj) {
     return true;
 }
 function shallowCopy(obj) {
-    assert(obj && typeof obj === 'object', 'shallowCopy() expects object parameter.');
+    assert$1(obj && typeof obj === 'object', 'shallowCopy() expects object parameter.');
     var result = {};
     for (var key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -33973,7 +28534,7 @@ function validateDefined(functionName, position, argument) {
  * values match the expected keys and types provided in optionTypes.
  */
 function validateOptionNames(functionName, options, optionNames) {
-    forEach(options, function (key, _) {
+    forEach$1(options, function (key, _) {
         if (optionNames.indexOf(key) < 0) {
             throw new FirestoreError(Code.INVALID_ARGUMENT, "Unknown option '" + key + "' passed to function " + functionName + "(). " +
                 'Available options: ' +
@@ -34037,7 +28598,7 @@ var AutoId = /** @class */ (function () {
         for (var i = 0; i < 20; i++) {
             autoId += chars.charAt(Math.floor(Math.random() * chars.length));
         }
-        assert(autoId.length === 20, 'Invalid auto ID: ' + autoId);
+        assert$1(autoId.length === 20, 'Invalid auto ID: ' + autoId);
         return autoId;
     };
     return AutoId;
@@ -34116,17 +28677,17 @@ function assertBase64Available() {
  * Note that while you can't hide the constructor in JavaScript code, we are
  * using the hack above to make sure no-one outside this module can call it.
  */
-var Blob = /** @class */ (function () {
+var Blob$1 = /** @class */ (function () {
     function Blob(binaryString) {
         assertBase64Available();
         this._binaryString = binaryString;
     }
-    Blob.fromBase64String = function (base64) {
+    Blob.fromBase64String = function (base64$$1) {
         validateExactNumberOfArgs('Blob.fromBase64String', arguments, 1);
-        validateArgType('Blob.fromBase64String', 'string', 1, base64);
+        validateArgType('Blob.fromBase64String', 'string', 1, base64$$1);
         assertBase64Available();
         try {
-            var binaryString = PlatformSupport.getPlatform().atob(base64);
+            var binaryString = PlatformSupport.getPlatform().atob(base64$$1);
             return new Blob(binaryString);
         }
         catch (e) {
@@ -34186,7 +28747,7 @@ var Blob = /** @class */ (function () {
 // For our internal TypeScript code PublicBlob doesn't exist as a type, and so
 // we need to use Blob as type and export it too.
 // tslint:disable-next-line:variable-name We're treating this as a class name.
-var PublicBlob = makeConstructorPrivate(Blob, 'Use Blob.fromUint8Array() or Blob.fromBase64String() instead.');
+var PublicBlob = makeConstructorPrivate(Blob$1, 'Use Blob.fromUint8Array() or Blob.fromBase64String() instead.');
 
 /**
  * @license
@@ -34409,7 +28970,7 @@ var DOCUMENT_KEY_NAME = '__name__';
 /**
  * Path represents an ordered sequence of string segments.
  */
-var Path = /** @class */ (function () {
+var Path$1 = /** @class */ (function () {
     function Path(segments, offset, length) {
         this.init(segments, offset, length);
     }
@@ -34476,22 +29037,22 @@ var Path = /** @class */ (function () {
     };
     Path.prototype.popFirst = function (size) {
         size = size === undefined ? 1 : size;
-        assert(this.length >= size, "Can't call popFirst() with less segments");
+        assert$1(this.length >= size, "Can't call popFirst() with less segments");
         return this.construct(this.segments, this.offset + size, this.length - size);
     };
     Path.prototype.popLast = function () {
-        assert(!this.isEmpty(), "Can't call popLast() on empty path");
+        assert$1(!this.isEmpty(), "Can't call popLast() on empty path");
         return this.construct(this.segments, this.offset, this.length - 1);
     };
     Path.prototype.firstSegment = function () {
-        assert(!this.isEmpty(), "Can't call firstSegment() on empty path");
+        assert$1(!this.isEmpty(), "Can't call firstSegment() on empty path");
         return this.segments[this.offset];
     };
     Path.prototype.lastSegment = function () {
         return this.get(this.length - 1);
     };
     Path.prototype.get = function (index) {
-        assert(index < this.length, 'Index out of range');
+        assert$1(index < this.length, 'Index out of range');
         return this.segments[this.offset + index];
     };
     Path.prototype.isEmpty = function () {
@@ -34550,7 +29111,7 @@ var Path = /** @class */ (function () {
  * within Firestore.
  */
 var ResourcePath = /** @class */ (function (_super) {
-    tslib_1.__extends(ResourcePath, _super);
+    __extends(ResourcePath, _super);
     function ResourcePath() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -34580,11 +29141,11 @@ var ResourcePath = /** @class */ (function (_super) {
     };
     ResourcePath.EMPTY_PATH = new ResourcePath([]);
     return ResourcePath;
-}(Path));
+}(Path$1));
 var identifierRegExp = /^[_a-zA-Z][_a-zA-Z0-9]*$/;
 /** A dot-separated path for navigating sub-objects within a document. */
 var FieldPath = /** @class */ (function (_super) {
-    tslib_1.__extends(FieldPath, _super);
+    __extends(FieldPath, _super);
     function FieldPath() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -34678,7 +29239,7 @@ var FieldPath = /** @class */ (function (_super) {
     };
     FieldPath.EMPTY_PATH = new FieldPath([]);
     return FieldPath;
-}(Path));
+}(Path$1));
 
 /**
  * @license
@@ -34699,7 +29260,7 @@ var FieldPath = /** @class */ (function (_super) {
 var DocumentKey = /** @class */ (function () {
     function DocumentKey(path) {
         this.path = path;
-        assert(DocumentKey.isDocumentKey(path), 'Invalid DocumentKey with an odd number of segments: ' +
+        assert$1(DocumentKey.isDocumentKey(path), 'Invalid DocumentKey with an odd number of segments: ' +
             path.toArray().join('/'));
     }
     /** Returns true if the document is in the specified collectionId. */
@@ -34777,7 +29338,7 @@ var MaybeDocument = /** @class */ (function () {
  * data has local mutations applied to it.
  */
 var Document = /** @class */ (function (_super) {
-    tslib_1.__extends(Document, _super);
+    __extends(Document, _super);
     function Document(key, version, data, options, 
     /**
      * Memoized serialized form of the document for optimization purposes (avoids repeated
@@ -34839,7 +29400,7 @@ var Document = /** @class */ (function (_super) {
  * denotes time we know it didn't exist at.
  */
 var NoDocument = /** @class */ (function (_super) {
-    tslib_1.__extends(NoDocument, _super);
+    __extends(NoDocument, _super);
     function NoDocument(key, version, options) {
         var _this = _super.call(this, key, version) || this;
         _this.hasCommittedMutations = !!(options && options.hasCommittedMutations);
@@ -34868,7 +29429,7 @@ var NoDocument = /** @class */ (function (_super) {
  * document that was updated without a known base document).
  */
 var UnknownDocument = /** @class */ (function (_super) {
-    tslib_1.__extends(UnknownDocument, _super);
+    __extends(UnknownDocument, _super);
     function UnknownDocument(key, version) {
         return _super.call(this, key, version) || this;
     }
@@ -34908,22 +29469,22 @@ var UnknownDocument = /** @class */ (function (_super) {
  */
 // An immutable sorted map implementation, based on a Left-leaning Red-Black
 // tree.
-var SortedMap = /** @class */ (function () {
+var SortedMap$1 = /** @class */ (function () {
     function SortedMap(comparator, root) {
         this.comparator = comparator;
-        this.root = root ? root : LLRBNode.EMPTY;
+        this.root = root ? root : LLRBNode$1.EMPTY;
     }
     // Returns a copy of the map, with the specified key/value added or replaced.
     SortedMap.prototype.insert = function (key, value) {
         return new SortedMap(this.comparator, this.root
             .insert(key, value, this.comparator)
-            .copy(null, null, LLRBNode.BLACK, null, null));
+            .copy(null, null, LLRBNode$1.BLACK, null, null));
     };
     // Returns a copy of the map, with the specified key removed.
     SortedMap.prototype.remove = function (key) {
         return new SortedMap(this.comparator, this.root
             .remove(key, this.comparator)
-            .copy(null, null, LLRBNode.BLACK, null, null));
+            .copy(null, null, LLRBNode$1.BLACK, null, null));
     };
     // Returns the value of the node with the given key, or null.
     SortedMap.prototype.get = function (key) {
@@ -35007,21 +29568,21 @@ var SortedMap = /** @class */ (function () {
     };
     // Returns an iterator over the SortedMap.
     SortedMap.prototype.getIterator = function () {
-        return new SortedMapIterator(this.root, null, this.comparator, false);
+        return new SortedMapIterator$1(this.root, null, this.comparator, false);
     };
     SortedMap.prototype.getIteratorFrom = function (key) {
-        return new SortedMapIterator(this.root, key, this.comparator, false);
+        return new SortedMapIterator$1(this.root, key, this.comparator, false);
     };
     SortedMap.prototype.getReverseIterator = function () {
-        return new SortedMapIterator(this.root, null, this.comparator, true);
+        return new SortedMapIterator$1(this.root, null, this.comparator, true);
     };
     SortedMap.prototype.getReverseIteratorFrom = function (key) {
-        return new SortedMapIterator(this.root, key, this.comparator, true);
+        return new SortedMapIterator$1(this.root, key, this.comparator, true);
     };
     return SortedMap;
 }()); // end SortedMap
 // An iterator over an LLRBNode.
-var SortedMapIterator = /** @class */ (function () {
+var SortedMapIterator$1 = /** @class */ (function () {
     function SortedMapIterator(node, startKey, comparator, isReverse) {
         this.isReverse = isReverse;
         this.nodeStack = [];
@@ -35060,7 +29621,7 @@ var SortedMapIterator = /** @class */ (function () {
         }
     }
     SortedMapIterator.prototype.getNext = function () {
-        assert(this.nodeStack.length > 0, 'getNext() called on iterator when hasNext() is false.');
+        assert$1(this.nodeStack.length > 0, 'getNext() called on iterator when hasNext() is false.');
         var node = this.nodeStack.pop();
         var result = { key: node.key, value: node.value };
         if (this.isReverse) {
@@ -35091,7 +29652,7 @@ var SortedMapIterator = /** @class */ (function () {
     return SortedMapIterator;
 }()); // end SortedMapIterator
 // Represents a node in a Left-leaning Red-Black tree.
-var LLRBNode = /** @class */ (function () {
+var LLRBNode$1 = /** @class */ (function () {
     function LLRBNode(key, value, color, left, right) {
         this.key = key;
         this.value = value;
@@ -35279,7 +29840,7 @@ var LLRBNode = /** @class */ (function () {
     return LLRBNode;
 }()); // end LLRBNode
 // Represents an empty node (a leaf node in the Red-Black Tree).
-var LLRBEmptyNode = /** @class */ (function () {
+var LLRBEmptyNode$1 = /** @class */ (function () {
     function LLRBEmptyNode() {
         this.size = 0;
     }
@@ -35289,7 +29850,7 @@ var LLRBEmptyNode = /** @class */ (function () {
     };
     // Returns a copy of the tree, with the specified key/value added.
     LLRBEmptyNode.prototype.insert = function (key, value, comparator) {
-        return new LLRBNode(key, value);
+        return new LLRBNode$1(key, value);
     };
     // Returns a copy of the tree, with the specified key removed.
     LLRBEmptyNode.prototype.remove = function (key, comparator) {
@@ -35322,7 +29883,7 @@ var LLRBEmptyNode = /** @class */ (function () {
     };
     return LLRBEmptyNode;
 }()); // end LLRBEmptyNode
-LLRBNode.EMPTY = new LLRBEmptyNode();
+LLRBNode$1.EMPTY = new LLRBEmptyNode$1();
 
 /**
  * @license
@@ -35393,14 +29954,14 @@ var FieldValue = /** @class */ (function () {
         return val === null ? 'null' : val.toString();
     };
     FieldValue.prototype.defaultCompareTo = function (other) {
-        assert(this.typeOrder !== other.typeOrder, 'Default compareTo should not be used for values of same type.');
+        assert$1(this.typeOrder !== other.typeOrder, 'Default compareTo should not be used for values of same type.');
         var cmp = primitiveComparator(this.typeOrder, other.typeOrder);
         return cmp;
     };
     return FieldValue;
 }());
 var NullValue = /** @class */ (function (_super) {
-    tslib_1.__extends(NullValue, _super);
+    __extends(NullValue, _super);
     function NullValue() {
         var _this = _super.call(this) || this;
         _this.typeOrder = TypeOrder.NullValue;
@@ -35425,7 +29986,7 @@ var NullValue = /** @class */ (function (_super) {
     return NullValue;
 }(FieldValue));
 var BooleanValue = /** @class */ (function (_super) {
-    tslib_1.__extends(BooleanValue, _super);
+    __extends(BooleanValue, _super);
     function BooleanValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -35454,7 +30015,7 @@ var BooleanValue = /** @class */ (function (_super) {
 }(FieldValue));
 /** Base class for IntegerValue and DoubleValue. */
 var NumberValue = /** @class */ (function (_super) {
-    tslib_1.__extends(NumberValue, _super);
+    __extends(NumberValue, _super);
     function NumberValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -35510,7 +30071,7 @@ function numericEquals(left, right) {
     }
 }
 var IntegerValue = /** @class */ (function (_super) {
-    tslib_1.__extends(IntegerValue, _super);
+    __extends(IntegerValue, _super);
     function IntegerValue(internalValue) {
         return _super.call(this, internalValue) || this;
     }
@@ -35527,7 +30088,7 @@ var IntegerValue = /** @class */ (function (_super) {
     return IntegerValue;
 }(NumberValue));
 var DoubleValue = /** @class */ (function (_super) {
-    tslib_1.__extends(DoubleValue, _super);
+    __extends(DoubleValue, _super);
     function DoubleValue(internalValue) {
         var _this = _super.call(this, internalValue) || this;
         _this.internalValue = internalValue;
@@ -35550,7 +30111,7 @@ var DoubleValue = /** @class */ (function (_super) {
 }(NumberValue));
 // TODO(b/37267885): Add truncation support
 var StringValue = /** @class */ (function (_super) {
-    tslib_1.__extends(StringValue, _super);
+    __extends(StringValue, _super);
     function StringValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -35572,7 +30133,7 @@ var StringValue = /** @class */ (function (_super) {
     return StringValue;
 }(FieldValue));
 var TimestampValue = /** @class */ (function (_super) {
-    tslib_1.__extends(TimestampValue, _super);
+    __extends(TimestampValue, _super);
     function TimestampValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -35620,7 +30181,7 @@ var TimestampValue = /** @class */ (function (_super) {
  *   localWriteTime.
  */
 var ServerTimestampValue = /** @class */ (function (_super) {
-    tslib_1.__extends(ServerTimestampValue, _super);
+    __extends(ServerTimestampValue, _super);
     function ServerTimestampValue(localWriteTime, previousValue) {
         var _this = _super.call(this) || this;
         _this.localWriteTime = localWriteTime;
@@ -35663,7 +30224,7 @@ var ServerTimestampValue = /** @class */ (function (_super) {
     return ServerTimestampValue;
 }(FieldValue));
 var BlobValue = /** @class */ (function (_super) {
-    tslib_1.__extends(BlobValue, _super);
+    __extends(BlobValue, _super);
     function BlobValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -35686,7 +30247,7 @@ var BlobValue = /** @class */ (function (_super) {
     return BlobValue;
 }(FieldValue));
 var RefValue = /** @class */ (function (_super) {
-    tslib_1.__extends(RefValue, _super);
+    __extends(RefValue, _super);
     function RefValue(databaseId, key) {
         var _this = _super.call(this) || this;
         _this.databaseId = databaseId;
@@ -35715,7 +30276,7 @@ var RefValue = /** @class */ (function (_super) {
     return RefValue;
 }(FieldValue));
 var GeoPointValue = /** @class */ (function (_super) {
-    tslib_1.__extends(GeoPointValue, _super);
+    __extends(GeoPointValue, _super);
     function GeoPointValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -35738,7 +30299,7 @@ var GeoPointValue = /** @class */ (function (_super) {
     return GeoPointValue;
 }(FieldValue));
 var ObjectValue = /** @class */ (function (_super) {
-    tslib_1.__extends(ObjectValue, _super);
+    __extends(ObjectValue, _super);
     function ObjectValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -35791,7 +30352,7 @@ var ObjectValue = /** @class */ (function (_super) {
         }
     };
     ObjectValue.prototype.set = function (path, to) {
-        assert(!path.isEmpty(), 'Cannot set field for empty path on ObjectValue');
+        assert$1(!path.isEmpty(), 'Cannot set field for empty path on ObjectValue');
         if (path.length === 1) {
             return this.setChild(path.firstSegment(), to);
         }
@@ -35805,7 +30366,7 @@ var ObjectValue = /** @class */ (function (_super) {
         }
     };
     ObjectValue.prototype.delete = function (path) {
-        assert(!path.isEmpty(), 'Cannot delete field for empty path on ObjectValue');
+        assert$1(!path.isEmpty(), 'Cannot delete field for empty path on ObjectValue');
         if (path.length === 1) {
             return new ObjectValue(this.internalValue.remove(path.firstSegment()));
         }
@@ -35826,7 +30387,7 @@ var ObjectValue = /** @class */ (function (_super) {
         return this.field(path) !== undefined;
     };
     ObjectValue.prototype.field = function (path) {
-        assert(!path.isEmpty(), "Can't get field of empty path");
+        assert$1(!path.isEmpty(), "Can't get field of empty path");
         var field = this;
         path.forEach(function (pathSegment) {
             if (field instanceof ObjectValue) {
@@ -35847,11 +30408,11 @@ var ObjectValue = /** @class */ (function (_super) {
     ObjectValue.prototype.setChild = function (childName, value) {
         return new ObjectValue(this.internalValue.insert(childName, value));
     };
-    ObjectValue.EMPTY = new ObjectValue(new SortedMap(primitiveComparator));
+    ObjectValue.EMPTY = new ObjectValue(new SortedMap$1(primitiveComparator));
     return ObjectValue;
 }(FieldValue));
 var ArrayValue = /** @class */ (function (_super) {
-    tslib_1.__extends(ArrayValue, _super);
+    __extends(ArrayValue, _super);
     function ArrayValue(internalValue) {
         var _this = _super.call(this) || this;
         _this.internalValue = internalValue;
@@ -35972,7 +30533,7 @@ function isSafeInteger(value) {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var Query = /** @class */ (function () {
+var Query$1 = /** @class */ (function () {
     /**
      * Initializes a Query with a path and optional additional query constraints.
      * Path must currently be empty if this is a collection group query.
@@ -36023,7 +30584,7 @@ var Query = /** @class */ (function () {
                     }
                 }
                 else {
-                    assert(inequalityField === null ||
+                    assert$1(inequalityField === null ||
                         (firstOrderByField !== null &&
                             inequalityField.isEqual(firstOrderByField)), 'First orderBy should match inequality field.');
                     this.memoizedOrderBy = [];
@@ -36053,16 +30614,16 @@ var Query = /** @class */ (function () {
         configurable: true
     });
     Query.prototype.addFilter = function (filter) {
-        assert(this.getInequalityFilterField() == null ||
+        assert$1(this.getInequalityFilterField() == null ||
             !(filter instanceof RelationFilter) ||
             !filter.isInequality() ||
             filter.field.isEqual(this.getInequalityFilterField()), 'Query must only have one inequality field.');
-        assert(!this.isDocumentQuery(), 'No filtering allowed for document query');
+        assert$1(!this.isDocumentQuery(), 'No filtering allowed for document query');
         var newFilters = this.filters.concat([filter]);
         return new Query(this.path, this.collectionGroup, this.explicitOrderBy.slice(), newFilters, this.limit, this.startAt, this.endAt);
     };
     Query.prototype.addOrderBy = function (orderBy) {
-        assert(!this.startAt && !this.endAt, 'Bounds must be set after orderBy');
+        assert$1(!this.startAt && !this.endAt, 'Bounds must be set after orderBy');
         // TODO(dimond): validate that orderBy does not list the same key twice.
         var newOrderBy = this.explicitOrderBy.concat([orderBy]);
         return new Query(this.path, this.collectionGroup, newOrderBy, this.filters.slice(), this.limit, this.startAt, this.endAt);
@@ -36191,7 +30752,7 @@ var Query = /** @class */ (function () {
             comparedOnKeyField = comparedOnKeyField || orderBy.field.isKeyField();
         }
         // Assert that we actually compared by key
-        assert(comparedOnKeyField, "orderBy used that doesn't compare on key field");
+        assert$1(comparedOnKeyField, "orderBy used that doesn't compare on key field");
         return 0;
     };
     Query.prototype.matches = function (doc) {
@@ -36285,7 +30846,7 @@ var Query = /** @class */ (function () {
         return true;
     };
     Query.prototype.assertValidBound = function (bound) {
-        assert(bound.position.length <= this.orderBy.length, 'Bound is longer than orderBy');
+        assert$1(bound.position.length <= this.orderBy.length, 'Bound is longer than orderBy');
     };
     return Query;
 }());
@@ -36351,7 +30912,7 @@ var RelationOp = /** @class */ (function () {
     return RelationOp;
 }());
 var RelationFilter = /** @class */ (function (_super) {
-    tslib_1.__extends(RelationFilter, _super);
+    __extends(RelationFilter, _super);
     function RelationFilter(field, op, value) {
         var _this = _super.call(this) || this;
         _this.field = field;
@@ -36361,8 +30922,8 @@ var RelationFilter = /** @class */ (function (_super) {
     }
     RelationFilter.prototype.matches = function (doc) {
         if (this.field.isKeyField()) {
-            assert(this.value instanceof RefValue, 'Comparing on key, but filter value not a RefValue');
-            assert(this.op !== RelationOp.ARRAY_CONTAINS, "array-contains queries don't make sense on document keys.");
+            assert$1(this.value instanceof RefValue, 'Comparing on key, but filter value not a RefValue');
+            assert$1(this.op !== RelationOp.ARRAY_CONTAINS, "array-contains queries don't make sense on document keys.");
             var refValue = this.value;
             var comparison = DocumentKey.comparator(doc.key, refValue.key);
             return this.matchesComparison(comparison);
@@ -36429,7 +30990,7 @@ var RelationFilter = /** @class */ (function (_super) {
  * Filter that matches 'null' values.
  */
 var NullFilter = /** @class */ (function (_super) {
-    tslib_1.__extends(NullFilter, _super);
+    __extends(NullFilter, _super);
     function NullFilter(field) {
         var _this = _super.call(this) || this;
         _this.field = field;
@@ -36459,7 +31020,7 @@ var NullFilter = /** @class */ (function (_super) {
  * Filter that matches 'NaN' values.
  */
 var NanFilter = /** @class */ (function (_super) {
-    tslib_1.__extends(NanFilter, _super);
+    __extends(NanFilter, _super);
     function NanFilter(field) {
         var _this = _super.call(this) || this;
         _this.field = field;
@@ -36533,18 +31094,18 @@ var Bound = /** @class */ (function () {
      * order.
      */
     Bound.prototype.sortsBeforeDocument = function (orderBy, doc) {
-        assert(this.position.length <= orderBy.length, "Bound has more components than query's orderBy");
+        assert$1(this.position.length <= orderBy.length, "Bound has more components than query's orderBy");
         var comparison = 0;
         for (var i = 0; i < this.position.length; i++) {
             var orderByComponent = orderBy[i];
             var component = this.position[i];
             if (orderByComponent.field.isKeyField()) {
-                assert(component instanceof RefValue, 'Bound has a non-key value where the key path is being used.');
+                assert$1(component instanceof RefValue, 'Bound has a non-key value where the key path is being used.');
                 comparison = DocumentKey.comparator(component.key, doc.key);
             }
             else {
                 var docValue = doc.field(orderByComponent.field);
-                assert(docValue !== undefined, 'Field should exist since document matched the orderBy already.');
+                assert$1(docValue !== undefined, 'Field should exist since document matched the orderBy already.');
                 comparison = component.compareTo(docValue);
             }
             if (orderByComponent.dir === Direction.DESCENDING) {
@@ -36783,15 +31344,15 @@ var QueryData = /** @class */ (function () {
 var SortedSet = /** @class */ (function () {
     function SortedSet(comparator) {
         this.comparator = comparator;
-        this.data = new SortedMap(this.comparator);
+        this.data = new SortedMap$1(this.comparator);
     }
     /**
      * Creates a SortedSet from the keys of the map.
      * This is currently implemented as an O(n) copy.
      */
-    SortedSet.fromMapKeys = function (map) {
-        var keys = new SortedSet(map.comparator);
-        map.forEach(function (key) {
+    SortedSet.fromMapKeys = function (map$$1) {
+        var keys = new SortedSet(map$$1.comparator);
+        map$$1.forEach(function (key) {
             keys = keys.add(key);
         });
         return keys;
@@ -37069,7 +31630,7 @@ var Precondition = /** @class */ (function () {
     function Precondition(updateTime, exists) {
         this.updateTime = updateTime;
         this.exists = exists;
-        assert(updateTime === undefined || exists === undefined, 'Precondition can specify "exists" or "updateTime" but not both');
+        assert$1(updateTime === undefined || exists === undefined, 'Precondition can specify "exists" or "updateTime" but not both');
     }
     /** Creates a new Precondition with an exists flag. */
     Precondition.exists = function (exists) {
@@ -37100,7 +31661,7 @@ var Precondition = /** @class */ (function () {
             return this.exists === maybeDoc instanceof Document;
         }
         else {
-            assert(this.isNone, 'Precondition should be empty');
+            assert$1(this.isNone, 'Precondition should be empty');
             return true;
         }
     };
@@ -37165,7 +31726,7 @@ var Mutation = /** @class */ (function () {
     }
     Mutation.prototype.verifyKeyMatches = function (maybeDoc) {
         if (maybeDoc != null) {
-            assert(maybeDoc.key.isEqual(this.key), 'Can only apply a mutation to a document with the same key');
+            assert$1(maybeDoc.key.isEqual(this.key), 'Can only apply a mutation to a document with the same key');
         }
     };
     /**
@@ -37189,7 +31750,7 @@ var Mutation = /** @class */ (function () {
  * object value contents.
  */
 var SetMutation = /** @class */ (function (_super) {
-    tslib_1.__extends(SetMutation, _super);
+    __extends(SetMutation, _super);
     function SetMutation(key, value, precondition) {
         var _this = _super.call(this) || this;
         _this.key = key;
@@ -37200,7 +31761,7 @@ var SetMutation = /** @class */ (function (_super) {
     }
     SetMutation.prototype.applyToRemoteDocument = function (maybeDoc, mutationResult) {
         this.verifyKeyMatches(maybeDoc);
-        assert(mutationResult.transformResults == null, 'Transform results received by SetMutation.');
+        assert$1(mutationResult.transformResults == null, 'Transform results received by SetMutation.');
         // Unlike applyToLocalView, if we're applying a mutation to a remote
         // document the server has accepted the mutation so the precondition must
         // have held.
@@ -37255,7 +31816,7 @@ var SetMutation = /** @class */ (function (_super) {
  *    ignored.
  */
 var PatchMutation = /** @class */ (function (_super) {
-    tslib_1.__extends(PatchMutation, _super);
+    __extends(PatchMutation, _super);
     function PatchMutation(key, data, fieldMask, precondition) {
         var _this = _super.call(this) || this;
         _this.key = key;
@@ -37267,7 +31828,7 @@ var PatchMutation = /** @class */ (function (_super) {
     }
     PatchMutation.prototype.applyToRemoteDocument = function (maybeDoc, mutationResult) {
         this.verifyKeyMatches(maybeDoc);
-        assert(mutationResult.transformResults == null, 'Transform results received by PatchMutation.');
+        assert$1(mutationResult.transformResults == null, 'Transform results received by PatchMutation.');
         if (!this.precondition.isValidFor(maybeDoc)) {
             // Since the mutation was not rejected, we know that the  precondition
             // matched on the backend. We therefore must not have the expected version
@@ -37346,7 +31907,7 @@ var PatchMutation = /** @class */ (function (_super) {
  * Mutation for rationale).
  */
 var TransformMutation = /** @class */ (function (_super) {
-    tslib_1.__extends(TransformMutation, _super);
+    __extends(TransformMutation, _super);
     function TransformMutation(key, fieldTransforms) {
         var _this = _super.call(this) || this;
         _this.key = key;
@@ -37360,7 +31921,7 @@ var TransformMutation = /** @class */ (function (_super) {
     }
     TransformMutation.prototype.applyToRemoteDocument = function (maybeDoc, mutationResult) {
         this.verifyKeyMatches(maybeDoc);
-        assert(mutationResult.transformResults != null, 'Transform results missing for TransformMutation.');
+        assert$1(mutationResult.transformResults != null, 'Transform results missing for TransformMutation.');
         if (!this.precondition.isValidFor(maybeDoc)) {
             // Since the mutation was not rejected, we know that the  precondition
             // matched on the backend. We therefore must not have the expected version
@@ -37423,9 +31984,9 @@ var TransformMutation = /** @class */ (function (_super) {
      * safe.
      */
     TransformMutation.prototype.requireDocument = function (maybeDoc) {
-        assert(maybeDoc instanceof Document, 'Unknown MaybeDocument type ' + maybeDoc);
+        assert$1(maybeDoc instanceof Document, 'Unknown MaybeDocument type ' + maybeDoc);
         var doc = maybeDoc;
-        assert(doc.key.isEqual(this.key), 'Can only transform a document with the same key');
+        assert$1(doc.key.isEqual(this.key), 'Can only transform a document with the same key');
         return doc;
     };
     /**
@@ -37439,7 +32000,7 @@ var TransformMutation = /** @class */ (function (_super) {
      */
     TransformMutation.prototype.serverTransformResults = function (baseDoc, serverTransformResults) {
         var transformResults = [];
-        assert(this.fieldTransforms.length === serverTransformResults.length, "server transform result count (" + serverTransformResults.length + ") " +
+        assert$1(this.fieldTransforms.length === serverTransformResults.length, "server transform result count (" + serverTransformResults.length + ") " +
             ("should match field transform count (" + this.fieldTransforms.length + ")"));
         for (var i = 0; i < serverTransformResults.length; i++) {
             var fieldTransform = this.fieldTransforms[i];
@@ -37476,7 +32037,7 @@ var TransformMutation = /** @class */ (function (_super) {
         return transformResults;
     };
     TransformMutation.prototype.transformObject = function (data, transformResults) {
-        assert(transformResults.length === this.fieldTransforms.length, 'TransformResults length mismatch.');
+        assert$1(transformResults.length === this.fieldTransforms.length, 'TransformResults length mismatch.');
         for (var i = 0; i < this.fieldTransforms.length; i++) {
             var fieldTransform = this.fieldTransforms[i];
             var fieldPath = fieldTransform.field;
@@ -37488,7 +32049,7 @@ var TransformMutation = /** @class */ (function (_super) {
 }(Mutation));
 /** A mutation that deletes the document at the given key. */
 var DeleteMutation = /** @class */ (function (_super) {
-    tslib_1.__extends(DeleteMutation, _super);
+    __extends(DeleteMutation, _super);
     function DeleteMutation(key, precondition) {
         var _this = _super.call(this) || this;
         _this.key = key;
@@ -37498,7 +32059,7 @@ var DeleteMutation = /** @class */ (function (_super) {
     }
     DeleteMutation.prototype.applyToRemoteDocument = function (maybeDoc, mutationResult) {
         this.verifyKeyMatches(maybeDoc);
-        assert(mutationResult.transformResults == null, 'Transform results received by DeleteMutation.');
+        assert$1(mutationResult.transformResults == null, 'Transform results received by DeleteMutation.');
         // Unlike applyToLocalView, if we're applying a mutation to a remote
         // document the server has accepted the mutation so the precondition must
         // have held.
@@ -37512,7 +32073,7 @@ var DeleteMutation = /** @class */ (function (_super) {
             return maybeDoc;
         }
         if (maybeDoc) {
-            assert(maybeDoc.key.isEqual(this.key), 'Can only apply mutation to document with same key');
+            assert$1(maybeDoc.key.isEqual(this.key), 'Can only apply mutation to document with same key');
         }
         return new NoDocument(this.key, SnapshotVersion.forDeletedDoc());
     };
@@ -37670,7 +32231,7 @@ var NumericIncrementTransformOperation = /** @class */ (function () {
         }
     };
     NumericIncrementTransformOperation.prototype.applyToRemoteDocument = function (previousValue, transformResult) {
-        assert(transformResult !== null, "Didn't receive transformResult for NUMERIC_ADD transform");
+        assert$1(transformResult !== null, "Didn't receive transformResult for NUMERIC_ADD transform");
         return transformResult;
     };
     NumericIncrementTransformOperation.prototype.isEqual = function (other) {
@@ -37839,7 +32400,7 @@ function mapCodeFromRpcCode(code) {
     if (code === undefined) {
         // This shouldn't normally happen, but in certain error cases (like trying
         // to send invalid proto messages) we may get an error with no GRPC code.
-        error('GRPC error has no .code');
+        error$2('GRPC error has no .code');
         return Code.UNKNOWN;
     }
     switch (code) {
@@ -38004,18 +32565,18 @@ function mapCodeFromHttpStatus(status) {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var EMPTY_MAYBE_DOCUMENT_MAP = new SortedMap(DocumentKey.comparator);
+var EMPTY_MAYBE_DOCUMENT_MAP = new SortedMap$1(DocumentKey.comparator);
 function maybeDocumentMap() {
     return EMPTY_MAYBE_DOCUMENT_MAP;
 }
 function nullableMaybeDocumentMap() {
     return maybeDocumentMap();
 }
-var EMPTY_DOCUMENT_MAP = new SortedMap(DocumentKey.comparator);
+var EMPTY_DOCUMENT_MAP = new SortedMap$1(DocumentKey.comparator);
 function documentMap() {
     return EMPTY_DOCUMENT_MAP;
 }
-var EMPTY_DOCUMENT_VERSION_MAP = new SortedMap(DocumentKey.comparator);
+var EMPTY_DOCUMENT_VERSION_MAP = new SortedMap$1(DocumentKey.comparator);
 function documentVersionMap() {
     return EMPTY_DOCUMENT_VERSION_MAP;
 }
@@ -38075,7 +32636,7 @@ var DocumentSet = /** @class */ (function () {
             };
         }
         this.keyedMap = documentMap();
-        this.sortedSet = new SortedMap(this.comparator);
+        this.sortedSet = new SortedMap$1(this.comparator);
     }
     /**
      * Returns an empty copy of the existing DocumentSet, using the same
@@ -38206,7 +32767,7 @@ var SyncState;
  */
 var DocumentChangeSet = /** @class */ (function () {
     function DocumentChangeSet() {
-        this.changeMap = new SortedMap(DocumentKey.comparator);
+        this.changeMap = new SortedMap$1(DocumentKey.comparator);
     }
     DocumentChangeSet.prototype.track = function (change) {
         var key = change.doc.key;
@@ -38735,7 +33296,7 @@ var WatchChangeAggregator = /** @class */ (function () {
                     if (!targetState.isPending) {
                         _this.removeTarget(targetId);
                     }
-                    assert(!targetChange.cause, 'WatchChangeAggregator does not handle errored targets');
+                    assert$1(!targetChange.cause, 'WatchChangeAggregator does not handle errored targets');
                     break;
                 case WatchTargetChangeState.Current:
                     if (_this.isActiveTarget(targetId)) {
@@ -38793,7 +33354,7 @@ var WatchChangeAggregator = /** @class */ (function () {
                     this.removeDocumentFromTarget(targetId, key, new NoDocument(key, SnapshotVersion.forDeletedDoc()));
                 }
                 else {
-                    assert(expectedCount === 1, 'Single document existence filter with count: ' + expectedCount);
+                    assert$1(expectedCount === 1, 'Single document existence filter with count: ' + expectedCount);
                 }
             }
             else {
@@ -38971,7 +33532,7 @@ var WatchChangeAggregator = /** @class */ (function () {
      */
     WatchChangeAggregator.prototype.resetTarget = function (targetId) {
         var _this = this;
-        assert(!this.targetStates[targetId].isPending, 'Should only reset active targets');
+        assert$1(!this.targetStates[targetId].isPending, 'Should only reset active targets');
         this.targetStates[targetId] = new TargetState();
         // Trigger removal for any documents currently mapped to this target.
         // These removals will be part of the initial snapshot if Watch does not
@@ -38992,10 +33553,10 @@ var WatchChangeAggregator = /** @class */ (function () {
     return WatchChangeAggregator;
 }());
 function documentTargetMap() {
-    return new SortedMap(DocumentKey.comparator);
+    return new SortedMap$1(DocumentKey.comparator);
 }
 function snapshotChangesMap() {
-    return new SortedMap(DocumentKey.comparator);
+    return new SortedMap$1(DocumentKey.comparator);
 }
 
 /**
@@ -39033,7 +33594,7 @@ var OPERATORS = (function () {
 // A RegExp matching ISO 8601 UTC timestamps with optional fraction.
 var ISO_REG_EXP = new RegExp(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.(\d+))?Z$/);
 function assertPresent(value, description) {
-    assert(!isNullOrUndefined(value), description + ' is missing');
+    assert$1(!isNullOrUndefined(value), description + ' is missing');
 }
 function parseInt64(value) {
     // TODO(bjornick): Handle int64 greater than 53 bits.
@@ -39139,7 +33700,7 @@ var JsonProtoSerializer = /** @class */ (function () {
             return this.fromIso8601String(date);
         }
         else {
-            assert(!!date, 'Cannot deserialize null or undefined timestamp.');
+            assert$1(!!date, 'Cannot deserialize null or undefined timestamp.');
             // TODO(b/37282237): Use strings for Proto3 timestamps
             // assert(!this.options.useProto3Json,
             //   'The timestamp instance format requires Proto JS.');
@@ -39154,7 +33715,7 @@ var JsonProtoSerializer = /** @class */ (function () {
         // Parse the nanos right out of the string.
         var nanos = 0;
         var fraction = ISO_REG_EXP.exec(utc);
-        assert(!!fraction, 'invalid timestamp: ' + utc);
+        assert$1(!!fraction, 'invalid timestamp: ' + utc);
         if (fraction[1]) {
             // Pad the fraction out to 9 digits (nanos).
             var nanoStr = fraction[1];
@@ -39189,19 +33750,19 @@ var JsonProtoSerializer = /** @class */ (function () {
      */
     JsonProtoSerializer.prototype.fromBlob = function (blob) {
         if (typeof blob === 'string') {
-            assert(this.options.useProto3Json, 'Expected bytes to be passed in as Uint8Array, but got a string instead.');
-            return Blob.fromBase64String(blob);
+            assert$1(this.options.useProto3Json, 'Expected bytes to be passed in as Uint8Array, but got a string instead.');
+            return Blob$1.fromBase64String(blob);
         }
         else {
-            assert(!this.options.useProto3Json, 'Expected bytes to be passed in as string, but got something else instead.');
-            return Blob.fromUint8Array(blob);
+            assert$1(!this.options.useProto3Json, 'Expected bytes to be passed in as string, but got something else instead.');
+            return Blob$1.fromUint8Array(blob);
         }
     };
     JsonProtoSerializer.prototype.toVersion = function (version) {
         return this.toTimestamp(version.toTimestamp());
     };
     JsonProtoSerializer.prototype.fromVersion = function (version) {
-        assert(!!version, "Trying to deserialize version that isn't set");
+        assert$1(!!version, "Trying to deserialize version that isn't set");
         return SnapshotVersion.fromTimestamp(this.fromTimestamp(version));
     };
     JsonProtoSerializer.prototype.toResourceName = function (databaseId, path) {
@@ -39212,7 +33773,7 @@ var JsonProtoSerializer = /** @class */ (function () {
     };
     JsonProtoSerializer.prototype.fromResourceName = function (name) {
         var resource = ResourcePath.fromString(name);
-        assert(this.isValidResourceName(resource), 'Tried to deserialize invalid key ' + resource.toString());
+        assert$1(this.isValidResourceName(resource), 'Tried to deserialize invalid key ' + resource.toString());
         return resource;
     };
     JsonProtoSerializer.prototype.toName = function (key) {
@@ -39220,11 +33781,11 @@ var JsonProtoSerializer = /** @class */ (function () {
     };
     JsonProtoSerializer.prototype.fromName = function (name) {
         var resource = this.fromResourceName(name);
-        assert(resource.get(1) === this.databaseId.projectId, 'Tried to deserialize key from different project: ' +
+        assert$1(resource.get(1) === this.databaseId.projectId, 'Tried to deserialize key from different project: ' +
             resource.get(1) +
             ' vs ' +
             this.databaseId.projectId);
-        assert((!resource.get(3) && !this.databaseId.database) ||
+        assert$1((!resource.get(3) && !this.databaseId.database) ||
             resource.get(3) === this.databaseId.database, 'Tried to deserialize key from different database: ' +
             resource.get(3) +
             ' vs ' +
@@ -39267,7 +33828,7 @@ var JsonProtoSerializer = /** @class */ (function () {
         ]);
     };
     JsonProtoSerializer.prototype.extractLocalPathFromResourceName = function (resourceName) {
-        assert(resourceName.length > 4 && resourceName.get(4) === 'documents', 'tried to deserialize invalid key ' + resourceName.toString());
+        assert$1(resourceName.length > 4 && resourceName.get(4) === 'documents', 'tried to deserialize invalid key ' + resourceName.toString());
         return resourceName.popFirst(5);
     };
     JsonProtoSerializer.prototype.isValidResourceName = function (path) {
@@ -39414,7 +33975,7 @@ var JsonProtoSerializer = /** @class */ (function () {
         };
     };
     JsonProtoSerializer.prototype.toDocument = function (document) {
-        assert(!document.hasLocalMutations, "Can't serialize documents with mutations.");
+        assert$1(!document.hasLocalMutations, "Can't serialize documents with mutations.");
         return {
             name: this.toName(document.key),
             fields: this.toFields(document.data),
@@ -39435,16 +33996,16 @@ var JsonProtoSerializer = /** @class */ (function () {
     JsonProtoSerializer.prototype.fromFields = function (object) {
         var _this = this;
         // Proto map<string, Value> gets mapped to Object, so cast it.
-        var map = object;
+        var map$$1 = object;
         var result = ObjectValue.EMPTY;
-        forEach(map, function (key, value) {
+        forEach$1(map$$1, function (key, value) {
             result = result.set(new FieldPath([key]), _this.fromValue(value));
         });
         return result;
     };
-    JsonProtoSerializer.prototype.toMapValue = function (map) {
+    JsonProtoSerializer.prototype.toMapValue = function (map$$1) {
         return {
-            fields: this.toFields(map)
+            fields: this.toFields(map$$1)
         };
     };
     JsonProtoSerializer.prototype.toArrayValue = function (array) {
@@ -39456,7 +34017,7 @@ var JsonProtoSerializer = /** @class */ (function () {
         return { values: result };
     };
     JsonProtoSerializer.prototype.fromFound = function (doc) {
-        assert(!!doc.found, 'Tried to deserialize a found document from a missing document.');
+        assert$1(!!doc.found, 'Tried to deserialize a found document from a missing document.');
         assertPresent(doc.found.name, 'doc.found.name');
         assertPresent(doc.found.updateTime, 'doc.found.updateTime');
         var key = this.fromName(doc.found.name);
@@ -39465,8 +34026,8 @@ var JsonProtoSerializer = /** @class */ (function () {
         return new Document(key, version, fields, {}, doc.found);
     };
     JsonProtoSerializer.prototype.fromMissing = function (result) {
-        assert(!!result.missing, 'Tried to deserialize a missing document from a found document.');
-        assert(!!result.readTime, 'Tried to deserialize a missing document without a read time.');
+        assert$1(!!result.missing, 'Tried to deserialize a missing document from a found document.');
+        assert$1(!!result.readTime, 'Tried to deserialize a missing document without a read time.');
         var key = this.fromName(result.missing);
         var version = this.fromVersion(result.readTime);
         return new NoDocument(key, version);
@@ -39725,7 +34286,7 @@ var JsonProtoSerializer = /** @class */ (function () {
             var fieldTransforms = proto.transform.fieldTransforms.map(function (transform) {
                 return _this.fromFieldTransform(transform);
             });
-            assert(precondition.exists === true, 'Transforms only support precondition "exists == true"');
+            assert$1(precondition.exists === true, 'Transforms only support precondition "exists == true"');
             return new TransformMutation(key, fieldTransforms);
         }
         else {
@@ -39733,7 +34294,7 @@ var JsonProtoSerializer = /** @class */ (function () {
         }
     };
     JsonProtoSerializer.prototype.toPrecondition = function (precondition) {
-        assert(!precondition.isNone, "Can't serialize an empty precondition");
+        assert$1(!precondition.isNone, "Can't serialize an empty precondition");
         if (precondition.updateTime !== undefined) {
             return {
                 updateTime: this.toVersion(precondition.updateTime)
@@ -39774,7 +34335,7 @@ var JsonProtoSerializer = /** @class */ (function () {
     JsonProtoSerializer.prototype.fromWriteResults = function (protos, commitTime) {
         var _this = this;
         if (protos && protos.length > 0) {
-            assert(commitTime !== undefined, 'Received a write result without a commit time');
+            assert$1(commitTime !== undefined, 'Received a write result without a commit time');
             return protos.map(function (proto) { return _this.fromWriteResult(proto, commitTime); });
         }
         else {
@@ -39822,7 +34383,7 @@ var JsonProtoSerializer = /** @class */ (function () {
         var type = proto['transform_type'];
         var transform = null;
         if (hasTag(proto, type, 'setToServerValue')) {
-            assert(proto.setToServerValue === 'REQUEST_TIME', 'Unknown server value transform proto: ' + JSON.stringify(proto));
+            assert$1(proto.setToServerValue === 'REQUEST_TIME', 'Unknown server value transform proto: ' + JSON.stringify(proto));
             transform = ServerTimestampTransform.instance;
         }
         else if (hasTag(proto, type, 'appendMissingElements')) {
@@ -39835,7 +34396,7 @@ var JsonProtoSerializer = /** @class */ (function () {
         }
         else if (hasTag(proto, type, 'increment')) {
             var operand = this.fromValue(proto.increment);
-            assert(operand instanceof NumberValue, 'NUMERIC_ADD transform requires a NumberValue');
+            assert$1(operand instanceof NumberValue, 'NUMERIC_ADD transform requires a NumberValue');
             transform = new NumericIncrementTransformOperation(operand);
         }
         else {
@@ -39849,16 +34410,16 @@ var JsonProtoSerializer = /** @class */ (function () {
     };
     JsonProtoSerializer.prototype.fromDocumentsTarget = function (documentsTarget) {
         var count = documentsTarget.documents.length;
-        assert(count === 1, 'DocumentsTarget contained other than 1 document: ' + count);
+        assert$1(count === 1, 'DocumentsTarget contained other than 1 document: ' + count);
         var name = documentsTarget.documents[0];
-        return Query.atPath(this.fromQueryPath(name));
+        return Query$1.atPath(this.fromQueryPath(name));
     };
     JsonProtoSerializer.prototype.toQueryTarget = function (query) {
         // Dissect the path into parent, collectionId, and optional key filter.
         var result = { structuredQuery: {} };
         var path = query.path;
         if (query.collectionGroup !== null) {
-            assert(path.length % 2 === 0, 'Collection Group queries should be within a document path or root.');
+            assert$1(path.length % 2 === 0, 'Collection Group queries should be within a document path or root.');
             result.parent = this.toQueryPath(path);
             result.structuredQuery.from = [
                 {
@@ -39868,7 +34429,7 @@ var JsonProtoSerializer = /** @class */ (function () {
             ];
         }
         else {
-            assert(path.length % 2 !== 0, 'Document queries with filters are not supported.');
+            assert$1(path.length % 2 !== 0, 'Document queries with filters are not supported.');
             result.parent = this.toQueryPath(path.popLast());
             result.structuredQuery.from = [{ collectionId: path.lastSegment() }];
         }
@@ -39898,7 +34459,7 @@ var JsonProtoSerializer = /** @class */ (function () {
         var fromCount = query.from ? query.from.length : 0;
         var collectionGroup = null;
         if (fromCount > 0) {
-            assert(fromCount === 1, 'StructuredQuery.from with more than one collection is not supported.');
+            assert$1(fromCount === 1, 'StructuredQuery.from with more than one collection is not supported.');
             var from = query.from[0];
             if (from.allDescendants) {
                 collectionGroup = from.collectionId;
@@ -39927,7 +34488,7 @@ var JsonProtoSerializer = /** @class */ (function () {
         if (query.endAt) {
             endAt = this.fromCursor(query.endAt);
         }
-        return new Query(path, collectionGroup, orderBy, filterBy, limit, startAt, endAt);
+        return new Query$1(path, collectionGroup, orderBy, filterBy, limit, startAt, endAt);
     };
     JsonProtoSerializer.prototype.toListenRequestLabels = function (queryData) {
         var value = this.toLabel(queryData.purpose);
@@ -40208,15 +34769,15 @@ var StreamBridge = /** @class */ (function () {
         this.closeFn = args.closeFn;
     }
     StreamBridge.prototype.onOpen = function (callback) {
-        assert(!this.wrappedOnOpen, 'Called onOpen on stream twice!');
+        assert$1(!this.wrappedOnOpen, 'Called onOpen on stream twice!');
         this.wrappedOnOpen = callback;
     };
     StreamBridge.prototype.onClose = function (callback) {
-        assert(!this.wrappedOnClose, 'Called onClose on stream twice!');
+        assert$1(!this.wrappedOnClose, 'Called onClose on stream twice!');
         this.wrappedOnClose = callback;
     };
     StreamBridge.prototype.onMessage = function (callback) {
-        assert(!this.wrappedOnMessage, 'Called onMessage on stream twice!');
+        assert$1(!this.wrappedOnMessage, 'Called onMessage on stream twice!');
         this.wrappedOnMessage = callback;
     };
     StreamBridge.prototype.close = function () {
@@ -40226,15 +34787,15 @@ var StreamBridge = /** @class */ (function () {
         this.sendFn(msg);
     };
     StreamBridge.prototype.callOnOpen = function () {
-        assert(this.wrappedOnOpen !== undefined, 'Cannot call onOpen because no callback was set');
+        assert$1(this.wrappedOnOpen !== undefined, 'Cannot call onOpen because no callback was set');
         this.wrappedOnOpen();
     };
     StreamBridge.prototype.callOnClose = function (err) {
-        assert(this.wrappedOnClose !== undefined, 'Cannot call onClose because no callback was set');
+        assert$1(this.wrappedOnClose !== undefined, 'Cannot call onClose because no callback was set');
         this.wrappedOnClose(err);
     };
     StreamBridge.prototype.callOnMessage = function (msg) {
-        assert(this.wrappedOnMessage !== undefined, 'Cannot call onMessage because no callback was set');
+        assert$1(this.wrappedOnMessage !== undefined, 'Cannot call onMessage because no callback was set');
         this.wrappedOnMessage(msg);
     };
     return StreamBridge;
@@ -40294,20 +34855,20 @@ var WebChannelConnection = /** @class */ (function () {
         var url = this.makeUrl(rpcName);
         return new Promise(function (resolve, reject) {
             // tslint:disable-next-line:no-any XhrIo doesn't have TS typings.
-            var xhr = new tmp.XhrIo();
-            xhr.listenOnce(tmp.EventType.COMPLETE, function () {
+            var xhr = new tmp_5();
+            xhr.listenOnce(tmp_3.COMPLETE, function () {
                 try {
                     switch (xhr.getLastErrorCode()) {
-                        case tmp.ErrorCode.NO_ERROR:
+                        case tmp_2.NO_ERROR:
                             var json = xhr.getResponseJson();
                             debug(LOG_TAG, 'XHR received:', JSON.stringify(json));
                             resolve(json);
                             break;
-                        case tmp.ErrorCode.TIMEOUT:
+                        case tmp_2.TIMEOUT:
                             debug(LOG_TAG, 'RPC "' + rpcName + '" timed out');
                             reject(new FirestoreError(Code.DEADLINE_EXCEEDED, 'Request time out'));
                             break;
-                        case tmp.ErrorCode.HTTP_ERROR:
+                        case tmp_2.HTTP_ERROR:
                             var status_1 = xhr.getStatus();
                             debug(LOG_TAG, 'RPC "' + rpcName + '" failed with status:', status_1, 'response text:', xhr.getResponseText());
                             if (status_1 > 0) {
@@ -40361,7 +34922,7 @@ var WebChannelConnection = /** @class */ (function () {
             rpcName,
             '/channel'
         ];
-        var webchannelTransport = tmp.createWebChannelTransport();
+        var webchannelTransport = tmp_1();
         var request = {
             // Background channel test avoids the initial two test calls and decreases
             // initial cold start time.
@@ -40398,7 +34959,7 @@ var WebChannelConnection = /** @class */ (function () {
         // https://github.com/firebase/firebase-js-sdk/issues/703), this breaks
         // ReactNative and so we exclude it, which just means ReactNative may be
         // subject to the extra network roundtrip for CORS preflight.
-        if (!index_cjs.isReactNative()) {
+        if (!isReactNative()) {
             request['httpHeadersOverwriteParam'] = '$httpHeaders';
         }
         var url = urlParts.join('');
@@ -40450,29 +35011,29 @@ var WebChannelConnection = /** @class */ (function () {
                 }
             });
         };
-        unguardedEventListen(tmp.WebChannel.EventType.OPEN, function () {
+        unguardedEventListen(tmp_4.EventType.OPEN, function () {
             if (!closed) {
                 debug(LOG_TAG, 'WebChannel transport opened.');
             }
         });
-        unguardedEventListen(tmp.WebChannel.EventType.CLOSE, function () {
+        unguardedEventListen(tmp_4.EventType.CLOSE, function () {
             if (!closed) {
                 closed = true;
                 debug(LOG_TAG, 'WebChannel transport closed');
                 streamBridge.callOnClose();
             }
         });
-        unguardedEventListen(tmp.WebChannel.EventType.ERROR, function (err) {
+        unguardedEventListen(tmp_4.EventType.ERROR, function (err) {
             if (!closed) {
                 closed = true;
                 debug(LOG_TAG, 'WebChannel transport errored:', err);
                 streamBridge.callOnClose(new FirestoreError(Code.UNAVAILABLE, 'The operation could not be completed'));
             }
         });
-        unguardedEventListen(tmp.WebChannel.EventType.MESSAGE, function (msg) {
+        unguardedEventListen(tmp_4.EventType.MESSAGE, function (msg) {
             if (!closed) {
                 var msgData = msg.data[0];
-                assert(!!msgData, 'Got a webchannel message without data.');
+                assert$1(!!msgData, 'Got a webchannel message without data.');
                 // TODO(b/35143891): There is a bug in One Platform that caused errors
                 // (and only errors) to be wrapped in an extra array. To be forward
                 // compatible with the bug we need to check either condition. The latter
@@ -40517,7 +35078,7 @@ var WebChannelConnection = /** @class */ (function () {
     // visible for testing
     WebChannelConnection.prototype.makeUrl = function (rpcName) {
         var urlRpcName = RPC_NAME_REST_MAPPING[rpcName];
-        assert(urlRpcName !== undefined, 'Unknown REST mapping for: ' + rpcName);
+        assert$1(urlRpcName !== undefined, 'Unknown REST mapping for: ' + rpcName);
         var url = [this.baseUrl, '/', RPC_URL_VERSION];
         url.push('/projects/');
         url.push(this.databaseId.projectId);
@@ -40675,15 +35236,15 @@ var ListenSequence = /** @class */ (function () {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var Deferred = /** @class */ (function () {
-    function Deferred() {
+var Deferred$1 = /** @class */ (function () {
+    function Deferred$$1() {
         var _this = this;
         this.promise = new Promise(function (resolve, reject) {
             _this.resolve = resolve;
             _this.reject = reject;
         });
     }
-    return Deferred;
+    return Deferred$$1;
 }());
 
 /**
@@ -40751,7 +35312,7 @@ var DelayedOperation = /** @class */ (function () {
         this.targetTimeMs = targetTimeMs;
         this.op = op;
         this.removalCallback = removalCallback;
-        this.deferred = new Deferred();
+        this.deferred = new Deferred$1();
         this.then = this.deferred.promise.then.bind(this.deferred.promise);
         this.catch = this.deferred.promise.catch.bind(this.deferred.promise);
         // It's normal for the deferred promise to be canceled (due to cancellation)
@@ -40863,7 +35424,7 @@ var AsyncQueue = /** @class */ (function () {
                 _this.failure = error$1;
                 _this.operationInProgress = false;
                 var message = error$1.stack || error$1.message || '';
-                error('INTERNAL UNHANDLED ERROR: ', message);
+                error$2('INTERNAL UNHANDLED ERROR: ', message);
                 // Escape the promise chain and throw the error globally so that
                 // e.g. any global crash reporting library detects and reports it.
                 // (but not for simulated errors in our tests since this breaks mocha)
@@ -40893,10 +35454,10 @@ var AsyncQueue = /** @class */ (function () {
     AsyncQueue.prototype.enqueueAfterDelay = function (timerId, delayMs, op) {
         var _this = this;
         this.verifyNotFailed();
-        assert(delayMs >= 0, "Attempted to schedule an operation with a negative delay of " + delayMs);
+        assert$1(delayMs >= 0, "Attempted to schedule an operation with a negative delay of " + delayMs);
         // While not necessarily harmful, we currently don't expect to have multiple
         // ops with the same timer id in the queue, so defensively reject them.
-        assert(!this.containsDelayedOperation(timerId), "Attempted to schedule multiple operations with timer id " + timerId + ".");
+        assert$1(!this.containsDelayedOperation(timerId), "Attempted to schedule multiple operations with timer id " + timerId + ".");
         var delayedOp = DelayedOperation.createAndSchedule(this, timerId, delayMs, op, function (op) { return _this.removeDelayedOperation(op); });
         this.delayedOperations.push(delayedOp);
         return delayedOp;
@@ -40914,7 +35475,7 @@ var AsyncQueue = /** @class */ (function () {
      * to catch some bugs.
      */
     AsyncQueue.prototype.verifyOperationInProgress = function () {
-        assert(this.operationInProgress, 'verifyOpInProgress() called when no op in progress on this queue.');
+        assert$1(this.operationInProgress, 'verifyOpInProgress() called when no op in progress on this queue.');
     };
     /**
      * Waits until all currently queued tasks are finished executing. Delayed
@@ -40948,7 +35509,7 @@ var AsyncQueue = /** @class */ (function () {
         var _this = this;
         // Note that draining may generate more delayed ops, so we do that first.
         return this.drain().then(function () {
-            assert(lastTimerId === TimerId.All ||
+            assert$1(lastTimerId === TimerId.All ||
                 _this.containsDelayedOperation(lastTimerId), "Attempted to drain to missing operation " + lastTimerId);
             // Run ops in the same order they'd run if they ran naturally.
             _this.delayedOperations.sort(function (a, b) { return a.targetTimeMs - b.targetTimeMs; });
@@ -40966,7 +35527,7 @@ var AsyncQueue = /** @class */ (function () {
     AsyncQueue.prototype.removeDelayedOperation = function (op) {
         // NOTE: indexOf / slice are O(n), but delayedOperations is expected to be small.
         var index = this.delayedOperations.indexOf(op);
-        assert(index >= 0, 'Delayed operation not found.');
+        assert$1(index >= 0, 'Delayed operation not found.');
         this.delayedOperations.splice(index, 1);
     };
     return AsyncQueue;
@@ -41034,13 +35595,13 @@ function encodeSeparator(result) {
  * decoding resource names from the server; those are One Platform format
  * strings.
  */
-function decode(path) {
+function decode$1(path) {
     // Event the empty path must encode as a path of at least length 2. A path
     // with exactly 2 must be the empty path.
     var length = path.length;
-    assert(length >= 2, 'Invalid path ' + path);
+    assert$1(length >= 2, 'Invalid path ' + path);
     if (length === 2) {
-        assert(path.charAt(0) === escapeChar && path.charAt(1) === encodedSeparatorChar, 'Non-empty path ' + path + ' had length 2');
+        assert$1(path.charAt(0) === escapeChar && path.charAt(1) === encodedSeparatorChar, 'Non-empty path ' + path + ' had length 2');
         return ResourcePath.EMPTY_PATH;
     }
     // Escape characters cannot exist past the second-to-last position in the
@@ -41125,7 +35686,7 @@ var MutationBatch = /** @class */ (function () {
         this.localWriteTime = localWriteTime;
         this.baseMutations = baseMutations;
         this.mutations = mutations;
-        assert(mutations.length > 0, 'Cannot create an empty mutation batch');
+        assert$1(mutations.length > 0, 'Cannot create an empty mutation batch');
     }
     /**
      * Applies all the mutations in this MutationBatch to the specified document
@@ -41138,10 +35699,10 @@ var MutationBatch = /** @class */ (function () {
      */
     MutationBatch.prototype.applyToRemoteDocument = function (docKey, maybeDoc, batchResult) {
         if (maybeDoc) {
-            assert(maybeDoc.key.isEqual(docKey), "applyToRemoteDocument: key " + docKey + " should match maybeDoc key\n        " + maybeDoc.key);
+            assert$1(maybeDoc.key.isEqual(docKey), "applyToRemoteDocument: key " + docKey + " should match maybeDoc key\n        " + maybeDoc.key);
         }
         var mutationResults = batchResult.mutationResults;
-        assert(mutationResults.length === this.mutations.length, "Mismatch between mutations length\n      (" + this.mutations.length + ") and mutation results length\n      (" + mutationResults.length + ").");
+        assert$1(mutationResults.length === this.mutations.length, "Mismatch between mutations length\n      (" + this.mutations.length + ") and mutation results length\n      (" + mutationResults.length + ").");
         for (var i = 0; i < this.mutations.length; i++) {
             var mutation = this.mutations[i];
             if (mutation.key.isEqual(docKey)) {
@@ -41160,7 +35721,7 @@ var MutationBatch = /** @class */ (function () {
      */
     MutationBatch.prototype.applyToLocalView = function (docKey, maybeDoc) {
         if (maybeDoc) {
-            assert(maybeDoc.key.isEqual(docKey), "applyToLocalDocument: key " + docKey + " should match maybeDoc key\n        " + maybeDoc.key);
+            assert$1(maybeDoc.key.isEqual(docKey), "applyToLocalDocument: key " + docKey + " should match maybeDoc key\n        " + maybeDoc.key);
         }
         // First, apply the base state. This allows us to apply non-idempotent
         // transform against a consistent set of values.
@@ -41228,7 +35789,7 @@ var MutationBatchResult = /** @class */ (function () {
      * caches a document=>version mapping (docVersions).
      */
     MutationBatchResult.from = function (batch, commitVersion, results, streamToken) {
-        assert(batch.mutations.length === results.length, 'Mutations sent ' +
+        assert$1(batch.mutations.length === results.length, 'Mutations sent ' +
             batch.mutations.length +
             ' must equal results received ' +
             results.length);
@@ -41494,7 +36055,7 @@ var IndexedDbMutationQueue = /** @class */ (function () {
         // In particular, are there any reserved characters? are empty ids allowed?
         // For the moment store these together in the same mutations table assuming
         // that empty userIDs aren't allowed.
-        assert(user.uid !== '', 'UserID must not be an empty string.');
+        assert$1(user.uid !== '', 'UserID must not be an empty string.');
         var userId = user.isAuthenticated() ? user.uid : '';
         return new IndexedDbMutationQueue(userId, serializer, indexManager, referenceDelegate);
     };
@@ -41536,7 +36097,7 @@ var IndexedDbMutationQueue = /** @class */ (function () {
         // See: https://bugs.chromium.org/p/chromium/issues/detail?id=701972
         // tslint:disable-next-line:no-any We write an empty object to obtain key
         return mutationStore.add({}).next(function (batchId) {
-            assert(typeof batchId === 'number', 'Auto-generated key is not a number');
+            assert$1(typeof batchId === 'number', 'Auto-generated key is not a number');
             var batch = new MutationBatch(batchId, localWriteTime, baseMutations, mutations);
             var dbBatch = _this.serializer.toDbMutationBatch(_this.userId, batch);
             _this.documentKeysByBatchId[batchId] = batch.keys();
@@ -41557,7 +36118,7 @@ var IndexedDbMutationQueue = /** @class */ (function () {
             .get(batchId)
             .next(function (dbBatch) {
             if (dbBatch) {
-                assert(dbBatch.userId === _this.userId, "Unexpected user '" + dbBatch.userId + "' for mutation batch " + batchId);
+                assert$1(dbBatch.userId === _this.userId, "Unexpected user '" + dbBatch.userId + "' for mutation batch " + batchId);
                 return _this.serializer.fromDbMutationBatch(dbBatch);
             }
             return null;
@@ -41590,7 +36151,7 @@ var IndexedDbMutationQueue = /** @class */ (function () {
             return mutationsStore(transaction)
                 .iterate({ index: DbMutationBatch.userMutationsIndex, range: range }, function (key, dbBatch, control) {
                 if (dbBatch.userId === _this.userId) {
-                    assert(dbBatch.batchId >= nextBatchId, 'Should have found mutation after ' + nextBatchId);
+                    assert$1(dbBatch.batchId >= nextBatchId, 'Should have found mutation after ' + nextBatchId);
                     foundBatch = _this.serializer.fromDbMutationBatch(dbBatch);
                 }
                 control.done();
@@ -41624,7 +36185,7 @@ var IndexedDbMutationQueue = /** @class */ (function () {
             // the rows for documentKey will occur before any rows for
             // documents nested in a subcollection beneath documentKey so we
             // can stop as soon as we hit any such row.
-            var path = decode(encodedPath);
+            var path = decode$1(encodedPath);
             if (userID !== _this.userId || !documentKey.path.isEqual(path)) {
                 control.done();
                 return;
@@ -41639,7 +36200,7 @@ var IndexedDbMutationQueue = /** @class */ (function () {
                         ' which points to ' +
                         batchId);
                 }
-                assert(mutation.userId === _this.userId, "Unexpected user '" + mutation.userId + "' for mutation batch " + batchId);
+                assert$1(mutation.userId === _this.userId, "Unexpected user '" + mutation.userId + "' for mutation batch " + batchId);
                 results.push(_this.serializer.fromDbMutationBatch(mutation));
             });
         })
@@ -41661,7 +36222,7 @@ var IndexedDbMutationQueue = /** @class */ (function () {
                 // the rows for documentKey will occur before any rows for
                 // documents nested in a subcollection beneath documentKey so we
                 // can stop as soon as we hit any such row.
-                var path = decode(encodedPath);
+                var path = decode$1(encodedPath);
                 if (userID !== _this.userId || !documentKey.path.isEqual(path)) {
                     control.done();
                     return;
@@ -41676,8 +36237,8 @@ var IndexedDbMutationQueue = /** @class */ (function () {
     };
     IndexedDbMutationQueue.prototype.getAllMutationBatchesAffectingQuery = function (transaction, query) {
         var _this = this;
-        assert(!query.isDocumentQuery(), "Document queries shouldn't go down this path");
-        assert(!query.isCollectionGroupQuery(), 'CollectionGroup queries should be handled in LocalDocumentsView');
+        assert$1(!query.isDocumentQuery(), "Document queries shouldn't go down this path");
+        assert$1(!query.isCollectionGroupQuery(), 'CollectionGroup queries should be handled in LocalDocumentsView');
         var queryPath = query.path;
         var immediateChildrenLength = queryPath.length + 1;
         // TODO(mcg): Actually implement a single-collection query
@@ -41700,7 +36261,7 @@ var IndexedDbMutationQueue = /** @class */ (function () {
         return documentMutationsStore(transaction)
             .iterate({ range: indexStart }, function (indexKey, _, control) {
             var userID = indexKey[0], encodedPath = indexKey[1], batchID = indexKey[2];
-            var path = decode(encodedPath);
+            var path = decode$1(encodedPath);
             if (userID !== _this.userId || !queryPath.isPrefixOf(path)) {
                 control.done();
                 return;
@@ -41731,7 +36292,7 @@ var IndexedDbMutationQueue = /** @class */ (function () {
                         'which points to ' +
                         batchId);
                 }
-                assert(mutation.userId === _this.userId, "Unexpected user '" + mutation.userId + "' for mutation batch " + batchId);
+                assert$1(mutation.userId === _this.userId, "Unexpected user '" + mutation.userId + "' for mutation batch " + batchId);
                 results.push(_this.serializer.fromDbMutationBatch(mutation));
             }));
         });
@@ -41767,12 +36328,12 @@ var IndexedDbMutationQueue = /** @class */ (function () {
                     return;
                 }
                 else {
-                    var path = decode(key[1]);
+                    var path = decode$1(key[1]);
                     danglingMutationReferences.push(path);
                 }
             })
                 .next(function () {
-                assert(danglingMutationReferences.length === 0, 'Document leak -- detected dangling mutation references when queue is empty. ' +
+                assert$1(danglingMutationReferences.length === 0, 'Document leak -- detected dangling mutation references when queue is empty. ' +
                     'Dangling keys: ' +
                     danglingMutationReferences.map(function (p) { return p.canonicalString(); }));
             });
@@ -41843,7 +36404,7 @@ function removeMutationBatch(txn, userId, batch) {
         return control.delete();
     });
     promises.push(removePromise.next(function () {
-        assert(numDeleted === 1, 'Dangling document-mutation reference found: Missing batch ' +
+        assert$1(numDeleted === 1, 'Dangling document-mutation reference found: Missing batch ' +
             batch.batchId);
     }));
     var removedDocuments = [];
@@ -41858,7 +36419,7 @@ function removeMutationBatch(txn, userId, batch) {
 function convertStreamToken(token) {
     if (token instanceof Uint8Array) {
         // TODO(b/78771403): Convert tokens to strings during deserialization
-        assert(process.env.USE_MOCK_PERSISTENCE === 'YES', 'Persisting non-string stream tokens is only supported with mock persistence.');
+        assert$1(process.env.USE_MOCK_PERSISTENCE === 'YES', 'Persisting non-string stream tokens is only supported with mock persistence.');
         return token.toString();
     }
     else {
@@ -41929,7 +36490,7 @@ var TargetIdGenerator = /** @class */ (function () {
      */
     function TargetIdGenerator(generatorId, seed) {
         this.generatorId = generatorId;
-        assert((generatorId & RESERVED_BITS) === generatorId, "Generator ID " + generatorId + " contains more than " + RESERVED_BITS + " reserved bits");
+        assert$1((generatorId & RESERVED_BITS) === generatorId, "Generator ID " + generatorId + " contains more than " + RESERVED_BITS + " reserved bits");
         this.seek(seed !== undefined ? seed : this.generatorId);
     }
     TargetIdGenerator.prototype.next = function () {
@@ -41947,7 +36508,7 @@ var TargetIdGenerator = /** @class */ (function () {
         return this.next();
     };
     TargetIdGenerator.prototype.seek = function (targetId) {
-        assert((targetId & RESERVED_BITS) === this.generatorId, 'Cannot supply target ID from different generator ID');
+        assert$1((targetId & RESERVED_BITS) === this.generatorId, 'Cannot supply target ID from different generator ID');
         this.nextId = targetId;
     };
     TargetIdGenerator.forQueryCache = function () {
@@ -42002,7 +36563,7 @@ var SimpleDb = /** @class */ (function () {
      * objectstores.
      */
     SimpleDb.openOrCreate = function (name, version, schemaConverter) {
-        assert(SimpleDb.isAvailable(), 'IndexedDB not supported in current environment.');
+        assert$1(SimpleDb.isAvailable(), 'IndexedDB not supported in current environment.');
         debug(LOG_TAG$1, 'Opening database:', name);
         return new PersistencePromise(function (resolve, reject) {
             // TODO(mikelehen): Investigate browser compatibility.
@@ -42185,7 +36746,7 @@ var SimpleDbTransaction = /** @class */ (function () {
         /**
          * A promise that resolves with the result of the IndexedDb transaction.
          */
-        this.completionDeferred = new Deferred();
+        this.completionDeferred = new Deferred$1();
         this.transaction.oncomplete = function () {
             _this.completionDeferred.resolve();
         };
@@ -42232,7 +36793,7 @@ var SimpleDbTransaction = /** @class */ (function () {
      */
     SimpleDbTransaction.prototype.store = function (storeName) {
         var store = this.transaction.objectStore(storeName);
-        assert(!!store, 'Object store not part of transaction: ' + storeName);
+        assert$1(!!store, 'Object store not part of transaction: ' + storeName);
         return new SimpleDbStore(store);
     };
     return SimpleDbTransaction;
@@ -42420,7 +36981,7 @@ var SimpleDbStore = /** @class */ (function () {
                 indexName = indexOrRange;
             }
             else {
-                assert(range === undefined, '3rd argument must not be defined if 2nd is a range.');
+                assert$1(range === undefined, '3rd argument must not be defined if 2nd is a range.');
                 range = indexOrRange;
             }
         }
@@ -42537,7 +37098,7 @@ var IndexedDbQueryCache = /** @class */ (function () {
             .next(function () { return targetsStore(transaction).delete(queryData.targetId); })
             .next(function () { return _this.retrieveMetadata(transaction); })
             .next(function (metadata) {
-            assert(metadata.targetCount > 0, 'Removing from an empty query cache');
+            assert$1(metadata.targetCount > 0, 'Removing from an empty query cache');
             metadata.targetCount -= 1;
             return _this.saveMetadata(transaction, metadata);
         });
@@ -42663,7 +37224,7 @@ var IndexedDbQueryCache = /** @class */ (function () {
         var result = documentKeySet();
         return store
             .iterate({ range: range, keysOnly: true }, function (key, _, control) {
-            var path = decode(key[1]);
+            var path = decode$1(key[1]);
             var docKey = new DocumentKey(path);
             result = result.add(docKey);
         })
@@ -42722,7 +37283,7 @@ function globalTargetStore(txn) {
 function retrieveMetadata(txn) {
     var globalStore = SimpleDb.getStore(txn, DbTargetGlobal.store);
     return globalStore.get(DbTargetGlobal.key).next(function (metadata) {
-        assert(metadata !== null, 'Missing metadata row.');
+        assert$1(metadata !== null, 'Missing metadata row.');
         return metadata;
     });
 }
@@ -42826,7 +37387,7 @@ var ObjectMap = /** @class */ (function () {
         return false;
     };
     ObjectMap.prototype.forEach = function (fn) {
-        forEach(this.inner, function (_, entries) {
+        forEach$1(this.inner, function (_, entries) {
             for (var _i = 0, entries_1 = entries; _i < entries_1.length; _i++) {
                 var _a = entries_1[_i], k = _a[0], v = _a[1];
                 fn(k, v);
@@ -42834,7 +37395,7 @@ var ObjectMap = /** @class */ (function () {
         });
     };
     ObjectMap.prototype.isEmpty = function () {
-        return isEmpty(this.inner);
+        return isEmpty$1(this.inner);
     };
     return ObjectMap;
 }());
@@ -42953,7 +37514,7 @@ var RemoteDocumentChangeBuffer = /** @class */ (function () {
     };
     /** Helper to assert this.changes is not null and return it. */
     RemoteDocumentChangeBuffer.prototype.assertChanges = function () {
-        assert(this.changes !== null, 'Changes have already been applied.');
+        assert$1(this.changes !== null, 'Changes have already been applied.');
         return this.changes;
     };
     return RemoteDocumentChangeBuffer;
@@ -43109,7 +37670,7 @@ var IndexedDbRemoteDocumentCache = /** @class */ (function () {
     IndexedDbRemoteDocumentCache.prototype.getSizedEntries = function (transaction, documentKeys) {
         var _this = this;
         var results = nullableMaybeDocumentMap();
-        var sizeMap = new SortedMap(DocumentKey.comparator);
+        var sizeMap = new SortedMap$1(DocumentKey.comparator);
         return this.forEachDbEntry(transaction, documentKeys, function (key, dbRemoteDoc) {
             if (dbRemoteDoc) {
                 results = results.insert(key, _this.serializer.fromDbRemoteDocument(dbRemoteDoc));
@@ -43162,7 +37723,7 @@ var IndexedDbRemoteDocumentCache = /** @class */ (function () {
     };
     IndexedDbRemoteDocumentCache.prototype.getDocumentsMatchingQuery = function (transaction, query) {
         var _this = this;
-        assert(!query.isCollectionGroupQuery(), 'CollectionGroup queries should be handled in LocalDocumentsView');
+        assert$1(!query.isCollectionGroupQuery(), 'CollectionGroup queries should be handled in LocalDocumentsView');
         var results = documentMap();
         var immediateChildrenPathLength = query.path.length + 1;
         // Documents are ordered by key, so we can use a prefix scan to narrow down
@@ -43191,7 +37752,7 @@ var IndexedDbRemoteDocumentCache = /** @class */ (function () {
     };
     IndexedDbRemoteDocumentCache.prototype.getNewDocumentChanges = function (transaction) {
         var _this = this;
-        assert(this.keepDocumentChangeLog, 'Can only call getNewDocumentChanges() when document change log is enabled');
+        assert$1(this.keepDocumentChangeLog, 'Can only call getNewDocumentChanges() when document change log is enabled');
         var changedKeys = documentKeySet();
         var changedDocs = maybeDocumentMap();
         var range = IDBKeyRange.lowerBound(this._lastProcessedDocumentChangeId + 1);
@@ -43256,7 +37817,7 @@ var IndexedDbRemoteDocumentCache = /** @class */ (function () {
         return documentGlobalStore(txn)
             .get(DbRemoteDocumentGlobal.key)
             .next(function (metadata) {
-            assert(!!metadata, 'Missing document cache metadata');
+            assert$1(!!metadata, 'Missing document cache metadata');
             return metadata;
         });
     };
@@ -43285,7 +37846,7 @@ function documentGlobalStore(txn) {
  * Handles the details of adding and updating documents in the IndexedDbRemoteDocumentCache
  */
 var IndexedDbRemoteDocumentChangeBuffer = /** @class */ (function (_super) {
-    tslib_1.__extends(IndexedDbRemoteDocumentChangeBuffer, _super);
+    __extends(IndexedDbRemoteDocumentChangeBuffer, _super);
     function IndexedDbRemoteDocumentChangeBuffer(documentCache) {
         var _this = _super.call(this) || this;
         _this.documentCache = documentCache;
@@ -43301,7 +37862,7 @@ var IndexedDbRemoteDocumentChangeBuffer = /** @class */ (function (_super) {
             var previousSize = _this.documentSizes.get(key);
             // NOTE: if we ever decide we need to support doing writes without
             // reading first, this assert will need to change to do the read automatically.
-            assert(previousSize !== undefined, "Attempting to change document " + key.toString() + " without having read it first");
+            assert$1(previousSize !== undefined, "Attempting to change document " + key.toString() + " without having read it first");
             var size = dbDocumentSize(doc);
             delta += size - previousSize;
             toApply.push({ key: key, doc: doc });
@@ -43398,7 +37959,7 @@ var MemoryCollectionParentIndex = /** @class */ (function () {
     }
     // Returns false if the entry already existed.
     MemoryCollectionParentIndex.prototype.add = function (collectionPath) {
-        assert(collectionPath.length % 2 === 1, 'Expected a collection path.');
+        assert$1(collectionPath.length % 2 === 1, 'Expected a collection path.');
         var collectionId = collectionPath.lastSegment();
         var parentPath = collectionPath.popLast();
         var existingParents = this.index[collectionId] ||
@@ -43461,7 +38022,7 @@ var SchemaConverter = /** @class */ (function () {
      */
     SchemaConverter.prototype.createOrUpgrade = function (db, txn, fromVersion, toVersion) {
         var _this = this;
-        assert(fromVersion < toVersion &&
+        assert$1(fromVersion < toVersion &&
             fromVersion >= 0 &&
             toVersion <= SCHEMA_VERSION, "Unexpected schema upgrade from v" + fromVersion + " to v{toVersion}.");
         if (fromVersion < 1 && toVersion >= 1) {
@@ -43539,7 +38100,7 @@ var SchemaConverter = /** @class */ (function () {
                     .loadAll(DbMutationBatch.userMutationsIndex, range)
                     .next(function (dbBatches) {
                     return PersistencePromise.forEach(dbBatches, function (dbBatch) {
-                        assert(dbBatch.userId === queue.userId, "Cannot process batch " + dbBatch.batchId + " from unexpected user");
+                        assert$1(dbBatch.userId === queue.userId, "Cannot process batch " + dbBatch.batchId + " from unexpected user");
                         var batch = _this.serializer.fromDbMutationBatch(dbBatch);
                         return removeMutationBatch(txn, queue.userId, batch).next(function () { });
                     });
@@ -43606,7 +38167,7 @@ var SchemaConverter = /** @class */ (function () {
                 .store(DbDocumentMutation.store)
                 .iterate({ keysOnly: true }, function (_a, _) {
                 var userID = _a[0], encodedPath = _a[1], batchId = _a[2];
-                var path = decode(encodedPath);
+                var path = decode$1(encodedPath);
                 return addEntry(path.popLast());
             });
         });
@@ -44040,7 +38601,7 @@ var DbTargetDocument = /** @class */ (function () {
         this.targetId = targetId;
         this.path = path;
         this.sequenceNumber = sequenceNumber;
-        assert((targetId === 0) === (sequenceNumber !== undefined), 
+        assert$1((targetId === 0) === (sequenceNumber !== undefined), 
         // tslint:disable-next-line:max-line-length
         'A target-document row must either have targetId == 0 and a defined sequence number, or a non-zero targetId and no sequence number');
     }
@@ -44279,9 +38840,9 @@ var IndexedDbIndexManager = /** @class */ (function () {
         this.collectionParentsCache = new MemoryCollectionParentIndex();
     }
     IndexedDbIndexManager.prototype.addToCollectionParentIndex = function (transaction, collectionPath) {
-        assert(collectionPath.length % 2 === 1, 'Expected a collection path.');
+        assert$1(collectionPath.length % 2 === 1, 'Expected a collection path.');
         if (this.collectionParentsCache.add(collectionPath)) {
-            assert(collectionPath.length >= 1, 'Invalid collection path.');
+            assert$1(collectionPath.length >= 1, 'Invalid collection path.');
             var collectionId = collectionPath.lastSegment();
             var parentPath = collectionPath.popLast();
             return collectionParentsStore(transaction).put({
@@ -44308,7 +38869,7 @@ var IndexedDbIndexManager = /** @class */ (function () {
                 if (entry.collectionId !== collectionId) {
                     break;
                 }
-                parentPaths.push(decode(entry.parent));
+                parentPaths.push(decode$1(entry.parent));
             }
             return parentPaths;
         });
@@ -44442,7 +39003,7 @@ var LocalSerializer = /** @class */ (function () {
         var keys = documentKeySet();
         for (var _i = 0, encodedPaths_1 = encodedPaths; _i < encodedPaths_1.length; _i++) {
             var documentKey = encodedPaths_1[_i];
-            keys = keys.add(new DocumentKey(decode(documentKey)));
+            keys = keys.add(new DocumentKey(decode$1(documentKey)));
         }
         return keys;
     };
@@ -44460,7 +39021,7 @@ var LocalSerializer = /** @class */ (function () {
     };
     /** Encodes QueryData into a DbTarget for storage locally. */
     LocalSerializer.prototype.toDbTarget = function (queryData) {
-        assert(QueryPurpose.Listen === queryData.purpose, 'Only queries with purpose ' +
+        assert$1(QueryPurpose.Listen === queryData.purpose, 'Only queries with purpose ' +
             QueryPurpose.Listen +
             ' may be stored, got ' +
             queryData.purpose);
@@ -44475,7 +39036,7 @@ var LocalSerializer = /** @class */ (function () {
         var resumeToken;
         if (queryData.resumeToken instanceof Uint8Array) {
             // TODO(b/78771403): Convert tokens to strings during deserialization
-            assert(process.env.USE_MOCK_PERSISTENCE === 'YES', 'Persisting non-string stream tokens is only supported with mock persistence .');
+            assert$1(process.env.USE_MOCK_PERSISTENCE === 'YES', 'Persisting non-string stream tokens is only supported with mock persistence .');
             resumeToken = queryData.resumeToken.toString();
         }
         else {
@@ -44611,7 +39172,7 @@ var LruScheduler = /** @class */ (function () {
         this.gcTask = null;
     }
     LruScheduler.prototype.start = function () {
-        assert(this.gcTask === null, 'Cannot start an already started LruScheduler');
+        assert$1(this.gcTask === null, 'Cannot start an already started LruScheduler');
         if (this.garbageCollector.params.cacheSizeCollectionThreshold !==
             LruParams.COLLECTION_DISABLED) {
             this.scheduleGC();
@@ -44632,7 +39193,7 @@ var LruScheduler = /** @class */ (function () {
     });
     LruScheduler.prototype.scheduleGC = function () {
         var _this = this;
-        assert(this.gcTask === null, 'Cannot schedule GC while a task is pending');
+        assert$1(this.gcTask === null, 'Cannot schedule GC while a task is pending');
         var delay = this.hasRun ? REGULAR_GC_DELAY_MS : INITIAL_GC_DELAY_MS;
         debug('LruGarbageCollector', "Garbage collection scheduled in " + delay + "ms");
         this.gcTask = this.asyncQueue.enqueueAfterDelay(TimerId.LruGarbageCollection, delay, function () {
@@ -44741,7 +39302,7 @@ var LruGarbageCollector = /** @class */ (function () {
         })
             .next(function (documentsRemoved) {
             removedDocumentsTs = Date.now();
-            if (getLogLevel() <= LogLevel.DEBUG) {
+            if (getLogLevel() <= LogLevel$1.DEBUG) {
                 var desc = 'LRU Garbage Collection\n' +
                     ("\tCounted targets in " + (countedTargetsTs - startTs) + "ms\n") +
                     ("\tDetermined least recently used " + sequenceNumbersToCollect + " in ") +
@@ -44844,7 +39405,7 @@ var UNSUPPORTED_PLATFORM_ERROR_MSG = 'This platform is either missing' +
 //     firestore_zombie_<persistence_prefix>_<instance_key>
 var ZOMBIED_CLIENTS_KEY_PREFIX = 'firestore_zombie';
 var IndexedDbTransaction = /** @class */ (function (_super) {
-    tslib_1.__extends(IndexedDbTransaction, _super);
+    __extends(IndexedDbTransaction, _super);
     function IndexedDbTransaction(simpleDbTransaction, currentSequenceNumber) {
         var _this = _super.call(this) || this;
         _this.simpleDbTransaction = simpleDbTransaction;
@@ -44899,9 +39460,9 @@ var IndexedDbPersistence = /** @class */ (function () {
         }
     };
     IndexedDbPersistence.createIndexedDbPersistence = function (persistenceKey, clientId, platform, queue, serializer, lruParams) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var persistence;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         persistence = new IndexedDbPersistence(persistenceKey, clientId, platform, queue, serializer, lruParams);
@@ -44914,9 +39475,9 @@ var IndexedDbPersistence = /** @class */ (function () {
         });
     };
     IndexedDbPersistence.createMultiClientIndexedDbPersistence = function (persistenceKey, clientId, platform, queue, serializer, lruParams, multiClientParams) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var persistence;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         persistence = new IndexedDbPersistence(persistenceKey, clientId, platform, queue, serializer, lruParams, multiClientParams);
@@ -44935,8 +39496,8 @@ var IndexedDbPersistence = /** @class */ (function () {
      */
     IndexedDbPersistence.prototype.start = function () {
         var _this = this;
-        assert(!this.started, 'IndexedDbPersistence double-started!');
-        assert(this.window !== null, "Expected 'window' to be defined");
+        assert$1(!this.started, 'IndexedDbPersistence double-started!');
+        assert$1(this.window !== null, "Expected 'window' to be defined");
         return SimpleDb.openOrCreate(this.dbName, SCHEMA_VERSION, new SchemaConverter(this.serializer))
             .then(function (db) {
             _this.simpleDb = db;
@@ -44976,8 +39537,8 @@ var IndexedDbPersistence = /** @class */ (function () {
     };
     IndexedDbPersistence.prototype.setPrimaryStateListener = function (primaryStateListener) {
         var _this = this;
-        this.primaryStateListener = function (primaryState) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        this.primaryStateListener = function (primaryState) { return __awaiter(_this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 if (this.started) {
                     return [2 /*return*/, primaryStateListener(primaryState)];
                 }
@@ -44992,8 +39553,8 @@ var IndexedDbPersistence = /** @class */ (function () {
             this.networkEnabled = networkEnabled;
             // Schedule a primary lease refresh for immediate execution. The eventual
             // lease update will be propagated via `primaryStateListener`.
-            this.queue.enqueueAndForget(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                return tslib_1.__generator(this, function (_a) {
+            this.queue.enqueueAndForget(function () { return __awaiter(_this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
                             if (!this.started) return [3 /*break*/, 2];
@@ -45066,10 +39627,10 @@ var IndexedDbPersistence = /** @class */ (function () {
      * time of all clients.
      */
     IndexedDbPersistence.prototype.maybeGarbageCollectMultiClientState = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var activeClients_1, inactiveClients_1;
             var _this = this;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (!(this.isPrimary &&
@@ -45214,9 +39775,9 @@ var IndexedDbPersistence = /** @class */ (function () {
         });
     };
     IndexedDbPersistence.prototype.shutdown = function (deleteData) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var _this = this;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         // The shutdown() operations are idempotent and can be called even when
@@ -45278,19 +39839,19 @@ var IndexedDbPersistence = /** @class */ (function () {
         configurable: true
     });
     IndexedDbPersistence.prototype.getMutationQueue = function (user) {
-        assert(this.started, 'Cannot initialize MutationQueue before persistence is started.');
+        assert$1(this.started, 'Cannot initialize MutationQueue before persistence is started.');
         return IndexedDbMutationQueue.forUser(user, this.serializer, this.indexManager, this.referenceDelegate);
     };
     IndexedDbPersistence.prototype.getQueryCache = function () {
-        assert(this.started, 'Cannot initialize QueryCache before persistence is started.');
+        assert$1(this.started, 'Cannot initialize QueryCache before persistence is started.');
         return this.queryCache;
     };
     IndexedDbPersistence.prototype.getRemoteDocumentCache = function () {
-        assert(this.started, 'Cannot initialize RemoteDocumentCache before persistence is started.');
+        assert$1(this.started, 'Cannot initialize RemoteDocumentCache before persistence is started.');
         return this.remoteDocumentCache;
     };
     IndexedDbPersistence.prototype.getIndexManager = function () {
-        assert(this.started, 'Cannot initialize IndexManager before persistence is started.');
+        assert$1(this.started, 'Cannot initialize IndexManager before persistence is started.');
         return this.indexManager;
     };
     IndexedDbPersistence.prototype.runTransaction = function (action, mode, transactionOperation) {
@@ -45308,7 +39869,7 @@ var IndexedDbPersistence = /** @class */ (function () {
                 return _this.verifyPrimaryLease(simpleDbTxn)
                     .next(function (success) {
                     if (!success) {
-                        error("Failed to obtain primary lease for action '" + action + "'.");
+                        error$2("Failed to obtain primary lease for action '" + action + "'.");
                         _this.isPrimary = false;
                         _this.queue.enqueueAndForget(function () {
                             return _this.primaryStateListener(false);
@@ -45400,7 +39961,7 @@ var IndexedDbPersistence = /** @class */ (function () {
             return false;
         }
         else if (updateTimeMs > maxAcceptable) {
-            error("Detected an update time that is in the future: " + updateTimeMs + " > " + maxAcceptable);
+            error$2("Detected an update time that is in the future: " + updateTimeMs + " > " + maxAcceptable);
             return false;
         }
         return true;
@@ -45421,7 +39982,7 @@ var IndexedDbPersistence = /** @class */ (function () {
     };
     IndexedDbPersistence.prototype.detachVisibilityHandler = function () {
         if (this.documentVisibilityHandler) {
-            assert(this.document !== null &&
+            assert$1(this.document !== null &&
                 typeof this.document.addEventListener === 'function', "Expected 'document.addEventListener' to be a function");
             this.document.removeEventListener('visibilitychange', this.documentVisibilityHandler);
             this.documentVisibilityHandler = null;
@@ -45456,7 +40017,7 @@ var IndexedDbPersistence = /** @class */ (function () {
     };
     IndexedDbPersistence.prototype.detachWindowUnloadHook = function () {
         if (this.windowUnloadHandler) {
-            assert(typeof this.window.removeEventListener === 'function', "Expected 'window.removeEventListener' to be a function");
+            assert$1(typeof this.window.removeEventListener === 'function', "Expected 'window.removeEventListener' to be a function");
             this.window.removeEventListener('unload', this.windowUnloadHandler);
             this.windowUnloadHandler = null;
         }
@@ -45475,7 +40036,7 @@ var IndexedDbPersistence = /** @class */ (function () {
         }
         catch (e) {
             // Gracefully handle if LocalStorage isn't working.
-            error(LOG_TAG$2, 'Failed to get zombied client id.', e);
+            error$2(LOG_TAG$2, 'Failed to get zombied client id.', e);
             return false;
         }
     };
@@ -45489,7 +40050,7 @@ var IndexedDbPersistence = /** @class */ (function () {
         }
         catch (e) {
             // Gracefully handle if LocalStorage isn't available / working.
-            error('Failed to set zombie client id.', e);
+            error$2('Failed to set zombie client id.', e);
         }
     };
     /** Removes the zombied client entry if it exists. */
@@ -45526,8 +40087,8 @@ function isPrimaryLeaseLostError(err) {
  * @return A Promise that resolves after we recovered, or the original error.
  */
 function ignoreIfPrimaryLeaseLoss(err) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        return tslib_1.__generator(this, function (_a) {
+    return __awaiter(this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
             if (isPrimaryLeaseLostError(err)) {
                 debug(LOG_TAG$2, 'Unexpectedly lost primary lease');
             }
@@ -45679,7 +40240,7 @@ var IndexedDbLruDelegate = /** @class */ (function () {
                 // if nextToReport is valid, report it, this is a new key so the
                 // last one must not be a member of any targets.
                 if (nextToReport !== ListenSequence.INVALID) {
-                    f(new DocumentKey(decode(nextPath)), nextToReport);
+                    f(new DocumentKey(decode$1(nextPath)), nextToReport);
                 }
                 // set nextToReport to be this sequence number. It's the next one we
                 // might report, if we don't find any targets for this document.
@@ -45699,7 +40260,7 @@ var IndexedDbLruDelegate = /** @class */ (function () {
             // need to check if the last key we iterated over was an orphaned
             // document and report it.
             if (nextToReport !== ListenSequence.INVALID) {
-                f(new DocumentKey(decode(nextPath)), nextToReport);
+                f(new DocumentKey(decode$1(nextPath)), nextToReport);
             }
         });
     };
@@ -45842,7 +40403,7 @@ var LocalDocumentsView = /** @class */ (function () {
     };
     LocalDocumentsView.prototype.getDocumentsMatchingCollectionGroupQuery = function (transaction, query) {
         var _this = this;
-        assert(query.path.isEmpty(), 'Currently we only support collection group queries at the root.');
+        assert$1(query.path.isEmpty(), 'Currently we only support collection group queries at the root.');
         var collectionId = query.collectionGroup;
         var results = documentMap();
         return this.indexManager
@@ -46107,7 +40668,7 @@ var LocalStore = /** @class */ (function () {
         this.localViewReferences = new ReferenceSet();
         /** Maps a targetID to data about its query. */
         this.queryDataByTarget = {};
-        assert(persistence.started, 'LocalStore was passed an unstarted persistence implementation');
+        assert$1(persistence.started, 'LocalStore was passed an unstarted persistence implementation');
         this.persistence.referenceDelegate.setInMemoryPins(this.localViewReferences);
         this.mutationQueue = persistence.getMutationQueue(initialUser);
         this.remoteDocuments = persistence.getRemoteDocumentCache();
@@ -46281,7 +40842,7 @@ var LocalStore = /** @class */ (function () {
             return _this.mutationQueue
                 .lookupMutationBatch(txn, batchId)
                 .next(function (batch) {
-                assert(batch !== null, 'Attempt to reject nonexistent batch!');
+                assert$1(batch !== null, 'Attempt to reject nonexistent batch!');
                 affectedKeys = batch.keys();
                 return _this.mutationQueue.removeMutationBatch(txn, batch);
             })
@@ -46413,7 +40974,7 @@ var LocalStore = /** @class */ (function () {
                 var updateRemoteVersion = _this.queryCache
                     .getLastRemoteSnapshotVersion(txn)
                     .next(function (lastRemoteVersion) {
-                    assert(remoteVersion.compareTo(lastRemoteVersion) >= 0, 'Watch stream reverted to previous snapshot?? ' +
+                    assert$1(remoteVersion.compareTo(lastRemoteVersion) >= 0, 'Watch stream reverted to previous snapshot?? ' +
                         remoteVersion +
                         ' < ' +
                         lastRemoteVersion);
@@ -46532,7 +41093,7 @@ var LocalStore = /** @class */ (function () {
                 }
             })
                 .next(function () {
-                assert(!_this.queryDataByTarget[queryData.targetId], 'Tried to allocate an already allocated query: ' + query);
+                assert$1(!_this.queryDataByTarget[queryData.targetId], 'Tried to allocate an already allocated query: ' + query);
                 _this.queryDataByTarget[queryData.targetId] = queryData;
                 return queryData;
             });
@@ -46551,7 +41112,7 @@ var LocalStore = /** @class */ (function () {
             return _this.queryCache
                 .getQueryData(txn, query)
                 .next(function (queryData) {
-                assert(queryData != null, 'Tried to release nonexistent query: ' + query);
+                assert$1(queryData != null, 'Tried to release nonexistent query: ' + query);
                 var targetId = queryData.targetId;
                 var cachedQueryData = _this.queryDataByTarget[targetId];
                 // References for documents sent via Watch are automatically removed when we delete a
@@ -46618,11 +41179,11 @@ var LocalStore = /** @class */ (function () {
                 .next(function (remoteDoc) {
                 var doc = remoteDoc;
                 var ackVersion = batchResult.docVersions.get(docKey);
-                assert(ackVersion !== null, 'ackVersions should contain every doc in the write.');
+                assert$1(ackVersion !== null, 'ackVersions should contain every doc in the write.');
                 if (!doc || doc.version.compareTo(ackVersion) < 0) {
                     doc = batch.applyToRemoteDocument(docKey, doc, batchResult);
                     if (!doc) {
-                        assert(!remoteDoc, 'Mutation batch ' +
+                        assert$1(!remoteDoc, 'Mutation batch ' +
                             batch +
                             ' applied to document ' +
                             remoteDoc +
@@ -46715,10 +41276,10 @@ var MemoryMutationQueue = /** @class */ (function () {
     MemoryMutationQueue.prototype.acknowledgeBatch = function (transaction, batch, streamToken) {
         var batchId = batch.batchId;
         var batchIndex = this.indexOfExistingBatchId(batchId, 'acknowledged');
-        assert(batchIndex === 0, 'Can only acknowledge the first batch in the mutation queue');
+        assert$1(batchIndex === 0, 'Can only acknowledge the first batch in the mutation queue');
         // Verify that the batch in the queue is the one to be acknowledged.
         var check = this.mutationQueue[batchIndex];
-        assert(batchId === check.batchId, 'Queue ordering failure: expected batch ' +
+        assert$1(batchId === check.batchId, 'Queue ordering failure: expected batch ' +
             batchId +
             ', got batch ' +
             check.batchId);
@@ -46733,12 +41294,12 @@ var MemoryMutationQueue = /** @class */ (function () {
         return PersistencePromise.resolve();
     };
     MemoryMutationQueue.prototype.addMutationBatch = function (transaction, localWriteTime, baseMutations, mutations) {
-        assert(mutations.length !== 0, 'Mutation batches should not be empty');
+        assert$1(mutations.length !== 0, 'Mutation batches should not be empty');
         var batchId = this.nextBatchId;
         this.nextBatchId++;
         if (this.mutationQueue.length > 0) {
             var prior = this.mutationQueue[this.mutationQueue.length - 1];
-            assert(prior.batchId < batchId, 'Mutation batchIDs must be monotonically increasing order');
+            assert$1(prior.batchId < batchId, 'Mutation batchIDs must be monotonically increasing order');
         }
         var batch = new MutationBatch(batchId, localWriteTime, baseMutations, mutations);
         this.mutationQueue.push(batch);
@@ -46755,7 +41316,7 @@ var MemoryMutationQueue = /** @class */ (function () {
     };
     MemoryMutationQueue.prototype.lookupMutationKeys = function (transaction, batchId) {
         var mutationBatch = this.findMutationBatch(batchId);
-        assert(mutationBatch != null, 'Failed to find local mutation batch.');
+        assert$1(mutationBatch != null, 'Failed to find local mutation batch.');
         return PersistencePromise.resolve(mutationBatch.keys());
     };
     MemoryMutationQueue.prototype.getNextMutationBatchAfterBatchId = function (transaction, batchId) {
@@ -46775,9 +41336,9 @@ var MemoryMutationQueue = /** @class */ (function () {
         var end = new DocReference(documentKey, Number.POSITIVE_INFINITY);
         var result = [];
         this.batchesByDocumentKey.forEachInRange([start, end], function (ref) {
-            assert(documentKey.isEqual(ref.key), "Should only iterate over a single key's batches");
+            assert$1(documentKey.isEqual(ref.key), "Should only iterate over a single key's batches");
             var batch = _this.findMutationBatch(ref.targetOrBatchId);
-            assert(batch !== null, 'Batches in the index must exist in the main table');
+            assert$1(batch !== null, 'Batches in the index must exist in the main table');
             result.push(batch);
         });
         return PersistencePromise.resolve(result);
@@ -46789,14 +41350,14 @@ var MemoryMutationQueue = /** @class */ (function () {
             var start = new DocReference(documentKey, 0);
             var end = new DocReference(documentKey, Number.POSITIVE_INFINITY);
             _this.batchesByDocumentKey.forEachInRange([start, end], function (ref) {
-                assert(documentKey.isEqual(ref.key), "For each key, should only iterate over a single key's batches");
+                assert$1(documentKey.isEqual(ref.key), "For each key, should only iterate over a single key's batches");
                 uniqueBatchIDs = uniqueBatchIDs.add(ref.targetOrBatchId);
             });
         });
         return PersistencePromise.resolve(this.findMutationBatches(uniqueBatchIDs));
     };
     MemoryMutationQueue.prototype.getAllMutationBatchesAffectingQuery = function (transaction, query) {
-        assert(!query.isCollectionGroupQuery(), 'CollectionGroup queries should be handled in LocalDocumentsView');
+        assert$1(!query.isCollectionGroupQuery(), 'CollectionGroup queries should be handled in LocalDocumentsView');
         // Use the query path as a prefix for testing if a document matches the
         // query.
         var prefix = query.path;
@@ -46850,7 +41411,7 @@ var MemoryMutationQueue = /** @class */ (function () {
         // Find the position of the first batch for removal. This need not be the
         // first entry in the queue.
         var batchIndex = this.indexOfExistingBatchId(batch.batchId, 'removed');
-        assert(batchIndex === 0, 'Can only remove the first entry of the mutation queue');
+        assert$1(batchIndex === 0, 'Can only remove the first entry of the mutation queue');
         this.mutationQueue.shift();
         var references = this.batchesByDocumentKey;
         return PersistencePromise.forEach(batch.mutations, function (mutation) {
@@ -46871,7 +41432,7 @@ var MemoryMutationQueue = /** @class */ (function () {
     };
     MemoryMutationQueue.prototype.performConsistencyCheck = function (txn) {
         if (this.mutationQueue.length === 0) {
-            assert(this.batchesByDocumentKey.isEmpty(), 'Document leak -- detected dangling mutation references when queue is empty.');
+            assert$1(this.batchesByDocumentKey.isEmpty(), 'Document leak -- detected dangling mutation references when queue is empty.');
         }
         return PersistencePromise.resolve();
     };
@@ -46885,7 +41446,7 @@ var MemoryMutationQueue = /** @class */ (function () {
      */
     MemoryMutationQueue.prototype.indexOfExistingBatchId = function (batchId, action) {
         var index = this.indexOfBatchId(batchId);
-        assert(index >= 0 && index < this.mutationQueue.length, 'Batches must exist to be ' + action);
+        assert$1(index >= 0 && index < this.mutationQueue.length, 'Batches must exist to be ' + action);
         return index;
     };
     /**
@@ -46919,7 +41480,7 @@ var MemoryMutationQueue = /** @class */ (function () {
             return null;
         }
         var batch = this.mutationQueue[index];
-        assert(batch.batchId === batchId, 'If found batch must match');
+        assert$1(batch.batchId === batchId, 'If found batch must match');
         return batch;
     };
     return MemoryMutationQueue;
@@ -47000,19 +41561,19 @@ var MemoryQueryCache = /** @class */ (function () {
         }
     };
     MemoryQueryCache.prototype.addQueryData = function (transaction, queryData) {
-        assert(!this.queries.has(queryData.query), 'Adding a query that already exists');
+        assert$1(!this.queries.has(queryData.query), 'Adding a query that already exists');
         this.saveQueryData(queryData);
         this.targetCount += 1;
         return PersistencePromise.resolve();
     };
     MemoryQueryCache.prototype.updateQueryData = function (transaction, queryData) {
-        assert(this.queries.has(queryData.query), 'Updating a non-existent query');
+        assert$1(this.queries.has(queryData.query), 'Updating a non-existent query');
         this.saveQueryData(queryData);
         return PersistencePromise.resolve();
     };
     MemoryQueryCache.prototype.removeQueryData = function (transaction, queryData) {
-        assert(this.targetCount > 0, 'Removing a target from an empty cache');
-        assert(this.queries.has(queryData.query), 'Removing a non-existent target from the cache');
+        assert$1(this.targetCount > 0, 'Removing a target from an empty cache');
+        assert$1(this.queries.has(queryData.query), 'Removing a non-existent target from the cache');
         this.queries.delete(queryData.query);
         this.references.removeReferencesForId(queryData.targetId);
         this.targetCount -= 1;
@@ -47097,7 +41658,7 @@ var MemoryQueryCache = /** @class */ (function () {
  * limitations under the License.
  */
 function documentSizeMap() {
-    return new SortedMap(DocumentKey.comparator);
+    return new SortedMap$1(DocumentKey.comparator);
 }
 var MemoryRemoteDocumentCache = /** @class */ (function () {
     /**
@@ -47173,7 +41734,7 @@ var MemoryRemoteDocumentCache = /** @class */ (function () {
     MemoryRemoteDocumentCache.prototype.getSizedEntries = function (transaction, documentKeys) {
         var _this = this;
         var results = nullableMaybeDocumentMap();
-        var sizeMap = new SortedMap(DocumentKey.comparator);
+        var sizeMap = new SortedMap$1(DocumentKey.comparator);
         documentKeys.forEach(function (documentKey) {
             var entry = _this.docs.get(documentKey);
             results = results.insert(documentKey, entry ? entry.maybeDocument : null);
@@ -47182,7 +41743,7 @@ var MemoryRemoteDocumentCache = /** @class */ (function () {
         return PersistencePromise.resolve({ maybeDocuments: results, sizeMap: sizeMap });
     };
     MemoryRemoteDocumentCache.prototype.getDocumentsMatchingQuery = function (transaction, query) {
-        assert(!query.isCollectionGroupQuery(), 'CollectionGroup queries should be handled in LocalDocumentsView');
+        assert$1(!query.isCollectionGroupQuery(), 'CollectionGroup queries should be handled in LocalDocumentsView');
         var results = documentMap();
         // Documents are ordered by key, so we can use a prefix scan to narrow down
         // the documents we need to match the query against.
@@ -47227,7 +41788,7 @@ var MemoryRemoteDocumentCache = /** @class */ (function () {
  * Handles the details of adding and updating documents in the MemoryRemoteDocumentCache.
  */
 var MemoryRemoteDocumentChangeBuffer = /** @class */ (function (_super) {
-    tslib_1.__extends(MemoryRemoteDocumentChangeBuffer, _super);
+    __extends(MemoryRemoteDocumentChangeBuffer, _super);
     function MemoryRemoteDocumentChangeBuffer(sizer, documentCache) {
         var _this = _super.call(this) || this;
         _this.sizer = sizer;
@@ -47241,7 +41802,7 @@ var MemoryRemoteDocumentChangeBuffer = /** @class */ (function (_super) {
         var docs = [];
         changes.forEach(function (key, maybeDocument) {
             var previousSize = _this.documentSizes.get(key);
-            assert(previousSize !== undefined, "Attempting to change document " + key.toString() + " without having read it first");
+            assert$1(previousSize !== undefined, "Attempting to change document " + key.toString() + " without having read it first");
             var size = _this.sizer(maybeDocument);
             delta += size - previousSize;
             docs.push({ maybeDocument: maybeDocument, size: size });
@@ -47325,8 +41886,8 @@ var MemoryPersistence = /** @class */ (function () {
         configurable: true
     });
     MemoryPersistence.prototype.getActiveClients = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 return [2 /*return*/, [this.clientId]];
             });
         });
@@ -47874,7 +42435,7 @@ var PersistentStream = /** @class */ (function () {
             this.performBackoff();
             return;
         }
-        assert(this.state === PersistentStreamState.Initial, 'Already started');
+        assert$1(this.state === PersistentStreamState.Initial, 'Already started');
         this.auth();
     };
     /**
@@ -47884,8 +42445,8 @@ var PersistentStream = /** @class */ (function () {
      * When stop returns, isStarted() and isOpen() will both return false.
      */
     PersistentStream.prototype.stop = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (!this.isStarted()) return [3 /*break*/, 2];
@@ -47907,7 +42468,7 @@ var PersistentStream = /** @class */ (function () {
      * inhibit backoff if required.
      */
     PersistentStream.prototype.inhibitBackoff = function () {
-        assert(!this.isStarted(), 'Can only inhibit backoff in a stopped state');
+        assert$1(!this.isStarted(), 'Can only inhibit backoff in a stopped state');
         this.state = PersistentStreamState.Initial;
         this.backoff.reset();
     };
@@ -47936,8 +42497,8 @@ var PersistentStream = /** @class */ (function () {
     };
     /** Called by the idle timer when the stream should close due to inactivity. */
     PersistentStream.prototype.handleIdleCloseTimer = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 if (this.isOpen()) {
                     // When timing out an idle stream there's no reason to force the stream into backoff when
                     // it restarts so set the stream state to Initial instead of Error.
@@ -47968,12 +42529,12 @@ var PersistentStream = /** @class */ (function () {
      * @param error the error the connection was closed with.
      */
     PersistentStream.prototype.close = function (finalState, error$1) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        assert(this.isStarted(), 'Only started streams should be closed.');
-                        assert(finalState === PersistentStreamState.Error || isNullOrUndefined(error$1), "Can't provide an error when not in an error state.");
+                        assert$1(this.isStarted(), 'Only started streams should be closed.');
+                        assert$1(finalState === PersistentStreamState.Error || isNullOrUndefined(error$1), "Can't provide an error when not in an error state.");
                         // Cancel any outstanding timers (they're guaranteed not to execute).
                         this.cancelIdleCheck();
                         this.backoff.cancel();
@@ -47986,8 +42547,8 @@ var PersistentStream = /** @class */ (function () {
                         }
                         else if (error$1 && error$1.code === Code.RESOURCE_EXHAUSTED) {
                             // Log the error. (Probably either 'quota exceeded' or 'max queue length reached'.)
-                            error(error$1.toString());
-                            error('Using maximum backoff delay to prevent overloading the backend.');
+                            error$2(error$1.toString());
+                            error$2('Using maximum backoff delay to prevent overloading the backend.');
                             this.backoff.resetToMax();
                         }
                         else if (error$1 && error$1.code === Code.UNAUTHENTICATED) {
@@ -48021,7 +42582,7 @@ var PersistentStream = /** @class */ (function () {
     PersistentStream.prototype.tearDown = function () { };
     PersistentStream.prototype.auth = function () {
         var _this = this;
-        assert(this.state === PersistentStreamState.Initial, 'Must be in initial state to auth');
+        assert$1(this.state === PersistentStreamState.Initial, 'Must be in initial state to auth');
         this.state = PersistentStreamState.Starting;
         var dispatchIfNotClosed = this.getCloseGuardedDispatcher(this.closeCount);
         // TODO(mikelehen): Just use dispatchIfNotClosed, but see TODO below.
@@ -48046,12 +42607,12 @@ var PersistentStream = /** @class */ (function () {
     };
     PersistentStream.prototype.startStream = function (token) {
         var _this = this;
-        assert(this.state === PersistentStreamState.Starting, 'Trying to start stream in a non-starting state');
+        assert$1(this.state === PersistentStreamState.Starting, 'Trying to start stream in a non-starting state');
         var dispatchIfNotClosed = this.getCloseGuardedDispatcher(this.closeCount);
         this.stream = this.startRpc(token);
         this.stream.onOpen(function () {
             dispatchIfNotClosed(function () {
-                assert(_this.state === PersistentStreamState.Starting, 'Expected stream to be in state Starting, but was ' + _this.state);
+                assert$1(_this.state === PersistentStreamState.Starting, 'Expected stream to be in state Starting, but was ' + _this.state);
                 _this.state = PersistentStreamState.Open;
                 return _this.listener.onOpen();
             });
@@ -48069,21 +42630,21 @@ var PersistentStream = /** @class */ (function () {
     };
     PersistentStream.prototype.performBackoff = function () {
         var _this = this;
-        assert(this.state === PersistentStreamState.Error, 'Should only perform backoff when in Error state');
+        assert$1(this.state === PersistentStreamState.Error, 'Should only perform backoff when in Error state');
         this.state = PersistentStreamState.Backoff;
-        this.backoff.backoffAndRun(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
-                assert(this.state === PersistentStreamState.Backoff, 'Backoff elapsed but state is now: ' + this.state);
+        this.backoff.backoffAndRun(function () { return __awaiter(_this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                assert$1(this.state === PersistentStreamState.Backoff, 'Backoff elapsed but state is now: ' + this.state);
                 this.state = PersistentStreamState.Initial;
                 this.start();
-                assert(this.isStarted(), 'PersistentStream should have started');
+                assert$1(this.isStarted(), 'PersistentStream should have started');
                 return [2 /*return*/];
             });
         }); });
     };
     // Visible for tests
     PersistentStream.prototype.handleStreamClose = function (error) {
-        assert(this.isStarted(), "Can't handle server close on non-started stream");
+        assert$1(this.isStarted(), "Can't handle server close on non-started stream");
         debug(LOG_TAG$6, "close with error: " + error);
         this.stream = null;
         // In theory the stream could close cleanly, however, in our current model
@@ -48122,7 +42683,7 @@ var PersistentStream = /** @class */ (function () {
  * sent from the server for ListenResponses.
  */
 var PersistentListenStream = /** @class */ (function (_super) {
-    tslib_1.__extends(PersistentListenStream, _super);
+    __extends(PersistentListenStream, _super);
     function PersistentListenStream(queue, connection, credentials, serializer, listener) {
         var _this = _super.call(this, queue, TimerId.ListenStreamConnectionBackoff, TimerId.ListenStreamIdle, connection, credentials, listener) || this;
         _this.serializer = serializer;
@@ -48184,7 +42745,7 @@ var PersistentListenStream = /** @class */ (function (_super) {
  * TODO(b/33271235): Use proto types
  */
 var PersistentWriteStream = /** @class */ (function (_super) {
-    tslib_1.__extends(PersistentWriteStream, _super);
+    __extends(PersistentWriteStream, _super);
     function PersistentWriteStream(queue, connection, credentials, serializer, listener) {
         var _this = _super.call(this, queue, TimerId.WriteStreamConnectionBackoff, TimerId.WriteStreamIdle, connection, credentials, listener) || this;
         _this.serializer = serializer;
@@ -48217,11 +42778,11 @@ var PersistentWriteStream = /** @class */ (function (_super) {
     };
     PersistentWriteStream.prototype.onMessage = function (responseProto) {
         // Always capture the last stream token.
-        assert(!!responseProto.streamToken, 'Got a write response without a stream token');
+        assert$1(!!responseProto.streamToken, 'Got a write response without a stream token');
         this.lastStreamToken = responseProto.streamToken;
         if (!this.handshakeComplete_) {
             // The first response is always the handshake response
-            assert(!responseProto.writeResults || responseProto.writeResults.length === 0, 'Got mutation results for handshake');
+            assert$1(!responseProto.writeResults || responseProto.writeResults.length === 0, 'Got mutation results for handshake');
             this.handshakeComplete_ = true;
             return this.listener.onHandshakeComplete();
         }
@@ -48241,8 +42802,8 @@ var PersistentWriteStream = /** @class */ (function (_super) {
      * calls should wait until onHandshakeComplete was called.
      */
     PersistentWriteStream.prototype.writeHandshake = function () {
-        assert(this.isOpen(), 'Writing handshake requires an opened stream');
-        assert(!this.handshakeComplete_, 'Handshake already completed');
+        assert$1(this.isOpen(), 'Writing handshake requires an opened stream');
+        assert$1(!this.handshakeComplete_, 'Handshake already completed');
         // TODO(dimond): Support stream resumption. We intentionally do not set the
         // stream token on the handshake, ignoring any stream token we might have.
         var request = {};
@@ -48252,9 +42813,9 @@ var PersistentWriteStream = /** @class */ (function (_super) {
     /** Sends a group of mutations to the Firestore backend to apply. */
     PersistentWriteStream.prototype.writeMutations = function (mutations) {
         var _this = this;
-        assert(this.isOpen(), 'Writing mutations requires an opened stream');
-        assert(this.handshakeComplete_, 'Handshake must be complete before writing mutations');
-        assert(this.lastStreamToken.length > 0, 'Trying to write mutation without a token');
+        assert$1(this.isOpen(), 'Writing mutations requires an opened stream');
+        assert$1(this.handshakeComplete_, 'Handshake must be complete before writing mutations');
+        assert$1(this.lastStreamToken.length > 0, 'Trying to write mutation without a token');
         var request = {
             // Protos are typed with string, but we support UInt8Array on Node
             // tslint:disable-next-line:no-any
@@ -48325,7 +42886,7 @@ var Datastore = /** @class */ (function () {
             var result = [];
             keys.forEach(function (key) {
                 var doc = docs.get(key);
-                assert(!!doc, 'Missing entity in write response for ' + key);
+                assert$1(!!doc, 'Missing entity in write response for ' + key);
                 result.push(doc);
             });
             return result;
@@ -48629,10 +43190,10 @@ var OnlineStateTracker = /** @class */ (function () {
         var _this = this;
         if (this.watchStreamFailures === 0) {
             this.setAndBroadcast(OnlineState.Unknown);
-            assert(this.onlineStateTimer === null, "onlineStateTimer shouldn't be started yet");
+            assert$1(this.onlineStateTimer === null, "onlineStateTimer shouldn't be started yet");
             this.onlineStateTimer = this.asyncQueue.enqueueAfterDelay(TimerId.OnlineStateTimeout, ONLINE_STATE_TIMEOUT_MS, function () {
                 _this.onlineStateTimer = null;
-                assert(_this.state === OnlineState.Unknown, 'Timer should be canceled if we transitioned to a different state.');
+                assert$1(_this.state === OnlineState.Unknown, 'Timer should be canceled if we transitioned to a different state.');
                 _this.logClientOfflineWarningIfNecessary("Backend didn't respond within " + ONLINE_STATE_TIMEOUT_MS / 1000 + " " +
                     "seconds.");
                 _this.setAndBroadcast(OnlineState.Offline);
@@ -48654,8 +43215,8 @@ var OnlineStateTracker = /** @class */ (function () {
             this.setAndBroadcast(OnlineState.Unknown);
             // To get to OnlineState.Online, set() must have been called which would
             // have reset our heuristics.
-            assert(this.watchStreamFailures === 0, 'watchStreamFailures must be 0');
-            assert(this.onlineStateTimer === null, 'onlineStateTimer must be null');
+            assert$1(this.watchStreamFailures === 0, 'watchStreamFailures must be 0');
+            assert$1(this.onlineStateTimer === null, 'onlineStateTimer must be null');
         }
         else {
             this.watchStreamFailures++;
@@ -48696,7 +43257,7 @@ var OnlineStateTracker = /** @class */ (function () {
             "Internet connection at the moment. The client will operate in offline " +
             "mode until it is able to successfully connect to the backend.";
         if (this.shouldWarnClientIsOffline) {
-            error(message);
+            error$2(message);
             this.shouldWarnClientIsOffline = false;
         }
         else {
@@ -48818,9 +43379,9 @@ var RemoteStore = /** @class */ (function () {
     };
     /** Re-enables the network. Idempotent. */
     RemoteStore.prototype.enableNetwork = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var _a;
-            return tslib_1.__generator(this, function (_b) {
+            return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
                         this.networkEnabled = true;
@@ -48851,8 +43412,8 @@ var RemoteStore = /** @class */ (function () {
      * enableNetwork().
      */
     RemoteStore.prototype.disableNetwork = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.networkEnabled = false;
@@ -48867,8 +43428,8 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.disableNetworkInternal = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, this.writeStream.stop()];
                     case 1:
@@ -48887,8 +43448,8 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.shutdown = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         debug(LOG_TAG$8, 'RemoteStore shutting down.');
@@ -48906,7 +43467,7 @@ var RemoteStore = /** @class */ (function () {
     };
     /** Starts new listen for the given query. Uses resume token if provided */
     RemoteStore.prototype.listen = function (queryData) {
-        assert(!contains(this.listenTargets, queryData.targetId), 'listen called with duplicate targetId!');
+        assert$1(!contains$2(this.listenTargets, queryData.targetId), 'listen called with duplicate targetId!');
         // Mark this as something the client is currently listening for.
         this.listenTargets[queryData.targetId] = queryData;
         if (this.shouldStartWatchStream()) {
@@ -48919,12 +43480,12 @@ var RemoteStore = /** @class */ (function () {
     };
     /** Removes the listen from server */
     RemoteStore.prototype.unlisten = function (targetId) {
-        assert(contains(this.listenTargets, targetId), 'unlisten called without assigned target ID!');
+        assert$1(contains$2(this.listenTargets, targetId), 'unlisten called without assigned target ID!');
         delete this.listenTargets[targetId];
         if (this.watchStream.isOpen()) {
             this.sendUnwatchRequest(targetId);
         }
-        if (isEmpty(this.listenTargets)) {
+        if (isEmpty$1(this.listenTargets)) {
             if (this.watchStream.isOpen()) {
                 this.watchStream.markIdle();
             }
@@ -48962,7 +43523,7 @@ var RemoteStore = /** @class */ (function () {
         this.watchStream.unwatch(targetId);
     };
     RemoteStore.prototype.startWatchStream = function () {
-        assert(this.shouldStartWatchStream(), 'startWatchStream() called when shouldStartWatchStream() is false.');
+        assert$1(this.shouldStartWatchStream(), 'startWatchStream() called when shouldStartWatchStream() is false.');
         this.watchChangeAggregator = new WatchChangeAggregator(this);
         this.watchStream.start();
         this.onlineStateTracker.handleWatchStreamStart();
@@ -48974,7 +43535,7 @@ var RemoteStore = /** @class */ (function () {
     RemoteStore.prototype.shouldStartWatchStream = function () {
         return (this.canUseNetwork() &&
             !this.watchStream.isStarted() &&
-            !isEmpty(this.listenTargets));
+            !isEmpty$1(this.listenTargets));
     };
     RemoteStore.prototype.canUseNetwork = function () {
         return this.isPrimary && this.networkEnabled;
@@ -48983,9 +43544,9 @@ var RemoteStore = /** @class */ (function () {
         this.watchChangeAggregator = null;
     };
     RemoteStore.prototype.onWatchStreamOpen = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var _this = this;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 forEachNumber(this.listenTargets, function (targetId, queryData) {
                     _this.sendWatchRequest(queryData);
                 });
@@ -48994,12 +43555,12 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.onWatchStreamClose = function (error) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 if (error === undefined) {
                     // Graceful stop (due to stop() or idle timeout). Make sure that's
                     // desirable.
-                    assert(!this.shouldStartWatchStream(), 'Watch stream was stopped gracefully while still needed.');
+                    assert$1(!this.shouldStartWatchStream(), 'Watch stream was stopped gracefully while still needed.');
                 }
                 this.cleanUpWatchStreamState();
                 // If we still need the watch stream, retry the connection.
@@ -49018,9 +43579,9 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.onWatchStreamChange = function (watchChange, snapshotVersion) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var lastRemoteSnapshotVersion;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         // Mark the client as online since we got a message from the server
@@ -49039,7 +43600,7 @@ var RemoteStore = /** @class */ (function () {
                             this.watchChangeAggregator.handleExistenceFilter(watchChange);
                         }
                         else {
-                            assert(watchChange instanceof WatchTargetChange, 'Expected watchChange to be an instance of WatchTargetChange');
+                            assert$1(watchChange instanceof WatchTargetChange, 'Expected watchChange to be an instance of WatchTargetChange');
                             this.watchChangeAggregator.handleTargetChange(watchChange);
                         }
                         if (!!snapshotVersion.isEqual(SnapshotVersion.MIN)) return [3 /*break*/, 3];
@@ -49067,7 +43628,7 @@ var RemoteStore = /** @class */ (function () {
      */
     RemoteStore.prototype.raiseWatchSnapshot = function (snapshotVersion) {
         var _this = this;
-        assert(!snapshotVersion.isEqual(SnapshotVersion.MIN), "Can't raise event for unknown SnapshotVersion");
+        assert$1(!snapshotVersion.isEqual(SnapshotVersion.MIN), "Can't raise event for unknown SnapshotVersion");
         var remoteEvent = this.watchChangeAggregator.createRemoteEvent(snapshotVersion);
         // Update in-memory resume tokens. LocalStore will update the
         // persistent view of these when applying the completed RemoteEvent.
@@ -49112,14 +43673,14 @@ var RemoteStore = /** @class */ (function () {
     /** Handles an error on a target */
     RemoteStore.prototype.handleTargetError = function (watchChange) {
         var _this = this;
-        assert(!!watchChange.cause, 'Handling target error without a cause');
+        assert$1(!!watchChange.cause, 'Handling target error without a cause');
         var error = watchChange.cause;
         var promiseChain = Promise.resolve();
         watchChange.targetIds.forEach(function (targetId) {
-            promiseChain = promiseChain.then(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                return tslib_1.__generator(this, function (_a) {
+            promiseChain = promiseChain.then(function () { return __awaiter(_this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
                     // A watched target might have been removed already.
-                    if (contains(this.listenTargets, targetId)) {
+                    if (contains$2(this.listenTargets, targetId)) {
                         delete this.listenTargets[targetId];
                         this.watchChangeAggregator.removeTarget(targetId);
                         return [2 /*return*/, this.syncEngine.rejectListen(targetId, error)];
@@ -49139,9 +43700,9 @@ var RemoteStore = /** @class */ (function () {
      * Starts the write stream if necessary.
      */
     RemoteStore.prototype.fillWritePipeline = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var lastBatchIdRetrieved, batch;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (!this.canAddToWritePipeline()) return [3 /*break*/, 4];
@@ -49187,7 +43748,7 @@ var RemoteStore = /** @class */ (function () {
      * immediately if the write stream is established.
      */
     RemoteStore.prototype.addToWritePipeline = function (batch) {
-        assert(this.canAddToWritePipeline(), 'addToWritePipeline called when pipeline is full');
+        assert$1(this.canAddToWritePipeline(), 'addToWritePipeline called when pipeline is full');
         this.writePipeline.push(batch);
         if (this.writeStream.isOpen() && this.writeStream.handshakeComplete) {
             this.writeStream.writeMutations(batch.mutations);
@@ -49199,12 +43760,12 @@ var RemoteStore = /** @class */ (function () {
             this.writePipeline.length > 0);
     };
     RemoteStore.prototype.startWriteStream = function () {
-        assert(this.shouldStartWriteStream(), 'startWriteStream() called when shouldStartWriteStream() is false.');
+        assert$1(this.shouldStartWriteStream(), 'startWriteStream() called when shouldStartWriteStream() is false.');
         this.writeStream.start();
     };
     RemoteStore.prototype.onWriteStreamOpen = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 this.writeStream.writeHandshake();
                 return [2 /*return*/];
             });
@@ -49228,7 +43789,7 @@ var RemoteStore = /** @class */ (function () {
         var _this = this;
         // This is a response to a write containing mutations and should be
         // correlated to the first write in our write pipeline.
-        assert(this.writePipeline.length > 0, 'Got result for empty write pipeline');
+        assert$1(this.writePipeline.length > 0, 'Got result for empty write pipeline');
         var batch = this.writePipeline.shift();
         var success = MutationBatchResult.from(batch, commitVersion, results, this.writeStream.lastStreamToken);
         return this.syncEngine.applySuccessfulWrite(success).then(function () {
@@ -49238,14 +43799,14 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.onWriteStreamClose = function (error) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var errorHandling;
             var _this = this;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 if (error === undefined) {
                     // Graceful stop (due to stop() or idle timeout). Make sure that's
                     // desirable.
-                    assert(!this.shouldStartWriteStream(), 'Write stream was stopped gracefully while still needed.');
+                    assert$1(!this.shouldStartWriteStream(), 'Write stream was stopped gracefully while still needed.');
                 }
                 // If the write stream closed due to an error, invoke the error callbacks if
                 // there are pending writes.
@@ -49274,8 +43835,8 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.handleHandshakeError = function (error) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 // Reset the token if it's a permanent error, signaling the write stream is
                 // no longer valid. Note that the handshake does not count as a write: see
                 // comments on isPermanentWriteError for details.
@@ -49291,10 +43852,10 @@ var RemoteStore = /** @class */ (function () {
         });
     };
     RemoteStore.prototype.handleWriteError = function (error) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var batch;
             var _this = this;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 // Only handle permanent errors here. If it's transient, just let the retry
                 // logic kick in.
                 if (isPermanentWriteError(error.code)) {
@@ -49319,8 +43880,8 @@ var RemoteStore = /** @class */ (function () {
         return new Transaction(this.datastore);
     };
     RemoteStore.prototype.handleCredentialChange = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (!this.canUseNetwork()) return [3 /*break*/, 3];
@@ -49346,8 +43907,8 @@ var RemoteStore = /** @class */ (function () {
      * Toggles the network state when the client gains or loses its primary lease.
      */
     RemoteStore.prototype.applyPrimaryState = function (isPrimary) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.isPrimary = isPrimary;
@@ -49435,9 +43996,9 @@ var EventManager = /** @class */ (function () {
         }
     };
     EventManager.prototype.unlisten = function (listener) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var query, lastListen, queryInfo, i;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 query = listener.query;
                 lastListen = false;
                 queryInfo = this.queries.get(query);
@@ -49512,7 +44073,7 @@ var QueryListener = /** @class */ (function () {
         this.options = options || {};
     }
     QueryListener.prototype.onViewSnapshot = function (snap) {
-        assert(snap.docChanges.length > 0 || snap.syncStateChanged, 'We got a new snapshot with no changes?');
+        assert$1(snap.docChanges.length > 0 || snap.syncStateChanged, 'We got a new snapshot with no changes?');
         if (!this.options.includeMetadataChanges) {
             // Remove the metadata only changes.
             var docChanges = [];
@@ -49547,7 +44108,7 @@ var QueryListener = /** @class */ (function () {
         }
     };
     QueryListener.prototype.shouldRaiseInitialEvent = function (snap, onlineState) {
-        assert(!this.raisedInitialEvent, 'Determining whether to raise first event but already had first event');
+        assert$1(!this.raisedInitialEvent, 'Determining whether to raise first event but already had first event');
         // Always raise the first event when we're synced
         if (!snap.fromCache) {
             return true;
@@ -49558,7 +44119,7 @@ var QueryListener = /** @class */ (function () {
         // Don't raise the event if we're online, aren't synced yet (checked
         // above) and are waiting for a sync.
         if (this.options.waitForSyncWhenOnline && maybeOnline) {
-            assert(snap.fromCache, 'Waiting for sync, but snapshot is not from cache');
+            assert$1(snap.fromCache, 'Waiting for sync, but snapshot is not from cache');
             return false;
         }
         // Raise data from cache if we have any documents or we are offline
@@ -49582,7 +44143,7 @@ var QueryListener = /** @class */ (function () {
         return false;
     };
     QueryListener.prototype.raiseInitialEvent = function (snap) {
-        assert(!this.raisedInitialEvent, 'Trying to raise initial events for second time');
+        assert$1(!this.raisedInitialEvent, 'Trying to raise initial events for second time');
         snap = ViewSnapshot.fromInitialDocuments(snap.query, snap.docs, snap.mutatedKeys, snap.fromCache);
         this.raisedInitialEvent = true;
         this.queryObserver.next(snap);
@@ -49671,7 +44232,7 @@ var RemovedLimboDocument = /** @class */ (function () {
  * a query. It gets notified of local and remote changes to docs, and applies
  * the query filters and limits to determine the most correct possible results.
  */
-var View = /** @class */ (function () {
+var View$1 = /** @class */ (function () {
     function View(query, 
     /** Documents included in the remote target */
     _syncedDocuments) {
@@ -49741,7 +44302,7 @@ var View = /** @class */ (function () {
             var oldDoc = oldDocumentSet.get(key);
             var newDoc = newMaybeDoc instanceof Document ? newMaybeDoc : null;
             if (newDoc) {
-                assert(key.isEqual(newDoc.key), 'Mismatching keys found in document changes: ' +
+                assert$1(key.isEqual(newDoc.key), 'Mismatching keys found in document changes: ' +
                     key +
                     ' != ' +
                     newDoc.key);
@@ -49819,7 +44380,7 @@ var View = /** @class */ (function () {
                 changeSet.track({ type: ChangeType.Removed, doc: oldDoc });
             }
         }
-        assert(!needsRefill || !previousChanges, 'View was refilled using docs that themselves needed refilling.');
+        assert$1(!needsRefill || !previousChanges, 'View was refilled using docs that themselves needed refilling.');
         return {
             documentSet: newDocumentSet,
             changeSet: changeSet,
@@ -49852,7 +44413,7 @@ var View = /** @class */ (function () {
     // PORTING NOTE: The iOS/Android clients always compute limbo document changes.
     View.prototype.applyChanges = function (docChanges, updateLimboDocuments, targetChange) {
         var _this = this;
-        assert(!docChanges.needsRefill, 'Cannot apply changes that need a refill');
+        assert$1(!docChanges.needsRefill, 'Cannot apply changes that need a refill');
         var oldDocs = this.documentSet;
         this.documentSet = docChanges.documentSet;
         this.mutatedKeys = docChanges.mutatedKeys;
@@ -49938,7 +44499,7 @@ var View = /** @class */ (function () {
         if (targetChange) {
             targetChange.addedDocuments.forEach(function (key) { return (_this._syncedDocuments = _this._syncedDocuments.add(key)); });
             targetChange.modifiedDocuments.forEach(function (key) {
-                return assert(_this._syncedDocuments.has(key), "Modified document " + key + " not found in view.");
+                return assert$1(_this._syncedDocuments.has(key), "Modified document " + key + " not found in view.");
             });
             targetChange.removedDocuments.forEach(function (key) { return (_this._syncedDocuments = _this._syncedDocuments.delete(key)); });
             this.current = targetChange.current;
@@ -50110,7 +44671,7 @@ var SyncEngine = /** @class */ (function () {
             return q.canonicalId();
         });
         this.queryViewsByTarget = {};
-        this.limboTargetsByKey = new SortedMap(DocumentKey.comparator);
+        this.limboTargetsByKey = new SortedMap$1(DocumentKey.comparator);
         this.limboResolutionsByTarget = {};
         this.limboDocumentRefs = new ReferenceSet();
         /** Stores user completion handlers, indexed by User and BatchId. */
@@ -50132,8 +44693,8 @@ var SyncEngine = /** @class */ (function () {
     });
     /** Subscribes to SyncEngine notifications. Has to be called exactly once. */
     SyncEngine.prototype.subscribe = function (syncEngineListener) {
-        assert(syncEngineListener !== null, 'SyncEngine listener cannot be null');
-        assert(this.syncEngineListener === null, 'SyncEngine already has a subscriber.');
+        assert$1(syncEngineListener !== null, 'SyncEngine listener cannot be null');
+        assert$1(this.syncEngineListener === null, 'SyncEngine already has a subscriber.');
         this.syncEngineListener = syncEngineListener;
     };
     /**
@@ -50142,9 +44703,9 @@ var SyncEngine = /** @class */ (function () {
      * subscribed handlers. Returns the targetId of the query.
      */
     SyncEngine.prototype.listen = function (query) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var targetId, viewSnapshot, queryView, queryData, status_1;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.assertSubscribed('listen()');
@@ -50190,14 +44751,14 @@ var SyncEngine = /** @class */ (function () {
             return _this.localStore
                 .remoteDocumentKeys(queryData.targetId)
                 .then(function (remoteKeys) {
-                var view = new View(query, remoteKeys);
+                var view = new View$1(query, remoteKeys);
                 var viewDocChanges = view.computeDocChanges(docs);
                 // tslint:disable-next-line:max-line-length Prettier formats this exceed 100 characters.
                 var synthesizedTargetChange = TargetChange.createSynthesizedTargetChangeForCurrentChange(queryData.targetId, current && _this.onlineState !== OnlineState.Offline);
                 var viewChange = view.applyChanges(viewDocChanges, 
                 /* updateLimboDocuments= */ _this.isPrimary === true, synthesizedTargetChange);
-                assert(viewChange.limboChanges.length === 0, 'View returned limbo docs before target ack from the server.');
-                assert(!!viewChange.snapshot, 'applyChanges for new view should always return a snapshot');
+                assert$1(viewChange.limboChanges.length === 0, 'View returned limbo docs before target ack from the server.');
+                assert$1(!!viewChange.snapshot, 'applyChanges for new view should always return a snapshot');
                 var data = new QueryView(query, queryData.targetId, view);
                 _this.queryViewsByQuery.set(query, data);
                 _this.queryViewsByTarget[queryData.targetId] = data;
@@ -50215,9 +44776,9 @@ var SyncEngine = /** @class */ (function () {
         return this.localStore.executeQuery(queryView.query).then(function (docs) {
             return _this.localStore
                 .remoteDocumentKeys(queryView.targetId)
-                .then(function (remoteKeys) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                .then(function (remoteKeys) { return __awaiter(_this, void 0, void 0, function () {
                 var viewSnapshot;
-                return tslib_1.__generator(this, function (_a) {
+                return __generator(this, function (_a) {
                     viewSnapshot = queryView.view.synchronizeWithPersistedState(docs, remoteKeys);
                     if (this.isPrimary) {
                         this.updateTrackedLimbos(queryView.targetId, viewSnapshot.limboChanges);
@@ -50229,15 +44790,15 @@ var SyncEngine = /** @class */ (function () {
     };
     /** Stops listening to the query. */
     SyncEngine.prototype.unlisten = function (query) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var queryView, targetRemainsActive;
             var _this = this;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.assertSubscribed('unlisten()');
                         queryView = this.queryViewsByQuery.get(query);
-                        assert(!!queryView, 'Trying to unlisten on query not found:' + query);
+                        assert$1(!!queryView, 'Trying to unlisten on query not found:' + query);
                         if (!this.isPrimary) return [3 /*break*/, 3];
                         // We need to remove the local query target first to allow us to verify
                         // whether any other client is still interested in this target.
@@ -50316,7 +44877,7 @@ var SyncEngine = /** @class */ (function () {
     SyncEngine.prototype.runTransaction = function (updateFunction, retries) {
         var _this = this;
         if (retries === void 0) { retries = 5; }
-        assert(retries >= 0, 'Got negative number of retries for transaction.');
+        assert$1(retries >= 0, 'Got negative number of retries for transaction.');
         var transaction = this.remoteStore.createTransaction();
         var wrappedUpdateFunction = function () {
             try {
@@ -50356,12 +44917,12 @@ var SyncEngine = /** @class */ (function () {
             .applyRemoteEvent(remoteEvent)
             .then(function (changes) {
             // Update `receivedDocument` as appropriate for any limbo targets.
-            forEach(remoteEvent.targetChanges, function (targetId, targetChange) {
+            forEach$1(remoteEvent.targetChanges, function (targetId, targetChange) {
                 var limboResolution = _this.limboResolutionsByTarget[targetId];
                 if (limboResolution) {
                     // Since this is a limbo resolution lookup, it's for a single document
                     // and it could be added, modified, or removed, but not a combination.
-                    assert(targetChange.addedDocuments.size +
+                    assert$1(targetChange.addedDocuments.size +
                         targetChange.modifiedDocuments.size +
                         targetChange.removedDocuments.size <=
                         1, 'Limbo resolution for single document contains multiple changes.');
@@ -50369,10 +44930,10 @@ var SyncEngine = /** @class */ (function () {
                         limboResolution.receivedDocument = true;
                     }
                     else if (targetChange.modifiedDocuments.size > 0) {
-                        assert(limboResolution.receivedDocument, 'Received change for limbo target document without add.');
+                        assert$1(limboResolution.receivedDocument, 'Received change for limbo target document without add.');
                     }
                     else if (targetChange.removedDocuments.size > 0) {
-                        assert(limboResolution.receivedDocument, 'Received remove for limbo target document without add.');
+                        assert$1(limboResolution.receivedDocument, 'Received remove for limbo target document without add.');
                         limboResolution.receivedDocument = false;
                     }
                 }
@@ -50395,7 +44956,7 @@ var SyncEngine = /** @class */ (function () {
             var newViewSnapshots_1 = [];
             this.queryViewsByQuery.forEach(function (query, queryView) {
                 var viewChange = queryView.view.applyOnlineStateChange(onlineState);
-                assert(viewChange.limboChanges.length === 0, 'OnlineState should not affect limbo documents.');
+                assert$1(viewChange.limboChanges.length === 0, 'OnlineState should not affect limbo documents.');
                 if (viewChange.snapshot) {
                     newViewSnapshots_1.push(viewChange.snapshot);
                 }
@@ -50409,10 +44970,10 @@ var SyncEngine = /** @class */ (function () {
         }
     };
     SyncEngine.prototype.rejectListen = function (targetId, err) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var limboResolution, limboKey, documentUpdates, resolvedLimboDocuments, event_1, queryView_1;
             var _this = this;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.assertSubscribed('rejectListens()');
@@ -50425,7 +44986,7 @@ var SyncEngine = /** @class */ (function () {
                         // So go ahead and remove it from bookkeeping.
                         this.limboTargetsByKey = this.limboTargetsByKey.remove(limboKey);
                         delete this.limboResolutionsByTarget[targetId];
-                        documentUpdates = new SortedMap(DocumentKey.comparator);
+                        documentUpdates = new SortedMap$1(DocumentKey.comparator);
                         documentUpdates = documentUpdates.insert(limboKey, new NoDocument(limboKey, SnapshotVersion.forDeletedDoc()));
                         resolvedLimboDocuments = documentKeySet().add(limboKey);
                         event_1 = new RemoteEvent(SnapshotVersion.MIN, 
@@ -50434,7 +44995,7 @@ var SyncEngine = /** @class */ (function () {
                         return [2 /*return*/, this.applyRemoteEvent(event_1)];
                     case 1:
                         queryView_1 = this.queryViewsByTarget[targetId];
-                        assert(!!queryView_1, 'Unknown targetId: ' + targetId);
+                        assert$1(!!queryView_1, 'Unknown targetId: ' + targetId);
                         return [4 /*yield*/, this.localStore
                                 .releaseQuery(queryView_1.query, /* keepPersistedQueryData */ false)
                                 .then(function () { return _this.removeAndCleanupQuery(queryView_1); })
@@ -50450,9 +45011,9 @@ var SyncEngine = /** @class */ (function () {
     };
     // PORTING NOTE: Multi-tab only
     SyncEngine.prototype.applyBatchState = function (batchId, batchState, error) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var documents;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.assertSubscribed('applyBatchState()');
@@ -50536,7 +45097,7 @@ var SyncEngine = /** @class */ (function () {
     SyncEngine.prototype.addMutationCallback = function (batchId, callback) {
         var newCallbacks = this.mutationUserCallbacks[this.currentUser.toKey()];
         if (!newCallbacks) {
-            newCallbacks = new SortedMap(primitiveComparator);
+            newCallbacks = new SortedMap$1(primitiveComparator);
         }
         newCallbacks = newCallbacks.insert(batchId, callback);
         this.mutationUserCallbacks[this.currentUser.toKey()] = newCallbacks;
@@ -50552,7 +45113,7 @@ var SyncEngine = /** @class */ (function () {
         if (newCallbacks) {
             var callback = newCallbacks.get(batchId);
             if (callback) {
-                assert(batchId === newCallbacks.minKey(), 'Mutation callbacks processed out-of-order?');
+                assert$1(batchId === newCallbacks.minKey(), 'Mutation callbacks processed out-of-order?');
                 if (error) {
                     callback.reject(error);
                 }
@@ -50619,7 +45180,7 @@ var SyncEngine = /** @class */ (function () {
         if (!this.limboTargetsByKey.get(key)) {
             debug(LOG_TAG$9, 'New document in limbo: ' + key);
             var limboTargetId = this.limboTargetIdGenerator.next();
-            var query = Query.atPath(key.path);
+            var query = Query$1.atPath(key.path);
             this.limboResolutionsByTarget[limboTargetId] = new LimboResolution(key);
             this.remoteStore.listen(new QueryData(query, limboTargetId, QueryPurpose.LimboResolution, ListenSequence.INVALID));
             this.limboTargetsByKey = this.limboTargetsByKey.insert(key, limboTargetId);
@@ -50630,10 +45191,10 @@ var SyncEngine = /** @class */ (function () {
         return this.limboTargetsByKey;
     };
     SyncEngine.prototype.emitNewSnapsAndNotifyLocalStore = function (changes, remoteEvent) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var newSnaps, docChangesInAllViews, queriesProcessed;
             var _this = this;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         newSnaps = [];
@@ -50681,12 +45242,12 @@ var SyncEngine = /** @class */ (function () {
         });
     };
     SyncEngine.prototype.assertSubscribed = function (fnName) {
-        assert(this.syncEngineListener !== null, 'Trying to call ' + fnName + ' before calling subscribe().');
+        assert$1(this.syncEngineListener !== null, 'Trying to call ' + fnName + ' before calling subscribe().');
     };
     SyncEngine.prototype.handleCredentialChange = function (user) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var userChanged, result;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         userChanged = !this.currentUser.isEqual(user);
@@ -50711,10 +45272,10 @@ var SyncEngine = /** @class */ (function () {
     };
     // PORTING NOTE: Multi-tab only
     SyncEngine.prototype.applyPrimaryState = function (isPrimary) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var activeTargets, activeQueries, _i, activeQueries_1, queryData, activeTargets_1, p_1;
             var _this = this;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (!(isPrimary === true && this.isPrimary !== true)) return [3 /*break*/, 3];
@@ -50769,7 +45330,7 @@ var SyncEngine = /** @class */ (function () {
         });
         this.limboDocumentRefs.removeAllReferences();
         this.limboResolutionsByTarget = [];
-        this.limboTargetsByKey = new SortedMap(DocumentKey.comparator);
+        this.limboTargetsByKey = new SortedMap$1(DocumentKey.comparator);
     };
     /**
      * Reconcile the query views of the provided query targets with the state from
@@ -50783,9 +45344,9 @@ var SyncEngine = /** @class */ (function () {
         var activeQueries = [];
         var newViewSnapshots = [];
         var _loop_1 = function (targetId) {
-            p = p.then(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+            p = p.then(function () { return __awaiter(_this, void 0, void 0, function () {
                 var queryData, queryView, viewChange, query;
-                return tslib_1.__generator(this, function (_a) {
+                return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
                             queryView = this.queryViewsByTarget[targetId];
@@ -50813,11 +45374,11 @@ var SyncEngine = /** @class */ (function () {
                             }
                             return [3 /*break*/, 8];
                         case 4:
-                            assert(this.isPrimary === true, 'A secondary tab should never have an active query without an active view.');
+                            assert$1(this.isPrimary === true, 'A secondary tab should never have an active query without an active view.');
                             return [4 /*yield*/, this.localStore.getQueryForTarget(targetId)];
                         case 5:
                             query = _a.sent();
-                            assert(!!query, "Query data for target " + targetId + " not found");
+                            assert$1(!!query, "Query data for target " + targetId + " not found");
                             return [4 /*yield*/, this.localStore.allocateQuery(query)];
                         case 6:
                             queryData = _a.sent();
@@ -50848,10 +45409,10 @@ var SyncEngine = /** @class */ (function () {
     };
     // PORTING NOTE: Multi-tab only
     SyncEngine.prototype.applyTargetState = function (targetId, state, error) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var _a, queryView;
             var _this = this;
-            return tslib_1.__generator(this, function (_b) {
+            return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
                         if (this.isPrimary) {
@@ -50870,9 +45431,9 @@ var SyncEngine = /** @class */ (function () {
                         return [3 /*break*/, 4];
                     case 1:
                         {
-                            return [2 /*return*/, this.localStore.getNewDocumentChanges().then(function (changes) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                            return [2 /*return*/, this.localStore.getNewDocumentChanges().then(function (changes) { return __awaiter(_this, void 0, void 0, function () {
                                     var synthesizedRemoteEvent;
-                                    return tslib_1.__generator(this, function (_a) {
+                                    return __generator(this, function (_a) {
                                         switch (_a.label) {
                                             case 0:
                                                 synthesizedRemoteEvent = RemoteEvent.createSynthesizedRemoteEventForCurrentChange(targetId, state === 'current');
@@ -50882,9 +45443,9 @@ var SyncEngine = /** @class */ (function () {
                                                 return [2 /*return*/];
                                         }
                                     });
-                                }); }, function (err) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                }); }, function (err) { return __awaiter(_this, void 0, void 0, function () {
                                     var activeTargets_2;
-                                    return tslib_1.__generator(this, function (_a) {
+                                    return __generator(this, function (_a) {
                                         switch (_a.label) {
                                             case 0:
                                                 if (!isDocumentChangeMissingError(err)) return [3 /*break*/, 2];
@@ -50922,10 +45483,10 @@ var SyncEngine = /** @class */ (function () {
     };
     // PORTING NOTE: Multi-tab only
     SyncEngine.prototype.applyActiveTargetsChange = function (added, removed) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var _i, added_1, targetId, query, queryData, _loop_2, this_1, _a, removed_1, targetId;
             var _this = this;
-            return tslib_1.__generator(this, function (_b) {
+            return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
                         if (!this.isPrimary) {
@@ -50936,11 +45497,11 @@ var SyncEngine = /** @class */ (function () {
                     case 1:
                         if (!(_i < added_1.length)) return [3 /*break*/, 6];
                         targetId = added_1[_i];
-                        assert(!this.queryViewsByTarget[targetId], 'Trying to add an already active target');
+                        assert$1(!this.queryViewsByTarget[targetId], 'Trying to add an already active target');
                         return [4 /*yield*/, this.localStore.getQueryForTarget(targetId)];
                     case 2:
                         query = _b.sent();
-                        assert(!!query, "Query data for active target " + targetId + " not found");
+                        assert$1(!!query, "Query data for active target " + targetId + " not found");
                         return [4 /*yield*/, this.localStore.allocateQuery(query)];
                     case 3:
                         queryData = _b.sent();
@@ -50956,7 +45517,7 @@ var SyncEngine = /** @class */ (function () {
                     case 6:
                         _loop_2 = function (targetId) {
                             var queryView;
-                            return tslib_1.__generator(this, function (_a) {
+                            return __generator(this, function (_a) {
                                 switch (_a.label) {
                                     case 0:
                                         queryView = this_1.queryViewsByTarget[targetId];
@@ -51119,7 +45680,7 @@ var MutationMetadata = /** @class */ (function () {
         this.batchId = batchId;
         this.state = state;
         this.error = error;
-        assert((error !== undefined) === (state === 'rejected'), "MutationMetadata must contain an error iff state is 'rejected'");
+        assert$1((error !== undefined) === (state === 'rejected'), "MutationMetadata must contain an error iff state is 'rejected'");
     }
     /**
      * Parses a MutationMetadata from its JSON representation in WebStorage.
@@ -51145,7 +45706,7 @@ var MutationMetadata = /** @class */ (function () {
             return new MutationMetadata(user, batchId, mutationBatch.state, firestoreError);
         }
         else {
-            error(LOG_TAG$a, "Failed to parse mutation state for ID '" + batchId + "': " + value);
+            error$2(LOG_TAG$a, "Failed to parse mutation state for ID '" + batchId + "': " + value);
             return null;
         }
     };
@@ -51174,7 +45735,7 @@ var QueryTargetMetadata = /** @class */ (function () {
         this.targetId = targetId;
         this.state = state;
         this.error = error;
-        assert((error !== undefined) === (state === 'rejected'), "QueryTargetMetadata must contain an error iff state is 'rejected'");
+        assert$1((error !== undefined) === (state === 'rejected'), "QueryTargetMetadata must contain an error iff state is 'rejected'");
     }
     /**
      * Parses a QueryTargetMetadata from its JSON representation in WebStorage.
@@ -51200,7 +45761,7 @@ var QueryTargetMetadata = /** @class */ (function () {
             return new QueryTargetMetadata(targetId, targetState.state, firestoreError);
         }
         else {
-            error(LOG_TAG$a, "Failed to parse target state for ID '" + targetId + "': " + value);
+            error$2(LOG_TAG$a, "Failed to parse target state for ID '" + targetId + "': " + value);
             return null;
         }
     };
@@ -51245,7 +45806,7 @@ var RemoteClientState = /** @class */ (function () {
             return new RemoteClientState(clientId, activeTargetIdsSet);
         }
         else {
-            error(LOG_TAG$a, "Failed to parse client data for instance '" + clientId + "': " + value);
+            error$2(LOG_TAG$a, "Failed to parse client data for instance '" + clientId + "': " + value);
             return null;
         }
     };
@@ -51274,7 +45835,7 @@ var SharedOnlineState = /** @class */ (function () {
             return new SharedOnlineState(onlineState.clientId, OnlineState[onlineState.onlineState]);
         }
         else {
-            error(LOG_TAG$a, "Failed to parse online state: " + value);
+            error$2(LOG_TAG$a, "Failed to parse online state: " + value);
             return null;
         }
     };
@@ -51296,7 +45857,7 @@ var LocalClientState = /** @class */ (function () {
         this.activeTargetIds = targetIdSet();
     }
     LocalClientState.prototype.addQueryTarget = function (targetId) {
-        assert(!this.activeTargetIds.has(targetId), "Target with ID '" + targetId + "' already active.");
+        assert$1(!this.activeTargetIds.has(targetId), "Target with ID '" + targetId + "' already active.");
         this.activeTargetIds = this.activeTargetIds.add(targetId);
     };
     LocalClientState.prototype.removeQueryTarget = function (targetId) {
@@ -51365,15 +45926,15 @@ var WebStorageSharedClientState = /** @class */ (function () {
         return !!(platform.window && platform.window.localStorage != null);
     };
     WebStorageSharedClientState.prototype.start = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var existingClients, _i, existingClients_1, clientId, storageItem, clientState, onlineStateJSON, onlineState, _a, _b, event_1;
             var _this = this;
-            return tslib_1.__generator(this, function (_c) {
+            return __generator(this, function (_c) {
                 switch (_c.label) {
                     case 0:
-                        assert(!this.started, 'WebStorageSharedClientState already started');
-                        assert(this.syncEngine !== null, 'syncEngine property must be set before calling start()');
-                        assert(this.onlineStateHandler !== null, 'onlineStateHandler property must be set before calling start()');
+                        assert$1(!this.started, 'WebStorageSharedClientState already started');
+                        assert$1(this.syncEngine !== null, 'syncEngine property must be set before calling start()');
+                        assert$1(this.onlineStateHandler !== null, 'onlineStateHandler property must be set before calling start()');
                         return [4 /*yield*/, this.syncEngine.getActiveClients()];
                     case 1:
                         existingClients = _c.sent();
@@ -51417,7 +45978,7 @@ var WebStorageSharedClientState = /** @class */ (function () {
     };
     WebStorageSharedClientState.prototype.getAllActiveQueryTargets = function () {
         var activeTargets = targetIdSet();
-        forEach(this.activeClients, function (key, value) {
+        forEach$1(this.activeClients, function (key, value) {
             activeTargets = activeTargets.unionWith(value.activeTargetIds);
         });
         return activeTargets;
@@ -51512,13 +46073,13 @@ var WebStorageSharedClientState = /** @class */ (function () {
         if (event.storageArea === this.storage) {
             debug(LOG_TAG$a, 'EVENT', event.key, event.newValue);
             if (event.key === this.localClientStorageKey) {
-                error('Received WebStorage notification for local change. Another client might have ' +
+                error$2('Received WebStorage notification for local change. Another client might have ' +
                     'garbage-collected our state');
                 return;
             }
-            this.queue.enqueueAndForget(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+            this.queue.enqueueAndForget(function () { return __awaiter(_this, void 0, void 0, function () {
                 var clientState, clientId, mutationMetadata, queryTargetMetadata, onlineState, sequenceNumber;
-                return tslib_1.__generator(this, function (_a) {
+                return __generator(this, function (_a) {
                     if (!this.started) {
                         this.earlyEvents.push(event);
                         return [2 /*return*/];
@@ -51563,7 +46124,7 @@ var WebStorageSharedClientState = /** @class */ (function () {
                         }
                     }
                     else if (event.key === this.sequenceNumberKey) {
-                        assert(!!this.sequenceNumberHandler, 'Missing sequenceNumberHandler');
+                        assert$1(!!this.sequenceNumberHandler, 'Missing sequenceNumberHandler');
                         sequenceNumber = fromWebStorageSequenceNumber(event.newValue);
                         if (sequenceNumber !== ListenSequence.INVALID) {
                             this.sequenceNumberHandler(sequenceNumber);
@@ -51607,7 +46168,7 @@ var WebStorageSharedClientState = /** @class */ (function () {
     };
     /** Assembles the key for a client state in WebStorage */
     WebStorageSharedClientState.prototype.toWebStorageClientStateKey = function (clientId) {
-        assert(clientId.indexOf('_') === -1, "Client key cannot contain '_', but was '" + clientId + "'");
+        assert$1(clientId.indexOf('_') === -1, "Client key cannot contain '_', but was '" + clientId + "'");
         return CLIENT_STATE_KEY_PREFIX + "_" + this.persistenceKey + "_" + clientId;
     };
     /** Assembles the key for a query state in WebStorage */
@@ -51636,7 +46197,7 @@ var WebStorageSharedClientState = /** @class */ (function () {
      */
     WebStorageSharedClientState.prototype.fromWebStorageClientState = function (key, value) {
         var clientId = this.fromWebStorageClientStateKey(key);
-        assert(clientId !== null, "Cannot parse client state key '" + key + "'");
+        assert$1(clientId !== null, "Cannot parse client state key '" + key + "'");
         return RemoteClientState.fromWebStorageEntry(clientId, value);
     };
     /**
@@ -51645,7 +46206,7 @@ var WebStorageSharedClientState = /** @class */ (function () {
      */
     WebStorageSharedClientState.prototype.fromWebStorageMutationMetadata = function (key, value) {
         var match = this.mutationBatchKeyRe.exec(key);
-        assert(match !== null, "Cannot parse mutation batch key '" + key + "'");
+        assert$1(match !== null, "Cannot parse mutation batch key '" + key + "'");
         var batchId = Number(match[1]);
         var userId = match[2] !== undefined ? match[2] : null;
         return MutationMetadata.fromWebStorageEntry(new User(userId), batchId, value);
@@ -51656,7 +46217,7 @@ var WebStorageSharedClientState = /** @class */ (function () {
      */
     WebStorageSharedClientState.prototype.fromWebStorageQueryTargetMetadata = function (key, value) {
         var match = this.queryTargetKeyRe.exec(key);
-        assert(match !== null, "Cannot parse query target key '" + key + "'");
+        assert$1(match !== null, "Cannot parse query target key '" + key + "'");
         var targetId = Number(match[1]);
         return QueryTargetMetadata.fromWebStorageEntry(targetId, value);
     };
@@ -51668,8 +46229,8 @@ var WebStorageSharedClientState = /** @class */ (function () {
         return SharedOnlineState.fromWebStorageEntry(value);
     };
     WebStorageSharedClientState.prototype.handleMutationBatchEvent = function (mutationBatch) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 if (mutationBatch.user.uid !== this.currentUser.uid) {
                     debug(LOG_TAG$a, "Ignoring mutation for non-active user " + mutationBatch.user.uid);
                     return [2 /*return*/];
@@ -51693,16 +46254,16 @@ var WebStorageSharedClientState = /** @class */ (function () {
         var newTargets = this.getAllActiveQueryTargets();
         var addedTargets = [];
         var removedTargets = [];
-        newTargets.forEach(function (targetId) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        newTargets.forEach(function (targetId) { return __awaiter(_this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 if (!existingTargets.has(targetId)) {
                     addedTargets.push(targetId);
                 }
                 return [2 /*return*/];
             });
         }); });
-        existingTargets.forEach(function (targetId) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        existingTargets.forEach(function (targetId) { return __awaiter(_this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 if (!newTargets.has(targetId)) {
                     removedTargets.push(targetId);
                 }
@@ -51728,11 +46289,11 @@ function fromWebStorageSequenceNumber(seqString) {
     if (seqString != null) {
         try {
             var parsed = JSON.parse(seqString);
-            assert(typeof parsed === 'number', 'Found non-numeric sequence number');
+            assert$1(typeof parsed === 'number', 'Found non-numeric sequence number');
             sequenceNumber = parsed;
         }
         catch (e) {
-            error(LOG_TAG$a, 'Failed to read sequence number from WebStorage', e);
+            error$2(LOG_TAG$a, 'Failed to read sequence number from WebStorage', e);
         }
     }
     return sequenceNumber;
@@ -51895,14 +46456,14 @@ var FirestoreClient = /** @class */ (function () {
         //
         // If initializationDone resolved then the FirestoreClient is in a usable
         // state.
-        var initializationDone = new Deferred();
+        var initializationDone = new Deferred$1();
         // If usePersistence is true, certain classes of errors while starting are
         // recoverable but only by falling back to persistence disabled.
         //
         // If there's an error in the first case but not in recovery we cannot
         // reject the promise blocking the async queue because this will cause the
         // async queue to panic.
-        var persistenceResult = new Deferred();
+        var persistenceResult = new Deferred$1();
         var initialized = false;
         this.credentials.setChangeListener(function (user) {
             if (!initialized) {
@@ -52017,9 +46578,9 @@ var FirestoreClient = /** @class */ (function () {
         var serializer = new JsonProtoSerializer(this.databaseInfo.databaseId, {
             useProto3Json: true
         });
-        return Promise.resolve().then(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+        return Promise.resolve().then(function () { return __awaiter(_this, void 0, void 0, function () {
             var persistence, lruParams;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (settings.experimentalTabSynchronization &&
@@ -52066,10 +46627,10 @@ var FirestoreClient = /** @class */ (function () {
         debug(LOG_TAG$b, 'Initializing. user=', user.uid);
         return this.platform
             .loadConnection(this.databaseInfo)
-            .then(function (connection) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+            .then(function (connection) { return __awaiter(_this, void 0, void 0, function () {
             var serializer, datastore, remoteStoreOnlineStateChangedHandler, sharedClientStateOnlineStateChangedHandler;
             var _this = this;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         this.localStore = new LocalStore(this.persistence, user);
@@ -52102,8 +46663,8 @@ var FirestoreClient = /** @class */ (function () {
                         _a.sent();
                         // NOTE: This will immediately call the listener, so we make sure to
                         // set it after localStore / remoteStore are started.
-                        return [4 /*yield*/, this.persistence.setPrimaryStateListener(function (isPrimary) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                                return tslib_1.__generator(this, function (_a) {
+                        return [4 /*yield*/, this.persistence.setPrimaryStateListener(function (isPrimary) { return __awaiter(_this, void 0, void 0, function () {
+                                return __generator(this, function (_a) {
                                     switch (_a.label) {
                                         case 0: return [4 /*yield*/, this.syncEngine.applyPrimaryState(isPrimary)];
                                         case 1:
@@ -52143,8 +46704,8 @@ var FirestoreClient = /** @class */ (function () {
     };
     FirestoreClient.prototype.shutdown = function (options) {
         var _this = this;
-        return this.asyncQueue.enqueue(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return this.asyncQueue.enqueue(function () { return __awaiter(_this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         // PORTING NOTE: LocalStore does not need an explicit shutdown on web.
@@ -52212,7 +46773,7 @@ var FirestoreClient = /** @class */ (function () {
         })
             .then(function (docs) {
             var remoteKeys = documentKeySet();
-            var view = new View(query, remoteKeys);
+            var view = new View$1(query, remoteKeys);
             var viewDocChanges = view.computeDocChanges(docs);
             return view.applyChanges(viewDocChanges, 
             /* updateLimboDocuments= */ false).snapshot;
@@ -52220,7 +46781,7 @@ var FirestoreClient = /** @class */ (function () {
     };
     FirestoreClient.prototype.write = function (mutations) {
         var _this = this;
-        var deferred = new Deferred();
+        var deferred = new Deferred$1();
         this.asyncQueue.enqueueAndForget(function () {
             return _this.syncEngine.write(mutations, deferred);
         });
@@ -52233,7 +46794,7 @@ var FirestoreClient = /** @class */ (function () {
         var _this = this;
         // We have to wait for the async queue to be sure syncEngine is initialized.
         return this.asyncQueue
-            .enqueue(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () { return tslib_1.__generator(this, function (_a) {
+            .enqueue(function () { return __awaiter(_this, void 0, void 0, function () { return __generator(this, function (_a) {
             return [2 /*return*/];
         }); }); })
             .then(function () { return _this.syncEngine.runTransaction(updateFunction); });
@@ -52419,13 +46980,13 @@ var EmptyCredentialsProvider = /** @class */ (function () {
     };
     EmptyCredentialsProvider.prototype.invalidateToken = function () { };
     EmptyCredentialsProvider.prototype.setChangeListener = function (changeListener) {
-        assert(!this.changeListener, 'Can only call setChangeListener() once.');
+        assert$1(!this.changeListener, 'Can only call setChangeListener() once.');
         this.changeListener = changeListener;
         // Fire with initial user.
         changeListener(User.UNAUTHENTICATED);
     };
     EmptyCredentialsProvider.prototype.removeChangeListener = function () {
-        assert(this.changeListener !== null, 'removeChangeListener() when no listener registered');
+        assert$1(this.changeListener !== null, 'removeChangeListener() when no listener registered');
         this.changeListener = null;
     };
     return EmptyCredentialsProvider;
@@ -52460,7 +47021,7 @@ var FirebaseCredentialsProvider = /** @class */ (function () {
     }
     FirebaseCredentialsProvider.prototype.getToken = function () {
         var _this = this;
-        assert(this.tokenListener != null, 'getToken cannot be called after listener removed.');
+        assert$1(this.tokenListener != null, 'getToken cannot be called after listener removed.');
         // Take note of the current value of the tokenCounter so that this method
         // can fail (with an ABORTED error) if there is a token change while the
         // request is outstanding.
@@ -52476,7 +47037,7 @@ var FirebaseCredentialsProvider = /** @class */ (function () {
             }
             else {
                 if (tokenData) {
-                    assert(typeof tokenData.accessToken === 'string', 'Invalid tokenData returned from getToken():' + tokenData);
+                    assert$1(typeof tokenData.accessToken === 'string', 'Invalid tokenData returned from getToken():' + tokenData);
                     return new OAuthToken(tokenData.accessToken, _this.currentUser);
                 }
                 else {
@@ -52489,7 +47050,7 @@ var FirebaseCredentialsProvider = /** @class */ (function () {
         this.forceRefresh = true;
     };
     FirebaseCredentialsProvider.prototype.setChangeListener = function (changeListener) {
-        assert(!this.changeListener, 'Can only call setChangeListener() once.');
+        assert$1(!this.changeListener, 'Can only call setChangeListener() once.');
         this.changeListener = changeListener;
         // Fire the initial event, but only if we received the initial user
         if (this.currentUser) {
@@ -52497,15 +47058,15 @@ var FirebaseCredentialsProvider = /** @class */ (function () {
         }
     };
     FirebaseCredentialsProvider.prototype.removeChangeListener = function () {
-        assert(this.tokenListener != null, 'removeChangeListener() called twice');
-        assert(this.changeListener !== null, 'removeChangeListener() called when no listener registered');
+        assert$1(this.tokenListener != null, 'removeChangeListener() called twice');
+        assert$1(this.changeListener !== null, 'removeChangeListener() called when no listener registered');
         this.app.INTERNAL.removeAuthTokenListener(this.tokenListener);
         this.tokenListener = null;
         this.changeListener = null;
     };
     FirebaseCredentialsProvider.prototype.getUser = function () {
         var currentUid = this.app.INTERNAL.getUid();
-        assert(currentUid === null || typeof currentUid === 'string', 'Received invalid UID: ' + currentUid);
+        assert$1(currentUid === null || typeof currentUid === 'string', 'Received invalid UID: ' + currentUid);
         return new User(currentUid);
     };
     return FirebaseCredentialsProvider;
@@ -52523,7 +47084,7 @@ var FirstPartyToken = /** @class */ (function () {
         this.sessionIndex = sessionIndex;
         this.type = 'FirstParty';
         this.user = User.FIRST_PARTY;
-        assert(this.gapi &&
+        assert$1(this.gapi &&
             this.gapi['auth'] &&
             this.gapi['auth']['getAuthHeaderValueForFirstParty'], 'unexpected gapi interface');
     }
@@ -52548,7 +47109,7 @@ var FirstPartyCredentialsProvider = /** @class */ (function () {
     function FirstPartyCredentialsProvider(gapi, sessionIndex) {
         this.gapi = gapi;
         this.sessionIndex = sessionIndex;
-        assert(this.gapi &&
+        assert$1(this.gapi &&
             this.gapi['auth'] &&
             this.gapi['auth']['getAuthHeaderValueForFirstParty'], 'unexpected gapi interface');
     }
@@ -52600,13 +47161,13 @@ function makeCredentialsProvider(credentials) {
  * limitations under the License.
  */
 function isPartialObserver(obj) {
-    return implementsAnyMethods(obj, ['next', 'error', 'complete']);
+    return implementsAnyMethods$1(obj, ['next', 'error', 'complete']);
 }
 /**
  * Returns true if obj is an object and contains at least one of the specified
  * methods.
  */
-function implementsAnyMethods(obj, methods) {
+function implementsAnyMethods$1(obj, methods) {
     if (typeof obj !== 'object' || obj === null) {
         return false;
     }
@@ -52684,7 +47245,7 @@ var FieldValueImpl = /** @class */ (function () {
     return FieldValueImpl;
 }());
 var DeleteFieldValueImpl = /** @class */ (function (_super) {
-    tslib_1.__extends(DeleteFieldValueImpl, _super);
+    __extends(DeleteFieldValueImpl, _super);
     function DeleteFieldValueImpl() {
         return _super.call(this, 'FieldValue.delete') || this;
     }
@@ -52693,7 +47254,7 @@ var DeleteFieldValueImpl = /** @class */ (function (_super) {
     return DeleteFieldValueImpl;
 }(FieldValueImpl));
 var ServerTimestampFieldValueImpl = /** @class */ (function (_super) {
-    tslib_1.__extends(ServerTimestampFieldValueImpl, _super);
+    __extends(ServerTimestampFieldValueImpl, _super);
     function ServerTimestampFieldValueImpl() {
         return _super.call(this, 'FieldValue.serverTimestamp') || this;
     }
@@ -52702,7 +47263,7 @@ var ServerTimestampFieldValueImpl = /** @class */ (function (_super) {
     return ServerTimestampFieldValueImpl;
 }(FieldValueImpl));
 var ArrayUnionFieldValueImpl = /** @class */ (function (_super) {
-    tslib_1.__extends(ArrayUnionFieldValueImpl, _super);
+    __extends(ArrayUnionFieldValueImpl, _super);
     function ArrayUnionFieldValueImpl(_elements) {
         var _this = _super.call(this, 'FieldValue.arrayUnion') || this;
         _this._elements = _elements;
@@ -52711,7 +47272,7 @@ var ArrayUnionFieldValueImpl = /** @class */ (function (_super) {
     return ArrayUnionFieldValueImpl;
 }(FieldValueImpl));
 var ArrayRemoveFieldValueImpl = /** @class */ (function (_super) {
-    tslib_1.__extends(ArrayRemoveFieldValueImpl, _super);
+    __extends(ArrayRemoveFieldValueImpl, _super);
     function ArrayRemoveFieldValueImpl(_elements) {
         var _this = _super.call(this, 'FieldValue.arrayRemove') || this;
         _this._elements = _elements;
@@ -52720,7 +47281,7 @@ var ArrayRemoveFieldValueImpl = /** @class */ (function (_super) {
     return ArrayRemoveFieldValueImpl;
 }(FieldValueImpl));
 var NumericIncrementFieldValueImpl = /** @class */ (function (_super) {
-    tslib_1.__extends(NumericIncrementFieldValueImpl, _super);
+    __extends(NumericIncrementFieldValueImpl, _super);
     function NumericIncrementFieldValueImpl(_operand) {
         var _this = _super.call(this, 'FieldValue.increment') || this;
         _this._operand = _operand;
@@ -52986,7 +47547,7 @@ var UserDataConverter = /** @class */ (function () {
         validatePlainObject('Data must be an object, but it was:', context, input);
         var fieldMaskPaths = new SortedSet(FieldPath.comparator);
         var updateData = ObjectValue.EMPTY;
-        forEach(input, function (key, value) {
+        forEach$1(input, function (key, value) {
             var path = fieldPathFromDotSeparatedString(methodName, key);
             var childContext = context.childContextForFieldPath(path);
             value = _this.runPreConverter(value, childContext);
@@ -53046,8 +47607,8 @@ var UserDataConverter = /** @class */ (function () {
     UserDataConverter.prototype.parseQueryValue = function (methodName, input) {
         var context = new ParseContext(UserDataSource.Argument, methodName, FieldPath.EMPTY_PATH);
         var parsed = this.parseData(input, context);
-        assert(parsed != null, 'Parsed data should not be null.');
-        assert(context.fieldTransforms.length === 0, 'Field transforms should have been disallowed.');
+        assert$1(parsed != null, 'Parsed data should not be null.');
+        assert$1(context.fieldTransforms.length === 0, 'Field transforms should have been disallowed.');
         return parsed;
     };
     /** Sends data through this.preConverter, handling any thrown errors. */
@@ -53105,8 +47666,8 @@ var UserDataConverter = /** @class */ (function () {
     };
     UserDataConverter.prototype.parseObject = function (obj, context) {
         var _this = this;
-        var result = new SortedMap(primitiveComparator);
-        if (isEmpty(obj)) {
+        var result = new SortedMap$1(primitiveComparator);
+        if (isEmpty$1(obj)) {
             // If we encounter an empty object, we explicitly add it to the update
             // mask to ensure that the server creates a map entry.
             if (context.path && context.path.length > 0) {
@@ -53114,7 +47675,7 @@ var UserDataConverter = /** @class */ (function () {
             }
         }
         else {
-            forEach(obj, function (key, val) {
+            forEach$1(obj, function (key, val) {
                 var parsedValue = _this.parseData(val, context.childContextForField(key));
                 if (parsedValue != null) {
                     result = result.insert(key, parsedValue);
@@ -53158,7 +47719,7 @@ var UserDataConverter = /** @class */ (function () {
                 context.fieldMask.push(context.path);
             }
             else if (context.dataSource === UserDataSource.Update) {
-                assert(context.path.length > 0, 'FieldValue.delete() at the top level should have already' +
+                assert$1(context.path.length > 0, 'FieldValue.delete() at the top level should have already' +
                     ' been handled.');
                 throw context.createError('FieldValue.delete() can only appear at the top level ' +
                     'of your update data');
@@ -53226,7 +47787,7 @@ var UserDataConverter = /** @class */ (function () {
         else if (value instanceof GeoPoint) {
             return new GeoPointValue(value);
         }
-        else if (value instanceof Blob) {
+        else if (value instanceof Blob$1) {
             return new BlobValue(value);
         }
         else if (value instanceof DocumentKeyReference) {
@@ -53262,7 +47823,7 @@ function looksLikeJsonObject(input) {
         !(input instanceof Date) &&
         !(input instanceof Timestamp) &&
         !(input instanceof GeoPoint) &&
-        !(input instanceof Blob) &&
+        !(input instanceof Blob$1) &&
         !(input instanceof DocumentKeyReference) &&
         !(input instanceof FieldValueImpl));
 }
@@ -53382,10 +47943,10 @@ var FirestoreSettings = /** @class */ (function () {
         // Nobody should set timestampsInSnapshots anymore, but the error depends on
         // whether they set it to true or false...
         if (settings.timestampsInSnapshots === true) {
-            error("\n  The timestampsInSnapshots setting now defaults to true and you no\n  longer need to explicitly set it. In a future release, the setting\n  will be removed entirely and so it is recommended that you remove it\n  from your firestore.settings() call now.");
+            error$2("\n  The timestampsInSnapshots setting now defaults to true and you no\n  longer need to explicitly set it. In a future release, the setting\n  will be removed entirely and so it is recommended that you remove it\n  from your firestore.settings() call now.");
         }
         else if (settings.timestampsInSnapshots === false) {
-            error("\n  The timestampsInSnapshots setting will soon be removed. YOU MUST UPDATE\n  YOUR CODE.\n\n  To hide this warning, stop using the timestampsInSnapshots setting in your\n  firestore.settings({ ... }) call.\n\n  Once you remove the setting, Timestamps stored in Cloud Firestore will be\n  read back as Firebase Timestamp objects instead of as system Date objects.\n  So you will also need to update code expecting a Date to instead expect a\n  Timestamp. For example:\n\n  // Old:\n  const date = snapshot.get('created_at');\n  // New:\n  const timestamp = snapshot.get('created_at'); const date =\n  timestamp.toDate();\n\n  Please audit all existing usages of Date when you enable the new\n  behavior.");
+            error$2("\n  The timestampsInSnapshots setting will soon be removed. YOU MUST UPDATE\n  YOUR CODE.\n\n  To hide this warning, stop using the timestampsInSnapshots setting in your\n  firestore.settings({ ... }) call.\n\n  Once you remove the setting, Timestamps stored in Cloud Firestore will be\n  read back as Firebase Timestamp objects instead of as system Date objects.\n  So you will also need to update code expecting a Date to instead expect a\n  Timestamp. For example:\n\n  // Old:\n  const date = snapshot.get('created_at');\n  // New:\n  const timestamp = snapshot.get('created_at'); const date =\n  timestamp.toDate();\n\n  Please audit all existing usages of Date when you enable the new\n  behavior.");
         }
         this.timestampsInSnapshots = defaulted(settings.timestampsInSnapshots, DEFAULT_TIMESTAMPS_IN_SNAPSHOTS);
         validateNamedOptionalType('settings', 'number', 'cacheSizeBytes', settings.cacheSizeBytes);
@@ -53426,8 +47987,8 @@ var Firestore = /** @class */ (function () {
         // TODO(mikelehen): Use modularized initialization instead.
         this._queue = new AsyncQueue();
         this.INTERNAL = {
-            delete: function (options) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                return tslib_1.__generator(this, function (_a) {
+            delete: function (options) { return __awaiter(_this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
                     if (this._firestoreClient) {
                         return [2 /*return*/, this._firestoreClient.shutdown(options)];
                     }
@@ -53462,7 +48023,7 @@ var Firestore = /** @class */ (function () {
     Firestore.prototype.settings = function (settingsLiteral) {
         validateExactNumberOfArgs('Firestore.settings', arguments, 1);
         validateArgType('Firestore.settings', 'object', 1, settingsLiteral);
-        if (contains(settingsLiteral, 'persistence')) {
+        if (contains$2(settingsLiteral, 'persistence')) {
             throw new FirestoreError(Code.INVALID_ARGUMENT, '"persistence" is now specified with a separate call to ' +
                 'firestore.enablePersistence().');
         }
@@ -53504,8 +48065,8 @@ var Firestore = /** @class */ (function () {
     };
     Firestore.prototype.configureClient = function (persistenceSettings) {
         var _this = this;
-        assert(!!this._config.settings.host, 'FirestoreSettings.host cannot be falsey');
-        assert(!this._firestoreClient, 'configureClient() called multiple times');
+        assert$1(!!this._config.settings.host, 'FirestoreSettings.host cannot be falsey');
+        assert$1(!this._firestoreClient, 'configureClient() called multiple times');
         var databaseInfo = new DatabaseInfo(this._config.databaseId, this._config.persistenceKey, this._config.settings.host, this._config.settings.ssl);
         var preConverter = function (value) {
             if (value instanceof DocumentReference) {
@@ -53528,7 +48089,7 @@ var Firestore = /** @class */ (function () {
     };
     Firestore.databaseIdFromApp = function (app) {
         var options = app.options;
-        if (!contains(options, 'projectId')) {
+        if (!contains$2(options, 'projectId')) {
             throw new FirestoreError(Code.INVALID_ARGUMENT, '"projectId" not provided in firebase.initializeApp.');
         }
         var projectId = options['projectId'];
@@ -53569,7 +48130,7 @@ var Firestore = /** @class */ (function () {
                 "Firestore.collectionGroup(). Collection IDs must not contain '/'.");
         }
         this.ensureClientConfigured();
-        return new Query$1(new Query(ResourcePath.EMPTY_PATH, collectionId), this);
+        return new Query$1$1(new Query$1(ResourcePath.EMPTY_PATH, collectionId), this);
     };
     Firestore.prototype.runTransaction = function (updateFunction) {
         var _this = this;
@@ -53586,11 +48147,11 @@ var Firestore = /** @class */ (function () {
     Object.defineProperty(Firestore, "logLevel", {
         get: function () {
             switch (getLogLevel()) {
-                case LogLevel.DEBUG:
+                case LogLevel$1.DEBUG:
                     return 'debug';
-                case LogLevel.ERROR:
+                case LogLevel$1.ERROR:
                     return 'error';
-                case LogLevel.SILENT:
+                case LogLevel$1.SILENT:
                     return 'silent';
                 default:
                     return fail('Unknown log level: ' + getLogLevel());
@@ -53604,13 +48165,13 @@ var Firestore = /** @class */ (function () {
         validateArgType('Firestore.setLogLevel', 'non-empty string', 1, level);
         switch (level) {
             case 'debug':
-                setLogLevel(LogLevel.DEBUG);
+                setLogLevel$1(LogLevel$1.DEBUG);
                 break;
             case 'error':
-                setLogLevel(LogLevel.ERROR);
+                setLogLevel$1(LogLevel$1.ERROR);
                 break;
             case 'silent':
-                setLogLevel(LogLevel.SILENT);
+                setLogLevel$1(LogLevel$1.SILENT);
                 break;
             default:
                 throw new FirestoreError(Code.INVALID_ARGUMENT, 'Invalid log level: ' + level);
@@ -53743,8 +48304,8 @@ var WriteBatch = /** @class */ (function () {
         return this;
     };
     WriteBatch.prototype.commit = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
                 this.verifyNotCommitted();
                 this._committed = true;
                 if (this._mutations.length > 0) {
@@ -53895,14 +48456,14 @@ var DocumentReference = /** @class */ (function () {
         var asyncObserver = new AsyncObserver({
             next: function (snapshot) {
                 if (observer.next) {
-                    assert(snapshot.docs.size <= 1, 'Too many documents returned on a document query');
+                    assert$1(snapshot.docs.size <= 1, 'Too many documents returned on a document query');
                     var doc = snapshot.docs.get(_this._key);
                     observer.next(new DocumentSnapshot(_this.firestore, _this._key, doc, snapshot.fromCache, snapshot.hasPendingWrites));
                 }
             },
             error: errHandler
         });
-        var internalListener = this._firestoreClient.listen(Query.atPath(this._key.path), asyncObserver, options);
+        var internalListener = this._firestoreClient.listen(Query$1.atPath(this._key.path), asyncObserver, options);
         return function () {
             asyncObserver.mute();
             _this._firestoreClient.unlisten(internalListener);
@@ -54060,7 +48621,7 @@ var DocumentSnapshot = /** @class */ (function () {
             var database = this._firestore.ensureClientConfigured().databaseId();
             if (!value.databaseId.isEqual(database)) {
                 // TODO(b/64130202): Somehow support foreign references.
-                error("Document " + this._key.path + " contains a document " +
+                error$2("Document " + this._key.path + " contains a document " +
                     "reference within a different database (" +
                     (value.databaseId.projectId + "/" + value.databaseId.database + ") which is not ") +
                     "supported. It will be treated as a reference in the current " +
@@ -54082,18 +48643,18 @@ var DocumentSnapshot = /** @class */ (function () {
     return DocumentSnapshot;
 }());
 var QueryDocumentSnapshot = /** @class */ (function (_super) {
-    tslib_1.__extends(QueryDocumentSnapshot, _super);
+    __extends(QueryDocumentSnapshot, _super);
     function QueryDocumentSnapshot(firestore, key, document, fromCache, hasPendingWrites) {
         return _super.call(this, firestore, key, document, fromCache, hasPendingWrites) || this;
     }
     QueryDocumentSnapshot.prototype.data = function (options) {
         var data = _super.prototype.data.call(this, options);
-        assert(typeof data === 'object', 'Document in a QueryDocumentSnapshot should exist');
+        assert$1(typeof data === 'object', 'Document in a QueryDocumentSnapshot should exist');
         return data;
     };
     return QueryDocumentSnapshot;
 }(DocumentSnapshot));
-var Query$1 = /** @class */ (function () {
+var Query$1$1 = /** @class */ (function () {
     function Query(_query, firestore) {
         this._query = _query;
         this.firestore = firestore;
@@ -54522,7 +49083,7 @@ var QuerySnapshot = /** @class */ (function () {
     };
     Object.defineProperty(QuerySnapshot.prototype, "query", {
         get: function () {
-            return new Query$1(this._originalQuery, this._firestore);
+            return new Query$1$1(this._originalQuery, this._firestore);
         },
         enumerable: true,
         configurable: true
@@ -54592,9 +49153,9 @@ docChangesPropertiesToOverride.forEach(function (property) {
     catch (err) { } // Ignore this failure intentionally
 });
 var CollectionReference = /** @class */ (function (_super) {
-    tslib_1.__extends(CollectionReference, _super);
+    __extends(CollectionReference, _super);
     function CollectionReference(path, firestore) {
-        var _this = _super.call(this, Query.atPath(path), firestore) || this;
+        var _this = _super.call(this, Query$1.atPath(path), firestore) || this;
         if (path.length % 2 !== 1) {
             throw new FirestoreError(Code.INVALID_ARGUMENT, 'Invalid collection reference. Collection ' +
                 'references must have an odd number of segments, but ' +
@@ -54650,7 +49211,7 @@ var CollectionReference = /** @class */ (function (_super) {
         return docRef.set(value).then(function () { return docRef; });
     };
     return CollectionReference;
-}(Query$1));
+}(Query$1$1));
 function validateSetOptions(methodName, options) {
     if (options === undefined) {
         return {
@@ -54707,8 +49268,8 @@ function changesFromSnapshot(firestore, includeMetadataChanges, snapshot) {
         var index_1 = 0;
         return snapshot.docChanges.map(function (change) {
             var doc = new QueryDocumentSnapshot(firestore, change.doc.key, change.doc, snapshot.fromCache, snapshot.mutatedKeys.has(change.doc.key));
-            assert(change.type === ChangeType.Added, 'Invalid event type for first snapshot');
-            assert(!lastDoc_1 || snapshot.query.docComparator(lastDoc_1, change.doc) < 0, 'Got added events in wrong order');
+            assert$1(change.type === ChangeType.Added, 'Invalid event type for first snapshot');
+            assert$1(!lastDoc_1 || snapshot.query.docComparator(lastDoc_1, change.doc) < 0, 'Got added events in wrong order');
             lastDoc_1 = change.doc;
             return {
                 type: 'added',
@@ -54730,7 +49291,7 @@ function changesFromSnapshot(firestore, includeMetadataChanges, snapshot) {
             var newIndex = -1;
             if (change.type !== ChangeType.Added) {
                 oldIndex = indexTracker_1.indexOf(change.doc.key);
-                assert(oldIndex >= 0, 'Index for document not found');
+                assert$1(oldIndex >= 0, 'Index for document not found');
                 indexTracker_1 = indexTracker_1.delete(change.doc.key);
             }
             if (change.type !== ChangeType.Removed) {
@@ -54765,7 +49326,7 @@ var PublicWriteBatch = makeConstructorPrivate(WriteBatch, 'Use firebase.firestor
 var PublicDocumentReference = makeConstructorPrivate(DocumentReference, 'Use firebase.firestore().doc() instead.');
 var PublicDocumentSnapshot = makeConstructorPrivate(DocumentSnapshot);
 var PublicQueryDocumentSnapshot = makeConstructorPrivate(QueryDocumentSnapshot);
-var PublicQuery = makeConstructorPrivate(Query$1);
+var PublicQuery = makeConstructorPrivate(Query$1$1);
 var PublicQuerySnapshot = makeConstructorPrivate(QuerySnapshot);
 var PublicCollectionReference = makeConstructorPrivate(CollectionReference, 'Use firebase.firestore().collection() instead.');
 // tslint:enable:variable-name
@@ -54807,8 +49368,8 @@ var firestoreNamespace = {
 /**
  * Configures Firestore as part of the Firebase SDK by calling registerService.
  */
-function configureForFirebase(firebase) {
-    firebase.INTERNAL.registerService('firestore', function (app) { return new Firestore(app); }, shallowCopy(firestoreNamespace));
+function configureForFirebase(firebase$$1) {
+    firebase$$1.INTERNAL.registerService('firestore', function (app) { return new Firestore(app); }, shallowCopy(firestoreNamespace));
 }
 
 /**
@@ -54831,22 +49392,6 @@ function registerFirestore(instance) {
     configureForFirebase(instance);
 }
 registerFirestore(firebase);
-
-exports.registerFirestore = registerFirestore;
-
-});
-
-unwrapExports(index_cjs$5);
-var index_cjs_1$3 = index_cjs$5.registerFirestore;
-
-var index_cjs$7 = createCommonjsModule(function (module, exports) {
-
-Object.defineProperty(exports, '__esModule', { value: true });
-
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var firebase = _interopDefault(index_cjs$2);
-
 
 /**
  * @license
@@ -54895,7 +49440,7 @@ var errorCodeMap = {
  * client that called the function.
  */
 var HttpsErrorImpl = /** @class */ (function (_super) {
-    tslib_1.__extends(HttpsErrorImpl, _super);
+    __extends(HttpsErrorImpl, _super);
     function HttpsErrorImpl(code, message, details) {
         var _this = _super.call(this, message) || this;
         // This is a workaround for a bug in TypeScript when extending Error:
@@ -55003,9 +49548,9 @@ var ContextProvider = /** @class */ (function () {
         this.app = app;
     }
     ContextProvider.prototype.getAuthToken = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var token, e_1;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         _a.trys.push([0, 2, , 3]);
@@ -55026,9 +49571,9 @@ var ContextProvider = /** @class */ (function () {
         });
     };
     ContextProvider.prototype.getInstanceIdToken = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var messaging, token, e_2;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         _a.trys.push([0, 2, , 3]);
@@ -55057,9 +49602,9 @@ var ContextProvider = /** @class */ (function () {
         });
     };
     ContextProvider.prototype.getContext = function () {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var authToken, instanceIdToken;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, this.getAuthToken()];
                     case 1:
@@ -55268,9 +49813,9 @@ var Service = /** @class */ (function () {
      * @return A Promise that will succeed when the request finishes.
      */
     Service.prototype.postJSON = function (url, body, headers) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var response, e_1, json, e_2;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         headers.append('Content-Type', 'application/json');
@@ -55321,9 +49866,9 @@ var Service = /** @class */ (function () {
      * @param data The data to pass as params to the function.s
      */
     Service.prototype.call = function (name, data, options) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return __awaiter(this, void 0, void 0, function () {
             var url, body, headers, context, timeout, response, error, responseData, decodedData;
-            return tslib_1.__generator(this, function (_a) {
+            return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         url = this._url(name);
@@ -55408,13 +49953,6 @@ function registerFunctions(instance) {
     true);
 }
 registerFunctions(firebase);
-
-exports.registerFunctions = registerFunctions;
-
-});
-
-unwrapExports(index_cjs$7);
-var index_cjs_1$4 = index_cjs$7.registerFunctions;
 
 /**
  * @license
@@ -55548,7 +50086,7 @@ var ERROR_MAP = (_a = {},
     _a[ERROR_CODES.INVALID_PUBLIC_VAPID_KEY] = 'The public VAPID key must be a string.',
     _a[ERROR_CODES.PUBLIC_KEY_DECRYPTION_FAILED] = 'The public VAPID key did not equal ' + '65 bytes when decrypted.',
     _a);
-var errorFactory = new index_cjs_15('messaging', 'Messaging', ERROR_MAP);
+var errorFactory = new ErrorFactory('messaging', 'Messaging', ERROR_MAP);
 
 /**
  * @license
@@ -55922,10 +50460,10 @@ var IidModel = /** @class */ (function () {
  */
 function base64ToArrayBuffer(base64String) {
     var padding = '='.repeat((4 - base64String.length % 4) % 4);
-    var base64 = (base64String + padding)
+    var base64$$1 = (base64String + padding)
         .replace(/\-/g, '+')
         .replace(/_/g, '/');
-    var rawData = atob(base64);
+    var rawData = atob(base64$$1);
     var outputArray = new Uint8Array(rawData.length);
     for (var i = 0; i < rawData.length; ++i) {
         outputArray[i] = rawData.charCodeAt(i);
@@ -57229,10 +51767,10 @@ var WindowController = /** @class */ (function (_super) {
         _this.messageObserver = null;
         // @ts-ignore: Unused variable error, this is not implemented yet.
         _this.tokenRefreshObserver = null;
-        _this.onMessageInternal = index_cjs_43(function (observer) {
+        _this.onMessageInternal = createSubscribe(function (observer) {
             _this.messageObserver = observer;
         });
-        _this.onTokenRefreshInternal = index_cjs_43(function (observer) {
+        _this.onTokenRefreshInternal = createSubscribe(function (observer) {
             _this.tokenRefreshObserver = observer;
         });
         _this.setupSWMessageListener_();
@@ -57708,7 +52246,7 @@ var FirebaseStorageError = /** @class */ (function () {
     });
     return FirebaseStorageError;
 }());
-var Code = {
+var Code$1 = {
     // Shared between all platforms
     UNKNOWN: 'unknown',
     OBJECT_NOT_FOUND: 'object-not-found',
@@ -57741,13 +52279,13 @@ function prependCode(code) {
 function unknown() {
     var message = 'An unknown error occurred, please check the error payload for ' +
         'server response.';
-    return new FirebaseStorageError(Code.UNKNOWN, message);
+    return new FirebaseStorageError(Code$1.UNKNOWN, message);
 }
 function objectNotFound(path) {
-    return new FirebaseStorageError(Code.OBJECT_NOT_FOUND, "Object '" + path + "' does not exist.");
+    return new FirebaseStorageError(Code$1.OBJECT_NOT_FOUND, "Object '" + path + "' does not exist.");
 }
 function quotaExceeded(bucket) {
-    return new FirebaseStorageError(Code.QUOTA_EXCEEDED, "Quota for bucket '" +
+    return new FirebaseStorageError(Code$1.QUOTA_EXCEEDED, "Quota for bucket '" +
         bucket +
         "' exceeded, please view quota on " +
         'https://firebase.google.com/pricing/.');
@@ -57755,34 +52293,34 @@ function quotaExceeded(bucket) {
 function unauthenticated() {
     var message = 'User is not authenticated, please authenticate using Firebase ' +
         'Authentication and try again.';
-    return new FirebaseStorageError(Code.UNAUTHENTICATED, message);
+    return new FirebaseStorageError(Code$1.UNAUTHENTICATED, message);
 }
 function unauthorized(path) {
-    return new FirebaseStorageError(Code.UNAUTHORIZED, "User does not have permission to access '" + path + "'.");
+    return new FirebaseStorageError(Code$1.UNAUTHORIZED, "User does not have permission to access '" + path + "'.");
 }
 function retryLimitExceeded() {
-    return new FirebaseStorageError(Code.RETRY_LIMIT_EXCEEDED, 'Max retry time for operation exceeded, please try again.');
+    return new FirebaseStorageError(Code$1.RETRY_LIMIT_EXCEEDED, 'Max retry time for operation exceeded, please try again.');
 }
 function canceled() {
-    return new FirebaseStorageError(Code.CANCELED, 'User canceled the upload/download.');
+    return new FirebaseStorageError(Code$1.CANCELED, 'User canceled the upload/download.');
 }
 function invalidUrl(url) {
-    return new FirebaseStorageError(Code.INVALID_URL, "Invalid URL '" + url + "'.");
+    return new FirebaseStorageError(Code$1.INVALID_URL, "Invalid URL '" + url + "'.");
 }
 function invalidDefaultBucket(bucket) {
-    return new FirebaseStorageError(Code.INVALID_DEFAULT_BUCKET, "Invalid default bucket '" + bucket + "'.");
+    return new FirebaseStorageError(Code$1.INVALID_DEFAULT_BUCKET, "Invalid default bucket '" + bucket + "'.");
 }
 function cannotSliceBlob() {
-    return new FirebaseStorageError(Code.CANNOT_SLICE_BLOB, 'Cannot slice blob for upload. Please retry the upload.');
+    return new FirebaseStorageError(Code$1.CANNOT_SLICE_BLOB, 'Cannot slice blob for upload. Please retry the upload.');
 }
 function serverFileWrongSize() {
-    return new FirebaseStorageError(Code.SERVER_FILE_WRONG_SIZE, 'Server recorded incorrect upload file size, please retry the upload.');
+    return new FirebaseStorageError(Code$1.SERVER_FILE_WRONG_SIZE, 'Server recorded incorrect upload file size, please retry the upload.');
 }
 function noDownloadURL() {
-    return new FirebaseStorageError(Code.NO_DOWNLOAD_URL, 'The given file does not have any download URLs.');
+    return new FirebaseStorageError(Code$1.NO_DOWNLOAD_URL, 'The given file does not have any download URLs.');
 }
 function invalidArgument(index, fnName, message) {
-    return new FirebaseStorageError(Code.INVALID_ARGUMENT, 'Invalid argument in `' + fnName + '` at index ' + index + ': ' + message);
+    return new FirebaseStorageError(Code$1.INVALID_ARGUMENT, 'Invalid argument in `' + fnName + '` at index ' + index + ': ' + message);
 }
 function invalidArgumentCount(argMin, argMax, fnName, real) {
     var countPart;
@@ -57795,7 +52333,7 @@ function invalidArgumentCount(argMin, argMax, fnName, real) {
         countPart = 'between ' + argMin + ' and ' + argMax;
         plural = 'arguments';
     }
-    return new FirebaseStorageError(Code.INVALID_ARGUMENT_COUNT, 'Invalid argument count in `' +
+    return new FirebaseStorageError(Code$1.INVALID_ARGUMENT_COUNT, 'Invalid argument count in `' +
         fnName +
         '`: Expected ' +
         countPart +
@@ -57806,13 +52344,13 @@ function invalidArgumentCount(argMin, argMax, fnName, real) {
         '.');
 }
 function appDeleted() {
-    return new FirebaseStorageError(Code.APP_DELETED, 'The Firebase app was deleted.');
+    return new FirebaseStorageError(Code$1.APP_DELETED, 'The Firebase app was deleted.');
 }
 /**
  * @param name The name of the operation that was invalid.
  */
 function invalidRootOperation(name) {
-    return new FirebaseStorageError(Code.INVALID_ROOT_OPERATION, "The operation '" +
+    return new FirebaseStorageError(Code$1.INVALID_ROOT_OPERATION, "The operation '" +
         name +
         "' cannot be performed on a root reference, create a non-root " +
         "reference using child, such as .child('file.png').");
@@ -57822,13 +52360,13 @@ function invalidRootOperation(name) {
  * @param message A message describing the format violation.
  */
 function invalidFormat(format, message) {
-    return new FirebaseStorageError(Code.INVALID_FORMAT, "String does not match format '" + format + "': " + message);
+    return new FirebaseStorageError(Code$1.INVALID_FORMAT, "String does not match format '" + format + "': " + message);
 }
 /**
  * @param message A message describing the internal error.
  */
 function internalError(message) {
-    throw new FirebaseStorageError(Code.INTERNAL_ERROR, 'Internal error: ' + message);
+    throw new FirebaseStorageError(Code$1.INTERNAL_ERROR, 'Internal error: ' + message);
 }
 
 /**
@@ -58106,22 +52644,22 @@ function taskStateFromInternalTaskState(state) {
 /**
  * @fileoverview Contains methods for working with objects.
  */
-function contains(obj, prop) {
+function contains$3(obj, prop) {
     return Object.prototype.hasOwnProperty.call(obj, prop);
 }
-function forEach(obj, f) {
+function forEach$2(obj, f) {
     for (var key in obj) {
-        if (contains(obj, key)) {
+        if (contains$3(obj, key)) {
             f(key, obj[key]);
         }
     }
 }
-function clone(obj) {
+function clone$1(obj) {
     if (obj == null) {
         return {};
     }
     var c = {};
-    forEach(obj, function (key, val) {
+    forEach$2(obj, function (key, val) {
         c[key] = val;
     });
     return c;
@@ -58196,7 +52734,7 @@ function isFunction(p) {
 function isObject(p) {
     return typeof p === 'object';
 }
-function isNonNullObject(p) {
+function isNonNullObject$1(p) {
     return isObject(p) && p !== null;
 }
 function isNonArrayObject(p) {
@@ -58293,7 +52831,7 @@ var NetworkXhrIo = /** @class */ (function () {
         this.xhr_.open(method, url, true);
         if (isDef(opt_headers)) {
             var headers = opt_headers;
-            forEach(headers, function (key, val) {
+            forEach$2(headers, function (key, val) {
                 _this.xhr_.setRequestHeader(key, val.toString());
             });
         }
@@ -58629,7 +53167,7 @@ function makeUploadUrl(urlPart) {
 function makeQueryString(params) {
     var encode = encodeURIComponent;
     var queryPart = '?';
-    forEach(params, function (key, val) {
+    forEach$2(params, function (key, val) {
         var nextPart = encode(key) + '=' + encode(val);
         queryPart = queryPart + nextPart + '&';
     });
@@ -58802,7 +53340,7 @@ function metadataValidator(p) {
             }
         }
         else {
-            if (isNonNullObject(val)) {
+            if (isNonNullObject$1(val)) {
                 throw "Mapping for '" + key + "' cannot be an object.";
             }
         }
@@ -59140,14 +53678,14 @@ var FbsBlob = /** @class */ (function () {
  * Returns true if the object is contained in the array (compared with ===).
  * @template T
  */
-function contains$1(array, elem) {
+function contains$1$1(array, elem) {
     return array.indexOf(elem) !== -1;
 }
 /**
  * Returns a shallow copy of the array or array-like object (e.g. arguments).
  * @template T
  */
-function clone$1(arraylike) {
+function clone$1$1(arraylike) {
     return Array.prototype.slice.call(arraylike);
 }
 /**
@@ -59315,7 +53853,7 @@ function determineContentType_(metadata, blob) {
         'application/octet-stream');
 }
 function metadataForUpload_(location, blob, opt_metadata) {
-    var metadata = clone(opt_metadata);
+    var metadata = clone$1(opt_metadata);
     metadata['fullPath'] = location.path;
     metadata['size'] = blob.size();
     if (!metadata['contentType']) {
@@ -59396,7 +53934,7 @@ function checkResumeHeader_(xhr, opt_allowed) {
         handlerCheck(false);
     }
     var allowed = opt_allowed || ['active'];
-    handlerCheck(contains$1(allowed, status));
+    handlerCheck(contains$1$1(allowed, status));
     return status;
 }
 function createResumableUpload(authWrapper, location, mappings, blob, opt_metadata) {
@@ -59602,7 +54140,7 @@ var UploadTaskSnapshot = /** @class */ (function () {
  * microtask, i.e. as soon as possible after the current script returns back
  * into browser code.
  */
-function async(f) {
+function async$1(f) {
     return function () {
         var argsToForward = [];
         for (var _i = 0; _i < arguments.length; _i++) {
@@ -59664,7 +54202,7 @@ var UploadTask = /** @class */ (function () {
         this.errorHandler_ = function (error) {
             _this.request_ = null;
             _this.chunkMultiplier_ = 1;
-            if (error.codeEquals(Code.CANCELED)) {
+            if (error.codeEquals(Code$1.CANCELED)) {
                 _this.needToFetchStatus_ = true;
                 _this.completeTransitions_();
             }
@@ -59675,7 +54213,7 @@ var UploadTask = /** @class */ (function () {
         };
         this.metadataErrorHandler_ = function (error) {
             _this.request_ = null;
-            if (error.codeEquals(Code.CANCELED)) {
+            if (error.codeEquals(Code$1.CANCELED)) {
                 _this.completeTransitions_();
             }
             else {
@@ -60064,7 +54602,7 @@ var UploadTask = /** @class */ (function () {
     UploadTask.prototype.notifyObservers_ = function () {
         var _this = this;
         this.finishPromise_();
-        var observers = clone$1(this.observers_);
+        var observers = clone$1$1(this.observers_);
         observers.forEach(function (observer) {
             _this.notifyObserver_(observer);
         });
@@ -60074,12 +54612,12 @@ var UploadTask = /** @class */ (function () {
             var triggered = true;
             switch (taskStateFromInternalTaskState(this.state_)) {
                 case TaskState.SUCCESS:
-                    async(this.resolve_.bind(null, this.snapshot))();
+                    async$1(this.resolve_.bind(null, this.snapshot))();
                     break;
                 case TaskState.CANCELED:
                 case TaskState.ERROR:
                     var toCall = this.reject_;
-                    async(toCall.bind(null, this.error_))();
+                    async$1(toCall.bind(null, this.error_))();
                     break;
                 default:
                     triggered = false;
@@ -60097,24 +54635,24 @@ var UploadTask = /** @class */ (function () {
             case TaskState.RUNNING:
             case TaskState.PAUSED:
                 if (observer.next !== null) {
-                    async(observer.next.bind(observer, this.snapshot))();
+                    async$1(observer.next.bind(observer, this.snapshot))();
                 }
                 break;
             case TaskState.SUCCESS:
                 if (observer.complete !== null) {
-                    async(observer.complete.bind(observer))();
+                    async$1(observer.complete.bind(observer))();
                 }
                 break;
             case TaskState.CANCELED:
             case TaskState.ERROR:
                 if (observer.error !== null) {
-                    async(observer.error.bind(observer, this.error_))();
+                    async$1(observer.error.bind(observer, this.error_))();
                 }
                 break;
             default:
                 // TODO(andysoto): assert(false);
                 if (observer.error !== null) {
-                    async(observer.error.bind(observer, this.error_))();
+                    async$1(observer.error.bind(observer, this.error_))();
                 }
         }
     };
@@ -60187,7 +54725,7 @@ var UploadTask = /** @class */ (function () {
  *     format. If no value is passed, the storage object will use a URL based on
  *     the project ID of the base firebase.App instance.
  */
-var Reference = /** @class */ (function () {
+var Reference$1 = /** @class */ (function () {
     function Reference(authWrapper, location) {
         this.authWrapper = authWrapper;
         if (location instanceof Location) {
@@ -60307,7 +54845,7 @@ var Reference = /** @class */ (function () {
         ], arguments);
         this.throwIfRoot_('putString');
         var data = dataFromString(format, string);
-        var metadata = clone(opt_metadata);
+        var metadata = clone$1(opt_metadata);
         if (!isDef(metadata['contentType']) && isDef(data.contentType)) {
             metadata['contentType'] = data.contentType;
         }
@@ -60450,7 +54988,7 @@ var RequestMap = /** @class */ (function () {
      * Cancels all registered requests.
      */
     RequestMap.prototype.clear = function () {
-        forEach(this.map_, function (key, val) {
+        forEach$2(this.map_, function (key, val) {
             if (val) {
                 val.cancel(true);
             }
@@ -60772,7 +55310,7 @@ var NetworkRequest = /** @class */ (function () {
                     backoffCallback(false, new RequestEndStatus(false, null, wasCanceled));
                     return;
                 }
-                var successCode = contains$1(self.successCodes_, status);
+                var successCode = contains$1$1(self.successCodes_, status);
                 backoffCallback(true, new RequestEndStatus(successCode, xhr));
             });
         }
@@ -60855,8 +55393,8 @@ var NetworkRequest = /** @class */ (function () {
             // Too Many Requests: you're getting rate-limited, basically.
             429
         ];
-        var isExtraRetryCode = contains$1(extraRetryCodes, status);
-        var isRequestSpecificRetryCode = contains$1(this.additionalRetryCodes_, status);
+        var isExtraRetryCode = contains$1$1(extraRetryCodes, status);
+        var isRequestSpecificRetryCode = contains$1$1(this.additionalRetryCodes_, status);
         return isFiveHundredCode || isExtraRetryCode || isRequestSpecificRetryCode;
     };
     return NetworkRequest;
@@ -60889,7 +55427,7 @@ function addVersionHeader_(headers) {
 function makeRequest(requestInfo, authToken, pool) {
     var queryPart = makeQueryString(requestInfo.urlParams);
     var url = requestInfo.url + queryPart;
-    var headers = clone(requestInfo.headers);
+    var headers = clone$1(requestInfo.headers);
     addAuthHeader_(headers, authToken);
     addVersionHeader_(headers);
     return new NetworkRequest(url, requestInfo.method, headers, requestInfo.body, requestInfo.successCodes, requestInfo.additionalRetryCodes, requestInfo.handler, requestInfo.errorHandler, requestInfo.timeout, requestInfo.progressCallback, pool);
@@ -60917,11 +55455,11 @@ function makeRequest(requestInfo, authToken, pool) {
  *
  * @struct
  */
-var Service = /** @class */ (function () {
+var Service$1 = /** @class */ (function () {
     function Service(app, pool, url) {
         this.bucket_ = null;
         function maker(authWrapper, loc) {
-            return new Reference(authWrapper, loc);
+            return new Reference$1(authWrapper, loc);
         }
         this.authWrapper_ = new AuthWrapper(app, maker, makeRequest, this, pool);
         this.app_ = app;
@@ -60950,7 +55488,7 @@ var Service = /** @class */ (function () {
         if (this.bucket_ == null) {
             throw new Error('No Storage Bucket defined in Firebase Options.');
         }
-        var ref = new Reference(this.authWrapper_, this.bucket_);
+        var ref = new Reference$1(this.authWrapper_, this.bucket_);
         if (path != null) {
             return ref.child(path);
         }
@@ -60975,7 +55513,7 @@ var Service = /** @class */ (function () {
             }
         }
         validate('refFromURL', [stringSpec(validator, false)], arguments);
-        return new Reference(this.authWrapper_, url);
+        return new Reference$1(this.authWrapper_, url);
     };
     Object.defineProperty(Service.prototype, "maxUploadRetryTime", {
         get: function () {
@@ -61053,8 +55591,8 @@ var ServiceInternals = /** @class */ (function () {
  * Type constant for Firebase Storage.
  */
 var STORAGE_TYPE = 'storage';
-function factory(app, unused, opt_url) {
-    return new Service(app, new XhrIoPool(), opt_url);
+function factory$1(app, unused, opt_url) {
+    return new Service$1(app, new XhrIoPool(), opt_url);
 }
 function registerStorage(instance) {
     var namespaceExports = {
@@ -61062,10 +55600,10 @@ function registerStorage(instance) {
         TaskState: TaskState,
         TaskEvent: TaskEvent,
         StringFormat: StringFormat,
-        Storage: Service,
-        Reference: Reference
+        Storage: Service$1,
+        Reference: Reference$1
     };
-    instance.INTERNAL.registerService(STORAGE_TYPE, factory, namespaceExports, undefined, 
+    instance.INTERNAL.registerService(STORAGE_TYPE, factory$1, namespaceExports, undefined, 
     // Allow multiple storage instances per app.
     true);
 }
@@ -61216,8 +55754,8 @@ var firebase$2 = firebase;
 
 class Channel {
   constructor(fbref, peer) {
-    this.outRef = fbref.child("fromServer"); //firebase
-    this.inRef = fbref.child("fromClient");
+    this.outRef = fbref.child('fromServer'); //firebase
+    this.inRef = fbref.child('fromClient');
     this.peer = peer; // simple-peer
   }
 
@@ -61233,12 +55771,12 @@ class P2PServer extends Evented {
     super(); //no idea what this does
     console.assert(
       options.iceServers,
-      "Server: no ice servers yet. Using defaults"
+      'Server: no ice servers yet. Using defaults'
     );
     this.MAX_CONNECTIONS = 20;
     this.debug = false;
     this.isListening = false;
-    this.id = "server" + Math.floor(Math.random() * 100000);
+    this.id = 'server' + Math.floor(Math.random() * 100000);
     this.stream = undefined;
     this.iceServers =
       options.iceServers || options.ICE_SERVERS || settings.ICE_SERVERS;
@@ -61260,22 +55798,22 @@ class P2PServer extends Evented {
   init() {
     var fbref = this.database;
     this.userRef = fbref.child(this.id);
-    this.updateRef = this.userRef.child("lastUpdate");
+    this.updateRef = this.userRef.child('lastUpdate');
     this.userRef.onDisconnect().remove();
     this.updateRef.set(firebase$2.database.ServerValue.TIMESTAMP);
-    this.channelRef = this.userRef.child("channels");
+    this.channelRef = this.userRef.child('channels');
     if (this.stream) {
-      this.userRef.child("isStream").set(true);
+      this.userRef.child('isStream').set(true);
     }
     this.channelRef.set([]);
     this.connections = [];
     this._intervalID = setInterval(() => {
-      this.fire("updateTimeStamp", undefined);
+      this.fire('updateTimeStamp', undefined);
       this._updateOnFireBase();
     }, this.POLLING_FREQUENCY);
     this.listenToChannels();
     this.isListening = true;
-    this.fire("init", undefined);
+    this.fire('init', undefined);
   }
 
   _updateOnFireBase() {
@@ -61289,7 +55827,7 @@ class P2PServer extends Evented {
         try {
           conx.peer.send.bind(conx.peer)(data);
         } catch (err) {
-          console.error(err, "Got an error, interrupted connection? ");
+          console.error(err, 'Got an error, interrupted connection? ');
         }
       }
     }
@@ -61301,7 +55839,7 @@ class P2PServer extends Evented {
         try {
           conx.peer.sendBig.bind(conx.peer)(data);
         } catch (err) {
-          console.error(err, "Got an error, interrupted connection? ");
+          console.error(err, 'Got an error, interrupted connection? ');
         }
       }
     }
@@ -61311,60 +55849,62 @@ class P2PServer extends Evented {
     // disabling no-loop-func because these loops are correct usage
     // https://eslint.org/docs/rules/no-loop-func
     // when a new channel is added, listen to it.
-    this.channelRef.on("child_added", ev => {
+    this.channelRef.on('child_added', ev => {
       if (this.connections.length > this.MAX_CONNECTIONS) {
         console.error(
-          "Too many connections. TODO:close/remove old stale connections"
+          'Too many connections. TODO:close/remove old stale connections'
         );
         return;
       }
       var val = ev.val();
       if (this.debug) {
-        console.log(val, "new child");
+        console.log(val, 'new child');
       }
       for (var i in val.fromClient) {
         var sig = val.fromClient[i];
-        if (sig.type === "offer") {
+        if (sig.type === 'offer') {
           var mykey = ev.key;
+          var { peerID, myID } = sig;
           var channel = new Channel(
             this.channelRef.child(mykey),
-            this._makePeer()
+            this._makePeer(myID)
           );
-          this.connections.push(channel);
+          this.connections = [...this.connections, channel];
+          this.fire('addConnection', channel);
 
           // on message through webRTC (simple-peer)
           //eslint-disable-next-line no-loop-func
           var answerSentYet = false;
-          channel.peer.on("signal", data => {
-            if (data.type === "answer") {
+          channel.peer.on('signal', data => {
+            if (data.type === 'answer') {
               if (answerSentYet) {
-                console.warn("Why am i trying to send multiple answers");
+                console.warn('Why am i trying to send multiple answers');
               }
               channel.outRef.push(data);
               answerSentYet = true;
             } else if (data.candidate) {
               channel.outRef.push(data);
             } else {
-              console.warn(data, "unexpected message from WebRTC");
+              console.warn(data, 'unexpected message from WebRTC');
             }
           });
 
           // on message through firebase
           //eslint-disable-next-line no-loop-func
-          channel.inRef.on("child_added", ev2 => {
+          channel.inRef.on('child_added', ev2 => {
             var val2 = ev2.val();
             if (this.debug) {
-              console.log(val2, "child_added -- firebase");
+              console.log(val2, 'child_added -- firebase');
             }
             if (val2.candidate) {
               if (this.debug) {
-                console.log(val2, "server got candidate from firebase");
+                console.log(val2, 'server got candidate from firebase');
               }
               channel.peer.signal(val2);
-            } else if (val2.type === "offer") {
+            } else if (val2.type === 'offer') {
               channel.peer.signal(val2);
-            } else if (val2.type === "answer") ; else {
-              console.warn(val2, "unexpected message from Firebase");
+            } else if (val2.type === 'answer') ; else {
+              console.warn(val2, 'unexpected message from Firebase');
             }
           });
         }
@@ -61372,43 +55912,43 @@ class P2PServer extends Evented {
     });
   }
 
-  _makePeer() {
-    if (this.debug) console.log("_makePeer called");
-    this.fire("makePeer", undefined);
+  _makePeer(peerID) {
+    if (this.debug) console.log('_makePeer called with peerID: ', peerID);
+    this.fire('makePeer', undefined);
     var myoptions = {
       initiator: false,
       trickle: true,
       config: {
-        iceServers: this.iceServers
+        iceServers: this.iceServers,
       },
-      peerID: this.id
+      peerID,
     };
     if (this.stream) myoptions.stream = this.stream;
     var p = new PeerBinary(myoptions);
     // fire events
-    p.on("error", err => {
-      console.error("server: error", err);
-      this.fire("error", { peer: p, err: err });
+    p.on('error', err => {
+      console.error('server: error', err);
+      this.fire('error', { peer: p, err: err });
     });
-    p.on("connect", () => {
-      if (this.debug) console.log("server: client connected");
-      this.fire("connect", { peer: p });
+    p.on('connect', () => {
+      if (this.debug) console.log('server: client connected');
+      this.fire('connect', { peer: p });
     });
-    p.on("data", data => {
-      if (this.debug) console.log("server: server recieved some data: ", data);
-      this.fire("data", { peer: p, data: data });
+    p.on('data', data => {
+      if (this.debug) console.log('server: server recieved some data: ', data);
+      this.fire('data', { peer: p, data: data });
     });
-    p.on("close", () => {
-      if (this.debug) console.log("server: connection closed", p);
+    p.on('close', () => {
+      if (this.debug) console.log('server: connection closed', p);
       this._removeConnection(p);
-      this.fire("close", { peer: p });
+      this.fire('close', { peer: p });
     });
-    p.on("dataBig", data => {
-      this.fire("dataBig", { peer: p, data: data });
+    p.on('dataBig', data => {
+      this.fire('dataBig', { peer: p, data: data });
     });
-    p.on("stream", stream => {
-      if (this.debug) console.log("Server: connected to stream", stream);
-      this.fire("stream", { peer: p, stream: stream });
+    p.on('stream', stream => {
+      if (this.debug) console.log('Server: connected to stream', stream);
+      this.fire('stream', { peer: p, stream: stream });
     });
     //TODO make it so server can register events that will get called on each individual connection
     return p;
@@ -61434,7 +55974,7 @@ class P2PServer extends Evented {
     for (var i = 0; i < this.connections.length; i++) {
       var conn = this.connections[i];
       if (conn.peer == peer) {
-        if (this.debug) console.log("found my connection", i, conn);
+        if (this.debug) console.log('found my connection', i, conn);
         index = i;
       }
     }
@@ -61442,6 +55982,8 @@ class P2PServer extends Evented {
       var conn = this.connections[index];
       conn.destroy();
       this.connections.splice(index, 1);
+      this.connections = [...this.connections];
+      this.fire('removeConnection', conn);
       if (this.debug) console.log(this.connections);
     }
   }
@@ -61452,26 +55994,27 @@ class P2PClient extends Evented {
     super();
     Object.assign(this, settings);
     Object.assign(this, options);
+
     this.iceServers =
       options.iceServers || options.ICE_SERVERS || settings.ICE_SERVERS;
-    this.database;
+
     if (options.database) {
       this.database = options.database;
     } else {
       this.database = getDatabase();
     }
+
     this.fbref = this.database;
     this.connection = null;
     this.channelRef = null;
     this.stream = undefined;
     this.isStream = true;
-    this.debug = false;
     this.connectionCallbacks = [];
-    this.lastNegotioationState = undefined;
+    this.lastNegotiationState = undefined;
   }
 
   getPeerList(callback) {
-    this.fbref.once("value", ev => {
+    this.fbref.once('value', ev => {
       var val = ev.val();
       this.peerList = val;
       callback(null, val);
@@ -61483,41 +56026,43 @@ class P2PClient extends Evented {
     this.getPeerList(() => {
       var peer = this.peerList[id];
       if (!peer) {
-        console.error("peer not defined. id:", id);
-        callback("peer not defined");
+        console.error('peer not defined. id:', id);
+        callback('peer not defined');
       } else {
         this.id = id;
         this.serverRef = this.fbref.child(id);
-        this.serverRef.once("value", ev1 => {
+        this.serverRef.once('value', ev1 => {
           var sval = ev1.val();
           let pOpts = {
             initiator: true,
             trickle: true,
             config: {
-              iceServers: this.iceServers
-            }
+              iceServers: this.iceServers,
+            },
           };
+
           if (sval.isStream || this.isStream) {
             pOpts.stream = this.getMyStream();
           }
           var p = new PeerBinary(pOpts);
           this.connection = p;
           this._registerEvents();
-          p.on("signal", data => {
-            if (data.type == "offer") {
+          p.on('signal', data => {
+            if (data.type == 'offer') {
               this._createChannel(data);
             } else if (data.candidate) {
-              if (this.debug)
-                console.log("client recieved candidate from webrtc", data);
+              if (this.debug) {
+                console.log('client recieved candidate from webrtc', data);
+              }
               this.outRef.push(data);
             } else {
               console.warn(
-                "Client recieved unexpected signal through WebRTC:",
+                'Client recieved unexpected signal through WebRTC:',
                 data
               );
             }
           });
-          //callback(null, this.connection);
+          callback(null, this.connection);
         });
       }
     });
@@ -61525,9 +56070,10 @@ class P2PClient extends Evented {
 
   getMyStream() {
     if (this.stream) return this.stream;
+
     // create fake stream if no stream specified, and the server is in streaming mode.
     //    because, at the moment, simple-peer must have a stream from the initiator.
-    let fakeCanvas = document.createElement("canvas");
+    let fakeCanvas = document.createElement('canvas');
     fakeCanvas.width = fakeCanvas.height = 1;
     var fakeStream = fakeCanvas.captureStream();
     return fakeStream;
@@ -61537,8 +56083,9 @@ class P2PClient extends Evented {
     callback =
       callback ||
       function() {
-        console.log("client disconnected from server", arguments);
+        console.log('client disconnected from server', arguments);
       };
+
     if (this.serverRef) {
       this.serverRef.off();
     }
@@ -61559,45 +56106,48 @@ class P2PClient extends Evented {
 
   _createChannel(offer) {
     //this.channelRef = this.serverRef.child('channels').push({offer:offer})
-    this.channelRef = this.serverRef.child("channels").push({
-      fromClient: [offer]
+    offer.peerID = this.peerID;
+    offer.myID = this.myID;
+    this.channelRef = this.serverRef.child('channels').push({
+      fromClient: [offer],
     });
-    this.outRef = this.channelRef.child("fromClient");
-    this.inRef = this.channelRef.child("fromServer");
-    this.inRef.on("child_added", ev => {
-      if (this.debug) console.log(ev.val(), "channel message, client");
+    this.outRef = this.channelRef.child('fromClient');
+    this.inRef = this.channelRef.child('fromServer');
+    this.inRef.on('child_added', ev => {
+      if (this.debug) console.log(ev.val(), 'channel message, client');
       var val = ev.val();
-      if (val.type === "answer") {
+      if (val.type === 'answer') {
         setTimeout(() => {
           let state = this.connection._pc.signalingState;
-          if (state == this.lastNegotioationState) {
-            //console.log("signalstate. skip nested negotiations");
+          if (state == this.lastNegotiationState) {
+            if (this.debug)
+              console.log('signalstate. skip nested negotiations');
             return;
           }
-          //console.log("signal start negotiation");
-          this.lastNegotioationState = state;
-          //console.log("answer", this);
+          if (this.debug) console.log('signal start negotiation');
+          this.lastNegotiationState = state;
+          if (this.debug) console.log('answer', this);
           if (!this.connection.destroyed) this.connection.signal(val);
         }, 50); // a slight delay helps establish connection, I think.
       } else if (val.candidate) {
-        if (this.debug) console.log("client recieved candidate from firebase");
+        if (this.debug) console.log('client recieved candidate from firebase');
         setTimeout(() => {
           if (!this.connection.destroyed) this.connection.signal(val);
         }, 50);
       } else {
-        console.warn(val, "Client recieved unexpected signal through Firebase");
+        console.warn(val, 'Client recieved unexpected signal through Firebase');
       }
     });
   }
 
   _registerEvents() {
     // fire events
-    this.connection.on("error", err => {
-      console.error("client: error", err);
-      this.fire("error", { peer: this.connection, err: err });
+    this.connection.on('error', err => {
+      console.error('client: error', err);
+      this.fire('error', { peer: this.connection, err: err });
     });
-    this.connection.on("connect", () => {
-      if (this.debug) console.log("client: client connected");
+    this.connection.on('connect', () => {
+      if (this.debug) console.log('client: client connected');
       try {
         for (var callback of this.connectionCallbacks) {
           callback(null, this.connection);
@@ -61606,25 +56156,25 @@ class P2PClient extends Evented {
       } catch (err) {
         console.warn(err);
       }
-      this.fire("connect", { peer: this.connection });
+      this.fire('connect', { peer: this.connection });
     });
-    this.connection.on("data", data => {
-      if (this.debug) console.log("server: server recieved some data: ", data);
-      this.fire("data", { peer: this.connection, data: data });
+    this.connection.on('data', data => {
+      if (this.debug) console.log('server: server recieved some data: ', data);
+      this.fire('data', { peer: this.connection, data: data });
     });
-    this.connection.on("close", data => {
-      if (this.debug) console.log("connection closed", this.connection);
-      this.fire("close", { peer: this.connection });
+    this.connection.on('close', data => {
+      if (this.debug) console.log('connection closed', this.connection);
+      this.fire('close', { peer: this.connection });
     });
-    this.connection.on("dataBig", data => {
-      this.fire("dataBig", { peer: this.connection, data: data });
+    this.connection.on('dataBig', data => {
+      this.fire('dataBig', { peer: this.connection, data: data });
     });
-    this.connection.on("stream", stream => {
-      if (this.debug) console.log("Client: connected to stream", stream);
-      this.fire("stream", { peer: this.connection, stream: stream });
+    this.connection.on('stream', stream => {
+      if (this.debug) console.log('Client: connected to stream', stream);
+      this.fire('stream', { peer: this.connection, stream: stream });
     });
-    this.connection._pc.addEventListener("signalingstatechange", () => {
-      console.log("signalState", this.connection._pc.signalingState);
+    this.connection._pc.addEventListener('signalingstatechange', () => {
+      console.log('signalState', this.connection._pc.signalingState);
     });
   }
 }
@@ -61632,7 +56182,7 @@ class P2PClient extends Evented {
 var msgPack$2 = msgpack_min;
 var Peer$1 = simplepeer_min;
 window.simpPeer = Peer$1;
-console.log("msg pack", msgpacklite);
+console.log('msg pack', msgpacklite);
 
 class PeerBinary$1 extends Peer$1 {
   constructor(options) {
@@ -61641,13 +56191,14 @@ class PeerBinary$1 extends Peer$1 {
     this._registerDataMessage();
     this.unchunker = new UnChunker$1(); //
     this.unchunker.onData = val => {
-      this.emit("dataBig", val);
+      this.emit('dataBig', val);
     };
+    this.peerID = options.peerID;
   }
 
   //want to overide these 2 functions I think.
   _registerDataMessage(event) {
-    this.on("data", data => {
+    this.on('data', data => {
       //when its done with a complete chunk, call this.emit('dataBig', completed)
       this.unchunker.registerChunk(data);
     });
@@ -61671,7 +56222,7 @@ class UnChunker$1 {
     this.payloads = {};
     this.payloadCount = 0;
     this.onData = function(val) {
-      console.log("default, data is ready:", val);
+      console.log('default, data is ready:', val);
     };
   }
 
@@ -61693,10 +56244,10 @@ class UnChunker$1 {
         }
       } catch (err) {
         console.error(err);
-        console.error("val:", msg);
+        console.error('val:', msg);
       }
     } else {
-      console.warn("not my type", msg);
+      console.warn('not my type', msg);
       //console.warn(this._ab2str(msg))
     }
     return null;
@@ -61706,7 +56257,7 @@ class UnChunker$1 {
     this.payloads[id] = Object.assign(header, {
       count: header.chunkCount,
       chunks: [],
-      lastUpdate: new Date()
+      lastUpdate: new Date(),
     });
     this.payloadCount++;
   }
@@ -61740,7 +56291,7 @@ class UnChunker$1 {
       this._removePayload(payloadID);
     } catch (err) {
       console.error(err);
-      console.error("buffer", result);
+      console.error('buffer', result);
     }
   }
 
@@ -61750,7 +56301,7 @@ class UnChunker$1 {
   }
 
   parseHeader(data) {
-    if (typeof data == "object" && !(data instanceof Uint8Array)) {
+    if (typeof data == 'object' && !(data instanceof Uint8Array)) {
       if (data.chunkCount && data.chunkCount > 0) {
         return data;
       }
