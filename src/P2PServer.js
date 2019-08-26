@@ -217,6 +217,7 @@ export class P2PServer extends Evented {
     for (var x of this.connections) {
       x.destroy();
     }
+    this.fire("destroyed", {});
     this.connections = [];
     clearInterval(this._intervalID);
   }

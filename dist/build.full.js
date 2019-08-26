@@ -13563,7 +13563,7 @@ var store = _global[SHARED] || (_global[SHARED] = {});
   return store[key] || (store[key] = value !== undefined ? value : {});
 })('versions', []).push({
   version: _core.version,
-  mode: 'global',
+  mode: _library ? 'pure' : 'global',
   copyright: '© 2019 Denis Pushkarev (zloirock.ru)'
 });
 });
@@ -61424,6 +61424,7 @@ class P2PServer extends Evented {
     for (var x of this.connections) {
       x.destroy();
     }
+    this.fire("destroyed", {});
     this.connections = [];
     clearInterval(this._intervalID);
   }
