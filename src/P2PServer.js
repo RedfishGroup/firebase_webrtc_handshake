@@ -214,6 +214,10 @@ export class P2PServer extends Evented {
             if (this.debug) console.log('Server: connected to stream', stream)
             this.fire('stream', { peer: p, stream: stream })
         })
+        p.on('signal', data => {
+            if (this.debug) console.log('Server: received signal', data)
+            this.fire('signal', data)
+        })
         //TODO make it so server can register events that will get called on each individual connection
         return p
     }
