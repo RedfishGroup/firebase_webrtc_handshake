@@ -37,7 +37,7 @@ export class PeerBinary extends Peer {
         for (var i in stuff.chunks) {
             var ch = stuff.chunks[i]
             this.send(ch)
-            await sleep(100) //give the other side time to handle message
+            await sleep(60) //give the other side time to handle message
         }
     }
 }
