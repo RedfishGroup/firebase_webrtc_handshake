@@ -21,7 +21,7 @@
         "webrtc-adapter": "7.2.1"
     },
     "devDependencies": {
-        "firebase": "6.6.1",
+        "firebase": "7.0.0",
         "msgpack-lite": "0.1.26",
         "rollup": "^1.21.4",
         "rollup-plugin-commonjs": "10.1.0",
