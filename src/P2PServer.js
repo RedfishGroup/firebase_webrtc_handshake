@@ -26,10 +26,10 @@ export class P2PServer extends Evented {
             options.iceServers,
             'Server: no ice servers yet. Using defaults'
         )
-        this.MAX_CONNECTIONS = 20
+        this.MAX_CONNECTIONS = 50
         this.debug = false
         this.isListening = false
-        this.id = 'server' + Math.floor(Math.random() * 100000)
+        this.id = 'server_' + Math.floor(Math.random() * 100000)
         this.stream = undefined
         this.iceServers =
             options.iceServers || options.ICE_SERVERS || settings.ICE_SERVERS

@@ -6,7 +6,6 @@ import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js';
 var msgPack = msgpacklite.default;
 var Peer = Peer2.default;
 window.simpPeer = Peer;
-console.log('msg pack', msgpacklite);
 
 export class PeerBinary extends Peer {
   constructor(options) {
