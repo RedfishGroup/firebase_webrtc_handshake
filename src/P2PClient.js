@@ -6,6 +6,11 @@ import { getDatabase } from './defaultFirebase.js'
 export class P2PClient extends Evented {
     constructor(options = {}) {
         super()
+
+        this.id = 'client_' + Math.floor(Math.random() * 100000)
+        this.myID = this.id
+        this.peerID = this.id
+
         Object.assign(this, settings)
         Object.assign(this, options)
 
@@ -28,7 +33,7 @@ export class P2PClient extends Evented {
     }
 
     getPeerList(callback) {
-        this.fbref.once('value', ev => {
+        this.fbref.once('value', (ev) => {
             var val = ev.val()
             this.peerList = val
             callback(null, val)
@@ -45,7 +50,7 @@ export class P2PClient extends Evented {
             } else {
                 this.id = id
                 this.serverRef = this.fbref.child(id)
-                this.serverRef.once('value', ev1 => {
+                this.serverRef.once('value', (ev1) => {
                     var sval = ev1.val()
                     let pOpts = {
                         initiator: true,
@@ -61,7 +66,7 @@ export class P2PClient extends Evented {
                     var p = new PeerBinary(pOpts)
                     this.connection = p
                     this._registerEvents()
-                    p.on('signal', data => {
+                    p.on('signal', (data) => {
                         if (data.type == 'offer') {
                             this._createChannel(data)
                         } else if (data.candidate) {
@@ -99,7 +104,7 @@ export class P2PClient extends Evented {
     disconnect(callback) {
         callback =
             callback ||
-            function() {
+            function () {
                 console.log('client disconnected from server', arguments)
             }
 
@@ -125,12 +130,13 @@ export class P2PClient extends Evented {
         //this.channelRef = this.serverRef.child('channels').push({offer:offer})
         offer.peerID = this.peerID
         offer.myID = this.myID
+        console.log('Got create channel with offer: ', offer)
         this.channelRef = this.serverRef.child('channels').push({
             fromClient: [offer],
         })
         this.outRef = this.channelRef.child('fromClient')
         this.inRef = this.channelRef.child('fromServer')
-        this.inRef.on('child_added', ev => {
+        this.inRef.on('child_added', (ev) => {
             if (this.debug) console.log(ev.val(), 'channel message, client')
             var val = ev.val()
             if (val.type === 'answer') {
@@ -163,7 +169,7 @@ export class P2PClient extends Evented {
 
     _registerEvents() {
         // fire events
-        this.connection.on('error', err => {
+        this.connection.on('error', (err) => {
             console.error('client: error', err)
             this.fire('error', { peer: this.connection, err: err })
         })
@@ -179,18 +185,18 @@ export class P2PClient extends Evented {
             }
             this.fire('connect', { peer: this.connection })
         })
-        this.connection.on('data', data => {
+        this.connection.on('data', (data) => {
             if (this.debug) console.log('client: recieved some data: ', data)
             this.fire('data', { peer: this.connection, data: data })
         })
-        this.connection.on('close', data => {
+        this.connection.on('close', (data) => {
             if (this.debug) console.log('connection closed', this.connection)
             this.fire('close', { peer: this.connection })
         })
-        this.connection.on('dataBig', data => {
+        this.connection.on('dataBig', (data) => {
             this.fire('dataBig', { peer: this.connection, data: data })
         })
-        this.connection.on('stream', stream => {
+        this.connection.on('stream', (stream) => {
             if (this.debug) console.log('Client: connected to stream', stream)
             this.fire('stream', { peer: this.connection, stream: stream })
         })

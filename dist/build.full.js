@@ -49845,7 +49845,11 @@ class P2PServer extends Evented {
         this.MAX_CONNECTIONS = 50;
         this.debug = false;
         this.isListening = false;
+
         this.id = 'server_' + Math.floor(Math.random() * 100000);
+        this.myID = this.id;
+        this.peerID = this.id;
+
         this.stream = undefined;
         this.iceServers =
             options.iceServers || options.ICE_SERVERS || settings.ICE_SERVERS;
@@ -49918,7 +49922,7 @@ class P2PServer extends Evented {
         // disabling no-loop-func because these loops are correct usage
         // https://eslint.org/docs/rules/no-loop-func
         // when a new channel is added, listen to it.
-        this.channelRef.on('child_added', ev => {
+        this.channelRef.on('child_added', (ev) => {
             if (this.connections.length > this.MAX_CONNECTIONS) {
                 console.error(
                     'Too many connections. TODO:close/remove old stale connections'
@@ -49931,6 +49935,7 @@ class P2PServer extends Evented {
             }
             for (var i in val.fromClient) {
                 var sig = val.fromClient[i];
+                console.log({ sig });
                 if (sig.type === 'offer') {
                     var mykey = ev.key;
                     var { peerID, myID } = sig;
@@ -49944,7 +49949,7 @@ class P2PServer extends Evented {
                     // on message through webRTC (simple-peer)
                     //eslint-disable-next-line no-loop-func
                     var answerSentYet = false;
-                    channel.peer.on('signal', data => {
+                    channel.peer.on('signal', (data) => {
                         if (data.type === 'answer') {
                             if (answerSentYet) {
                                 console.warn(
@@ -49962,7 +49967,7 @@ class P2PServer extends Evented {
 
                     // on message through firebase
                     //eslint-disable-next-line no-loop-func
-                    channel.inRef.on('child_added', ev2 => {
+                    channel.inRef.on('child_added', (ev2) => {
                         var val2 = ev2.val();
                         if (this.debug) {
                             console.log(val2, 'child_added -- firebase');
@@ -50003,7 +50008,7 @@ class P2PServer extends Evented {
         if (this.stream) myoptions.stream = this.stream;
         var p = new PeerBinary(myoptions);
         // fire events
-        p.on('error', err => {
+        p.on('error', (err) => {
             console.error('server: error', err);
             this.fire('error', { peer: p, err: err });
         });
@@ -50011,7 +50016,7 @@ class P2PServer extends Evented {
             if (this.debug) console.log('server: client connected');
             this.fire('connect', { peer: p });
         });
-        p.on('data', data => {
+        p.on('data', (data) => {
             if (this.debug)
                 console.log('server: server recieved some data: ', data);
             this.fire('data', { peer: p, data: data });
@@ -50021,14 +50026,14 @@ class P2PServer extends Evented {
             this._removeConnection(p);
             this.fire('close', { peer: p });
         });
-        p.on('dataBig', data => {
+        p.on('dataBig', (data) => {
             this.fire('dataBig', { peer: p, data: data });
         });
-        p.on('stream', stream => {
+        p.on('stream', (stream) => {
             if (this.debug) console.log('Server: connected to stream', stream);
             this.fire('stream', { peer: p, stream: stream });
         });
-        p.on('signal', data => {
+        p.on('signal', (data) => {
             if (this.debug) console.log('Server: received signal', data);
             this.fire('signal', data);
         });
@@ -50074,6 +50079,11 @@ class P2PServer extends Evented {
 class P2PClient extends Evented {
     constructor(options = {}) {
         super();
+
+        this.id = 'client_' + Math.floor(Math.random() * 100000);
+        this.myID = this.id;
+        this.peerID = this.id;
+
         Object.assign(this, settings);
         Object.assign(this, options);
 
@@ -50096,7 +50106,7 @@ class P2PClient extends Evented {
     }
 
     getPeerList(callback) {
-        this.fbref.once('value', ev => {
+        this.fbref.once('value', (ev) => {
             var val = ev.val();
             this.peerList = val;
             callback(null, val);
@@ -50113,7 +50123,7 @@ class P2PClient extends Evented {
             } else {
                 this.id = id;
                 this.serverRef = this.fbref.child(id);
-                this.serverRef.once('value', ev1 => {
+                this.serverRef.once('value', (ev1) => {
                     var sval = ev1.val();
                     let pOpts = {
                         initiator: true,
@@ -50129,7 +50139,7 @@ class P2PClient extends Evented {
                     var p = new PeerBinary(pOpts);
                     this.connection = p;
                     this._registerEvents();
-                    p.on('signal', data => {
+                    p.on('signal', (data) => {
                         if (data.type == 'offer') {
                             this._createChannel(data);
                         } else if (data.candidate) {
@@ -50167,7 +50177,7 @@ class P2PClient extends Evented {
     disconnect(callback) {
         callback =
             callback ||
-            function() {
+            function () {
                 console.log('client disconnected from server', arguments);
             };
 
@@ -50193,12 +50203,13 @@ class P2PClient extends Evented {
         //this.channelRef = this.serverRef.child('channels').push({offer:offer})
         offer.peerID = this.peerID;
         offer.myID = this.myID;
+        console.log('Got create channel with offer: ', offer);
         this.channelRef = this.serverRef.child('channels').push({
             fromClient: [offer],
         });
         this.outRef = this.channelRef.child('fromClient');
         this.inRef = this.channelRef.child('fromServer');
-        this.inRef.on('child_added', ev => {
+        this.inRef.on('child_added', (ev) => {
             if (this.debug) console.log(ev.val(), 'channel message, client');
             var val = ev.val();
             if (val.type === 'answer') {
@@ -50231,7 +50242,7 @@ class P2PClient extends Evented {
 
     _registerEvents() {
         // fire events
-        this.connection.on('error', err => {
+        this.connection.on('error', (err) => {
             console.error('client: error', err);
             this.fire('error', { peer: this.connection, err: err });
         });
@@ -50247,18 +50258,18 @@ class P2PClient extends Evented {
             }
             this.fire('connect', { peer: this.connection });
         });
-        this.connection.on('data', data => {
+        this.connection.on('data', (data) => {
             if (this.debug) console.log('client: recieved some data: ', data);
             this.fire('data', { peer: this.connection, data: data });
         });
-        this.connection.on('close', data => {
+        this.connection.on('close', (data) => {
             if (this.debug) console.log('connection closed', this.connection);
             this.fire('close', { peer: this.connection });
         });
-        this.connection.on('dataBig', data => {
+        this.connection.on('dataBig', (data) => {
             this.fire('dataBig', { peer: this.connection, data: data });
         });
-        this.connection.on('stream', stream => {
+        this.connection.on('stream', (stream) => {
             if (this.debug) console.log('Client: connected to stream', stream);
             this.fire('stream', { peer: this.connection, stream: stream });
         });
