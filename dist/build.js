@@ -1,6 +1,6 @@
-import Peer2__default from 'simple-peer/simplepeer.min.js';
-import msgpacklite__default from 'msgpack-lite/dist/msgpack.min.js';
-import firebase2__default from 'firebase/dist/index.esm';
+import Peer2 from 'simple-peer/simplepeer.min.js';
+import msgpacklite from 'msgpack-lite/dist/msgpack.min.js';
+import firebase2 from 'firebase/dist/index.esm';
 
 class Evented {
   constructor() {
@@ -66,7 +66,7 @@ var settings = {
     debug: false,
 };
 
-var msgPack = msgpacklite__default;
+var msgPack = msgpacklite;
 
 var drawingCanvas; // this is a canvas used by imageToBlob
 
@@ -182,8 +182,8 @@ function imageToBlob(img, cb) {
   });
 }
 
-const msgPack$1 = msgpacklite__default;
-const Peer = Peer2__default;
+const msgPack$1 = msgpacklite;
+const Peer = Peer2;
 window.simpPeer = Peer;
 
 const sleep = milliseconds => {
@@ -344,7 +344,7 @@ class UnChunker {
     }
 }
 
-var firebase = firebase2__default;
+var firebase = firebase2;
 
 var defaultFBConfig = {
   apiKey: "AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA",
@@ -365,7 +365,7 @@ function getDatabase() {
   return database;
 }
 
-var firebase$1 = firebase2__default;
+var firebase$1 = firebase2;
 
 class Channel {
     constructor(fbref, peer) {
@@ -825,8 +825,8 @@ class P2PClient extends Evented {
     }
 }
 
-const msgPack$2 = msgpacklite__default;
-const Peer$1 = Peer2__default;
+const msgPack$2 = msgpacklite;
+const Peer$1 = Peer2;
 window.simpPeer = Peer$1;
 
 const sleep$1 = milliseconds => {
