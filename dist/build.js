@@ -184,7 +184,7 @@ function imageToBlob(img, cb) {
 
 const msgPack$1 = msgpacklite;
 const Peer = Peer2;
-window.simpPeer = Peer;
+if (window) window.simpPeer = Peer;
 
 const sleep = milliseconds => {
     return new Promise(resolve => setTimeout(resolve, milliseconds))
@@ -827,7 +827,7 @@ class P2PClient extends Evented {
 
 const msgPack$2 = msgpacklite;
 const Peer$1 = Peer2;
-window.simpPeer = Peer$1;
+if (window) window.simpPeer = Peer$1;
 
 const sleep$1 = milliseconds => {
     return new Promise(resolve => setTimeout(resolve, milliseconds))

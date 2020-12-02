@@ -2,6 +2,7 @@
 // import {P2PClient} from "../src/P2PClient.js"
 import { P2PServer, P2PClient } from "../dist/build.full.js";
 
+
 window.P2PClient = P2PClient;
 window.P2PServer = P2PServer;
 //

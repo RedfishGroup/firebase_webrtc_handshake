@@ -8,6 +8,7 @@ import {
   recursivelyEncodeBlobs
 } from "../dist/build.full.js";
 
+
 function runTests() {
   // 1
   try {

@@ -5,7 +5,7 @@ import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js'
 
 const msgPack = msgpacklite.default
 const Peer = Peer2.default
-window.simpPeer = Peer
+if (window) window.simpPeer = Peer
 
 const sleep = milliseconds => {
     return new Promise(resolve => setTimeout(resolve, milliseconds))
