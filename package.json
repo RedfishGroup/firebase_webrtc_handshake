@@ -1,7 +1,7 @@
 {
     "name": "firebase_webrtc_handshake",
     "description": "Facilitate a webrtc connection using Firebase.",
-    "version": "1.0.30",
+    "version": "1.0.31",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/RedfishGroup/firebase_webrtc_handshake.git"
@@ -17,9 +17,9 @@
     },
     "homepage": "https://github.com/RedfishGroup/firebase_webrtc_handshake#readme",
     "peerDependencies": {
-        "firebase": "5.8.4",
+        "firebase": "8.0.1",
         "msgpack-lite": "0.1.26",
-        "webrtc-adapter": "7.2.1"
+        "webrtc-adapter": "7.7.0"
     },
     "devDependencies": {
         "firebase": "8.0.1",

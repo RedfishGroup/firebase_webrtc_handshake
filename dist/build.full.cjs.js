@@ -3351,6 +3351,46 @@ firebase.initializeApp = function () {
 var firebase$1 = firebase;
 registerCoreComponents(firebase$1);
 
+var name$d = "firebase";
+var version$2 = "8.0.1";
+
+/**
+ * @license
+ * Copyright 2018 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+firebase$1.registerVersion(name$d, version$2, 'app');
+
+var defaultFBConfig = {
+  apiKey: "AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA",
+  authDomain: "https://torrid-torch-716.firebaseio.com/",
+  databaseURL: "https://torrid-torch-716.firebaseio.com/",
+  projectId: "torrid-torch-716"
+};
+
+var database;
+
+function getDatabase() {
+  if (database) return database;
+  firebase$1.initializeApp(defaultFBConfig);
+  database = firebase$1
+    .database()
+    .ref("/")
+    .child("peers");
+  return database;
+}
+
 (function() {/*
 
  Copyright The Closure Library Authors.
@@ -19089,8 +19129,8 @@ var TEST_ACCESS = /*#__PURE__*/Object.freeze({
   forceRestClient: forceRestClient
 });
 
-var name$d = "@firebase/database";
-var version$2 = "0.7.1";
+var name$e = "@firebase/database";
+var version$3 = "0.7.1";
 
 /**
  * @license
@@ -19133,7 +19173,7 @@ function registerDatabase(instance) {
         TEST_ACCESS: TEST_ACCESS
     })
         .setMultipleInstances(true));
-    instance.registerVersion(name$d, version$2);
+    instance.registerVersion(name$e, version$3);
 }
 registerDatabase(firebase$1);
 
@@ -37350,8 +37390,8 @@ function registerFunctions(instance, fetchImpl) {
         .setMultipleInstances(true));
 }
 
-var name$e = "@firebase/functions";
-var version$3 = "0.6.1";
+var name$f = "@firebase/functions";
+var version$4 = "0.6.1";
 
 /**
  * @license
@@ -37370,7 +37410,7 @@ var version$3 = "0.6.1";
  * limitations under the License.
  */
 registerFunctions(firebase$1, fetch.bind(self));
-firebase$1.registerVersion(name$e, version$3);
+firebase$1.registerVersion(name$f, version$4);
 
 function toArray(arr) {
   return Array.prototype.slice.call(arr);
@@ -37676,8 +37716,8 @@ function deleteDb(name) {
   return promisifyRequestCall(indexedDB, 'deleteDatabase', [name]);
 }
 
-var name$f = "@firebase/installations";
-var version$4 = "0.4.19";
+var name$g = "@firebase/installations";
+var version$5 = "0.4.19";
 
 /**
  * @license
@@ -37696,7 +37736,7 @@ var version$4 = "0.4.19";
  * limitations under the License.
  */
 var PENDING_TIMEOUT_MS = 10000;
-var PACKAGE_VERSION = "w:" + version$4;
+var PACKAGE_VERSION = "w:" + version$5;
 var INTERNAL_AUTH_VERSION = 'FIS_v2';
 var INSTALLATIONS_API_URL = 'https://firebaseinstallations.googleapis.com/v1';
 var TOKEN_EXPIRATION_BUFFER = 60 * 60 * 1000; // One hour
@@ -38994,7 +39034,7 @@ function registerInstallations(instance) {
         };
         return installations;
     }, "PUBLIC" /* PUBLIC */));
-    instance.registerVersion(name$f, version$4);
+    instance.registerVersion(name$g, version$5);
 }
 registerInstallations(firebase$1);
 
@@ -43837,8 +43877,8 @@ var ServiceInternals = /** @class */ (function () {
     return ServiceInternals;
 }());
 
-var name$g = "@firebase/storage";
-var version$5 = "0.4.1";
+var name$h = "@firebase/storage";
+var version$6 = "0.4.1";
 
 /**
  * @license
@@ -43878,12 +43918,12 @@ function registerStorage(instance) {
     instance.INTERNAL.registerComponent(new Component(STORAGE_TYPE, factory, "PUBLIC" /* PUBLIC */)
         .setServiceProps(namespaceExports)
         .setMultipleInstances(true));
-    instance.registerVersion(name$g, version$5);
+    instance.registerVersion(name$h, version$6);
 }
 registerStorage(firebase$1);
 
-var name$h = "@firebase/performance";
-var version$6 = "0.4.4";
+var name$i = "@firebase/performance";
+var version$7 = "0.4.4";
 
 /**
  * @license
@@ -43901,7 +43941,7 @@ var version$6 = "0.4.4";
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var SDK_VERSION$1 = version$6;
+var SDK_VERSION$1 = version$7;
 /** The prefix for start User Timing marks used for creating Traces. */
 var TRACE_START_MARK_PREFIX = 'FB-PERF-TRACE-START';
 /** The prefix for stop User Timing marks used for creating Traces. */
@@ -45319,7 +45359,7 @@ function registerPerformance(instance) {
             .getImmediate();
         return factoryMethod(app, installations);
     }, "PUBLIC" /* PUBLIC */));
-    instance.registerVersion(name$h, version$6);
+    instance.registerVersion(name$i, version$7);
 }
 registerPerformance(firebase$1);
 
@@ -46436,8 +46476,8 @@ function factory$1(app, installations) {
     return analyticsInstance;
 }
 
-var name$i = "@firebase/analytics";
-var version$7 = "0.6.2";
+var name$j = "@firebase/analytics";
+var version$8 = "0.6.2";
 
 /**
  * Type constant for Firebase Analytics.
@@ -46457,7 +46497,7 @@ function registerAnalytics(instance) {
         isSupported: isSupported$1
     }));
     instance.INTERNAL.registerComponent(new Component('analytics-internal', internalFactory, "PRIVATE" /* PRIVATE */));
-    instance.registerVersion(name$i, version$7);
+    instance.registerVersion(name$j, version$8);
     function internalFactory(container) {
         try {
             var analytics = container.getProvider(ANALYTICS_TYPE).getImmediate();
@@ -47604,8 +47644,8 @@ var RetryingClient = /** @class */ (function () {
     return RetryingClient;
 }());
 
-var name$j = "@firebase/remote-config";
-var version$8 = "0.1.30";
+var name$k = "@firebase/remote-config";
+var version$9 = "0.1.30";
 
 /**
  * @license
@@ -47625,7 +47665,7 @@ var version$8 = "0.1.30";
  */
 function registerRemoteConfig(firebaseInstance) {
     firebaseInstance.INTERNAL.registerComponent(new Component('remoteConfig', remoteConfigFactory, "PUBLIC" /* PUBLIC */).setMultipleInstances(true));
-    firebaseInstance.registerVersion(name$j, version$8);
+    firebaseInstance.registerVersion(name$k, version$9);
     function remoteConfigFactory(container, namespace) {
         /* Dependencies */
         // getImmediate for FirebaseApp will always succeed
@@ -47650,7 +47690,7 @@ function registerRemoteConfig(firebaseInstance) {
         namespace = namespace || 'firebase';
         var storage = new Storage(appId, app.name, namespace);
         var storageCache = new StorageCache(storage);
-        var logger = new Logger(name$j);
+        var logger = new Logger(name$k);
         // Sets ERROR as the default log level.
         // See RemoteConfig#setLogLevel for corresponding normalization to ERROR log level.
         logger.logLevel = LogLevel.ERROR;
@@ -47668,8 +47708,8 @@ function registerRemoteConfig(firebaseInstance) {
 }
 registerRemoteConfig(firebase$1);
 
-var name$k = "firebase";
-var version$9 = "8.0.1";
+var name$l = "firebase";
+var version$a = "8.0.1";
 
 /**
  * @license
@@ -47687,7 +47727,7 @@ var version$9 = "8.0.1";
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-firebase$1.registerVersion(name$k, version$9, 'app');
+firebase$1.registerVersion(name$l, version$a, 'app');
 
 var name$1$1 = "firebase";
 var version$1$1 = "8.0.1";
@@ -47712,27 +47752,6 @@ console.warn("\nIt looks like you're using the development build of the Firebase
 firebase$1.registerVersion(name$1$1, version$1$1);
 
 var firebase$2 = firebase$1;
-
-var defaultFBConfig = {
-  apiKey: "AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA",
-  authDomain: "https://torrid-torch-716.firebaseio.com/",
-  databaseURL: "https://torrid-torch-716.firebaseio.com/",
-  projectId: "torrid-torch-716"
-};
-
-var database;
-
-function getDatabase() {
-  if (database) return database;
-  firebase$2.initializeApp(defaultFBConfig);
-  database = firebase$2
-    .database()
-    .ref("/")
-    .child("peers");
-  return database;
-}
-
-var firebase$3 = firebase$1;
 
 class Channel {
     constructor(fbref, peer) {
@@ -47786,7 +47805,7 @@ class P2PServer extends Evented {
         this.userRef = fbref.child(this.id);
         this.updateRef = this.userRef.child('lastUpdate');
         this.userRef.onDisconnect().remove();
-        this.updateRef.set(firebase$3.database.ServerValue.TIMESTAMP);
+        this.updateRef.set(firebase$2.database.ServerValue.TIMESTAMP);
         this.channelRef = this.userRef.child('channels');
         if (this.stream) {
             this.userRef.child('isStream').set(true);
@@ -47804,7 +47823,7 @@ class P2PServer extends Evented {
 
     _updateOnFireBase() {
         // one may want to overwrite this
-        this.updateRef.set(firebase$3.database.ServerValue.TIMESTAMP);
+        this.updateRef.set(firebase$2.database.ServerValue.TIMESTAMP);
     }
 
     sendToAll(data) {
@@ -48360,7 +48379,7 @@ exports.P2PServer = P2PServer;
 exports.PeerBinary = PeerBinary$1;
 exports.UnChunker = UnChunker$1;
 exports.arrayBufferToChunks = arrayBufferToChunks;
-exports.firebase = firebase$2;
+exports.firebase = firebase$1;
 exports.generateWebRTCpayload = generateWebRTCpayload;
 exports.imageToBlob = imageToBlob;
 exports.recursivelyEncodeBlobs = recursivelyEncodeBlobs;

@@ -1,5 +1,4 @@
-import * as firebase2 from "firebase/dist/index.esm";
-export var firebase = firebase2.default;
+import firebase from 'firebase/app'
 
 var defaultFBConfig = {
   apiKey: "AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA",
@@ -19,3 +18,5 @@ export function getDatabase() {
     .child("peers");
   return database;
 }
+
+export { firebase }
