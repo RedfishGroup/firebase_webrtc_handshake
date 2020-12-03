@@ -1,48 +1,5 @@
 import Peer2 from 'simple-peer/simplepeer.min.js';
 import msgpacklite from 'msgpack-lite/dist/msgpack.min.js';
-import firebase2 from 'firebase/dist/index.esm';
-
-class Evented {
-  constructor() {
-    this.events = {};
-  }
-
-  on(eventName, callback) {
-    if (typeof callback !== "function") return;
-    if (! this.events.hasOwnProperty(eventName)) {
-      this.events[eventName] = [];
-    }
-    this.events[eventName].push(callback);
-  }
-
-  off(eventName, callback) {
-    if (this.events.hasOwnProperty(eventName)) {
-      if (typeof callback === "function") {
-        //_.without(this.events[eventName], callback);
-        this.events = this.events.filter( function(x){
-            if ( x != this.events[eventName]) { return x }
-        });
-      } else {
-        delete this.events[eventName];
-      }
-    }
-  }
-
-  fire(eventName, argument) {
-    //_.each(this.events[eventName], (cb) => setTimeout(() => cb(argument)));
-    if (this.events[eventName]) {
-      for (var cb of this.events[eventName]) {
-        setTimeout(() => cb(argument));
-      }
-    }
-  }
-
-  fireAll(argument) {
-    for (var k in this.events) {
-      this.fire(k, argument);
-    }
-  }
-}
 
 var settings = {
     // Get a reference to the database service
@@ -342,6 +299,48 @@ class UnChunker {
         }
         return false
     }
+}
+
+class Evented {
+  constructor() {
+    this.events = {};
+  }
+
+  on(eventName, callback) {
+    if (typeof callback !== "function") return;
+    if (! this.events.hasOwnProperty(eventName)) {
+      this.events[eventName] = [];
+    }
+    this.events[eventName].push(callback);
+  }
+
+  off(eventName, callback) {
+    if (this.events.hasOwnProperty(eventName)) {
+      if (typeof callback === "function") {
+        //_.without(this.events[eventName], callback);
+        this.events = this.events.filter( function(x){
+            if ( x != this.events[eventName]) { return x }
+        });
+      } else {
+        delete this.events[eventName];
+      }
+    }
+  }
+
+  fire(eventName, argument) {
+    //_.each(this.events[eventName], (cb) => setTimeout(() => cb(argument)));
+    if (this.events[eventName]) {
+      for (var cb of this.events[eventName]) {
+        setTimeout(() => cb(argument));
+      }
+    }
+  }
+
+  fireAll(argument) {
+    for (var k in this.events) {
+      this.fire(k, argument);
+    }
+  }
 }
 
 /*! *****************************************************************************
@@ -2188,16 +2187,11 @@ var defaultFBConfig = {
 var database;
 
 function getDatabase() {
-  if (database) return database;
-  firebase$1.initializeApp(defaultFBConfig);
-  database = firebase$1
-    .database()
-    .ref("/")
-    .child("peers");
-  return database;
+    if (database) return database
+    firebase$1.initializeApp(defaultFBConfig);
+    database = firebase$1.database().ref('/').child('peers');
+    return database
 }
-
-var firebase$2 = firebase2;
 
 class Channel {
     constructor(fbref, peer) {
@@ -2251,7 +2245,7 @@ class P2PServer extends Evented {
         this.userRef = fbref.child(this.id);
         this.updateRef = this.userRef.child('lastUpdate');
         this.userRef.onDisconnect().remove();
-        this.updateRef.set(firebase$2.database.ServerValue.TIMESTAMP);
+        this.updateRef.set(firebase$1.database.ServerValue.TIMESTAMP);
         this.channelRef = this.userRef.child('channels');
         if (this.stream) {
             this.userRef.child('isStream').set(true);
@@ -2269,7 +2263,7 @@ class P2PServer extends Evented {
 
     _updateOnFireBase() {
         // one may want to overwrite this
-        this.updateRef.set(firebase$2.database.ServerValue.TIMESTAMP);
+        this.updateRef.set(firebase$1.database.ServerValue.TIMESTAMP);
     }
 
     sendToAll(data) {

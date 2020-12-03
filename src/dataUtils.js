@@ -1,5 +1,4 @@
-import { Evented } from "./Evented.js";
-import { settings } from "./settings.js";
+import { settings } from './settings.js'
 import * as msgpacklite from "msgpack-lite/dist/msgpack.min.js";
 
 var msgPack = msgpacklite.default;

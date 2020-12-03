@@ -1,5 +1,7 @@
 import * as Peer2 from 'simple-peer/simplepeer.min.js'
+
 import { generateWebRTCpayload, recursivelyDecodeBlobs } from './dataUtils.js'
+
 // import adapter from "webrtc-adapter/src/js/adapter_core.js";
 import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js'
 

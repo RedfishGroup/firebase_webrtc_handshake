@@ -8,6 +8,7 @@ import {
   imageToBlob,
   recursivelyEncodeBlobs
 } from "./dataUtils.js";
+
 import { PeerBinary, UnChunker } from "./peerBinary.js";
 
 export {

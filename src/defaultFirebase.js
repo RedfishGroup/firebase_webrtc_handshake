@@ -9,14 +9,11 @@ var defaultFBConfig = {
 
 var database;
 
-export function getDatabase() {
-  if (database) return database;
-  firebase.initializeApp(defaultFBConfig);
-  database = firebase
-    .database()
-    .ref("/")
-    .child("peers");
-  return database;
+function getDatabase() {
+    if (database) return database
+    firebase.initializeApp(defaultFBConfig)
+    database = firebase.database().ref('/').child('peers')
+    return database
 }
 
-export { firebase }
+export { firebase, getDatabase }

@@ -1,9 +1,8 @@
 import { PeerBinary } from './PeerBinary.js'
 import { settings } from './settings.js'
 import { Evented } from './Evented.js'
-import { getDatabase } from './defaultFirebase.js'
-import * as firebase2 from 'firebase/dist/index.esm'
-var firebase = firebase2.default
+import { firebase, getDatabase } from './defaultFirebase.js'
+
 
 export class Channel {
     constructor(fbref, peer) {
