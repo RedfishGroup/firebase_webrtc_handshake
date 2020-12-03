@@ -1,4 +1,4 @@
-import Peer2 from 'simple-peer/simplepeer.min.js';
+import Peer from 'simple-peer/simplepeer.min.js';
 import msgpacklite from 'msgpack-lite/dist/msgpack.min.js';
 
 var settings = {
@@ -140,7 +140,7 @@ function imageToBlob(img, cb) {
 }
 
 const msgPack$1 = msgpacklite;
-const Peer = Peer2;
+
 if (typeof window !== 'undefined') window.simpPeer = Peer;
 
 const sleep = milliseconds => {
@@ -19132,9 +19132,11 @@ class P2PClient extends Evented {
         this.connection = null;
         this.channelRef = null;
         this.stream = undefined;
-        this.isStream = true;
+        this.isStream =
+            typeof options.isStream === 'boolean' ? options.isStream : true;
         this.connectionCallbacks = [];
         this.lastNegotiationState = undefined;
+        this.wrtc = options.wrtc;
     }
 
     getPeerList(callback) {
@@ -19163,6 +19165,7 @@ class P2PClient extends Evented {
                         config: {
                             iceServers: this.iceServers,
                         },
+                        wrtc: this.wrtc,
                     };
 
                     if (sval.isStream || this.isStream) {
@@ -19312,14 +19315,14 @@ class P2PClient extends Evented {
 }
 
 const msgPack$2 = msgpacklite;
-const Peer$1 = Peer2;
-if (typeof window !== 'undefined') window.simpPeer = Peer$1;
+
+if (typeof window !== 'undefined') window.simpPeer = Peer;
 
 const sleep$1 = milliseconds => {
     return new Promise(resolve => setTimeout(resolve, milliseconds))
 };
 
-class PeerBinary$1 extends Peer$1 {
+class PeerBinary$1 extends Peer {
     constructor(options) {
         //console.log('PeerBinary contructor called')
         super(options);

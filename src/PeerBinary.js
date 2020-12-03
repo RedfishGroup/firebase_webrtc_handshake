@@ -1,4 +1,4 @@
-import * as Peer2 from 'simple-peer/simplepeer.min.js'
+import Peer from 'simple-peer/simplepeer.min.js'
 
 import { generateWebRTCpayload, recursivelyDecodeBlobs } from './dataUtils.js'
 
@@ -6,7 +6,7 @@ import { generateWebRTCpayload, recursivelyDecodeBlobs } from './dataUtils.js'
 import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js'
 
 const msgPack = msgpacklite.default
-const Peer = Peer2.default
+
 if (typeof window !== 'undefined') window.simpPeer = Peer
 
 const sleep = milliseconds => {

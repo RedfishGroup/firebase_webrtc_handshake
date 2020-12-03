@@ -27,9 +27,11 @@ export class P2PClient extends Evented {
         this.connection = null
         this.channelRef = null
         this.stream = undefined
-        this.isStream = true
+        this.isStream =
+            typeof options.isStream === 'boolean' ? options.isStream : true
         this.connectionCallbacks = []
         this.lastNegotiationState = undefined
+        this.wrtc = options.wrtc
     }
 
     getPeerList(callback) {
@@ -58,6 +60,7 @@ export class P2PClient extends Evented {
                         config: {
                             iceServers: this.iceServers,
                         },
+                        wrtc: this.wrtc,
                     }
 
                     if (sval.isStream || this.isStream) {
