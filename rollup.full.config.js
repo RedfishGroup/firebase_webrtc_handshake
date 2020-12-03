@@ -22,6 +22,32 @@ export default [
                 format: 'esm',
                 sourcemap: true,
             },
+        ],
+    },
+    {
+        input: 'src/index.js',
+        external: [
+            'fs',
+            'child_process',
+            'url',
+            'http',
+            'https',
+            'util',
+            'stream',
+            'net',
+            'events',
+            'tls',
+            'crypto',
+            'assert',
+        ],
+        plugins: [
+            resolve({
+                mainFields: ['main', 'module'],
+                preferBuiltins: true,
+            }),
+            commonjs(),
+        ],
+        output: [
             {
                 file: 'dist/build.full.cjs.js',
                 format: 'cjs',

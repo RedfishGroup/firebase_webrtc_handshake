@@ -2,10 +2,42 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
+var fs = require('fs');
+var url = require('url');
+var child_process = require('child_process');
+var http = require('http');
+var https = require('https');
+var util = require('util');
+var events = require('events');
+var stream = require('stream');
+var crypto = require('crypto');
+var assert = require('assert');
+var net = require('net');
+var tls = require('tls');
+
+function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
+
+var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs);
+var url__default = /*#__PURE__*/_interopDefaultLegacy(url);
+var child_process__default = /*#__PURE__*/_interopDefaultLegacy(child_process);
+var http__default = /*#__PURE__*/_interopDefaultLegacy(http);
+var https__default = /*#__PURE__*/_interopDefaultLegacy(https);
+var util__default = /*#__PURE__*/_interopDefaultLegacy(util);
+var events__default = /*#__PURE__*/_interopDefaultLegacy(events);
+var stream__default = /*#__PURE__*/_interopDefaultLegacy(stream);
+var crypto__default = /*#__PURE__*/_interopDefaultLegacy(crypto);
+var assert__default = /*#__PURE__*/_interopDefaultLegacy(assert);
+var net__default = /*#__PURE__*/_interopDefaultLegacy(net);
+var tls__default = /*#__PURE__*/_interopDefaultLegacy(tls);
+
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 function commonjsRequire () {
 	throw new Error('Dynamic requires are not currently supported by rollup-plugin-commonjs');
+}
+
+function unwrapExports (x) {
+	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
 }
 
 function createCommonjsModule(fn, module) {
@@ -363,6 +395,7 @@ class Evented {
   }
 }
 
+var tslib = createCommonjsModule(function (module) {
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -377,104 +410,279 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ***************************************************************************** */
-/* global Reflect, Promise */
 
-var extendStatics = function(d, b) {
-    extendStatics = Object.setPrototypeOf ||
+/* global global, define, System, Reflect, Promise */
+var __extends;
+var __assign;
+var __rest;
+var __decorate;
+var __param;
+var __metadata;
+var __awaiter;
+var __generator;
+var __exportStar;
+var __values;
+var __read;
+var __spread;
+var __spreadArrays;
+var __await;
+var __asyncGenerator;
+var __asyncDelegator;
+var __asyncValues;
+var __makeTemplateObject;
+var __importStar;
+var __importDefault;
+var __classPrivateFieldGet;
+var __classPrivateFieldSet;
+var __createBinding;
+(function (factory) {
+    var root = typeof commonjsGlobal === "object" ? commonjsGlobal : typeof self === "object" ? self : typeof this === "object" ? this : {};
+    {
+        factory(createExporter(root, createExporter(module.exports)));
+    }
+    function createExporter(exports, previous) {
+        if (exports !== root) {
+            if (typeof Object.create === "function") {
+                Object.defineProperty(exports, "__esModule", { value: true });
+            }
+            else {
+                exports.__esModule = true;
+            }
+        }
+        return function (id, v) { return exports[id] = previous ? previous(id, v) : v; };
+    }
+})
+(function (exporter) {
+    var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
         function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-    return extendStatics(d, b);
-};
 
-function __extends(d, b) {
-    extendStatics(d, b);
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-}
+    __extends = function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
 
-var __assign = function() {
-    __assign = Object.assign || function __assign(t) {
+    __assign = Object.assign || function (t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
             s = arguments[i];
             for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
         }
         return t;
     };
-    return __assign.apply(this, arguments);
-};
 
-function __awaiter(thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-}
-
-function __generator(thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
+    __rest = function (s, e) {
+        var t = {};
+        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+            t[p] = s[p];
+        if (s != null && typeof Object.getOwnPropertySymbols === "function")
+            for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+                if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                    t[p[i]] = s[p[i]];
             }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-    }
-}
+        return t;
+    };
 
-function __values(o) {
-    var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
-    if (m) return m.call(o);
-    if (o && typeof o.length === "number") return {
-        next: function () {
-            if (o && i >= o.length) o = void 0;
-            return { value: o && o[i++], done: !o };
+    __decorate = function (decorators, target, key, desc) {
+        var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+        if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+        else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+        return c > 3 && r && Object.defineProperty(target, key, r), r;
+    };
+
+    __param = function (paramIndex, decorator) {
+        return function (target, key) { decorator(target, key, paramIndex); }
+    };
+
+    __metadata = function (metadataKey, metadataValue) {
+        if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(metadataKey, metadataValue);
+    };
+
+    __awaiter = function (thisArg, _arguments, P, generator) {
+        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+        return new (P || (P = Promise))(function (resolve, reject) {
+            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+            step((generator = generator.apply(thisArg, _arguments || [])).next());
+        });
+    };
+
+    __generator = function (thisArg, body) {
+        var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+        return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+        function verb(n) { return function (v) { return step([n, v]); }; }
+        function step(op) {
+            if (f) throw new TypeError("Generator is already executing.");
+            while (_) try {
+                if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+                if (y = 0, t) op = [op[0] & 2, t.value];
+                switch (op[0]) {
+                    case 0: case 1: t = op; break;
+                    case 4: _.label++; return { value: op[1], done: false };
+                    case 5: _.label++; y = op[1]; op = [0]; continue;
+                    case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                    default:
+                        if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                        if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                        if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                        if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                        if (t[2]) _.ops.pop();
+                        _.trys.pop(); continue;
+                }
+                op = body.call(thisArg, _);
+            } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+            if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
         }
     };
-    throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
-}
 
-function __read(o, n) {
-    var m = typeof Symbol === "function" && o[Symbol.iterator];
-    if (!m) return o;
-    var i = m.call(o), r, ar = [], e;
-    try {
-        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
-    }
-    catch (error) { e = { error: error }; }
-    finally {
+    __createBinding = function(o, m, k, k2) {
+        if (k2 === undefined) k2 = k;
+        o[k2] = m[k];
+    };
+
+    __exportStar = function (m, exports) {
+        for (var p in m) if (p !== "default" && !exports.hasOwnProperty(p)) exports[p] = m[p];
+    };
+
+    __values = function (o) {
+        var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
+        if (m) return m.call(o);
+        if (o && typeof o.length === "number") return {
+            next: function () {
+                if (o && i >= o.length) o = void 0;
+                return { value: o && o[i++], done: !o };
+            }
+        };
+        throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
+    };
+
+    __read = function (o, n) {
+        var m = typeof Symbol === "function" && o[Symbol.iterator];
+        if (!m) return o;
+        var i = m.call(o), r, ar = [], e;
         try {
-            if (r && !r.done && (m = i["return"])) m.call(i);
+            while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
         }
-        finally { if (e) throw e.error; }
-    }
-    return ar;
-}
+        catch (error) { e = { error: error }; }
+        finally {
+            try {
+                if (r && !r.done && (m = i["return"])) m.call(i);
+            }
+            finally { if (e) throw e.error; }
+        }
+        return ar;
+    };
 
-function __spread() {
-    for (var ar = [], i = 0; i < arguments.length; i++)
-        ar = ar.concat(__read(arguments[i]));
-    return ar;
-}
+    __spread = function () {
+        for (var ar = [], i = 0; i < arguments.length; i++)
+            ar = ar.concat(__read(arguments[i]));
+        return ar;
+    };
+
+    __spreadArrays = function () {
+        for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+        for (var r = Array(s), k = 0, i = 0; i < il; i++)
+            for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+                r[k] = a[j];
+        return r;
+    };
+
+    __await = function (v) {
+        return this instanceof __await ? (this.v = v, this) : new __await(v);
+    };
+
+    __asyncGenerator = function (thisArg, _arguments, generator) {
+        if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+        var g = generator.apply(thisArg, _arguments || []), i, q = [];
+        return i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i;
+        function verb(n) { if (g[n]) i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; }
+        function resume(n, v) { try { step(g[n](v)); } catch (e) { settle(q[0][3], e); } }
+        function step(r) { r.value instanceof __await ? Promise.resolve(r.value.v).then(fulfill, reject) : settle(q[0][2], r);  }
+        function fulfill(value) { resume("next", value); }
+        function reject(value) { resume("throw", value); }
+        function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
+    };
+
+    __asyncDelegator = function (o) {
+        var i, p;
+        return i = {}, verb("next"), verb("throw", function (e) { throw e; }), verb("return"), i[Symbol.iterator] = function () { return this; }, i;
+        function verb(n, f) { i[n] = o[n] ? function (v) { return (p = !p) ? { value: __await(o[n](v)), done: n === "return" } : f ? f(v) : v; } : f; }
+    };
+
+    __asyncValues = function (o) {
+        if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+        var m = o[Symbol.asyncIterator], i;
+        return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+        function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+        function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+    };
+
+    __makeTemplateObject = function (cooked, raw) {
+        if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
+        return cooked;
+    };
+
+    __importStar = function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+        result["default"] = mod;
+        return result;
+    };
+
+    __importDefault = function (mod) {
+        return (mod && mod.__esModule) ? mod : { "default": mod };
+    };
+
+    __classPrivateFieldGet = function (receiver, privateMap) {
+        if (!privateMap.has(receiver)) {
+            throw new TypeError("attempted to get private field on non-instance");
+        }
+        return privateMap.get(receiver);
+    };
+
+    __classPrivateFieldSet = function (receiver, privateMap, value) {
+        if (!privateMap.has(receiver)) {
+            throw new TypeError("attempted to set private field on non-instance");
+        }
+        privateMap.set(receiver, value);
+        return value;
+    };
+
+    exporter("__extends", __extends);
+    exporter("__assign", __assign);
+    exporter("__rest", __rest);
+    exporter("__decorate", __decorate);
+    exporter("__param", __param);
+    exporter("__metadata", __metadata);
+    exporter("__awaiter", __awaiter);
+    exporter("__generator", __generator);
+    exporter("__exportStar", __exportStar);
+    exporter("__createBinding", __createBinding);
+    exporter("__values", __values);
+    exporter("__read", __read);
+    exporter("__spread", __spread);
+    exporter("__spreadArrays", __spreadArrays);
+    exporter("__await", __await);
+    exporter("__asyncGenerator", __asyncGenerator);
+    exporter("__asyncDelegator", __asyncDelegator);
+    exporter("__asyncValues", __asyncValues);
+    exporter("__makeTemplateObject", __makeTemplateObject);
+    exporter("__importStar", __importStar);
+    exporter("__importDefault", __importDefault);
+    exporter("__classPrivateFieldGet", __classPrivateFieldGet);
+    exporter("__classPrivateFieldSet", __classPrivateFieldSet);
+});
+});
+
+unwrapExports(tslib);
+
+var index_node_cjs = createCommonjsModule(function (module, exports) {
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+
 
 /**
  * @license
@@ -1026,7 +1234,7 @@ function isMobileCordova() {
 // Node detection logic from: https://github.com/iliakan/detect-node/
 function isNode() {
     try {
-        return (Object.prototype.toString.call(global.process) === '[object process]');
+        return (Object.prototype.toString.call(commonjsGlobal.process) === '[object process]');
     }
     catch (e) {
         return false;
@@ -1038,6 +1246,14 @@ function isNode() {
 function isBrowser() {
     return typeof self === 'object' && self.self === self;
 }
+function isBrowserExtension() {
+    var runtime = typeof chrome === 'object'
+        ? chrome.runtime
+        : typeof browser === 'object'
+            ? browser.runtime
+            : undefined;
+    return typeof runtime === 'object' && runtime.id !== undefined;
+}
 /**
  * Detect React Native.
  *
@@ -1046,13 +1262,81 @@ function isBrowser() {
 function isReactNative() {
     return (typeof navigator === 'object' && navigator['product'] === 'ReactNative');
 }
+/** Detects Electron apps. */
+function isElectron() {
+    return getUA().indexOf('Electron/') >= 0;
+}
+/** Detects Internet Explorer. */
+function isIE() {
+    var ua = getUA();
+    return ua.indexOf('MSIE ') >= 0 || ua.indexOf('Trident/') >= 0;
+}
+/** Detects Universal Windows Platform apps. */
+function isUWP() {
+    return getUA().indexOf('MSAppHost/') >= 0;
+}
 /**
  * Detect whether the current SDK build is the Node version.
  *
  * @return true if it's the Node SDK build.
  */
 function isNodeSdk() {
-    return  CONSTANTS.NODE_ADMIN === true;
+    return CONSTANTS.NODE_CLIENT === true || CONSTANTS.NODE_ADMIN === true;
+}
+/** Returns true if we are running in Safari. */
+function isSafari() {
+    return (!isNode() &&
+        navigator.userAgent.includes('Safari') &&
+        !navigator.userAgent.includes('Chrome'));
+}
+/**
+ * This method checks if indexedDB is supported by current browser/service worker context
+ * @return true if indexedDB is supported by current browser/service worker context
+ */
+function isIndexedDBAvailable() {
+    return 'indexedDB' in self && indexedDB != null;
+}
+/**
+ * This method validates browser context for indexedDB by opening a dummy indexedDB database and reject
+ * if errors occur during the database open operation.
+ */
+function validateIndexedDBOpenable() {
+    return new Promise(function (resolve, reject) {
+        try {
+            var preExist_1 = true;
+            var DB_CHECK_NAME_1 = 'validate-browser-context-for-indexeddb-analytics-module';
+            var request_1 = window.indexedDB.open(DB_CHECK_NAME_1);
+            request_1.onsuccess = function () {
+                request_1.result.close();
+                // delete database only when it doesn't pre-exist
+                if (!preExist_1) {
+                    window.indexedDB.deleteDatabase(DB_CHECK_NAME_1);
+                }
+                resolve(true);
+            };
+            request_1.onupgradeneeded = function () {
+                preExist_1 = false;
+            };
+            request_1.onerror = function () {
+                var _a;
+                reject(((_a = request_1.error) === null || _a === void 0 ? void 0 : _a.message) || '');
+            };
+        }
+        catch (error) {
+            reject(error);
+        }
+    });
+}
+/**
+ *
+ * This method checks whether cookie is enabled within current browser
+ * @return true if cookie is enabled within current browser
+ */
+function areCookiesEnabled() {
+    if (!navigator || !navigator.cookieEnabled) {
+        return false;
+    }
+    return true;
 }
 
 /**
@@ -1075,7 +1359,7 @@ var ERROR_NAME = 'FirebaseError';
 // Based on code from:
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error#Custom_Error_Types
 var FirebaseError = /** @class */ (function (_super) {
-    __extends(FirebaseError, _super);
+    tslib.__extends(FirebaseError, _super);
     function FirebaseError(code, message, customData) {
         var _this = _super.call(this, message) || this;
         _this.code = code;
@@ -1199,6 +1483,53 @@ var decode = function (token) {
     };
 };
 /**
+ * Decodes a Firebase auth. token and checks the validity of its time-based claims. Will return true if the
+ * token is within the time window authorized by the 'nbf' (not-before) and 'iat' (issued-at) claims.
+ *
+ * Notes:
+ * - May return a false negative if there's no native base64 decoding support.
+ * - Doesn't check if the token is actually valid.
+ */
+var isValidTimestamp = function (token) {
+    var claims = decode(token).claims;
+    var now = Math.floor(new Date().getTime() / 1000);
+    var validSince = 0, validUntil = 0;
+    if (typeof claims === 'object') {
+        if (claims.hasOwnProperty('nbf')) {
+            validSince = claims['nbf'];
+        }
+        else if (claims.hasOwnProperty('iat')) {
+            validSince = claims['iat'];
+        }
+        if (claims.hasOwnProperty('exp')) {
+            validUntil = claims['exp'];
+        }
+        else {
+            // token will expire after 24h by default
+            validUntil = validSince + 86400;
+        }
+    }
+    return (!!now &&
+        !!validSince &&
+        !!validUntil &&
+        now >= validSince &&
+        now <= validUntil);
+};
+/**
+ * Decodes a Firebase auth. token and returns its issued at time if valid, null otherwise.
+ *
+ * Notes:
+ * - May return null if there's no native base64 decoding support.
+ * - Doesn't check if the token is actually valid.
+ */
+var issuedAtTime = function (token) {
+    var claims = decode(token).claims;
+    if (typeof claims === 'object' && claims.hasOwnProperty('iat')) {
+        return claims['iat'];
+    }
+    return null;
+};
+/**
  * Decodes a Firebase auth. token and checks the validity of its format. Expects a valid issued-at time.
  *
  * Notes:
@@ -1304,6 +1635,21 @@ function querystring(querystringParams) {
         _loop_1(key, value);
     }
     return params.length ? '&' + params.join('&') : '';
+}
+/**
+ * Decodes a querystring (e.g. ?arg=val&arg2=val2) into a params object
+ * (e.g. {arg: 'val', arg2: 'val2'})
+ */
+function querystringDecode(querystring) {
+    var obj = {};
+    var tokens = querystring.replace(/^\?/, '').split('&');
+    tokens.forEach(function (token) {
+        if (token) {
+            var key = token.split('=');
+            obj[key[0]] = key[1];
+        }
+    });
+    return obj;
 }
 
 /**
@@ -1748,6 +2094,25 @@ var ObserverProxy = /** @class */ (function () {
     };
     return ObserverProxy;
 }());
+/** Turn synchronous function into one called asynchronously. */
+// eslint-disable-next-line @typescript-eslint/ban-types
+function async(fn, onError) {
+    return function () {
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        Promise.resolve(true)
+            .then(function () {
+            fn.apply(void 0, args);
+        })
+            .catch(function (error) {
+            if (onError) {
+                onError(error);
+            }
+        });
+    };
+}
 /**
  * Return true if the object passed in implements any of the named methods.
  */
@@ -1840,6 +2205,22 @@ function errorPrefix(fnName, argumentNumber, optional) {
     var error = fnName + ' failed: ';
     error += argName + ' argument ';
     return error;
+}
+/**
+ * @param fnName
+ * @param argumentNumber
+ * @param namespace
+ * @param optional
+ */
+function validateNamespace(fnName, argumentNumber, namespace, optional) {
+    if (optional && !namespace) {
+        return;
+    }
+    if (typeof namespace !== 'string') {
+        //TODO: I should do more validation here. We only allow certain chars in namespaces.
+        throw new Error(errorPrefix(fnName, argumentNumber, optional) +
+            'must be a valid firebase namespace.');
+    }
 }
 function validateCallback(fnName, argumentNumber, 
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -1953,6 +2334,252 @@ var stringLength = function (str) {
 };
 
 /**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * The amount of milliseconds to exponentially increase.
+ */
+var DEFAULT_INTERVAL_MILLIS = 1000;
+/**
+ * The factor to backoff by.
+ * Should be a number greater than 1.
+ */
+var DEFAULT_BACKOFF_FACTOR = 2;
+/**
+ * The maximum milliseconds to increase to.
+ *
+ * <p>Visible for testing
+ */
+var MAX_VALUE_MILLIS = 4 * 60 * 60 * 1000; // Four hours, like iOS and Android.
+/**
+ * The percentage of backoff time to randomize by.
+ * See
+ * http://go/safe-client-behavior#step-1-determine-the-appropriate-retry-interval-to-handle-spike-traffic
+ * for context.
+ *
+ * <p>Visible for testing
+ */
+var RANDOM_FACTOR = 0.5;
+/**
+ * Based on the backoff method from
+ * https://github.com/google/closure-library/blob/master/closure/goog/math/exponentialbackoff.js.
+ * Extracted here so we don't need to pass metadata and a stateful ExponentialBackoff object around.
+ */
+function calculateBackoffMillis(backoffCount, intervalMillis, backoffFactor) {
+    if (intervalMillis === void 0) { intervalMillis = DEFAULT_INTERVAL_MILLIS; }
+    if (backoffFactor === void 0) { backoffFactor = DEFAULT_BACKOFF_FACTOR; }
+    // Calculates an exponentially increasing value.
+    // Deviation: calculates value from count and a constant interval, so we only need to save value
+    // and count to restore state.
+    var currBaseValue = intervalMillis * Math.pow(backoffFactor, backoffCount);
+    // A random "fuzz" to avoid waves of retries.
+    // Deviation: randomFactor is required.
+    var randomWait = Math.round(
+    // A fraction of the backoff value to add/subtract.
+    // Deviation: changes multiplication order to improve readability.
+    RANDOM_FACTOR *
+        currBaseValue *
+        // A random float (rounded to int by Math.round above) in the range [-1, 1]. Determines
+        // if we add or subtract.
+        (Math.random() - 0.5) *
+        2);
+    // Limits backoff to max to avoid effectively permanent backoff.
+    return Math.min(MAX_VALUE_MILLIS, currBaseValue + randomWait);
+}
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Provide English ordinal letters after a number
+ */
+function ordinal(i) {
+    if (!Number.isFinite(i)) {
+        return "" + i;
+    }
+    return i + indicator(i);
+}
+function indicator(i) {
+    i = Math.abs(i);
+    var cent = i % 100;
+    if (cent >= 10 && cent <= 20) {
+        return 'th';
+    }
+    var dec = i % 10;
+    if (dec === 1) {
+        return 'st';
+    }
+    if (dec === 2) {
+        return 'nd';
+    }
+    if (dec === 3) {
+        return 'rd';
+    }
+    return 'th';
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+// Overriding the constant (we should be the only ones doing this)
+CONSTANTS.NODE_CLIENT = true;
+
+exports.CONSTANTS = CONSTANTS;
+exports.Deferred = Deferred;
+exports.ErrorFactory = ErrorFactory;
+exports.FirebaseError = FirebaseError;
+exports.MAX_VALUE_MILLIS = MAX_VALUE_MILLIS;
+exports.RANDOM_FACTOR = RANDOM_FACTOR;
+exports.Sha1 = Sha1;
+exports.areCookiesEnabled = areCookiesEnabled;
+exports.assert = assert;
+exports.assertionError = assertionError;
+exports.async = async;
+exports.base64 = base64;
+exports.base64Decode = base64Decode;
+exports.base64Encode = base64Encode;
+exports.calculateBackoffMillis = calculateBackoffMillis;
+exports.contains = contains;
+exports.createSubscribe = createSubscribe;
+exports.decode = decode;
+exports.deepCopy = deepCopy;
+exports.deepExtend = deepExtend;
+exports.errorPrefix = errorPrefix;
+exports.getUA = getUA;
+exports.isAdmin = isAdmin;
+exports.isBrowser = isBrowser;
+exports.isBrowserExtension = isBrowserExtension;
+exports.isElectron = isElectron;
+exports.isEmpty = isEmpty;
+exports.isIE = isIE;
+exports.isIndexedDBAvailable = isIndexedDBAvailable;
+exports.isMobileCordova = isMobileCordova;
+exports.isNode = isNode;
+exports.isNodeSdk = isNodeSdk;
+exports.isReactNative = isReactNative;
+exports.isSafari = isSafari;
+exports.isUWP = isUWP;
+exports.isValidFormat = isValidFormat;
+exports.isValidTimestamp = isValidTimestamp;
+exports.issuedAtTime = issuedAtTime;
+exports.jsonEval = jsonEval;
+exports.map = map;
+exports.ordinal = ordinal;
+exports.querystring = querystring;
+exports.querystringDecode = querystringDecode;
+exports.safeGet = safeGet;
+exports.stringLength = stringLength;
+exports.stringToByteArray = stringToByteArray$1;
+exports.stringify = stringify;
+exports.validateArgCount = validateArgCount;
+exports.validateCallback = validateCallback;
+exports.validateContextObject = validateContextObject;
+exports.validateIndexedDBOpenable = validateIndexedDBOpenable;
+exports.validateNamespace = validateNamespace;
+
+});
+
+unwrapExports(index_node_cjs);
+var index_node_cjs_1 = index_node_cjs.CONSTANTS;
+var index_node_cjs_2 = index_node_cjs.Deferred;
+var index_node_cjs_3 = index_node_cjs.ErrorFactory;
+var index_node_cjs_4 = index_node_cjs.FirebaseError;
+var index_node_cjs_5 = index_node_cjs.MAX_VALUE_MILLIS;
+var index_node_cjs_6 = index_node_cjs.RANDOM_FACTOR;
+var index_node_cjs_7 = index_node_cjs.Sha1;
+var index_node_cjs_8 = index_node_cjs.areCookiesEnabled;
+var index_node_cjs_9 = index_node_cjs.assert;
+var index_node_cjs_10 = index_node_cjs.assertionError;
+var index_node_cjs_11 = index_node_cjs.async;
+var index_node_cjs_12 = index_node_cjs.base64;
+var index_node_cjs_13 = index_node_cjs.base64Decode;
+var index_node_cjs_14 = index_node_cjs.base64Encode;
+var index_node_cjs_15 = index_node_cjs.calculateBackoffMillis;
+var index_node_cjs_16 = index_node_cjs.contains;
+var index_node_cjs_17 = index_node_cjs.createSubscribe;
+var index_node_cjs_18 = index_node_cjs.decode;
+var index_node_cjs_19 = index_node_cjs.deepCopy;
+var index_node_cjs_20 = index_node_cjs.deepExtend;
+var index_node_cjs_21 = index_node_cjs.errorPrefix;
+var index_node_cjs_22 = index_node_cjs.getUA;
+var index_node_cjs_23 = index_node_cjs.isAdmin;
+var index_node_cjs_24 = index_node_cjs.isBrowser;
+var index_node_cjs_25 = index_node_cjs.isBrowserExtension;
+var index_node_cjs_26 = index_node_cjs.isElectron;
+var index_node_cjs_27 = index_node_cjs.isEmpty;
+var index_node_cjs_28 = index_node_cjs.isIE;
+var index_node_cjs_29 = index_node_cjs.isIndexedDBAvailable;
+var index_node_cjs_30 = index_node_cjs.isMobileCordova;
+var index_node_cjs_31 = index_node_cjs.isNode;
+var index_node_cjs_32 = index_node_cjs.isNodeSdk;
+var index_node_cjs_33 = index_node_cjs.isReactNative;
+var index_node_cjs_34 = index_node_cjs.isSafari;
+var index_node_cjs_35 = index_node_cjs.isUWP;
+var index_node_cjs_36 = index_node_cjs.isValidFormat;
+var index_node_cjs_37 = index_node_cjs.isValidTimestamp;
+var index_node_cjs_38 = index_node_cjs.issuedAtTime;
+var index_node_cjs_39 = index_node_cjs.jsonEval;
+var index_node_cjs_40 = index_node_cjs.map;
+var index_node_cjs_41 = index_node_cjs.ordinal;
+var index_node_cjs_42 = index_node_cjs.querystring;
+var index_node_cjs_43 = index_node_cjs.querystringDecode;
+var index_node_cjs_44 = index_node_cjs.safeGet;
+var index_node_cjs_45 = index_node_cjs.stringLength;
+var index_node_cjs_46 = index_node_cjs.stringToByteArray;
+var index_node_cjs_47 = index_node_cjs.stringify;
+var index_node_cjs_48 = index_node_cjs.validateArgCount;
+var index_node_cjs_49 = index_node_cjs.validateCallback;
+var index_node_cjs_50 = index_node_cjs.validateContextObject;
+var index_node_cjs_51 = index_node_cjs.validateIndexedDBOpenable;
+var index_node_cjs_52 = index_node_cjs.validateNamespace;
+
+var index_cjs = createCommonjsModule(function (module, exports) {
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+
+
+
+/**
  * Component for service name T, e.g. `auth`, `auth-internal`
  */
 var Component = /** @class */ (function () {
@@ -2043,7 +2670,7 @@ var Provider = /** @class */ (function () {
         // if multipleInstances is not supported, use the default name
         var normalizedIdentifier = this.normalizeInstanceIdentifier(identifier);
         if (!this.instancesDeferred.has(normalizedIdentifier)) {
-            var deferred = new Deferred();
+            var deferred = new index_node_cjs.Deferred();
             this.instancesDeferred.set(normalizedIdentifier, deferred);
             // If the service instance is available, resolve the promise with it immediately
             try {
@@ -2060,7 +2687,7 @@ var Provider = /** @class */ (function () {
         return this.instancesDeferred.get(normalizedIdentifier).promise;
     };
     Provider.prototype.getImmediate = function (options) {
-        var _a = __assign({ identifier: DEFAULT_ENTRY_NAME, optional: false }, options), identifier = _a.identifier, optional = _a.optional;
+        var _a = tslib.__assign({ identifier: DEFAULT_ENTRY_NAME, optional: false }, options), identifier = _a.identifier, optional = _a.optional;
         // if multipleInstances is not supported, use the default name
         var normalizedIdentifier = this.normalizeInstanceIdentifier(identifier);
         try {
@@ -2110,8 +2737,8 @@ var Provider = /** @class */ (function () {
             // Create service instances for the pending promises and resolve them
             // NOTE: if this.multipleInstances is false, only the default instance will be created
             // and all promises with resolve with it regardless of the identifier.
-            for (var _b = __values(this.instancesDeferred.entries()), _c = _b.next(); !_c.done; _c = _b.next()) {
-                var _d = __read(_c.value, 2), instanceIdentifier = _d[0], instanceDeferred = _d[1];
+            for (var _b = tslib.__values(this.instancesDeferred.entries()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                var _d = tslib.__read(_c.value, 2), instanceIdentifier = _d[0], instanceDeferred = _d[1];
                 var normalizedIdentifier = this.normalizeInstanceIdentifier(instanceIdentifier);
                 try {
                     // `getOrInitializeService()` should always return a valid instance since a component is guaranteed. use ! to make typescript happy.
@@ -2140,13 +2767,13 @@ var Provider = /** @class */ (function () {
     // app.delete() will call this method on every provider to delete the services
     // TODO: should we mark the provider as deleted?
     Provider.prototype.delete = function () {
-        return __awaiter(this, void 0, void 0, function () {
+        return tslib.__awaiter(this, void 0, void 0, function () {
             var services;
-            return __generator(this, function (_a) {
+            return tslib.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         services = Array.from(this.instances.values());
-                        return [4 /*yield*/, Promise.all(__spread(services
+                        return [4 /*yield*/, Promise.all(tslib.__spread(services
                                 .filter(function (service) { return 'INTERNAL' in service; }) // legacy services
                                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 .map(function (service) { return service.INTERNAL.delete(); }), services
@@ -2259,6 +2886,21 @@ var ComponentContainer = /** @class */ (function () {
     return ComponentContainer;
 }());
 
+exports.Component = Component;
+exports.ComponentContainer = ComponentContainer;
+exports.Provider = Provider;
+
+});
+
+unwrapExports(index_cjs);
+var index_cjs_1 = index_cjs.Component;
+var index_cjs_2 = index_cjs.ComponentContainer;
+var index_cjs_3 = index_cjs.Provider;
+
+var index_cjs$1 = createCommonjsModule(function (module, exports) {
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation. All rights reserved.
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
@@ -2303,18 +2945,6 @@ var _a;
  * A container for all of the Logger instances
  */
 var instances = [];
-/**
- * The JS SDK supports 5 log levels and also allows a user the ability to
- * silence the logs altogether.
- *
- * The order is a follows:
- * DEBUG < VERBOSE < INFO < WARN < ERROR
- *
- * All of the log types above the current log level will be captured (i.e. if
- * you set the log level to `INFO`, errors will still be logged, but `DEBUG` and
- * `VERBOSE` logs will not)
- */
-var LogLevel;
 (function (LogLevel) {
     LogLevel[LogLevel["DEBUG"] = 0] = "DEBUG";
     LogLevel[LogLevel["VERBOSE"] = 1] = "VERBOSE";
@@ -2322,19 +2952,19 @@ var LogLevel;
     LogLevel[LogLevel["WARN"] = 3] = "WARN";
     LogLevel[LogLevel["ERROR"] = 4] = "ERROR";
     LogLevel[LogLevel["SILENT"] = 5] = "SILENT";
-})(LogLevel || (LogLevel = {}));
+})(exports.LogLevel || (exports.LogLevel = {}));
 var levelStringToEnum = {
-    'debug': LogLevel.DEBUG,
-    'verbose': LogLevel.VERBOSE,
-    'info': LogLevel.INFO,
-    'warn': LogLevel.WARN,
-    'error': LogLevel.ERROR,
-    'silent': LogLevel.SILENT
+    'debug': exports.LogLevel.DEBUG,
+    'verbose': exports.LogLevel.VERBOSE,
+    'info': exports.LogLevel.INFO,
+    'warn': exports.LogLevel.WARN,
+    'error': exports.LogLevel.ERROR,
+    'silent': exports.LogLevel.SILENT
 };
 /**
  * The default log level
  */
-var defaultLogLevel = LogLevel.INFO;
+var defaultLogLevel = exports.LogLevel.INFO;
 /**
  * By default, `console.debug` is not displayed in the developer console (in
  * chrome). To avoid forcing users to have to opt-in to these logs twice
@@ -2342,11 +2972,11 @@ var defaultLogLevel = LogLevel.INFO;
  * logs to the `console.log` function.
  */
 var ConsoleMethod = (_a = {},
-    _a[LogLevel.DEBUG] = 'log',
-    _a[LogLevel.VERBOSE] = 'log',
-    _a[LogLevel.INFO] = 'info',
-    _a[LogLevel.WARN] = 'warn',
-    _a[LogLevel.ERROR] = 'error',
+    _a[exports.LogLevel.DEBUG] = 'log',
+    _a[exports.LogLevel.VERBOSE] = 'log',
+    _a[exports.LogLevel.INFO] = 'info',
+    _a[exports.LogLevel.WARN] = 'warn',
+    _a[exports.LogLevel.ERROR] = 'error',
     _a);
 /**
  * The default log handler will forward DEBUG, VERBOSE, INFO, WARN, and ERROR
@@ -2402,7 +3032,7 @@ var Logger = /** @class */ (function () {
             return this._logLevel;
         },
         set: function (val) {
-            if (!(val in LogLevel)) {
+            if (!(val in exports.LogLevel)) {
                 throw new TypeError("Invalid value \"" + val + "\" assigned to `logLevel`");
             }
             this._logLevel = val;
@@ -2445,40 +3075,40 @@ var Logger = /** @class */ (function () {
         for (var _i = 0; _i < arguments.length; _i++) {
             args[_i] = arguments[_i];
         }
-        this._userLogHandler && this._userLogHandler.apply(this, __spreadArrays([this, LogLevel.DEBUG], args));
-        this._logHandler.apply(this, __spreadArrays([this, LogLevel.DEBUG], args));
+        this._userLogHandler && this._userLogHandler.apply(this, __spreadArrays([this, exports.LogLevel.DEBUG], args));
+        this._logHandler.apply(this, __spreadArrays([this, exports.LogLevel.DEBUG], args));
     };
     Logger.prototype.log = function () {
         var args = [];
         for (var _i = 0; _i < arguments.length; _i++) {
             args[_i] = arguments[_i];
         }
-        this._userLogHandler && this._userLogHandler.apply(this, __spreadArrays([this, LogLevel.VERBOSE], args));
-        this._logHandler.apply(this, __spreadArrays([this, LogLevel.VERBOSE], args));
+        this._userLogHandler && this._userLogHandler.apply(this, __spreadArrays([this, exports.LogLevel.VERBOSE], args));
+        this._logHandler.apply(this, __spreadArrays([this, exports.LogLevel.VERBOSE], args));
     };
     Logger.prototype.info = function () {
         var args = [];
         for (var _i = 0; _i < arguments.length; _i++) {
             args[_i] = arguments[_i];
         }
-        this._userLogHandler && this._userLogHandler.apply(this, __spreadArrays([this, LogLevel.INFO], args));
-        this._logHandler.apply(this, __spreadArrays([this, LogLevel.INFO], args));
+        this._userLogHandler && this._userLogHandler.apply(this, __spreadArrays([this, exports.LogLevel.INFO], args));
+        this._logHandler.apply(this, __spreadArrays([this, exports.LogLevel.INFO], args));
     };
     Logger.prototype.warn = function () {
         var args = [];
         for (var _i = 0; _i < arguments.length; _i++) {
             args[_i] = arguments[_i];
         }
-        this._userLogHandler && this._userLogHandler.apply(this, __spreadArrays([this, LogLevel.WARN], args));
-        this._logHandler.apply(this, __spreadArrays([this, LogLevel.WARN], args));
+        this._userLogHandler && this._userLogHandler.apply(this, __spreadArrays([this, exports.LogLevel.WARN], args));
+        this._logHandler.apply(this, __spreadArrays([this, exports.LogLevel.WARN], args));
     };
     Logger.prototype.error = function () {
         var args = [];
         for (var _i = 0; _i < arguments.length; _i++) {
             args[_i] = arguments[_i];
         }
-        this._userLogHandler && this._userLogHandler.apply(this, __spreadArrays([this, LogLevel.ERROR], args));
-        this._logHandler.apply(this, __spreadArrays([this, LogLevel.ERROR], args));
+        this._userLogHandler && this._userLogHandler.apply(this, __spreadArrays([this, exports.LogLevel.ERROR], args));
+        this._logHandler.apply(this, __spreadArrays([this, exports.LogLevel.ERROR], args));
     };
     return Logger;
 }());
@@ -2529,7 +3159,7 @@ function setUserLogHandler(logCallback, options) {
                     .join(' ');
                 if (level >= (customLogLevel !== null && customLogLevel !== void 0 ? customLogLevel : instance.logLevel)) {
                     logCallback({
-                        level: LogLevel[level].toLowerCase(),
+                        level: exports.LogLevel[level].toLowerCase(),
                         message: message,
                         args: args,
                         type: instance.name
@@ -2543,6 +3173,794 @@ function setUserLogHandler(logCallback, options) {
         _loop_1(instance);
     }
 }
+
+exports.Logger = Logger;
+exports.setLogLevel = setLogLevel;
+exports.setUserLogHandler = setUserLogHandler;
+
+});
+
+unwrapExports(index_cjs$1);
+var index_cjs_1$1 = index_cjs$1.LogLevel;
+var index_cjs_2$1 = index_cjs$1.Logger;
+var index_cjs_3$1 = index_cjs$1.setLogLevel;
+var index_cjs_4 = index_cjs$1.setUserLogHandler;
+
+var lib = createCommonjsModule(function (module) {
+// http://www.rajdeepd.com/articles/chrome/localstrg/LocalStorageSample.htm
+
+// NOTE:
+// this varies from actual localStorage in some subtle ways
+
+// also, there is no persistence
+// TODO persist
+(function () {
+
+  var fs = fs__default['default'];
+
+  function Storage(path, opts) {
+    opts = opts || {};
+    var db;
+
+    Object.defineProperty(this, '___priv_bk___', {
+      value: {
+        path: path
+      }
+    , writable: false
+    , enumerable: false
+    });
+
+    Object.defineProperty(this, '___priv_strict___', {
+      value: !!opts.strict
+    , writable: false
+    , enumerable: false
+    });
+
+    Object.defineProperty(this, '___priv_ws___', {
+      value: opts.ws || '  '
+    , writable: false
+    , enumerable: false
+    });
+
+    try {
+      db = JSON.parse(fs.readFileSync(path));
+    } catch(e) {
+      db = {};
+    }
+
+    Object.keys(db).forEach(function (key) {
+      this[key] = db[key];
+    }, this);
+  }
+
+  Storage.prototype.getItem = function (key) {
+    if (this.hasOwnProperty(key)) {
+      if (this.___priv_strict___) {
+        return String(this[key]);
+      } else {
+        return this[key];
+      }
+    }
+    return null;
+  };
+
+  Storage.prototype.setItem = function (key, val) {
+    if (val === undefined) {
+      this[key] = null;
+    } else if (this.___priv_strict___) {
+      this[key] = String(val);
+    } else {
+      this[key] = val;
+    }
+    this.___save___();
+  };
+
+  Storage.prototype.removeItem = function (key) {
+    delete this[key];
+    this.___save___();
+  };
+
+  Storage.prototype.clear = function () {
+    var self = this;
+    // filters out prototype keys
+    Object.keys(self).forEach(function (key) {
+      self[key] = undefined;
+      delete self[key];
+    });
+  };
+
+  Storage.prototype.key = function (i) {
+    i = i || 0;
+    return Object.keys(this)[i];
+  };
+
+  Object.defineProperty(Storage.prototype, 'length', {
+    get: function() {
+      return Object.keys(this).length;
+    }
+  });
+
+  Storage.prototype.___save___ = function () {
+    var self = this;
+
+    if (!this.___priv_bk___.path) {
+      return;
+    }
+
+    if (this.___priv_bk___.lock) {
+      this.___priv_bk___.wait = true;
+      return;
+    }
+
+    this.___priv_bk___.lock = true;
+    fs.writeFile(
+      this.___priv_bk___.path
+    , JSON.stringify(this, null, this.___priv_ws___)
+    , 'utf8'
+    , function (e) {
+      self.___priv_bk___.lock = false;
+      if (e) {
+        console.error('Could not write to database', self.___priv_bk___.path);
+        console.error(e);
+        return;
+      }
+      if (self.___priv_bk___.wait) {
+        self.___priv_bk___.wait = false;
+        self.___save___();
+      }
+    });
+  };
+
+  Object.defineProperty(Storage, 'create', {
+    value: function (path, opts) {
+      return new Storage(path, opts);
+    }
+  , writable: false
+  , enumerable: false
+  });
+
+  module.exports = Storage;
+}());
+});
+
+/**
+ * Wrapper for built-in http.js to emulate the browser XMLHttpRequest object.
+ *
+ * This can be used with JS designed for browsers to improve reuse of code and
+ * allow the use of existing libraries.
+ *
+ * Usage: include("XMLHttpRequest.js") and use XMLHttpRequest per W3C specs.
+ *
+ * @author Dan DeFelippi <dan@driverdan.com>
+ * @contributor David Ellis <d.f.ellis@ieee.org>
+ * @license MIT
+ */
+
+
+var spawn = child_process__default['default'].spawn;
+
+
+var XMLHttpRequest_1 = function() {
+
+  /**
+   * Private variables
+   */
+  var self = this;
+  var http = http__default['default'];
+  var https = https__default['default'];
+
+  // Holds http.js objects
+  var request;
+  var response;
+
+  // Request settings
+  var settings = {};
+
+  // Disable header blacklist.
+  // Not part of XHR specs.
+  var disableHeaderCheck = false;
+
+  // Set some default headers
+  var defaultHeaders = {
+    "User-Agent": "node-XMLHttpRequest",
+    "Accept": "*/*",
+  };
+
+  var headers = {};
+  var headersCase = {};
+
+  // These headers are not user setable.
+  // The following are allowed but banned in the spec:
+  // * user-agent
+  var forbiddenRequestHeaders = [
+    "accept-charset",
+    "accept-encoding",
+    "access-control-request-headers",
+    "access-control-request-method",
+    "connection",
+    "content-length",
+    "content-transfer-encoding",
+    "cookie",
+    "cookie2",
+    "date",
+    "expect",
+    "host",
+    "keep-alive",
+    "origin",
+    "referer",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+    "via"
+  ];
+
+  // These request methods are not allowed
+  var forbiddenRequestMethods = [
+    "TRACE",
+    "TRACK",
+    "CONNECT"
+  ];
+
+  // Send flag
+  var sendFlag = false;
+  // Error flag, used when errors occur or abort is called
+  var errorFlag = false;
+
+  // Event listeners
+  var listeners = {};
+
+  /**
+   * Constants
+   */
+
+  this.UNSENT = 0;
+  this.OPENED = 1;
+  this.HEADERS_RECEIVED = 2;
+  this.LOADING = 3;
+  this.DONE = 4;
+
+  /**
+   * Public vars
+   */
+
+  // Current state
+  this.readyState = this.UNSENT;
+
+  // default ready state change handler in case one is not set or is set late
+  this.onreadystatechange = null;
+
+  // Result & response
+  this.responseText = "";
+  this.responseXML = "";
+  this.status = null;
+  this.statusText = null;
+  
+  // Whether cross-site Access-Control requests should be made using
+  // credentials such as cookies or authorization headers
+  this.withCredentials = false;
+
+  /**
+   * Private methods
+   */
+
+  /**
+   * Check if the specified header is allowed.
+   *
+   * @param string header Header to validate
+   * @return boolean False if not allowed, otherwise true
+   */
+  var isAllowedHttpHeader = function(header) {
+    return disableHeaderCheck || (header && forbiddenRequestHeaders.indexOf(header.toLowerCase()) === -1);
+  };
+
+  /**
+   * Check if the specified method is allowed.
+   *
+   * @param string method Request method to validate
+   * @return boolean False if not allowed, otherwise true
+   */
+  var isAllowedHttpMethod = function(method) {
+    return (method && forbiddenRequestMethods.indexOf(method) === -1);
+  };
+
+  /**
+   * Public methods
+   */
+
+  /**
+   * Open the connection. Currently supports local server requests.
+   *
+   * @param string method Connection method (eg GET, POST)
+   * @param string url URL for the connection.
+   * @param boolean async Asynchronous connection. Default is true.
+   * @param string user Username for basic authentication (optional)
+   * @param string password Password for basic authentication (optional)
+   */
+  this.open = function(method, url, async, user, password) {
+    this.abort();
+    errorFlag = false;
+
+    // Check for valid request method
+    if (!isAllowedHttpMethod(method)) {
+      throw new Error("SecurityError: Request method not allowed");
+    }
+
+    settings = {
+      "method": method,
+      "url": url.toString(),
+      "async": (typeof async !== "boolean" ? true : async),
+      "user": user || null,
+      "password": password || null
+    };
+
+    setState(this.OPENED);
+  };
+
+  /**
+   * Disables or enables isAllowedHttpHeader() check the request. Enabled by default.
+   * This does not conform to the W3C spec.
+   *
+   * @param boolean state Enable or disable header checking.
+   */
+  this.setDisableHeaderCheck = function(state) {
+    disableHeaderCheck = state;
+  };
+
+  /**
+   * Sets a header for the request or appends the value if one is already set.
+   *
+   * @param string header Header name
+   * @param string value Header value
+   */
+  this.setRequestHeader = function(header, value) {
+    if (this.readyState !== this.OPENED) {
+      throw new Error("INVALID_STATE_ERR: setRequestHeader can only be called when state is OPEN");
+    }
+    if (!isAllowedHttpHeader(header)) {
+      console.warn("Refused to set unsafe header \"" + header + "\"");
+      return;
+    }
+    if (sendFlag) {
+      throw new Error("INVALID_STATE_ERR: send flag is true");
+    }
+    header = headersCase[header.toLowerCase()] || header;
+    headersCase[header.toLowerCase()] = header;
+    headers[header] = headers[header] ? headers[header] + ', ' + value : value;
+  };
+
+  /**
+   * Gets a header from the server response.
+   *
+   * @param string header Name of header to get.
+   * @return string Text of the header or null if it doesn't exist.
+   */
+  this.getResponseHeader = function(header) {
+    if (typeof header === "string"
+      && this.readyState > this.OPENED
+      && response
+      && response.headers
+      && response.headers[header.toLowerCase()]
+      && !errorFlag
+    ) {
+      return response.headers[header.toLowerCase()];
+    }
+
+    return null;
+  };
+
+  /**
+   * Gets all the response headers.
+   *
+   * @return string A string with all response headers separated by CR+LF
+   */
+  this.getAllResponseHeaders = function() {
+    if (this.readyState < this.HEADERS_RECEIVED || errorFlag) {
+      return "";
+    }
+    var result = "";
+
+    for (var i in response.headers) {
+      // Cookie headers are excluded
+      if (i !== "set-cookie" && i !== "set-cookie2") {
+        result += i + ": " + response.headers[i] + "\r\n";
+      }
+    }
+    return result.substr(0, result.length - 2);
+  };
+
+  /**
+   * Gets a request header
+   *
+   * @param string name Name of header to get
+   * @return string Returns the request header or empty string if not set
+   */
+  this.getRequestHeader = function(name) {
+    if (typeof name === "string" && headersCase[name.toLowerCase()]) {
+      return headers[headersCase[name.toLowerCase()]];
+    }
+
+    return "";
+  };
+
+  /**
+   * Sends the request to the server.
+   *
+   * @param string data Optional data to send as request body.
+   */
+  this.send = function(data) {
+    if (this.readyState !== this.OPENED) {
+      throw new Error("INVALID_STATE_ERR: connection must be opened before send() is called");
+    }
+
+    if (sendFlag) {
+      throw new Error("INVALID_STATE_ERR: send has already been called");
+    }
+
+    var ssl = false, local = false;
+    var url = url__default['default'].parse(settings.url);
+    var host;
+    // Determine the server
+    switch (url.protocol) {
+      case "https:":
+        ssl = true;
+        // SSL & non-SSL both need host, no break here.
+      case "http:":
+        host = url.hostname;
+        break;
+
+      case "file:":
+        local = true;
+        break;
+
+      case undefined:
+      case null:
+      case "":
+        host = "localhost";
+        break;
+
+      default:
+        throw new Error("Protocol not supported.");
+    }
+
+    // Load files off the local filesystem (file://)
+    if (local) {
+      if (settings.method !== "GET") {
+        throw new Error("XMLHttpRequest: Only GET method is supported");
+      }
+
+      if (settings.async) {
+        fs__default['default'].readFile(url.pathname, "utf8", function(error, data) {
+          if (error) {
+            self.handleError(error);
+          } else {
+            self.status = 200;
+            self.responseText = data;
+            setState(self.DONE);
+          }
+        });
+      } else {
+        try {
+          this.responseText = fs__default['default'].readFileSync(url.pathname, "utf8");
+          this.status = 200;
+          setState(self.DONE);
+        } catch(e) {
+          this.handleError(e);
+        }
+      }
+
+      return;
+    }
+
+    // Default to port 80. If accessing localhost on another port be sure
+    // to use http://localhost:port/path
+    var port = url.port || (ssl ? 443 : 80);
+    // Add query string if one is used
+    var uri = url.pathname + (url.search ? url.search : "");
+
+    // Set the defaults if they haven't been set
+    for (var name in defaultHeaders) {
+      if (!headersCase[name.toLowerCase()]) {
+        headers[name] = defaultHeaders[name];
+      }
+    }
+
+    // Set the Host header or the server may reject the request
+    headers.Host = host;
+    if (!((ssl && port === 443) || port === 80)) {
+      headers.Host += ":" + url.port;
+    }
+
+    // Set Basic Auth if necessary
+    if (settings.user) {
+      if (typeof settings.password === "undefined") {
+        settings.password = "";
+      }
+      var authBuf = new Buffer(settings.user + ":" + settings.password);
+      headers.Authorization = "Basic " + authBuf.toString("base64");
+    }
+
+    // Set content length header
+    if (settings.method === "GET" || settings.method === "HEAD") {
+      data = null;
+    } else if (data) {
+      headers["Content-Length"] = Buffer.isBuffer(data) ? data.length : Buffer.byteLength(data);
+
+      if (!headers["Content-Type"]) {
+        headers["Content-Type"] = "text/plain;charset=UTF-8";
+      }
+    } else if (settings.method === "POST") {
+      // For a post with no data set Content-Length: 0.
+      // This is required by buggy servers that don't meet the specs.
+      headers["Content-Length"] = 0;
+    }
+
+    var options = {
+      host: host,
+      port: port,
+      path: uri,
+      method: settings.method,
+      headers: headers,
+      agent: false,
+      withCredentials: self.withCredentials
+    };
+
+    // Reset error flag
+    errorFlag = false;
+
+    // Handle async requests
+    if (settings.async) {
+      // Use the proper protocol
+      var doRequest = ssl ? https.request : http.request;
+
+      // Request is being sent, set send flag
+      sendFlag = true;
+
+      // As per spec, this is called here for historical reasons.
+      self.dispatchEvent("readystatechange");
+
+      // Handler for the response
+      var responseHandler = function responseHandler(resp) {
+        // Set response var to the response we got back
+        // This is so it remains accessable outside this scope
+        response = resp;
+        // Check for redirect
+        // @TODO Prevent looped redirects
+        if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 303 || response.statusCode === 307) {
+          // Change URL to the redirect location
+          settings.url = response.headers.location;
+          var url = url__default['default'].parse(settings.url);
+          // Set host var in case it's used later
+          host = url.hostname;
+          // Options for the new request
+          var newOptions = {
+            hostname: url.hostname,
+            port: url.port,
+            path: url.path,
+            method: response.statusCode === 303 ? "GET" : settings.method,
+            headers: headers,
+            withCredentials: self.withCredentials
+          };
+
+          // Issue the new request
+          request = doRequest(newOptions, responseHandler).on("error", errorHandler);
+          request.end();
+          // @TODO Check if an XHR event needs to be fired here
+          return;
+        }
+
+        response.setEncoding("utf8");
+
+        setState(self.HEADERS_RECEIVED);
+        self.status = response.statusCode;
+
+        response.on("data", function(chunk) {
+          // Make sure there's some data
+          if (chunk) {
+            self.responseText += chunk;
+          }
+          // Don't emit state changes if the connection has been aborted.
+          if (sendFlag) {
+            setState(self.LOADING);
+          }
+        });
+
+        response.on("end", function() {
+          if (sendFlag) {
+            // Discard the end event if the connection has been aborted
+            setState(self.DONE);
+            sendFlag = false;
+          }
+        });
+
+        response.on("error", function(error) {
+          self.handleError(error);
+        });
+      };
+
+      // Error handler for the request
+      var errorHandler = function errorHandler(error) {
+        self.handleError(error);
+      };
+
+      // Create the request
+      request = doRequest(options, responseHandler).on("error", errorHandler);
+
+      // Node 0.4 and later won't accept empty data. Make sure it's needed.
+      if (data) {
+        request.write(data);
+      }
+
+      request.end();
+
+      self.dispatchEvent("loadstart");
+    } else { // Synchronous
+      // Create a temporary file for communication with the other Node process
+      var contentFile = ".node-xmlhttprequest-content-" + process.pid;
+      var syncFile = ".node-xmlhttprequest-sync-" + process.pid;
+      fs__default['default'].writeFileSync(syncFile, "", "utf8");
+      // The async request the other Node process executes
+      var execString = "var http = require('http'), https = require('https'), fs = require('fs');"
+        + "var doRequest = http" + (ssl ? "s" : "") + ".request;"
+        + "var options = " + JSON.stringify(options) + ";"
+        + "var responseText = '';"
+        + "var req = doRequest(options, function(response) {"
+        + "response.setEncoding('utf8');"
+        + "response.on('data', function(chunk) {"
+        + "  responseText += chunk;"
+        + "});"
+        + "response.on('end', function() {"
+        + "fs.writeFileSync('" + contentFile + "', JSON.stringify({err: null, data: {statusCode: response.statusCode, headers: response.headers, text: responseText}}), 'utf8');"
+        + "fs.unlinkSync('" + syncFile + "');"
+        + "});"
+        + "response.on('error', function(error) {"
+        + "fs.writeFileSync('" + contentFile + "', JSON.stringify({err: error}), 'utf8');"
+        + "fs.unlinkSync('" + syncFile + "');"
+        + "});"
+        + "}).on('error', function(error) {"
+        + "fs.writeFileSync('" + contentFile + "', JSON.stringify({err: error}), 'utf8');"
+        + "fs.unlinkSync('" + syncFile + "');"
+        + "});"
+        + (data ? "req.write('" + JSON.stringify(data).slice(1,-1).replace(/'/g, "\\'") + "');":"")
+        + "req.end();";
+      // Start the other Node Process, executing this string
+      var syncProc = spawn(process.argv[0], ["-e", execString]);
+      while(fs__default['default'].existsSync(syncFile)) {
+        // Wait while the sync file is empty
+      }
+      var resp = JSON.parse(fs__default['default'].readFileSync(contentFile, 'utf8'));
+      // Kill the child process once the file has data
+      syncProc.stdin.end();
+      // Remove the temporary file
+      fs__default['default'].unlinkSync(contentFile);
+
+      if (resp.err) {
+        self.handleError(resp.err);
+      } else {
+        response = resp.data;
+        self.status = resp.data.statusCode;
+        self.responseText = resp.data.text;
+        setState(self.DONE);
+      }
+    }
+  };
+
+  /**
+   * Called when an error is encountered to deal with it.
+   */
+  this.handleError = function(error) {
+    this.status = 0;
+    this.statusText = error;
+    this.responseText = error.stack;
+    errorFlag = true;
+    setState(this.DONE);
+    this.dispatchEvent('error');
+  };
+
+  /**
+   * Aborts a request.
+   */
+  this.abort = function() {
+    if (request) {
+      request.abort();
+      request = null;
+    }
+
+    headers = defaultHeaders;
+    this.status = 0;
+    this.responseText = "";
+    this.responseXML = "";
+
+    errorFlag = true;
+
+    if (this.readyState !== this.UNSENT
+        && (this.readyState !== this.OPENED || sendFlag)
+        && this.readyState !== this.DONE) {
+      sendFlag = false;
+      setState(this.DONE);
+    }
+    this.readyState = this.UNSENT;
+    this.dispatchEvent('abort');
+  };
+
+  /**
+   * Adds an event listener. Preferred method of binding to events.
+   */
+  this.addEventListener = function(event, callback) {
+    if (!(event in listeners)) {
+      listeners[event] = [];
+    }
+    // Currently allows duplicate callbacks. Should it?
+    listeners[event].push(callback);
+  };
+
+  /**
+   * Remove an event callback that has already been bound.
+   * Only works on the matching funciton, cannot be a copy.
+   */
+  this.removeEventListener = function(event, callback) {
+    if (event in listeners) {
+      // Filter will return a new array with the callback removed
+      listeners[event] = listeners[event].filter(function(ev) {
+        return ev !== callback;
+      });
+    }
+  };
+
+  /**
+   * Dispatch any events, including both "on" methods and events attached using addEventListener.
+   */
+  this.dispatchEvent = function(event) {
+    if (typeof self["on" + event] === "function") {
+      self["on" + event]();
+    }
+    if (event in listeners) {
+      for (var i = 0, len = listeners[event].length; i < len; i++) {
+        listeners[event][i].call(self);
+      }
+    }
+  };
+
+  /**
+   * Changes readyState and calls onreadystatechange.
+   *
+   * @param int state New state
+   */
+  var setState = function(state) {
+    if (state == self.LOADING || self.readyState !== state) {
+      self.readyState = state;
+
+      if (settings.async || self.readyState < self.OPENED || self.readyState === self.DONE) {
+        self.dispatchEvent("readystatechange");
+      }
+
+      if (self.readyState === self.DONE && !errorFlag) {
+        self.dispatchEvent("load");
+        // @TODO figure out InspectorInstrumentation::didLoadXHR(cookie)
+        self.dispatchEvent("loadend");
+      }
+    }
+  };
+};
+
+var XMLHttpRequest$1 = {
+	XMLHttpRequest: XMLHttpRequest_1
+};
+
+var index_node_cjs$1 = createCommonjsModule(function (module, exports) {
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+
+
+
+
+
+
+
+function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
+
+var Storage__default = /*#__PURE__*/_interopDefaultLegacy(lib);
 
 /**
  * @license
@@ -2560,18 +3978,18 @@ function setUserLogHandler(logCallback, options) {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var _a$1;
-var ERRORS = (_a$1 = {},
-    _a$1["no-app" /* NO_APP */] = "No Firebase App '{$appName}' has been created - " +
+var _a;
+var ERRORS = (_a = {},
+    _a["no-app" /* NO_APP */] = "No Firebase App '{$appName}' has been created - " +
         'call Firebase App.initializeApp()',
-    _a$1["bad-app-name" /* BAD_APP_NAME */] = "Illegal App name: '{$appName}",
-    _a$1["duplicate-app" /* DUPLICATE_APP */] = "Firebase App named '{$appName}' already exists",
-    _a$1["app-deleted" /* APP_DELETED */] = "Firebase App named '{$appName}' already deleted",
-    _a$1["invalid-app-argument" /* INVALID_APP_ARGUMENT */] = 'firebase.{$appName}() takes either no argument or a ' +
+    _a["bad-app-name" /* BAD_APP_NAME */] = "Illegal App name: '{$appName}",
+    _a["duplicate-app" /* DUPLICATE_APP */] = "Firebase App named '{$appName}' already exists",
+    _a["app-deleted" /* APP_DELETED */] = "Firebase App named '{$appName}' already deleted",
+    _a["invalid-app-argument" /* INVALID_APP_ARGUMENT */] = 'firebase.{$appName}() takes either no argument or a ' +
         'Firebase App instance.',
-    _a$1["invalid-log-argument" /* INVALID_LOG_ARGUMENT */] = 'First argument to `onLog` must be null or a function.',
-    _a$1);
-var ERROR_FACTORY = new ErrorFactory('app', 'Firebase', ERRORS);
+    _a["invalid-log-argument" /* INVALID_LOG_ARGUMENT */] = 'First argument to `onLog` must be null or a function.',
+    _a);
+var ERROR_FACTORY = new index_node_cjs.ErrorFactory('app', 'Firebase', ERRORS);
 
 var name$1 = "@firebase/app";
 var version = "0.6.13";
@@ -2614,23 +4032,23 @@ var name$c = "firebase-wrapper";
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var _a$1$1;
-var DEFAULT_ENTRY_NAME$1 = '[DEFAULT]';
-var PLATFORM_LOG_STRING = (_a$1$1 = {},
-    _a$1$1[name$1] = 'fire-core',
-    _a$1$1[name$2] = 'fire-analytics',
-    _a$1$1[name$3] = 'fire-auth',
-    _a$1$1[name$4] = 'fire-rtdb',
-    _a$1$1[name$5] = 'fire-fn',
-    _a$1$1[name$6] = 'fire-iid',
-    _a$1$1[name$7] = 'fire-fcm',
-    _a$1$1[name$8] = 'fire-perf',
-    _a$1$1[name$9] = 'fire-rc',
-    _a$1$1[name$a] = 'fire-gcs',
-    _a$1$1[name$b] = 'fire-fst',
-    _a$1$1['fire-js'] = 'fire-js',
-    _a$1$1[name$c] = 'fire-js-all',
-    _a$1$1);
+var _a$1;
+var DEFAULT_ENTRY_NAME = '[DEFAULT]';
+var PLATFORM_LOG_STRING = (_a$1 = {},
+    _a$1[name$1] = 'fire-core',
+    _a$1[name$2] = 'fire-analytics',
+    _a$1[name$3] = 'fire-auth',
+    _a$1[name$4] = 'fire-rtdb',
+    _a$1[name$5] = 'fire-fn',
+    _a$1[name$6] = 'fire-iid',
+    _a$1[name$7] = 'fire-fcm',
+    _a$1[name$8] = 'fire-perf',
+    _a$1[name$9] = 'fire-rc',
+    _a$1[name$a] = 'fire-gcs',
+    _a$1[name$b] = 'fire-fst',
+    _a$1['fire-js'] = 'fire-js',
+    _a$1[name$c] = 'fire-js-all',
+    _a$1);
 
 /**
  * @license
@@ -2648,7 +4066,7 @@ var PLATFORM_LOG_STRING = (_a$1$1 = {},
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var logger = new Logger('@firebase/app');
+var logger = new index_cjs$1.Logger('@firebase/app');
 
 /**
  * @license
@@ -2679,15 +4097,15 @@ var FirebaseAppImpl = /** @class */ (function () {
         this.name_ = config.name;
         this.automaticDataCollectionEnabled_ =
             config.automaticDataCollectionEnabled || false;
-        this.options_ = deepCopy(options);
-        this.container = new ComponentContainer(config.name);
+        this.options_ = index_node_cjs.deepCopy(options);
+        this.container = new index_cjs.ComponentContainer(config.name);
         // add itself to container
-        this._addComponent(new Component('app', function () { return _this; }, "PUBLIC" /* PUBLIC */));
+        this._addComponent(new index_cjs.Component('app', function () { return _this; }, "PUBLIC" /* PUBLIC */));
         try {
             // populate ComponentContainer with existing components
-            for (var _b = __values(this.firebase_.INTERNAL.components.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
-                var component = _c.value;
-                this._addComponent(component);
+            for (var _b = tslib.__values(this.firebase_.INTERNAL.components.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                var component$1 = _c.value;
+                this._addComponent(component$1);
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
@@ -2755,7 +4173,7 @@ var FirebaseAppImpl = /** @class */ (function () {
      * @internal
      */
     FirebaseAppImpl.prototype._getService = function (name, instanceIdentifier) {
-        if (instanceIdentifier === void 0) { instanceIdentifier = DEFAULT_ENTRY_NAME$1; }
+        if (instanceIdentifier === void 0) { instanceIdentifier = DEFAULT_ENTRY_NAME; }
         this.checkDestroyed_();
         // getImmediate will always succeed because _getService is only called for registered components.
         return this.container.getProvider(name).getImmediate({
@@ -2773,7 +4191,7 @@ var FirebaseAppImpl = /** @class */ (function () {
      * @internal
      */
     FirebaseAppImpl.prototype._removeServiceInstance = function (name, instanceIdentifier) {
-        if (instanceIdentifier === void 0) { instanceIdentifier = DEFAULT_ENTRY_NAME$1; }
+        if (instanceIdentifier === void 0) { instanceIdentifier = DEFAULT_ENTRY_NAME; }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.container.getProvider(name).clearInstance(instanceIdentifier);
     };
@@ -2847,7 +4265,7 @@ function createFirebaseNamespaceCore(firebaseAppImpl) {
         // @ts-ignore
         app: app,
         registerVersion: registerVersion,
-        setLogLevel: setLogLevel,
+        setLogLevel: index_cjs$1.setLogLevel,
         onLog: onLog,
         // @ts-ignore
         apps: null,
@@ -2886,8 +4304,8 @@ function createFirebaseNamespaceCore(firebaseAppImpl) {
      * Get the App object for a given name (or DEFAULT).
      */
     function app(name) {
-        name = name || DEFAULT_ENTRY_NAME$1;
-        if (!contains(apps, name)) {
+        name = name || DEFAULT_ENTRY_NAME;
+        if (!index_node_cjs.contains(apps, name)) {
             throw ERROR_FACTORY.create("no-app" /* NO_APP */, { appName: name });
         }
         return apps[name];
@@ -2902,7 +4320,7 @@ function createFirebaseNamespaceCore(firebaseAppImpl) {
         }
         var config = rawConfig;
         if (config.name === undefined) {
-            config.name = DEFAULT_ENTRY_NAME$1;
+            config.name = DEFAULT_ENTRY_NAME;
         }
         var name = config.name;
         if (typeof name !== 'string' || !name) {
@@ -2910,7 +4328,7 @@ function createFirebaseNamespaceCore(firebaseAppImpl) {
                 appName: String(name)
             });
         }
-        if (contains(apps, name)) {
+        if (index_node_cjs.contains(apps, name)) {
             throw ERROR_FACTORY.create("duplicate-app" /* DUPLICATE_APP */, { appName: name });
         }
         var app = new firebaseAppImpl(options, config, namespace);
@@ -2954,7 +4372,7 @@ function createFirebaseNamespaceCore(firebaseAppImpl) {
             };
             // ... and a container for service-level properties.
             if (component.serviceProps !== undefined) {
-                deepExtend(serviceNamespace, component.serviceProps);
+                index_node_cjs.deepExtend(serviceNamespace, component.serviceProps);
             }
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             namespace[componentName] = serviceNamespace;
@@ -2975,7 +4393,7 @@ function createFirebaseNamespaceCore(firebaseAppImpl) {
         }
         try {
             // add the component to existing app instances
-            for (var _b = __values(Object.keys(apps)), _c = _b.next(); !_c.done; _c = _b.next()) {
+            for (var _b = tslib.__values(Object.keys(apps)), _c = _b.next(); !_c.done; _c = _b.next()) {
                 var appName = _c.value;
                 apps[appName]._addComponent(component);
             }
@@ -3018,7 +4436,7 @@ function createFirebaseNamespaceCore(firebaseAppImpl) {
             logger.warn(warning.join(' '));
             return;
         }
-        registerComponent(new Component(library + "-version", function () { return ({ library: library, version: version }); }, "VERSION" /* VERSION */));
+        registerComponent(new index_cjs.Component(library + "-version", function () { return ({ library: library, version: version }); }, "VERSION" /* VERSION */));
     }
     function onLog(logCallback, options) {
         if (logCallback !== null && typeof logCallback !== 'function') {
@@ -3026,7 +4444,7 @@ function createFirebaseNamespaceCore(firebaseAppImpl) {
                 appName: name
             });
         }
-        setUserLogHandler(logCallback, options);
+        index_cjs$1.setUserLogHandler(logCallback, options);
     }
     // Map the requested service to a registered service name
     // (used to map auth to serverAuth service when needed).
@@ -3065,18 +4483,18 @@ function createFirebaseNamespaceCore(firebaseAppImpl) {
  */
 function createFirebaseNamespace() {
     var namespace = createFirebaseNamespaceCore(FirebaseAppImpl);
-    namespace.INTERNAL = __assign(__assign({}, namespace.INTERNAL), { createFirebaseNamespace: createFirebaseNamespace,
+    namespace.INTERNAL = tslib.__assign(tslib.__assign({}, namespace.INTERNAL), { createFirebaseNamespace: createFirebaseNamespace,
         extendNamespace: extendNamespace,
-        createSubscribe: createSubscribe,
-        ErrorFactory: ErrorFactory,
-        deepExtend: deepExtend });
+        createSubscribe: index_node_cjs.createSubscribe,
+        ErrorFactory: index_node_cjs.ErrorFactory,
+        deepExtend: index_node_cjs.deepExtend });
     /**
      * Patch the top-level firebase namespace with additional properties.
      *
      * firebase.INTERNAL.extendNamespace()
      */
     function extendNamespace(props) {
-        deepExtend(namespace, props);
+        index_node_cjs.deepExtend(namespace, props);
     }
     return namespace;
 }
@@ -3153,7 +4571,7 @@ function isVersionServiceProvider(provider) {
  * limitations under the License.
  */
 function registerCoreComponents(firebase, variant) {
-    firebase.INTERNAL.registerComponent(new Component('platform-logger', function (container) { return new PlatformLoggerService(container); }, "PRIVATE" /* PRIVATE */));
+    firebase.INTERNAL.registerComponent(new index_cjs.Component('platform-logger', function (container) { return new PlatformLoggerService(container); }, "PRIVATE" /* PRIVATE */));
     // Register `app` package.
     firebase.registerVersion(name$1, version, variant);
     // Register platform SDK identifier (no version).
@@ -3176,38 +4594,32 @@ function registerCoreComponents(firebase, variant) {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// Firebase Lite detection test
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-if (isBrowser() && self.firebase !== undefined) {
-    logger.warn("\n    Warning: Firebase is already defined in the global scope. Please make sure\n    Firebase library is only loaded once.\n  ");
-    // eslint-disable-next-line
-    var sdkVersion = self.firebase.SDK_VERSION;
-    if (sdkVersion && sdkVersion.indexOf('LITE') >= 0) {
-        logger.warn("\n    Warning: You are trying to load Firebase while using Firebase Performance standalone script.\n    You should load Firebase Performance with this instance of Firebase to avoid loading duplicate code.\n    ");
+firebase.INTERNAL.extendNamespace({
+    INTERNAL: {
+        node: {
+            localStorage: new Storage__default['default'](null, { strict: true }),
+            sessionStorage: new Storage__default['default'](null, { strict: true }),
+            XMLHttpRequest: XMLHttpRequest$1.XMLHttpRequest
+        }
     }
-}
-var initializeApp = firebase.initializeApp;
-// TODO: This disable can be removed and the 'ignoreRestArgs' option added to
-// the no-explicit-any rule when ESlint releases it.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-firebase.initializeApp = function () {
-    var args = [];
-    for (var _i = 0; _i < arguments.length; _i++) {
-        args[_i] = arguments[_i];
-    }
-    // Environment check before initializing app
-    // Do the check in initializeApp, so people have a chance to disable it by setting logLevel
-    // in @firebase/logger
-    if (isNode()) {
-        logger.warn("\n      Warning: This is a browser-targeted Firebase bundle but it appears it is being\n      run in a Node environment.  If running in a Node environment, make sure you\n      are using the bundle specified by the \"main\" field in package.json.\n      \n      If you are using Webpack, you can specify \"main\" as the first item in\n      \"resolve.mainFields\":\n      https://webpack.js.org/configuration/resolve/#resolvemainfields\n      \n      If using Rollup, use the @rollup/plugin-node-resolve plugin and specify \"main\"\n      as the first item in \"mainFields\", e.g. ['main', 'module'].\n      https://github.com/rollup/@rollup/plugin-node-resolve\n      ");
-    }
-    return initializeApp.apply(undefined, args);
-};
+});
 var firebase$1 = firebase;
-registerCoreComponents(firebase$1);
+registerCoreComponents(firebase$1, 'node');
 
-var name$d = "firebase";
-var version$2 = "8.0.1";
+exports.default = firebase$1;
+exports.firebase = firebase$1;
+
+});
+
+unwrapExports(index_node_cjs$1);
+var index_node_cjs_1$1 = index_node_cjs$1.firebase;
+
+function _interopDefaultLegacy$1 (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
+
+var firebase__default = /*#__PURE__*/_interopDefaultLegacy$1(index_node_cjs$1);
+
+var name$1 = "firebase";
+var version = "8.0.1";
 
 /**
  * @license
@@ -3225,7 +4637,3144 @@ var version$2 = "8.0.1";
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-firebase$1.registerVersion(name$d, version$2, 'app');
+firebase__default['default'].registerVersion(name$1, version, 'app');
+
+var index_cjs$2 = firebase__default['default'];
+
+/**
+
+Streams in a WebSocket connection
+---------------------------------
+
+We model a WebSocket as two duplex streams: one stream is for the wire protocol
+over an I/O socket, and the other is for incoming/outgoing messages.
+
+
+                        +----------+      +---------+      +----------+
+    [1] write(chunk) -->| ~~~~~~~~ +----->| parse() +----->| ~~~~~~~~ +--> emit('data') [2]
+                        |          |      +----+----+      |          |
+                        |          |           |           |          |
+                        |    IO    |           | [5]       | Messages |
+                        |          |           V           |          |
+                        |          |      +---------+      |          |
+    [4] emit('data') <--+ ~~~~~~~~ |<-----+ frame() |<-----+ ~~~~~~~~ |<-- write(chunk) [3]
+                        +----------+      +---------+      +----------+
+
+
+Message transfer in each direction is simple: IO receives a byte stream [1] and
+sends this stream for parsing. The parser will periodically emit a complete
+message text on the Messages stream [2]. Similarly, when messages are written
+to the Messages stream [3], they are framed using the WebSocket wire format and
+emitted via IO [4].
+
+There is a feedback loop via [5] since some input from [1] will be things like
+ping, pong and close frames. In these cases the protocol responds by emitting
+responses directly back to [4] rather than emitting messages via [2].
+
+For the purposes of flow control, we consider the sources of each Readable
+stream to be as follows:
+
+* [2] receives input from [1]
+* [4] receives input from [1] and [3]
+
+The classes below express the relationships described above without prescribing
+anything about how parse() and frame() work, other than assuming they emit
+'data' events to the IO and Messages streams. They will work with any protocol
+driver having these two methods.
+**/
+
+
+var Stream = stream__default['default'].Stream;
+
+
+var IO = function(driver) {
+  this.readable = this.writable = true;
+  this._paused  = false;
+  this._driver  = driver;
+};
+util__default['default'].inherits(IO, Stream);
+
+// The IO pause() and resume() methods will be called when the socket we are
+// piping to gets backed up and drains. Since IO output [4] comes from IO input
+// [1] and Messages input [3], we need to tell both of those to return false
+// from write() when this stream is paused.
+
+IO.prototype.pause = function() {
+  this._paused = true;
+  this._driver.messages._paused = true;
+};
+
+IO.prototype.resume = function() {
+  this._paused = false;
+  this.emit('drain');
+
+  var messages = this._driver.messages;
+  messages._paused = false;
+  messages.emit('drain');
+};
+
+// When we receive input from a socket, send it to the parser and tell the
+// source whether to back off.
+IO.prototype.write = function(chunk) {
+  if (!this.writable) return false;
+  this._driver.parse(chunk);
+  return !this._paused;
+};
+
+// The IO end() method will be called when the socket piping into it emits
+// 'close' or 'end', i.e. the socket is closed. In this situation the Messages
+// stream will not emit any more data so we emit 'end'.
+IO.prototype.end = function(chunk) {
+  if (!this.writable) return;
+  if (chunk !== undefined) this.write(chunk);
+  this.writable = false;
+
+  var messages = this._driver.messages;
+  if (messages.readable) {
+    messages.readable = messages.writable = false;
+    messages.emit('end');
+  }
+};
+
+IO.prototype.destroy = function() {
+  this.end();
+};
+
+
+var Messages = function(driver) {
+  this.readable = this.writable = true;
+  this._paused  = false;
+  this._driver  = driver;
+};
+util__default['default'].inherits(Messages, Stream);
+
+// The Messages pause() and resume() methods will be called when the app that's
+// processing the messages gets backed up and drains. If we're emitting
+// messages too fast we should tell the source to slow down. Message output [2]
+// comes from IO input [1].
+
+Messages.prototype.pause = function() {
+  this._driver.io._paused = true;
+};
+
+Messages.prototype.resume = function() {
+  this._driver.io._paused = false;
+  this._driver.io.emit('drain');
+};
+
+// When we receive messages from the user, send them to the formatter and tell
+// the source whether to back off.
+Messages.prototype.write = function(message) {
+  if (!this.writable) return false;
+  if (typeof message === 'string') this._driver.text(message);
+  else this._driver.binary(message);
+  return !this._paused;
+};
+
+// The Messages end() method will be called when a stream piping into it emits
+// 'end'. Many streams may be piped into the WebSocket and one of them ending
+// does not mean the whole socket is done, so just process the input and move
+// on leaving the socket open.
+Messages.prototype.end = function(message) {
+  if (message !== undefined) this.write(message);
+};
+
+Messages.prototype.destroy = function() {};
+
+
+var IO_1 = IO;
+var Messages_1 = Messages;
+
+var streams = {
+	IO: IO_1,
+	Messages: Messages_1
+};
+
+var Headers = function() {
+  this.clear();
+};
+
+Headers.prototype.ALLOWED_DUPLICATES = ['set-cookie', 'set-cookie2', 'warning', 'www-authenticate'];
+
+Headers.prototype.clear = function() {
+  this._sent  = {};
+  this._lines = [];
+};
+
+Headers.prototype.set = function(name, value) {
+  if (value === undefined) return;
+
+  name = this._strip(name);
+  value = this._strip(value);
+
+  var key = name.toLowerCase();
+  if (!this._sent.hasOwnProperty(key) || this.ALLOWED_DUPLICATES.indexOf(key) >= 0) {
+    this._sent[key] = true;
+    this._lines.push(name + ': ' + value + '\r\n');
+  }
+};
+
+Headers.prototype.toString = function() {
+  return this._lines.join('');
+};
+
+Headers.prototype._strip = function(string) {
+  return string.toString().replace(/^ */, '').replace(/ *$/, '');
+};
+
+var headers = Headers;
+
+var StreamReader = function() {
+  this._queue     = [];
+  this._queueSize = 0;
+  this._offset    = 0;
+};
+
+StreamReader.prototype.put = function(buffer) {
+  if (!buffer || buffer.length === 0) return;
+  if (!buffer.copy) buffer = new Buffer(buffer);
+  this._queue.push(buffer);
+  this._queueSize += buffer.length;
+};
+
+StreamReader.prototype.read = function(length) {
+  if (length > this._queueSize) return null;
+  if (length === 0) return new Buffer(0);
+
+  this._queueSize -= length;
+
+  var queue  = this._queue,
+      remain = length,
+      first  = queue[0],
+      buffers, buffer;
+
+  if (first.length >= length) {
+    if (first.length === length) {
+      return queue.shift();
+    } else {
+      buffer = first.slice(0, length);
+      queue[0] = first.slice(length);
+      return buffer;
+    }
+  }
+
+  for (var i = 0, n = queue.length; i < n; i++) {
+    if (remain < queue[i].length) break;
+    remain -= queue[i].length;
+  }
+  buffers = queue.splice(0, i);
+
+  if (remain > 0 && queue.length > 0) {
+    buffers.push(queue[0].slice(0, remain));
+    queue[0] = queue[0].slice(remain);
+  }
+  return this._concat(buffers, length);
+};
+
+StreamReader.prototype.eachByte = function(callback, context) {
+  var buffer, n, index;
+
+  while (this._queue.length > 0) {
+    buffer = this._queue[0];
+    n = buffer.length;
+
+    while (this._offset < n) {
+      index = this._offset;
+      this._offset += 1;
+      callback.call(context, buffer[index]);
+    }
+    this._offset = 0;
+    this._queue.shift();
+  }
+};
+
+StreamReader.prototype._concat = function(buffers, length) {
+  if (Buffer.concat) return Buffer.concat(buffers, length);
+
+  var buffer = new Buffer(length),
+      offset = 0;
+
+  for (var i = 0, n = buffers.length; i < n; i++) {
+    buffers[i].copy(buffer, offset);
+    offset += buffers[i].length;
+  }
+  return buffer;
+};
+
+var stream_reader = StreamReader;
+
+var Emitter = events__default['default'].EventEmitter;
+
+var Base = function(request, url, options) {
+  Emitter.call(this);
+  Base.validateOptions(options || {}, ['maxLength', 'masking', 'requireMasking', 'protocols']);
+
+  this._request   = request;
+  this._reader    = new stream_reader();
+  this._options   = options || {};
+  this._maxLength = this._options.maxLength || this.MAX_LENGTH;
+  this._headers   = new headers();
+  this.__queue    = [];
+  this.readyState = 0;
+  this.url        = url;
+
+  this.io = new streams.IO(this);
+  this.messages = new streams.Messages(this);
+  this._bindEventListeners();
+};
+util__default['default'].inherits(Base, Emitter);
+
+Base.validateOptions = function(options, validKeys) {
+  for (var key in options) {
+    if (validKeys.indexOf(key) < 0)
+      throw new Error('Unrecognized option: ' + key);
+  }
+};
+
+var instance = {
+  // This is 64MB, small enough for an average VPS to handle without
+  // crashing from process out of memory
+  MAX_LENGTH: 0x3ffffff,
+
+  STATES: ['connecting', 'open', 'closing', 'closed'],
+
+  _bindEventListeners: function() {
+    var self = this;
+
+    // Protocol errors are informational and do not have to be handled
+    this.messages.on('error', function() {});
+
+    this.on('message', function(event) {
+      var messages = self.messages;
+      if (messages.readable) messages.emit('data', event.data);
+    });
+
+    this.on('error', function(error) {
+      var messages = self.messages;
+      if (messages.readable) messages.emit('error', error);
+    });
+
+    this.on('close', function() {
+      var messages = self.messages;
+      if (!messages.readable) return;
+      messages.readable = messages.writable = false;
+      messages.emit('end');
+    });
+  },
+
+  getState: function() {
+    return this.STATES[this.readyState] || null;
+  },
+
+  addExtension: function(extension) {
+    return false;
+  },
+
+  setHeader: function(name, value) {
+    if (this.readyState > 0) return false;
+    this._headers.set(name, value);
+    return true;
+  },
+
+  start: function() {
+    if (this.readyState !== 0) return false;
+    var response = this._handshakeResponse();
+    if (!response) return false;
+    this._write(response);
+    if (this._stage !== -1) this._open();
+    return true;
+  },
+
+  text: function(message) {
+    return this.frame(message);
+  },
+
+  binary: function(message) {
+    return false;
+  },
+
+  ping: function() {
+    return false;
+  },
+
+  pong: function() {
+      return false;
+  },
+
+  close: function(reason, code) {
+    if (this.readyState !== 1) return false;
+    this.readyState = 3;
+    this.emit('close', new Base.CloseEvent(null, null));
+    return true;
+  },
+
+  _open: function() {
+    this.readyState = 1;
+    this.__queue.forEach(function(args) { this.frame.apply(this, args); }, this);
+    this.__queue = [];
+    this.emit('open', new Base.OpenEvent());
+  },
+
+  _queue: function(message) {
+    this.__queue.push(message);
+    return true;
+  },
+
+  _write: function(chunk) {
+    var io = this.io;
+    if (io.readable) io.emit('data', chunk);
+  }
+};
+
+for (var key in instance)
+  Base.prototype[key] = instance[key];
+
+
+Base.ConnectEvent = function() {};
+
+Base.OpenEvent = function() {};
+
+Base.CloseEvent = function(code, reason) {
+  this.code   = code;
+  this.reason = reason;
+};
+
+Base.MessageEvent = function(data) {
+  this.data = data;
+};
+
+Base.PingEvent = function(data) {
+  this.data = data;
+};
+
+Base.PongEvent = function(data) {
+  this.data = data;
+};
+
+var base = Base;
+
+var httpParser = createCommonjsModule(function (module, exports) {
+/*jshint node:true */
+
+
+
+exports.HTTPParser = HTTPParser;
+function HTTPParser(type) {
+  assert__default['default'].ok(type === HTTPParser.REQUEST || type === HTTPParser.RESPONSE);
+  this.type = type;
+  this.state = type + '_LINE';
+  this.info = {
+    headers: [],
+    upgrade: false
+  };
+  this.trailers = [];
+  this.line = '';
+  this.isChunked = false;
+  this.connection = '';
+  this.headerSize = 0; // for preventing too big headers
+  this.body_bytes = null;
+  this.isUserCall = false;
+  this.hadError = false;
+}
+HTTPParser.encoding = 'ascii';
+HTTPParser.maxHeaderSize = 80 * 1024; // maxHeaderSize (in bytes) is configurable, but 80kb by default;
+HTTPParser.REQUEST = 'REQUEST';
+HTTPParser.RESPONSE = 'RESPONSE';
+var kOnHeaders = HTTPParser.kOnHeaders = 0;
+var kOnHeadersComplete = HTTPParser.kOnHeadersComplete = 1;
+var kOnBody = HTTPParser.kOnBody = 2;
+var kOnMessageComplete = HTTPParser.kOnMessageComplete = 3;
+
+// Some handler stubs, needed for compatibility
+HTTPParser.prototype[kOnHeaders] =
+HTTPParser.prototype[kOnHeadersComplete] =
+HTTPParser.prototype[kOnBody] =
+HTTPParser.prototype[kOnMessageComplete] = function () {};
+
+var compatMode0_12 = true;
+Object.defineProperty(HTTPParser, 'kOnExecute', {
+    get: function () {
+      // hack for backward compatibility
+      compatMode0_12 = false;
+      return 4;
+    }
+  });
+
+var methods = exports.methods = HTTPParser.methods = [
+  'DELETE',
+  'GET',
+  'HEAD',
+  'POST',
+  'PUT',
+  'CONNECT',
+  'OPTIONS',
+  'TRACE',
+  'COPY',
+  'LOCK',
+  'MKCOL',
+  'MOVE',
+  'PROPFIND',
+  'PROPPATCH',
+  'SEARCH',
+  'UNLOCK',
+  'BIND',
+  'REBIND',
+  'UNBIND',
+  'ACL',
+  'REPORT',
+  'MKACTIVITY',
+  'CHECKOUT',
+  'MERGE',
+  'M-SEARCH',
+  'NOTIFY',
+  'SUBSCRIBE',
+  'UNSUBSCRIBE',
+  'PATCH',
+  'PURGE',
+  'MKCALENDAR',
+  'LINK',
+  'UNLINK'
+];
+var method_connect = methods.indexOf('CONNECT');
+HTTPParser.prototype.reinitialize = HTTPParser;
+HTTPParser.prototype.close =
+HTTPParser.prototype.pause =
+HTTPParser.prototype.resume =
+HTTPParser.prototype.free = function () {};
+HTTPParser.prototype._compatMode0_11 = false;
+HTTPParser.prototype.getAsyncId = function() { return 0; };
+
+var headerState = {
+  REQUEST_LINE: true,
+  RESPONSE_LINE: true,
+  HEADER: true
+};
+HTTPParser.prototype.execute = function (chunk, start, length) {
+  if (!(this instanceof HTTPParser)) {
+    throw new TypeError('not a HTTPParser');
+  }
+
+  // backward compat to node < 0.11.4
+  // Note: the start and length params were removed in newer version
+  start = start || 0;
+  length = typeof length === 'number' ? length : chunk.length;
+
+  this.chunk = chunk;
+  this.offset = start;
+  var end = this.end = start + length;
+  try {
+    while (this.offset < end) {
+      if (this[this.state]()) {
+        break;
+      }
+    }
+  } catch (err) {
+    if (this.isUserCall) {
+      throw err;
+    }
+    this.hadError = true;
+    return err;
+  }
+  this.chunk = null;
+  length = this.offset - start;
+  if (headerState[this.state]) {
+    this.headerSize += length;
+    if (this.headerSize > HTTPParser.maxHeaderSize) {
+      return new Error('max header size exceeded');
+    }
+  }
+  return length;
+};
+
+var stateFinishAllowed = {
+  REQUEST_LINE: true,
+  RESPONSE_LINE: true,
+  BODY_RAW: true
+};
+HTTPParser.prototype.finish = function () {
+  if (this.hadError) {
+    return;
+  }
+  if (!stateFinishAllowed[this.state]) {
+    return new Error('invalid state for EOF');
+  }
+  if (this.state === 'BODY_RAW') {
+    this.userCall()(this[kOnMessageComplete]());
+  }
+};
+
+// These three methods are used for an internal speed optimization, and it also
+// works if theses are noops. Basically consume() asks us to read the bytes
+// ourselves, but if we don't do it we get them through execute().
+HTTPParser.prototype.consume =
+HTTPParser.prototype.unconsume =
+HTTPParser.prototype.getCurrentBuffer = function () {};
+
+//For correct error handling - see HTTPParser#execute
+//Usage: this.userCall()(userFunction('arg'));
+HTTPParser.prototype.userCall = function () {
+  this.isUserCall = true;
+  var self = this;
+  return function (ret) {
+    self.isUserCall = false;
+    return ret;
+  };
+};
+
+HTTPParser.prototype.nextRequest = function () {
+  this.userCall()(this[kOnMessageComplete]());
+  this.reinitialize(this.type);
+};
+
+HTTPParser.prototype.consumeLine = function () {
+  var end = this.end,
+      chunk = this.chunk;
+  for (var i = this.offset; i < end; i++) {
+    if (chunk[i] === 0x0a) { // \n
+      var line = this.line + chunk.toString(HTTPParser.encoding, this.offset, i);
+      if (line.charAt(line.length - 1) === '\r') {
+        line = line.substr(0, line.length - 1);
+      }
+      this.line = '';
+      this.offset = i + 1;
+      return line;
+    }
+  }
+  //line split over multiple chunks
+  this.line += chunk.toString(HTTPParser.encoding, this.offset, this.end);
+  this.offset = this.end;
+};
+
+var headerExp = /^([^: \t]+):[ \t]*((?:.*[^ \t])|)/;
+var headerContinueExp = /^[ \t]+(.*[^ \t])/;
+HTTPParser.prototype.parseHeader = function (line, headers) {
+  if (line.indexOf('\r') !== -1) {
+    throw parseErrorCode('HPE_LF_EXPECTED');
+  }
+
+  var match = headerExp.exec(line);
+  var k = match && match[1];
+  if (k) { // skip empty string (malformed header)
+    headers.push(k);
+    headers.push(match[2]);
+  } else {
+    var matchContinue = headerContinueExp.exec(line);
+    if (matchContinue && headers.length) {
+      if (headers[headers.length - 1]) {
+        headers[headers.length - 1] += ' ';
+      }
+      headers[headers.length - 1] += matchContinue[1];
+    }
+  }
+};
+
+var requestExp = /^([A-Z-]+) ([^ ]+) HTTP\/(\d)\.(\d)$/;
+HTTPParser.prototype.REQUEST_LINE = function () {
+  var line = this.consumeLine();
+  if (!line) {
+    return;
+  }
+  var match = requestExp.exec(line);
+  if (match === null) {
+    throw parseErrorCode('HPE_INVALID_CONSTANT');
+  }
+  this.info.method = this._compatMode0_11 ? match[1] : methods.indexOf(match[1]);
+  if (this.info.method === -1) {
+    throw new Error('invalid request method');
+  }
+  this.info.url = match[2];
+  this.info.versionMajor = +match[3];
+  this.info.versionMinor = +match[4];
+  this.body_bytes = 0;
+  this.state = 'HEADER';
+};
+
+var responseExp = /^HTTP\/(\d)\.(\d) (\d{3}) ?(.*)$/;
+HTTPParser.prototype.RESPONSE_LINE = function () {
+  var line = this.consumeLine();
+  if (!line) {
+    return;
+  }
+  var match = responseExp.exec(line);
+  if (match === null) {
+    throw parseErrorCode('HPE_INVALID_CONSTANT');
+  }
+  this.info.versionMajor = +match[1];
+  this.info.versionMinor = +match[2];
+  var statusCode = this.info.statusCode = +match[3];
+  this.info.statusMessage = match[4];
+  // Implied zero length.
+  if ((statusCode / 100 | 0) === 1 || statusCode === 204 || statusCode === 304) {
+    this.body_bytes = 0;
+  }
+  this.state = 'HEADER';
+};
+
+HTTPParser.prototype.shouldKeepAlive = function () {
+  if (this.info.versionMajor > 0 && this.info.versionMinor > 0) {
+    if (this.connection.indexOf('close') !== -1) {
+      return false;
+    }
+  } else if (this.connection.indexOf('keep-alive') === -1) {
+    return false;
+  }
+  if (this.body_bytes !== null || this.isChunked) { // || skipBody
+    return true;
+  }
+  return false;
+};
+
+HTTPParser.prototype.HEADER = function () {
+  var line = this.consumeLine();
+  if (line === undefined) {
+    return;
+  }
+  var info = this.info;
+  if (line) {
+    this.parseHeader(line, info.headers);
+  } else {
+    var headers = info.headers;
+    var hasContentLength = false;
+    var currentContentLengthValue;
+    var hasUpgradeHeader = false;
+    for (var i = 0; i < headers.length; i += 2) {
+      switch (headers[i].toLowerCase()) {
+        case 'transfer-encoding':
+          this.isChunked = headers[i + 1].toLowerCase() === 'chunked';
+          break;
+        case 'content-length':
+          currentContentLengthValue = +headers[i + 1];
+          if (hasContentLength) {
+            // Fix duplicate Content-Length header with same values.
+            // Throw error only if values are different.
+            // Known issues:
+            // https://github.com/request/request/issues/2091#issuecomment-328715113
+            // https://github.com/nodejs/node/issues/6517#issuecomment-216263771
+            if (currentContentLengthValue !== this.body_bytes) {
+              throw parseErrorCode('HPE_UNEXPECTED_CONTENT_LENGTH');
+            }
+          } else {
+            hasContentLength = true;
+            this.body_bytes = currentContentLengthValue;
+          }
+          break;
+        case 'connection':
+          this.connection += headers[i + 1].toLowerCase();
+          break;
+        case 'upgrade':
+          hasUpgradeHeader = true;
+          break;
+      }
+    }
+
+    // if both isChunked and hasContentLength, isChunked wins
+    // This is required so the body is parsed using the chunked method, and matches
+    // Chrome's behavior.  We could, maybe, ignore them both (would get chunked
+    // encoding into the body), and/or disable shouldKeepAlive to be more
+    // resilient.
+    if (this.isChunked && hasContentLength) {
+      hasContentLength = false;
+      this.body_bytes = null;
+    }
+
+    // Logic from https://github.com/nodejs/http-parser/blob/921d5585515a153fa00e411cf144280c59b41f90/http_parser.c#L1727-L1737
+    // "For responses, "Upgrade: foo" and "Connection: upgrade" are
+    //   mandatory only when it is a 101 Switching Protocols response,
+    //   otherwise it is purely informational, to announce support.
+    if (hasUpgradeHeader && this.connection.indexOf('upgrade') != -1) {
+      info.upgrade = this.type === HTTPParser.REQUEST || info.statusCode === 101;
+    } else {
+      info.upgrade = info.method === method_connect;
+    }
+
+    info.shouldKeepAlive = this.shouldKeepAlive();
+    //problem which also exists in original node: we should know skipBody before calling onHeadersComplete
+    var skipBody;
+    if (compatMode0_12) {
+      skipBody = this.userCall()(this[kOnHeadersComplete](info));
+    } else {
+      skipBody = this.userCall()(this[kOnHeadersComplete](info.versionMajor,
+          info.versionMinor, info.headers, info.method, info.url, info.statusCode,
+          info.statusMessage, info.upgrade, info.shouldKeepAlive));
+    }
+    if (skipBody === 2) {
+      this.nextRequest();
+      return true;
+    } else if (this.isChunked && !skipBody) {
+      this.state = 'BODY_CHUNKHEAD';
+    } else if (skipBody || this.body_bytes === 0) {
+      this.nextRequest();
+      // For older versions of node (v6.x and older?), that return skipBody=1 or skipBody=true,
+      //   need this "return true;" if it's an upgrade request.
+      return info.upgrade;
+    } else if (this.body_bytes === null) {
+      this.state = 'BODY_RAW';
+    } else {
+      this.state = 'BODY_SIZED';
+    }
+  }
+};
+
+HTTPParser.prototype.BODY_CHUNKHEAD = function () {
+  var line = this.consumeLine();
+  if (line === undefined) {
+    return;
+  }
+  this.body_bytes = parseInt(line, 16);
+  if (!this.body_bytes) {
+    this.state = 'BODY_CHUNKTRAILERS';
+  } else {
+    this.state = 'BODY_CHUNK';
+  }
+};
+
+HTTPParser.prototype.BODY_CHUNK = function () {
+  var length = Math.min(this.end - this.offset, this.body_bytes);
+  this.userCall()(this[kOnBody](this.chunk, this.offset, length));
+  this.offset += length;
+  this.body_bytes -= length;
+  if (!this.body_bytes) {
+    this.state = 'BODY_CHUNKEMPTYLINE';
+  }
+};
+
+HTTPParser.prototype.BODY_CHUNKEMPTYLINE = function () {
+  var line = this.consumeLine();
+  if (line === undefined) {
+    return;
+  }
+  assert__default['default'].equal(line, '');
+  this.state = 'BODY_CHUNKHEAD';
+};
+
+HTTPParser.prototype.BODY_CHUNKTRAILERS = function () {
+  var line = this.consumeLine();
+  if (line === undefined) {
+    return;
+  }
+  if (line) {
+    this.parseHeader(line, this.trailers);
+  } else {
+    if (this.trailers.length) {
+      this.userCall()(this[kOnHeaders](this.trailers, ''));
+    }
+    this.nextRequest();
+  }
+};
+
+HTTPParser.prototype.BODY_RAW = function () {
+  var length = this.end - this.offset;
+  this.userCall()(this[kOnBody](this.chunk, this.offset, length));
+  this.offset = this.end;
+};
+
+HTTPParser.prototype.BODY_SIZED = function () {
+  var length = Math.min(this.end - this.offset, this.body_bytes);
+  this.userCall()(this[kOnBody](this.chunk, this.offset, length));
+  this.offset += length;
+  this.body_bytes -= length;
+  if (!this.body_bytes) {
+    this.nextRequest();
+  }
+};
+
+// backward compat to node < 0.11.6
+['Headers', 'HeadersComplete', 'Body', 'MessageComplete'].forEach(function (name) {
+  var k = HTTPParser['kOn' + name];
+  Object.defineProperty(HTTPParser.prototype, 'on' + name, {
+    get: function () {
+      return this[k];
+    },
+    set: function (to) {
+      // hack for backward compatibility
+      this._compatMode0_11 = true;
+      method_connect = 'CONNECT';
+      return (this[k] = to);
+    }
+  });
+});
+
+function parseErrorCode(code) {
+  var err = new Error('Parse Error');
+  err.code = code;
+  return err;
+}
+});
+var httpParser_1 = httpParser.HTTPParser;
+var httpParser_2 = httpParser.methods;
+
+var NodeHTTPParser = httpParser.HTTPParser;
+
+var VERSION = process.version.match(/[0-9]+/g).map(function(n) { return parseInt(n, 10) });
+
+var TYPES = {
+  request:  NodeHTTPParser.REQUEST  || 'request',
+  response: NodeHTTPParser.RESPONSE || 'response'
+};
+
+var HttpParser = function(type) {
+  this._type     = type;
+  this._parser   = new NodeHTTPParser(TYPES[type]);
+  this._complete = false;
+  this.headers   = {};
+
+  var current = null,
+      self    = this;
+
+  this._parser.onHeaderField = function(b, start, length) {
+    current = b.toString('utf8', start, start + length).toLowerCase();
+  };
+
+  this._parser.onHeaderValue = function(b, start, length) {
+    var value = b.toString('utf8', start, start + length);
+
+    if (self.headers.hasOwnProperty(current))
+      self.headers[current] += ', ' + value;
+    else
+      self.headers[current] = value;
+  };
+
+  this._parser.onHeadersComplete = this._parser[NodeHTTPParser.kOnHeadersComplete] =
+  function(majorVersion, minorVersion, headers, method, pathname, statusCode) {
+    var info = arguments[0];
+
+    if (typeof info === 'object') {
+      method     = info.method;
+      pathname   = info.url;
+      statusCode = info.statusCode;
+      headers    = info.headers;
+    }
+
+    self.method     = (typeof method === 'number') ? HttpParser.METHODS[method] : method;
+    self.statusCode = statusCode;
+    self.url        = pathname;
+
+    if (!headers) return;
+
+    for (var i = 0, n = headers.length, key, value; i < n; i += 2) {
+      key   = headers[i].toLowerCase();
+      value = headers[i+1];
+      if (self.headers.hasOwnProperty(key))
+        self.headers[key] += ', ' + value;
+      else
+        self.headers[key] = value;
+    }
+
+    self._complete = true;
+  };
+};
+
+HttpParser.METHODS = {
+  0:  'DELETE',
+  1:  'GET',
+  2:  'HEAD',
+  3:  'POST',
+  4:  'PUT',
+  5:  'CONNECT',
+  6:  'OPTIONS',
+  7:  'TRACE',
+  8:  'COPY',
+  9:  'LOCK',
+  10: 'MKCOL',
+  11: 'MOVE',
+  12: 'PROPFIND',
+  13: 'PROPPATCH',
+  14: 'SEARCH',
+  15: 'UNLOCK',
+  16: 'BIND',
+  17: 'REBIND',
+  18: 'UNBIND',
+  19: 'ACL',
+  20: 'REPORT',
+  21: 'MKACTIVITY',
+  22: 'CHECKOUT',
+  23: 'MERGE',
+  24: 'M-SEARCH',
+  25: 'NOTIFY',
+  26: 'SUBSCRIBE',
+  27: 'UNSUBSCRIBE',
+  28: 'PATCH',
+  29: 'PURGE',
+  30: 'MKCALENDAR',
+  31: 'LINK',
+  32: 'UNLINK'
+};
+
+if (VERSION[0] === 0 && VERSION[1] === 12) {
+  HttpParser.METHODS[16] = 'REPORT';
+  HttpParser.METHODS[17] = 'MKACTIVITY';
+  HttpParser.METHODS[18] = 'CHECKOUT';
+  HttpParser.METHODS[19] = 'MERGE';
+  HttpParser.METHODS[20] = 'M-SEARCH';
+  HttpParser.METHODS[21] = 'NOTIFY';
+  HttpParser.METHODS[22] = 'SUBSCRIBE';
+  HttpParser.METHODS[23] = 'UNSUBSCRIBE';
+  HttpParser.METHODS[24] = 'PATCH';
+  HttpParser.METHODS[25] = 'PURGE';
+}
+
+HttpParser.prototype.isComplete = function() {
+  return this._complete;
+};
+
+HttpParser.prototype.parse = function(chunk) {
+  var consumed = this._parser.execute(chunk, 0, chunk.length);
+
+  if (typeof consumed !== 'number') {
+    this.error     = consumed;
+    this._complete = true;
+    return;
+  }
+
+  if (VERSION[0] === 0 && VERSION[1] < 6) consumed += 1;
+
+  if (this._complete)
+    this.body = (consumed < chunk.length)
+              ? chunk.slice(consumed)
+              : new Buffer(0);
+};
+
+var http_parser = HttpParser;
+
+var TOKEN    = /([!#\$%&'\*\+\-\.\^_`\|~0-9A-Za-z]+)/,
+    NOTOKEN  = /([^!#\$%&'\*\+\-\.\^_`\|~0-9A-Za-z])/g,
+    QUOTED   = /"((?:\\[\x00-\x7f]|[^\x00-\x08\x0a-\x1f\x7f"])*)"/,
+    PARAM    = new RegExp(TOKEN.source + '(?:=(?:' + TOKEN.source + '|' + QUOTED.source + '))?'),
+    EXT      = new RegExp(TOKEN.source + '(?: *; *' + PARAM.source + ')*', 'g'),
+    EXT_LIST = new RegExp('^' + EXT.source + '(?: *, *' + EXT.source + ')*$'),
+    NUMBER   = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/;
+
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+
+var Parser = {
+  parseHeader: function(header) {
+    var offers = new Offers();
+    if (header === '' || header === undefined) return offers;
+
+    if (!EXT_LIST.test(header))
+      throw new SyntaxError('Invalid Sec-WebSocket-Extensions header: ' + header);
+
+    var values = header.match(EXT);
+
+    values.forEach(function(value) {
+      var params = value.match(new RegExp(PARAM.source, 'g')),
+          name   = params.shift(),
+          offer  = {};
+
+      params.forEach(function(param) {
+        var args = param.match(PARAM), key = args[1], data;
+
+        if (args[2] !== undefined) {
+          data = args[2];
+        } else if (args[3] !== undefined) {
+          data = args[3].replace(/\\/g, '');
+        } else {
+          data = true;
+        }
+        if (NUMBER.test(data)) data = parseFloat(data);
+
+        if (hasOwnProperty.call(offer, key)) {
+          offer[key] = [].concat(offer[key]);
+          offer[key].push(data);
+        } else {
+          offer[key] = data;
+        }
+      }, this);
+      offers.push(name, offer);
+    }, this);
+
+    return offers;
+  },
+
+  serializeParams: function(name, params) {
+    var values = [];
+
+    var print = function(key, value) {
+      if (value instanceof Array) {
+        value.forEach(function(v) { print(key, v); });
+      } else if (value === true) {
+        values.push(key);
+      } else if (typeof value === 'number') {
+        values.push(key + '=' + value);
+      } else if (NOTOKEN.test(value)) {
+        values.push(key + '="' + value.replace(/"/g, '\\"') + '"');
+      } else {
+        values.push(key + '=' + value);
+      }
+    };
+
+    for (var key in params) print(key, params[key]);
+
+    return [name].concat(values).join('; ');
+  }
+};
+
+var Offers = function() {
+  this._byName  = {};
+  this._inOrder = [];
+};
+
+Offers.prototype.push = function(name, params) {
+  if (!hasOwnProperty.call(this._byName, name))
+    this._byName[name] = [];
+
+  this._byName[name].push(params);
+  this._inOrder.push({name: name, params: params});
+};
+
+Offers.prototype.eachOffer = function(callback, context) {
+  var list = this._inOrder;
+  for (var i = 0, n = list.length; i < n; i++)
+    callback.call(context, list[i].name, list[i].params);
+};
+
+Offers.prototype.byName = function(name) {
+  return this._byName[name] || [];
+};
+
+Offers.prototype.toArray = function() {
+  return this._inOrder.slice();
+};
+
+var parser = Parser;
+
+var RingBuffer = function(bufferSize) {
+  this._bufferSize = bufferSize;
+  this.clear();
+};
+
+RingBuffer.prototype.clear = function() {
+  this._buffer     = new Array(this._bufferSize);
+  this._ringOffset = 0;
+  this._ringSize   = this._bufferSize;
+  this._head       = 0;
+  this._tail       = 0;
+  this.length      = 0;
+};
+
+RingBuffer.prototype.push = function(value) {
+  var expandBuffer = false,
+      expandRing   = false;
+
+  if (this._ringSize < this._bufferSize) {
+    expandBuffer = (this._tail === 0);
+  } else if (this._ringOffset === this._ringSize) {
+    expandBuffer = true;
+    expandRing   = (this._tail === 0);
+  }
+
+  if (expandBuffer) {
+    this._tail       = this._bufferSize;
+    this._buffer     = this._buffer.concat(new Array(this._bufferSize));
+    this._bufferSize = this._buffer.length;
+
+    if (expandRing)
+      this._ringSize = this._bufferSize;
+  }
+
+  this._buffer[this._tail] = value;
+  this.length += 1;
+  if (this._tail < this._ringSize) this._ringOffset += 1;
+  this._tail = (this._tail + 1) % this._bufferSize;
+};
+
+RingBuffer.prototype.peek = function() {
+  if (this.length === 0) return void 0;
+  return this._buffer[this._head];
+};
+
+RingBuffer.prototype.shift = function() {
+  if (this.length === 0) return void 0;
+
+  var value = this._buffer[this._head];
+  this._buffer[this._head] = void 0;
+  this.length -= 1;
+  this._ringOffset -= 1;
+
+  if (this._ringOffset === 0 && this.length > 0) {
+    this._head       = this._ringSize;
+    this._ringOffset = this.length;
+    this._ringSize   = this._bufferSize;
+  } else {
+    this._head = (this._head + 1) % this._ringSize;
+  }
+  return value;
+};
+
+var ring_buffer = RingBuffer;
+
+var Functor = function(session, method) {
+  this._session = session;
+  this._method  = method;
+  this._queue   = new ring_buffer(Functor.QUEUE_SIZE);
+  this._stopped = false;
+  this.pending  = 0;
+};
+
+Functor.QUEUE_SIZE = 8;
+
+Functor.prototype.call = function(error, message, callback, context) {
+  if (this._stopped) return;
+
+  var record = {error: error, message: message, callback: callback, context: context, done: false},
+      called = false,
+      self   = this;
+
+  this._queue.push(record);
+
+  if (record.error) {
+    record.done = true;
+    this._stop();
+    return this._flushQueue();
+  }
+
+  var handler = function(err, msg) {
+    if (!(called ^ (called = true))) return;
+
+    if (err) {
+      self._stop();
+      record.error   = err;
+      record.message = null;
+    } else {
+      record.message = msg;
+    }
+
+    record.done = true;
+    self._flushQueue();
+  };
+
+  try {
+    this._session[this._method](message, handler);
+  } catch (err) {
+    handler(err);
+  }
+};
+
+Functor.prototype._stop = function() {
+  this.pending  = this._queue.length;
+  this._stopped = true;
+};
+
+Functor.prototype._flushQueue = function() {
+  var queue = this._queue, record;
+
+  while (queue.length > 0 && queue.peek().done) {
+    record = queue.shift();
+    if (record.error) {
+      this.pending = 0;
+      queue.clear();
+    } else {
+      this.pending -= 1;
+    }
+    record.callback.call(record.context, record.error, record.message);
+  }
+};
+
+var functor = Functor;
+
+var Pledge = function() {
+  this._complete  = false;
+  this._callbacks = new ring_buffer(Pledge.QUEUE_SIZE);
+};
+
+Pledge.QUEUE_SIZE = 4;
+
+Pledge.all = function(list) {
+  var pledge  = new Pledge(),
+      pending = list.length,
+      n       = pending;
+
+  if (pending === 0) pledge.done();
+
+  while (n--) list[n].then(function() {
+    pending -= 1;
+    if (pending === 0) pledge.done();
+  });
+  return pledge;
+};
+
+Pledge.prototype.then = function(callback) {
+  if (this._complete) callback();
+  else this._callbacks.push(callback);
+};
+
+Pledge.prototype.done = function() {
+  this._complete = true;
+  var callbacks = this._callbacks, callback;
+  while (callback = callbacks.shift()) callback();
+};
+
+var pledge = Pledge;
+
+var Cell = function(tuple) {
+  this._ext     = tuple[0];
+  this._session = tuple[1];
+
+  this._functors = {
+    incoming: new functor(this._session, 'processIncomingMessage'),
+    outgoing: new functor(this._session, 'processOutgoingMessage')
+  };
+};
+
+Cell.prototype.pending = function(direction) {
+  var functor = this._functors[direction];
+  if (!functor._stopped) functor.pending += 1;
+};
+
+Cell.prototype.incoming = function(error, message, callback, context) {
+  this._exec('incoming', error, message, callback, context);
+};
+
+Cell.prototype.outgoing = function(error, message, callback, context) {
+  this._exec('outgoing', error, message, callback, context);
+};
+
+Cell.prototype.close = function() {
+  this._closed = this._closed || new pledge();
+  this._doClose();
+  return this._closed;
+};
+
+Cell.prototype._exec = function(direction, error, message, callback, context) {
+  this._functors[direction].call(error, message, function(err, msg) {
+    if (err) err.message = this._ext.name + ': ' + err.message;
+    callback.call(context, err, msg);
+    this._doClose();
+  }, this);
+};
+
+Cell.prototype._doClose = function() {
+  var fin  = this._functors.incoming,
+      fout = this._functors.outgoing;
+
+  if (!this._closed || fin.pending + fout.pending !== 0) return;
+  if (this._session) this._session.close();
+  this._session = null;
+  this._closed.done();
+};
+
+var cell = Cell;
+
+var Pipeline = function(sessions) {
+  this._cells   = sessions.map(function(session) { return new cell(session) });
+  this._stopped = {incoming: false, outgoing: false};
+};
+
+Pipeline.prototype.processIncomingMessage = function(message, callback, context) {
+  if (this._stopped.incoming) return;
+  this._loop('incoming', this._cells.length - 1, -1, -1, message, callback, context);
+};
+
+Pipeline.prototype.processOutgoingMessage = function(message, callback, context) {
+  if (this._stopped.outgoing) return;
+  this._loop('outgoing', 0, this._cells.length, 1, message, callback, context);
+};
+
+Pipeline.prototype.close = function(callback, context) {
+  this._stopped = {incoming: true, outgoing: true};
+
+  var closed = this._cells.map(function(a) { return a.close() });
+  if (callback)
+    pledge.all(closed).then(function() { callback.call(context); });
+};
+
+Pipeline.prototype._loop = function(direction, start, end, step, message, callback, context) {
+  var cells = this._cells,
+      n     = cells.length,
+      self  = this;
+
+  while (n--) cells[n].pending(direction);
+
+  var pipe = function(index, error, msg) {
+    if (index === end) return callback.call(context, error, msg);
+
+    cells[index][direction](error, msg, function(err, m) {
+      if (err) self._stopped[direction] = true;
+      pipe(index + step, err, m);
+    });
+  };
+  pipe(start, null, message);
+};
+
+var pipeline = Pipeline;
+
+var Extensions = function() {
+  this._rsv1 = this._rsv2 = this._rsv3 = null;
+
+  this._byName   = {};
+  this._inOrder  = [];
+  this._sessions = [];
+  this._index    = {};
+};
+
+Extensions.MESSAGE_OPCODES = [1, 2];
+
+var instance$1 = {
+  add: function(ext) {
+    if (typeof ext.name !== 'string') throw new TypeError('extension.name must be a string');
+    if (ext.type !== 'permessage') throw new TypeError('extension.type must be "permessage"');
+
+    if (typeof ext.rsv1 !== 'boolean') throw new TypeError('extension.rsv1 must be true or false');
+    if (typeof ext.rsv2 !== 'boolean') throw new TypeError('extension.rsv2 must be true or false');
+    if (typeof ext.rsv3 !== 'boolean') throw new TypeError('extension.rsv3 must be true or false');
+
+    if (this._byName.hasOwnProperty(ext.name))
+      throw new TypeError('An extension with name "' + ext.name + '" is already registered');
+
+    this._byName[ext.name] = ext;
+    this._inOrder.push(ext);
+  },
+
+  generateOffer: function() {
+    var sessions = [],
+        offer    = [],
+        index    = {};
+
+    this._inOrder.forEach(function(ext) {
+      var session = ext.createClientSession();
+      if (!session) return;
+
+      var record = [ext, session];
+      sessions.push(record);
+      index[ext.name] = record;
+
+      var offers = session.generateOffer();
+      offers = offers ? [].concat(offers) : [];
+
+      offers.forEach(function(off) {
+        offer.push(parser.serializeParams(ext.name, off));
+      }, this);
+    }, this);
+
+    this._sessions = sessions;
+    this._index    = index;
+
+    return offer.length > 0 ? offer.join(', ') : null;
+  },
+
+  activate: function(header) {
+    var responses = parser.parseHeader(header),
+        sessions  = [];
+
+    responses.eachOffer(function(name, params) {
+      var record = this._index[name];
+
+      if (!record)
+        throw new Error('Server sent an extension response for unknown extension "' + name + '"');
+
+      var ext      = record[0],
+          session  = record[1],
+          reserved = this._reserved(ext);
+
+      if (reserved)
+        throw new Error('Server sent two extension responses that use the RSV' +
+                        reserved[0] + ' bit: "' +
+                        reserved[1] + '" and "' + ext.name + '"');
+
+      if (session.activate(params) !== true)
+        throw new Error('Server sent unacceptable extension parameters: ' +
+                        parser.serializeParams(name, params));
+
+      this._reserve(ext);
+      sessions.push(record);
+    }, this);
+
+    this._sessions = sessions;
+    this._pipeline = new pipeline(sessions);
+  },
+
+  generateResponse: function(header) {
+    var sessions = [],
+        response = [],
+        offers   = parser.parseHeader(header);
+
+    this._inOrder.forEach(function(ext) {
+      var offer = offers.byName(ext.name);
+      if (offer.length === 0 || this._reserved(ext)) return;
+
+      var session = ext.createServerSession(offer);
+      if (!session) return;
+
+      this._reserve(ext);
+      sessions.push([ext, session]);
+      response.push(parser.serializeParams(ext.name, session.generateResponse()));
+    }, this);
+
+    this._sessions = sessions;
+    this._pipeline = new pipeline(sessions);
+
+    return response.length > 0 ? response.join(', ') : null;
+  },
+
+  validFrameRsv: function(frame) {
+    var allowed = {rsv1: false, rsv2: false, rsv3: false},
+        ext;
+
+    if (Extensions.MESSAGE_OPCODES.indexOf(frame.opcode) >= 0) {
+      for (var i = 0, n = this._sessions.length; i < n; i++) {
+        ext = this._sessions[i][0];
+        allowed.rsv1 = allowed.rsv1 || ext.rsv1;
+        allowed.rsv2 = allowed.rsv2 || ext.rsv2;
+        allowed.rsv3 = allowed.rsv3 || ext.rsv3;
+      }
+    }
+
+    return (allowed.rsv1 || !frame.rsv1) &&
+           (allowed.rsv2 || !frame.rsv2) &&
+           (allowed.rsv3 || !frame.rsv3);
+  },
+
+  processIncomingMessage: function(message, callback, context) {
+    this._pipeline.processIncomingMessage(message, callback, context);
+  },
+
+  processOutgoingMessage: function(message, callback, context) {
+    this._pipeline.processOutgoingMessage(message, callback, context);
+  },
+
+  close: function(callback, context) {
+    if (!this._pipeline) return callback.call(context);
+    this._pipeline.close(callback, context);
+  },
+
+  _reserve: function(ext) {
+    this._rsv1 = this._rsv1 || (ext.rsv1 && ext.name);
+    this._rsv2 = this._rsv2 || (ext.rsv2 && ext.name);
+    this._rsv3 = this._rsv3 || (ext.rsv3 && ext.name);
+  },
+
+  _reserved: function(ext) {
+    if (this._rsv1 && ext.rsv1) return [1, this._rsv1];
+    if (this._rsv2 && ext.rsv2) return [2, this._rsv2];
+    if (this._rsv3 && ext.rsv3) return [3, this._rsv3];
+    return false;
+  }
+};
+
+for (var key$1 in instance$1)
+  Extensions.prototype[key$1] = instance$1[key$1];
+
+var websocket_extensions = Extensions;
+
+var Frame = function() {};
+
+var instance$2 = {
+  final:        false,
+  rsv1:         false,
+  rsv2:         false,
+  rsv3:         false,
+  opcode:       null,
+  masked:       false,
+  maskingKey:   null,
+  lengthBytes:  1,
+  length:       0,
+  payload:      null
+};
+
+for (var key$2 in instance$2)
+  Frame.prototype[key$2] = instance$2[key$2];
+
+var frame = Frame;
+
+var Message = function() {
+  this.rsv1    = false;
+  this.rsv2    = false;
+  this.rsv3    = false;
+  this.opcode  = null;
+  this.length  = 0;
+  this._chunks = [];
+};
+
+var instance$3 = {
+  read: function() {
+    if (this.data) return this.data;
+
+    this.data  = new Buffer(this.length);
+    var offset = 0;
+
+    for (var i = 0, n = this._chunks.length; i < n; i++) {
+      this._chunks[i].copy(this.data, offset);
+      offset += this._chunks[i].length;
+    }
+    return this.data;
+  },
+
+  pushFrame: function(frame) {
+    this.rsv1 = this.rsv1 || frame.rsv1;
+    this.rsv2 = this.rsv2 || frame.rsv2;
+    this.rsv3 = this.rsv3 || frame.rsv3;
+
+    if (this.opcode === null) this.opcode = frame.opcode;
+
+    this._chunks.push(frame.payload);
+    this.length += frame.length;
+  }
+};
+
+for (var key$3 in instance$3)
+  Message.prototype[key$3] = instance$3[key$3];
+
+var message = Message;
+
+var Hybi = function(request, url, options) {
+  base.apply(this, arguments);
+
+  this._extensions     = new websocket_extensions();
+  this._stage          = 0;
+  this._masking        = this._options.masking;
+  this._protocols      = this._options.protocols || [];
+  this._requireMasking = this._options.requireMasking;
+  this._pingCallbacks  = {};
+
+  if (typeof this._protocols === 'string')
+    this._protocols = this._protocols.split(/ *, */);
+
+  if (!this._request) return;
+
+  var secKey    = this._request.headers['sec-websocket-key'],
+      protos    = this._request.headers['sec-websocket-protocol'],
+      version   = this._request.headers['sec-websocket-version'],
+      supported = this._protocols;
+
+  this._headers.set('Upgrade', 'websocket');
+  this._headers.set('Connection', 'Upgrade');
+  this._headers.set('Sec-WebSocket-Accept', Hybi.generateAccept(secKey));
+
+  if (protos !== undefined) {
+    if (typeof protos === 'string') protos = protos.split(/ *, */);
+    this.protocol = protos.filter(function(p) { return supported.indexOf(p) >= 0 })[0];
+    if (this.protocol) this._headers.set('Sec-WebSocket-Protocol', this.protocol);
+  }
+
+  this.version = 'hybi-' + version;
+};
+util__default['default'].inherits(Hybi, base);
+
+Hybi.mask = function(payload, mask, offset) {
+  if (!mask || mask.length === 0) return payload;
+  offset = offset || 0;
+
+  for (var i = 0, n = payload.length - offset; i < n; i++) {
+    payload[offset + i] = payload[offset + i] ^ mask[i % 4];
+  }
+  return payload;
+};
+
+Hybi.generateAccept = function(key) {
+  var sha1 = crypto__default['default'].createHash('sha1');
+  sha1.update(key + Hybi.GUID);
+  return sha1.digest('base64');
+};
+
+Hybi.GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+
+var instance$4 = {
+  FIN:    0x80,
+  MASK:   0x80,
+  RSV1:   0x40,
+  RSV2:   0x20,
+  RSV3:   0x10,
+  OPCODE: 0x0F,
+  LENGTH: 0x7F,
+
+  OPCODES: {
+    continuation: 0,
+    text:         1,
+    binary:       2,
+    close:        8,
+    ping:         9,
+    pong:         10
+  },
+
+  OPCODE_CODES:    [0, 1, 2, 8, 9, 10],
+  MESSAGE_OPCODES: [0, 1, 2],
+  OPENING_OPCODES: [1, 2],
+
+  ERRORS: {
+    normal_closure:       1000,
+    going_away:           1001,
+    protocol_error:       1002,
+    unacceptable:         1003,
+    encoding_error:       1007,
+    policy_violation:     1008,
+    too_large:            1009,
+    extension_error:      1010,
+    unexpected_condition: 1011
+  },
+
+  ERROR_CODES:        [1000, 1001, 1002, 1003, 1007, 1008, 1009, 1010, 1011],
+  DEFAULT_ERROR_CODE: 1000,
+  MIN_RESERVED_ERROR: 3000,
+  MAX_RESERVED_ERROR: 4999,
+
+  // http://www.w3.org/International/questions/qa-forms-utf-8.en.php
+  UTF8_MATCH: /^([\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})*$/,
+
+  addExtension: function(extension) {
+    this._extensions.add(extension);
+    return true;
+  },
+
+  parse: function(chunk) {
+    this._reader.put(chunk);
+    var buffer = true;
+    while (buffer) {
+      switch (this._stage) {
+        case 0:
+          buffer = this._reader.read(1);
+          if (buffer) this._parseOpcode(buffer[0]);
+          break;
+
+        case 1:
+          buffer = this._reader.read(1);
+          if (buffer) this._parseLength(buffer[0]);
+          break;
+
+        case 2:
+          buffer = this._reader.read(this._frame.lengthBytes);
+          if (buffer) this._parseExtendedLength(buffer);
+          break;
+
+        case 3:
+          buffer = this._reader.read(4);
+          if (buffer) {
+            this._stage = 4;
+            this._frame.maskingKey = buffer;
+          }
+          break;
+
+        case 4:
+          buffer = this._reader.read(this._frame.length);
+          if (buffer) {
+            this._stage = 0;
+            this._emitFrame(buffer);
+          }
+          break;
+
+        default:
+          buffer = null;
+      }
+    }
+  },
+
+  text: function(message) {
+    if (this.readyState > 1) return false;
+    return this.frame(message, 'text');
+  },
+
+  binary: function(message) {
+    if (this.readyState > 1) return false;
+    return this.frame(message, 'binary');
+  },
+
+  ping: function(message, callback) {
+    if (this.readyState > 1) return false;
+    message = message || '';
+    if (callback) this._pingCallbacks[message] = callback;
+    return this.frame(message, 'ping');
+  },
+
+  pong: function(message) {
+      if (this.readyState > 1) return false;
+      message = message ||'';
+      return this.frame(message, 'pong');
+  },
+
+  close: function(reason, code) {
+    reason = reason || '';
+    code   = code   || this.ERRORS.normal_closure;
+
+    if (this.readyState <= 0) {
+      this.readyState = 3;
+      this.emit('close', new base.CloseEvent(code, reason));
+      return true;
+    } else if (this.readyState === 1) {
+      this.readyState = 2;
+      this._extensions.close(function() { this.frame(reason, 'close', code); }, this);
+      return true;
+    } else {
+      return false;
+    }
+  },
+
+  frame: function(buffer, type, code) {
+    if (this.readyState <= 0) return this._queue([buffer, type, code]);
+    if (this.readyState > 2) return false;
+
+    if (buffer instanceof Array)    buffer = new Buffer(buffer);
+    if (typeof buffer === 'number') buffer = buffer.toString();
+
+    var message$1 = new message(),
+        isText  = (typeof buffer === 'string'),
+        payload, copy;
+
+    message$1.rsv1   = message$1.rsv2 = message$1.rsv3 = false;
+    message$1.opcode = this.OPCODES[type || (isText ? 'text' : 'binary')];
+
+    payload = isText ? new Buffer(buffer, 'utf8') : buffer;
+
+    if (code) {
+      copy = payload;
+      payload = new Buffer(2 + copy.length);
+      payload.writeUInt16BE(code, 0);
+      copy.copy(payload, 2);
+    }
+    message$1.data = payload;
+
+    var onMessageReady = function(message) {
+      var frame$1 = new frame();
+
+      frame$1.final   = true;
+      frame$1.rsv1    = message.rsv1;
+      frame$1.rsv2    = message.rsv2;
+      frame$1.rsv3    = message.rsv3;
+      frame$1.opcode  = message.opcode;
+      frame$1.masked  = !!this._masking;
+      frame$1.length  = message.data.length;
+      frame$1.payload = message.data;
+
+      if (frame$1.masked) frame$1.maskingKey = crypto__default['default'].randomBytes(4);
+
+      this._sendFrame(frame$1);
+    };
+
+    if (this.MESSAGE_OPCODES.indexOf(message$1.opcode) >= 0)
+      this._extensions.processOutgoingMessage(message$1, function(error, message) {
+        if (error) return this._fail('extension_error', error.message);
+        onMessageReady.call(this, message);
+      }, this);
+    else
+      onMessageReady.call(this, message$1);
+
+    return true;
+  },
+
+  _sendFrame: function(frame) {
+    var length = frame.length,
+        header = (length <= 125) ? 2 : (length <= 65535 ? 4 : 10),
+        offset = header + (frame.masked ? 4 : 0),
+        buffer = new Buffer(offset + length),
+        masked = frame.masked ? this.MASK : 0;
+
+    buffer[0] = (frame.final ? this.FIN : 0) |
+                (frame.rsv1 ? this.RSV1 : 0) |
+                (frame.rsv2 ? this.RSV2 : 0) |
+                (frame.rsv3 ? this.RSV3 : 0) |
+                frame.opcode;
+
+    if (length <= 125) {
+      buffer[1] = masked | length;
+    } else if (length <= 65535) {
+      buffer[1] = masked | 126;
+      buffer.writeUInt16BE(length, 2);
+    } else {
+      buffer[1] = masked | 127;
+      buffer.writeUInt32BE(Math.floor(length / 0x100000000), 2);
+      buffer.writeUInt32BE(length % 0x100000000, 6);
+    }
+
+    frame.payload.copy(buffer, offset);
+
+    if (frame.masked) {
+      frame.maskingKey.copy(buffer, header);
+      Hybi.mask(buffer, frame.maskingKey, offset);
+    }
+
+    this._write(buffer);
+  },
+
+  _handshakeResponse: function() {
+    try {
+      var extensions = this._extensions.generateResponse(this._request.headers['sec-websocket-extensions']);
+    } catch (e) {
+      return this._fail('protocol_error', e.message);
+    }
+
+    if (extensions) this._headers.set('Sec-WebSocket-Extensions', extensions);
+
+    var start   = 'HTTP/1.1 101 Switching Protocols',
+        headers = [start, this._headers.toString(), ''];
+
+    return new Buffer(headers.join('\r\n'), 'utf8');
+  },
+
+  _shutdown: function(code, reason, error) {
+    delete this._frame;
+    delete this._message;
+    this._stage = 5;
+
+    var sendCloseFrame = (this.readyState === 1);
+    this.readyState = 2;
+
+    this._extensions.close(function() {
+      if (sendCloseFrame) this.frame(reason, 'close', code);
+      this.readyState = 3;
+      if (error) this.emit('error', new Error(reason));
+      this.emit('close', new base.CloseEvent(code, reason));
+    }, this);
+  },
+
+  _fail: function(type, message) {
+    if (this.readyState > 1) return;
+    this._shutdown(this.ERRORS[type], message, true);
+  },
+
+  _parseOpcode: function(octet) {
+    var rsvs = [this.RSV1, this.RSV2, this.RSV3].map(function(rsv) {
+      return (octet & rsv) === rsv;
+    });
+
+    var frame$1 = this._frame = new frame();
+
+    frame$1.final  = (octet & this.FIN) === this.FIN;
+    frame$1.rsv1   = rsvs[0];
+    frame$1.rsv2   = rsvs[1];
+    frame$1.rsv3   = rsvs[2];
+    frame$1.opcode = (octet & this.OPCODE);
+
+    this._stage = 1;
+
+    if (!this._extensions.validFrameRsv(frame$1))
+      return this._fail('protocol_error',
+          'One or more reserved bits are on: reserved1 = ' + (frame$1.rsv1 ? 1 : 0) +
+          ', reserved2 = ' + (frame$1.rsv2 ? 1 : 0) +
+          ', reserved3 = ' + (frame$1.rsv3 ? 1 : 0));
+
+    if (this.OPCODE_CODES.indexOf(frame$1.opcode) < 0)
+      return this._fail('protocol_error', 'Unrecognized frame opcode: ' + frame$1.opcode);
+
+    if (this.MESSAGE_OPCODES.indexOf(frame$1.opcode) < 0 && !frame$1.final)
+      return this._fail('protocol_error', 'Received fragmented control frame: opcode = ' + frame$1.opcode);
+
+    if (this._message && this.OPENING_OPCODES.indexOf(frame$1.opcode) >= 0)
+      return this._fail('protocol_error', 'Received new data frame but previous continuous frame is unfinished');
+  },
+
+  _parseLength: function(octet) {
+    var frame = this._frame;
+    frame.masked = (octet & this.MASK) === this.MASK;
+    frame.length = (octet & this.LENGTH);
+
+    if (frame.length >= 0 && frame.length <= 125) {
+      this._stage = frame.masked ? 3 : 4;
+      if (!this._checkFrameLength()) return;
+    } else {
+      this._stage = 2;
+      frame.lengthBytes = (frame.length === 126 ? 2 : 8);
+    }
+
+    if (this._requireMasking && !frame.masked)
+      return this._fail('unacceptable', 'Received unmasked frame but masking is required');
+  },
+
+  _parseExtendedLength: function(buffer) {
+    var frame = this._frame;
+    frame.length = this._readUInt(buffer);
+
+    this._stage = frame.masked ? 3 : 4;
+
+    if (this.MESSAGE_OPCODES.indexOf(frame.opcode) < 0 && frame.length > 125)
+      return this._fail('protocol_error', 'Received control frame having too long payload: ' + frame.length);
+
+    if (!this._checkFrameLength()) return;
+  },
+
+  _checkFrameLength: function() {
+    var length = this._message ? this._message.length : 0;
+
+    if (length + this._frame.length > this._maxLength) {
+      this._fail('too_large', 'WebSocket frame length too large');
+      return false;
+    } else {
+      return true;
+    }
+  },
+
+  _emitFrame: function(buffer) {
+    var frame   = this._frame,
+        payload = frame.payload = Hybi.mask(buffer, frame.maskingKey),
+        opcode  = frame.opcode,
+        message$1,
+        code, reason,
+        callbacks, callback;
+
+    delete this._frame;
+
+    if (opcode === this.OPCODES.continuation) {
+      if (!this._message) return this._fail('protocol_error', 'Received unexpected continuation frame');
+      this._message.pushFrame(frame);
+    }
+
+    if (opcode === this.OPCODES.text || opcode === this.OPCODES.binary) {
+      this._message = new message();
+      this._message.pushFrame(frame);
+    }
+
+    if (frame.final && this.MESSAGE_OPCODES.indexOf(opcode) >= 0)
+      return this._emitMessage(this._message);
+
+    if (opcode === this.OPCODES.close) {
+      code   = (payload.length >= 2) ? payload.readUInt16BE(0) : null;
+      reason = (payload.length > 2) ? this._encode(payload.slice(2)) : null;
+
+      if (!(payload.length === 0) &&
+          !(code !== null && code >= this.MIN_RESERVED_ERROR && code <= this.MAX_RESERVED_ERROR) &&
+          this.ERROR_CODES.indexOf(code) < 0)
+        code = this.ERRORS.protocol_error;
+
+      if (payload.length > 125 || (payload.length > 2 && !reason))
+        code = this.ERRORS.protocol_error;
+
+      this._shutdown(code || this.DEFAULT_ERROR_CODE, reason || '');
+    }
+
+    if (opcode === this.OPCODES.ping) {
+      this.frame(payload, 'pong');
+      this.emit('ping', new base.PingEvent(payload.toString()));
+    }
+
+    if (opcode === this.OPCODES.pong) {
+      callbacks = this._pingCallbacks;
+      message$1   = this._encode(payload);
+      callback  = callbacks[message$1];
+
+      delete callbacks[message$1];
+      if (callback) callback();
+
+      this.emit('pong', new base.PongEvent(payload.toString()));
+    }
+  },
+
+  _emitMessage: function(message) {
+    var message = this._message;
+    message.read();
+
+    delete this._message;
+
+    this._extensions.processIncomingMessage(message, function(error, message) {
+      if (error) return this._fail('extension_error', error.message);
+
+      var payload = message.data;
+      if (message.opcode === this.OPCODES.text) payload = this._encode(payload);
+
+      if (payload === null)
+        return this._fail('encoding_error', 'Could not decode a text frame as UTF-8');
+      else
+        this.emit('message', new base.MessageEvent(payload));
+    }, this);
+  },
+
+  _encode: function(buffer) {
+    try {
+      var string = buffer.toString('binary', 0, buffer.length);
+      if (!this.UTF8_MATCH.test(string)) return null;
+    } catch (e) {}
+    return buffer.toString('utf8', 0, buffer.length);
+  },
+
+  _readUInt: function(buffer) {
+    if (buffer.length === 2) return buffer.readUInt16BE(0);
+
+    return buffer.readUInt32BE(0) * 0x100000000 +
+           buffer.readUInt32BE(4);
+  }
+};
+
+for (var key$4 in instance$4)
+  Hybi.prototype[key$4] = instance$4[key$4];
+
+var hybi = Hybi;
+
+var Stream$1     = stream__default['default'].Stream;
+
+var PORTS = {'ws:': 80, 'wss:': 443};
+
+var Proxy = function(client, origin, options) {
+  this._client  = client;
+  this._http    = new http_parser('response');
+  this._origin  = (typeof client.url === 'object') ? client.url : url__default['default'].parse(client.url);
+  this._url     = (typeof origin === 'object') ? origin : url__default['default'].parse(origin);
+  this._options = options || {};
+  this._state   = 0;
+
+  this.readable = this.writable = true;
+  this._paused  = false;
+
+  this._headers = new headers();
+  this._headers.set('Host', this._origin.host);
+  this._headers.set('Connection', 'keep-alive');
+  this._headers.set('Proxy-Connection', 'keep-alive');
+
+  var auth = this._url.auth && new Buffer(this._url.auth, 'utf8').toString('base64');
+  if (auth) this._headers.set('Proxy-Authorization', 'Basic ' + auth);
+};
+util__default['default'].inherits(Proxy, Stream$1);
+
+var instance$5 = {
+  setHeader: function(name, value) {
+    if (this._state !== 0) return false;
+    this._headers.set(name, value);
+    return true;
+  },
+
+  start: function() {
+    if (this._state !== 0) return false;
+    this._state = 1;
+
+    var origin = this._origin,
+        port   = origin.port || PORTS[origin.protocol],
+        start  = 'CONNECT ' + origin.hostname + ':' + port + ' HTTP/1.1';
+
+    var headers = [start, this._headers.toString(), ''];
+
+    this.emit('data', new Buffer(headers.join('\r\n'), 'utf8'));
+    return true;
+  },
+
+  pause: function() {
+    this._paused = true;
+  },
+
+  resume: function() {
+    this._paused = false;
+    this.emit('drain');
+  },
+
+  write: function(chunk) {
+    if (!this.writable) return false;
+
+    this._http.parse(chunk);
+    if (!this._http.isComplete()) return !this._paused;
+
+    this.statusCode = this._http.statusCode;
+    this.headers    = this._http.headers;
+
+    if (this.statusCode === 200) {
+      this.emit('connect', new base.ConnectEvent());
+    } else {
+      var message = "Can't establish a connection to the server at " + this._origin.href;
+      this.emit('error', new Error(message));
+    }
+    this.end();
+    return !this._paused;
+  },
+
+  end: function(chunk) {
+    if (!this.writable) return;
+    if (chunk !== undefined) this.write(chunk);
+    this.readable = this.writable = false;
+    this.emit('close');
+    this.emit('end');
+  },
+
+  destroy: function() {
+    this.end();
+  }
+};
+
+for (var key$5 in instance$5)
+  Proxy.prototype[key$5] = instance$5[key$5];
+
+var proxy = Proxy;
+
+var Client = function(_url, options) {
+  this.version = 'hybi-13';
+  hybi.call(this, null, _url, options);
+
+  this.readyState = -1;
+  this._key       = Client.generateKey();
+  this._accept    = hybi.generateAccept(this._key);
+  this._http      = new http_parser('response');
+
+  var uri  = url__default['default'].parse(this.url),
+      auth = uri.auth && new Buffer(uri.auth, 'utf8').toString('base64');
+
+  if (this.VALID_PROTOCOLS.indexOf(uri.protocol) < 0)
+    throw new Error(this.url + ' is not a valid WebSocket URL');
+
+  this._pathname = (uri.pathname || '/') + (uri.search || '');
+
+  this._headers.set('Host', uri.host);
+  this._headers.set('Upgrade', 'websocket');
+  this._headers.set('Connection', 'Upgrade');
+  this._headers.set('Sec-WebSocket-Key', this._key);
+  this._headers.set('Sec-WebSocket-Version', '13');
+
+  if (this._protocols.length > 0)
+    this._headers.set('Sec-WebSocket-Protocol', this._protocols.join(', '));
+
+  if (auth)
+    this._headers.set('Authorization', 'Basic ' + auth);
+};
+util__default['default'].inherits(Client, hybi);
+
+Client.generateKey = function() {
+  return crypto__default['default'].randomBytes(16).toString('base64');
+};
+
+var instance$6 = {
+  VALID_PROTOCOLS: ['ws:', 'wss:'],
+
+  proxy: function(origin, options) {
+    return new proxy(this, origin, options);
+  },
+
+  start: function() {
+    if (this.readyState !== -1) return false;
+    this._write(this._handshakeRequest());
+    this.readyState = 0;
+    return true;
+  },
+
+  parse: function(chunk) {
+    if (this.readyState === 3) return;
+    if (this.readyState > 0) return hybi.prototype.parse.call(this, chunk);
+
+    this._http.parse(chunk);
+    if (!this._http.isComplete()) return;
+
+    this._validateHandshake();
+    if (this.readyState === 3) return;
+
+    this._open();
+    this.parse(this._http.body);
+  },
+
+  _handshakeRequest: function() {
+    var extensions = this._extensions.generateOffer();
+    if (extensions)
+      this._headers.set('Sec-WebSocket-Extensions', extensions);
+
+    var start   = 'GET ' + this._pathname + ' HTTP/1.1',
+        headers = [start, this._headers.toString(), ''];
+
+    return new Buffer(headers.join('\r\n'), 'utf8');
+  },
+
+  _failHandshake: function(message) {
+    message = 'Error during WebSocket handshake: ' + message;
+    this.readyState = 3;
+    this.emit('error', new Error(message));
+    this.emit('close', new base.CloseEvent(this.ERRORS.protocol_error, message));
+  },
+
+  _validateHandshake: function() {
+    this.statusCode = this._http.statusCode;
+    this.headers    = this._http.headers;
+
+    if (this._http.error)
+      return this._failHandshake(this._http.error.message);
+
+    if (this._http.statusCode !== 101)
+      return this._failHandshake('Unexpected response code: ' + this._http.statusCode);
+
+    var headers    = this._http.headers,
+        upgrade    = headers['upgrade'] || '',
+        connection = headers['connection'] || '',
+        accept     = headers['sec-websocket-accept'] || '',
+        protocol   = headers['sec-websocket-protocol'] || '';
+
+    if (upgrade === '')
+      return this._failHandshake("'Upgrade' header is missing");
+    if (upgrade.toLowerCase() !== 'websocket')
+      return this._failHandshake("'Upgrade' header value is not 'WebSocket'");
+
+    if (connection === '')
+      return this._failHandshake("'Connection' header is missing");
+    if (connection.toLowerCase() !== 'upgrade')
+      return this._failHandshake("'Connection' header value is not 'Upgrade'");
+
+    if (accept !== this._accept)
+      return this._failHandshake('Sec-WebSocket-Accept mismatch');
+
+    this.protocol = null;
+
+    if (protocol !== '') {
+      if (this._protocols.indexOf(protocol) < 0)
+        return this._failHandshake('Sec-WebSocket-Protocol mismatch');
+      else
+        this.protocol = protocol;
+    }
+
+    try {
+      this._extensions.activate(this.headers['sec-websocket-extensions']);
+    } catch (e) {
+      return this._failHandshake(e.message);
+    }
+  }
+};
+
+for (var key$6 in instance$6)
+  Client.prototype[key$6] = instance$6[key$6];
+
+var client = Client;
+
+var Draft75 = function(request, url, options) {
+  base.apply(this, arguments);
+  this._stage  = 0;
+  this.version = 'hixie-75';
+
+  this._headers.set('Upgrade', 'WebSocket');
+  this._headers.set('Connection', 'Upgrade');
+  this._headers.set('WebSocket-Origin', this._request.headers.origin);
+  this._headers.set('WebSocket-Location', this.url);
+};
+util__default['default'].inherits(Draft75, base);
+
+var instance$7 = {
+  close: function() {
+    if (this.readyState === 3) return false;
+    this.readyState = 3;
+    this.emit('close', new base.CloseEvent(null, null));
+    return true;
+  },
+
+  parse: function(chunk) {
+    if (this.readyState > 1) return;
+
+    this._reader.put(chunk);
+
+    this._reader.eachByte(function(octet) {
+      var message;
+
+      switch (this._stage) {
+        case -1:
+          this._body.push(octet);
+          this._sendHandshakeBody();
+          break;
+
+        case 0:
+          this._parseLeadingByte(octet);
+          break;
+
+        case 1:
+          this._length = (octet & 0x7F) + 128 * this._length;
+
+          if (this._closing && this._length === 0) {
+            return this.close();
+          }
+          else if ((octet & 0x80) !== 0x80) {
+            if (this._length === 0) {
+              this._stage = 0;
+            }
+            else {
+              this._skipped = 0;
+              this._stage   = 2;
+            }
+          }
+          break;
+
+        case 2:
+          if (octet === 0xFF) {
+            this._stage = 0;
+            message = new Buffer(this._buffer).toString('utf8', 0, this._buffer.length);
+            this.emit('message', new base.MessageEvent(message));
+          }
+          else {
+            if (this._length) {
+              this._skipped += 1;
+              if (this._skipped === this._length)
+                this._stage = 0;
+            } else {
+              this._buffer.push(octet);
+              if (this._buffer.length > this._maxLength) return this.close();
+            }
+          }
+          break;
+      }
+    }, this);
+  },
+
+  frame: function(buffer) {
+    if (this.readyState === 0) return this._queue([buffer]);
+    if (this.readyState > 1) return false;
+
+    if (typeof buffer !== 'string') buffer = buffer.toString();
+
+    var payload = new Buffer(buffer, 'utf8'),
+        frame   = new Buffer(payload.length + 2);
+
+    frame[0] = 0x00;
+    frame[payload.length + 1] = 0xFF;
+    payload.copy(frame, 1);
+
+    this._write(frame);
+    return true;
+  },
+
+  _handshakeResponse: function() {
+    var start   = 'HTTP/1.1 101 Web Socket Protocol Handshake',
+        headers = [start, this._headers.toString(), ''];
+
+    return new Buffer(headers.join('\r\n'), 'utf8');
+  },
+
+  _parseLeadingByte: function(octet) {
+    if ((octet & 0x80) === 0x80) {
+      this._length = 0;
+      this._stage  = 1;
+    } else {
+      delete this._length;
+      delete this._skipped;
+      this._buffer = [];
+      this._stage  = 2;
+    }
+  }
+};
+
+for (var key$7 in instance$7)
+  Draft75.prototype[key$7] = instance$7[key$7];
+
+var draft75 = Draft75;
+
+var numberFromKey = function(key) {
+  return parseInt(key.match(/[0-9]/g).join(''), 10);
+};
+
+var spacesInKey = function(key) {
+  return key.match(/ /g).length;
+};
+
+
+var Draft76 = function(request, url, options) {
+  draft75.apply(this, arguments);
+  this._stage  = -1;
+  this._body   = [];
+  this.version = 'hixie-76';
+
+  this._headers.clear();
+
+  this._headers.set('Upgrade', 'WebSocket');
+  this._headers.set('Connection', 'Upgrade');
+  this._headers.set('Sec-WebSocket-Origin', this._request.headers.origin);
+  this._headers.set('Sec-WebSocket-Location', this.url);
+};
+util__default['default'].inherits(Draft76, draft75);
+
+var instance$8 = {
+  BODY_SIZE: 8,
+
+  start: function() {
+    if (!draft75.prototype.start.call(this)) return false;
+    this._started = true;
+    this._sendHandshakeBody();
+    return true;
+  },
+
+  close: function() {
+    if (this.readyState === 3) return false;
+    this._write(new Buffer([0xFF, 0x00]));
+    this.readyState = 3;
+    this.emit('close', new base.CloseEvent(null, null));
+    return true;
+  },
+
+  _handshakeResponse: function() {
+    var headers = this._request.headers,
+
+        key1    = headers['sec-websocket-key1'],
+        number1 = numberFromKey(key1),
+        spaces1 = spacesInKey(key1),
+
+        key2    = headers['sec-websocket-key2'],
+        number2 = numberFromKey(key2),
+        spaces2 = spacesInKey(key2);
+
+    if (number1 % spaces1 !== 0 || number2 % spaces2 !== 0) {
+      this.emit('error', new Error('Client sent invalid Sec-WebSocket-Key headers'));
+      this.close();
+      return null;
+    }
+
+    this._keyValues = [number1 / spaces1, number2 / spaces2];
+
+    var start   = 'HTTP/1.1 101 WebSocket Protocol Handshake',
+        headers = [start, this._headers.toString(), ''];
+
+    return new Buffer(headers.join('\r\n'), 'binary');
+  },
+
+  _handshakeSignature: function() {
+    if (this._body.length < this.BODY_SIZE) return null;
+
+    var md5    = crypto__default['default'].createHash('md5'),
+        buffer = new Buffer(8 + this.BODY_SIZE);
+
+    buffer.writeUInt32BE(this._keyValues[0], 0);
+    buffer.writeUInt32BE(this._keyValues[1], 4);
+    new Buffer(this._body).copy(buffer, 8, 0, this.BODY_SIZE);
+
+    md5.update(buffer);
+    return new Buffer(md5.digest('binary'), 'binary');
+  },
+
+  _sendHandshakeBody: function() {
+    if (!this._started) return;
+    var signature = this._handshakeSignature();
+    if (!signature) return;
+
+    this._write(signature);
+    this._stage = 0;
+    this._open();
+
+    if (this._body.length > this.BODY_SIZE)
+      this.parse(this._body.slice(this.BODY_SIZE));
+  },
+
+  _parseLeadingByte: function(octet) {
+    if (octet !== 0xFF)
+      return draft75.prototype._parseLeadingByte.call(this, octet);
+
+    this._closing = true;
+    this._length  = 0;
+    this._stage   = 1;
+  }
+};
+
+for (var key$8 in instance$8)
+  Draft76.prototype[key$8] = instance$8[key$8];
+
+var draft76 = Draft76;
+
+var Server = function(options) {
+  base.call(this, null, null, options);
+  this._http = new http_parser('request');
+};
+util__default['default'].inherits(Server, base);
+
+var instance$9 = {
+  EVENTS: ['open', 'message', 'error', 'close'],
+
+  _bindEventListeners: function() {
+    this.messages.on('error', function() {});
+    this.on('error', function() {});
+  },
+
+  parse: function(chunk) {
+    if (this._delegate) return this._delegate.parse(chunk);
+
+    this._http.parse(chunk);
+    if (!this._http.isComplete()) return;
+
+    this.method  = this._http.method;
+    this.url     = this._http.url;
+    this.headers = this._http.headers;
+    this.body    = this._http.body;
+
+    var self = this;
+    this._delegate = Server.http(this, this._options);
+    this._delegate.messages = this.messages;
+    this._delegate.io = this.io;
+    this._open();
+
+    this.EVENTS.forEach(function(event) {
+      this._delegate.on(event, function(e) { self.emit(event, e); });
+    }, this);
+
+    this.protocol = this._delegate.protocol;
+    this.version  = this._delegate.version;
+
+    this.parse(this._http.body);
+    this.emit('connect', new base.ConnectEvent());
+  },
+
+  _open: function() {
+    this.__queue.forEach(function(msg) {
+      this._delegate[msg[0]].apply(this._delegate, msg[1]);
+    }, this);
+    this.__queue = [];
+  }
+};
+
+['addExtension', 'setHeader', 'start', 'frame', 'text', 'binary', 'ping', 'close'].forEach(function(method) {
+  instance$9[method] = function() {
+    if (this._delegate) {
+      return this._delegate[method].apply(this._delegate, arguments);
+    } else {
+      this.__queue.push([method, arguments]);
+      return true;
+    }
+  };
+});
+
+for (var key$9 in instance$9)
+  Server.prototype[key$9] = instance$9[key$9];
+
+Server.isSecureRequest = function(request) {
+  if (request.connection && request.connection.authorized !== undefined) return true;
+  if (request.socket && request.socket.secure) return true;
+
+  var headers = request.headers;
+  if (!headers) return false;
+  if (headers['https'] === 'on') return true;
+  if (headers['x-forwarded-ssl'] === 'on') return true;
+  if (headers['x-forwarded-scheme'] === 'https') return true;
+  if (headers['x-forwarded-proto'] === 'https') return true;
+
+  return false;
+};
+
+Server.determineUrl = function(request) {
+  var scheme = this.isSecureRequest(request) ? 'wss:' : 'ws:';
+  return scheme + '//' + request.headers.host + request.url;
+};
+
+Server.http = function(request, options) {
+  options = options || {};
+  if (options.requireMasking === undefined) options.requireMasking = true;
+
+  var headers = request.headers,
+      url     = this.determineUrl(request);
+
+  if (headers['sec-websocket-version'])
+    return new hybi(request, url, options);
+  else if (headers['sec-websocket-key1'])
+    return new draft76(request, url, options);
+  else
+    return new draft75(request, url, options);
+};
+
+var server = Server;
+
+// Protocol references:
+// 
+// * http://tools.ietf.org/html/draft-hixie-thewebsocketprotocol-75
+// * http://tools.ietf.org/html/draft-hixie-thewebsocketprotocol-76
+// * http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-17
+
+
+
+var Driver = {
+  client: function(url, options) {
+    options = options || {};
+    if (options.masking === undefined) options.masking = true;
+    return new client(url, options);
+  },
+
+  server: function(options) {
+    options = options || {};
+    if (options.requireMasking === undefined) options.requireMasking = true;
+    return new server(options);
+  },
+
+  http: function() {
+    return server.http.apply(server, arguments);
+  },
+
+  isSecureRequest: function(request) {
+    return server.isSecureRequest(request);
+  },
+
+  isWebSocket: function(request) {
+    if (request.method !== 'GET') return false;
+
+    var connection = request.headers.connection || '',
+        upgrade    = request.headers.upgrade || '';
+
+    return request.method === 'GET' &&
+           connection.toLowerCase().split(/ *, */).indexOf('upgrade') >= 0 &&
+           upgrade.toLowerCase() === 'websocket';
+  },
+
+  validateOptions: function(options, validKeys) {
+    base.validateOptions(options, validKeys);
+  }
+};
+
+var driver = Driver;
+
+var Event = function(eventType, options) {
+  this.type = eventType;
+  for (var key in options)
+    this[key] = options[key];
+};
+
+Event.prototype.initEvent = function(eventType, canBubble, cancelable) {
+  this.type       = eventType;
+  this.bubbles    = canBubble;
+  this.cancelable = cancelable;
+};
+
+Event.prototype.stopPropagation = function() {};
+Event.prototype.preventDefault  = function() {};
+
+Event.CAPTURING_PHASE = 1;
+Event.AT_TARGET       = 2;
+Event.BUBBLING_PHASE  = 3;
+
+var event = Event;
+
+var EventTarget = {
+  onopen:     null,
+  onmessage:  null,
+  onerror:    null,
+  onclose:    null,
+
+  addEventListener: function(eventType, listener, useCapture) {
+    this.on(eventType, listener);
+  },
+
+  removeEventListener: function(eventType, listener, useCapture) {
+    this.removeListener(eventType, listener);
+  },
+
+  dispatchEvent: function(event$1) {
+    event$1.target = event$1.currentTarget = this;
+    event$1.eventPhase = event.AT_TARGET;
+
+    if (this['on' + event$1.type])
+      this['on' + event$1.type](event$1);
+
+    this.emit(event$1.type, event$1);
+  }
+};
+
+var event_target = EventTarget;
+
+var Stream$2      = stream__default['default'].Stream;
+
+var API = function(options) {
+  options = options || {};
+  driver.validateOptions(options, ['headers', 'extensions', 'maxLength', 'ping', 'proxy', 'tls', 'ca']);
+
+  this.readable = this.writable = true;
+
+  var headers = options.headers;
+  if (headers) {
+    for (var name in headers) this._driver.setHeader(name, headers[name]);
+  }
+
+  var extensions = options.extensions;
+  if (extensions) {
+    [].concat(extensions).forEach(this._driver.addExtension, this._driver);
+  }
+
+  this._ping          = options.ping;
+  this._pingId        = 0;
+  this.readyState     = API.CONNECTING;
+  this.bufferedAmount = 0;
+  this.protocol       = '';
+  this.url            = this._driver.url;
+  this.version        = this._driver.version;
+
+  var self = this;
+
+  this._driver.on('open',    function(e) { self._open(); });
+  this._driver.on('message', function(e) { self._receiveMessage(e.data); });
+  this._driver.on('close',   function(e) { self._beginClose(e.reason, e.code); });
+
+  this._driver.on('error', function(error) {
+    self._emitError(error.message);
+  });
+  this.on('error', function() {});
+
+  this._driver.messages.on('drain', function() {
+    self.emit('drain');
+  });
+
+  if (this._ping)
+    this._pingTimer = setInterval(function() {
+      self._pingId += 1;
+      self.ping(self._pingId.toString());
+    }, this._ping * 1000);
+
+  this._configureStream();
+
+  if (!this._proxy) {
+    this._stream.pipe(this._driver.io);
+    this._driver.io.pipe(this._stream);
+  }
+};
+util__default['default'].inherits(API, Stream$2);
+
+API.CONNECTING = 0;
+API.OPEN       = 1;
+API.CLOSING    = 2;
+API.CLOSED     = 3;
+
+API.CLOSE_TIMEOUT = 30000;
+
+var instance$a = {
+  write: function(data) {
+    return this.send(data);
+  },
+
+  end: function(data) {
+    if (data !== undefined) this.send(data);
+    this.close();
+  },
+
+  pause: function() {
+    return this._driver.messages.pause();
+  },
+
+  resume: function() {
+    return this._driver.messages.resume();
+  },
+
+  send: function(data) {
+    if (this.readyState > API.OPEN) return false;
+    if (!(data instanceof Buffer)) data = String(data);
+    return this._driver.messages.write(data);
+  },
+
+  ping: function(message, callback) {
+    if (this.readyState > API.OPEN) return false;
+    return this._driver.ping(message, callback);
+  },
+
+  close: function(code, reason) {
+    if (code === undefined) code = 1000;
+    if (reason === undefined) reason = '';
+
+    if (code !== 1000 && (code < 3000 || code > 4999))
+      throw new Error("Failed to execute 'close' on WebSocket: " +
+                      "The code must be either 1000, or between 3000 and 4999. " +
+                      code + " is neither.");
+
+    if (this.readyState !== API.CLOSED) this.readyState = API.CLOSING;
+    var self = this;
+
+    this._closeTimer = setTimeout(function() {
+      self._beginClose('', 1006);
+    }, API.CLOSE_TIMEOUT);
+
+    this._driver.close(reason, code);
+  },
+
+  _configureStream: function() {
+    var self = this;
+
+    this._stream.setTimeout(0);
+    this._stream.setNoDelay(true);
+
+    ['close', 'end'].forEach(function(event) {
+      this._stream.on(event, function() { self._finalizeClose(); });
+    }, this);
+
+    this._stream.on('error', function(error) {
+      self._emitError('Network error: ' + self.url + ': ' + error.message);
+      self._finalizeClose();
+    });
+  },
+
+  _open: function() {
+    if (this.readyState !== API.CONNECTING) return;
+
+    this.readyState = API.OPEN;
+    this.protocol = this._driver.protocol || '';
+
+    var event$1 = new event('open');
+    event$1.initEvent('open', false, false);
+    this.dispatchEvent(event$1);
+  },
+
+  _receiveMessage: function(data) {
+    if (this.readyState > API.OPEN) return false;
+
+    if (this.readable) this.emit('data', data);
+
+    var event$1 = new event('message', {data: data});
+    event$1.initEvent('message', false, false);
+    this.dispatchEvent(event$1);
+  },
+
+  _emitError: function(message) {
+    if (this.readyState >= API.CLOSING) return;
+
+    var event$1 = new event('error', {message: message});
+    event$1.initEvent('error', false, false);
+    this.dispatchEvent(event$1);
+  },
+
+  _beginClose: function(reason, code) {
+    if (this.readyState === API.CLOSED) return;
+    this.readyState = API.CLOSING;
+    this._closeParams = [reason, code];
+
+    if (this._stream) {
+      this._stream.destroy();
+      if (!this._stream.readable) this._finalizeClose();
+    }
+  },
+
+  _finalizeClose: function() {
+    if (this.readyState === API.CLOSED) return;
+    this.readyState = API.CLOSED;
+
+    if (this._closeTimer) clearTimeout(this._closeTimer);
+    if (this._pingTimer) clearInterval(this._pingTimer);
+    if (this._stream) this._stream.end();
+
+    if (this.readable) this.emit('end');
+    this.readable = this.writable = false;
+
+    var reason = this._closeParams ? this._closeParams[0] : '',
+        code   = this._closeParams ? this._closeParams[1] : 1006;
+
+    var event$1 = new event('close', {code: code, reason: reason});
+    event$1.initEvent('close', false, false);
+    this.dispatchEvent(event$1);
+  }
+};
+
+for (var method in instance$a) API.prototype[method] = instance$a[method];
+for (var key$a in event_target) API.prototype[key$a] = event_target[key$a];
+
+var api = API;
+
+var DEFAULT_PORTS    = {'http:': 80, 'https:': 443, 'ws:':80, 'wss:': 443},
+    SECURE_PROTOCOLS = ['https:', 'wss:'];
+
+var Client$1 = function(_url, protocols, options) {
+  options = options || {};
+
+  this.url     = _url;
+  this._driver = driver.client(this.url, {maxLength: options.maxLength, protocols: protocols});
+
+  ['open', 'error'].forEach(function(event) {
+    this._driver.on(event, function() {
+      self.headers    = self._driver.headers;
+      self.statusCode = self._driver.statusCode;
+    });
+  }, this);
+
+  var proxy      = options.proxy || {},
+      endpoint   = url__default['default'].parse(proxy.origin || this.url),
+      port       = endpoint.port || DEFAULT_PORTS[endpoint.protocol],
+      secure     = SECURE_PROTOCOLS.indexOf(endpoint.protocol) >= 0,
+      onConnect  = function() { self._onConnect(); },
+      netOptions = options.net || {},
+      originTLS  = options.tls || {},
+      socketTLS  = proxy.origin ? (proxy.tls || {}) : originTLS,
+      self       = this;
+
+  netOptions.host = socketTLS.host = endpoint.hostname;
+  netOptions.port = socketTLS.port = port;
+
+  originTLS.ca = originTLS.ca || options.ca;
+  socketTLS.servername = socketTLS.servername || endpoint.hostname;
+
+  this._stream = secure
+               ? tls__default['default'].connect(socketTLS, onConnect)
+               : net__default['default'].connect(netOptions, onConnect);
+
+  if (proxy.origin) this._configureProxy(proxy, originTLS);
+
+  api.call(this, options);
+};
+util__default['default'].inherits(Client$1, api);
+
+Client$1.prototype._onConnect = function() {
+  var worker = this._proxy || this._driver;
+  worker.start();
+};
+
+Client$1.prototype._configureProxy = function(proxy, originTLS) {
+  var uri    = url__default['default'].parse(this.url),
+      secure = SECURE_PROTOCOLS.indexOf(uri.protocol) >= 0,
+      self   = this,
+      name;
+
+  this._proxy = this._driver.proxy(proxy.origin);
+
+  if (proxy.headers) {
+    for (name in proxy.headers) this._proxy.setHeader(name, proxy.headers[name]);
+  }
+
+  this._proxy.pipe(this._stream, {end: false});
+  this._stream.pipe(this._proxy);
+
+  this._proxy.on('connect', function() {
+    if (secure) {
+      var options = {socket: self._stream, servername: uri.hostname};
+      for (name in originTLS) options[name] = originTLS[name];
+      self._stream = tls__default['default'].connect(options);
+      self._configureStream();
+    }
+    self._driver.io.pipe(self._stream);
+    self._stream.pipe(self._driver.io);
+    self._driver.start();
+  });
+
+  this._proxy.on('error', function(error) {
+    self._driver.emit('error', error);
+  });
+};
+
+var client$1 = Client$1;
+
+var Stream$3      = stream__default['default'].Stream;
+
+var EventSource = function(request, response, options) {
+  this.writable = true;
+  options = options || {};
+
+  this._stream = response.socket;
+  this._ping   = options.ping  || this.DEFAULT_PING;
+  this._retry  = options.retry || this.DEFAULT_RETRY;
+
+  var scheme       = driver.isSecureRequest(request) ? 'https:' : 'http:';
+  this.url         = scheme + '//' + request.headers.host + request.url;
+  this.lastEventId = request.headers['last-event-id'] || '';
+  this.readyState  = api.CONNECTING;
+
+  var headers$1 = new headers(),
+      self    = this;
+
+  if (options.headers) {
+    for (var key in options.headers) headers$1.set(key, options.headers[key]);
+  }
+
+  if (!this._stream || !this._stream.writable) return;
+  process.nextTick(function() { self._open(); });
+
+  this._stream.setTimeout(0);
+  this._stream.setNoDelay(true);
+
+  var handshake = 'HTTP/1.1 200 OK\r\n' +
+                  'Content-Type: text/event-stream\r\n' +
+                  'Cache-Control: no-cache, no-store\r\n' +
+                  'Connection: close\r\n' +
+                  headers$1.toString() +
+                  '\r\n' +
+                  'retry: ' + Math.floor(this._retry * 1000) + '\r\n\r\n';
+
+  this._write(handshake);
+
+  this._stream.on('drain', function() { self.emit('drain'); });
+
+  if (this._ping)
+    this._pingTimer = setInterval(function() { self.ping(); }, this._ping * 1000);
+
+  ['error', 'end'].forEach(function(event) {
+    self._stream.on(event, function() { self.close(); });
+  });
+};
+util__default['default'].inherits(EventSource, Stream$3);
+
+EventSource.isEventSource = function(request) {
+  if (request.method !== 'GET') return false;
+  var accept = (request.headers.accept || '').split(/\s*,\s*/);
+  return accept.indexOf('text/event-stream') >= 0;
+};
+
+var instance$b = {
+  DEFAULT_PING:   10,
+  DEFAULT_RETRY:  5,
+
+  _write: function(chunk) {
+    if (!this.writable) return false;
+    try {
+      return this._stream.write(chunk, 'utf8');
+    } catch (e) {
+      return false;
+    }
+  },
+
+  _open: function() {
+    if (this.readyState !== api.CONNECTING) return;
+
+    this.readyState = api.OPEN;
+
+    var event$1 = new event('open');
+    event$1.initEvent('open', false, false);
+    this.dispatchEvent(event$1);
+  },
+
+  write: function(message) {
+    return this.send(message);
+  },
+
+  end: function(message) {
+    if (message !== undefined) this.write(message);
+    this.close();
+  },
+
+  send: function(message, options) {
+    if (this.readyState > api.OPEN) return false;
+
+    message = String(message).replace(/(\r\n|\r|\n)/g, '$1data: ');
+    options = options || {};
+
+    var frame = '';
+    if (options.event) frame += 'event: ' + options.event + '\r\n';
+    if (options.id)    frame += 'id: '    + options.id    + '\r\n';
+    frame += 'data: ' + message + '\r\n\r\n';
+
+    return this._write(frame);
+  },
+
+  ping: function() {
+    return this._write(':\r\n\r\n');
+  },
+
+  close: function() {
+    if (this.readyState > api.OPEN) return false;
+
+    this.readyState = api.CLOSED;
+    this.writable = false;
+    if (this._pingTimer) clearInterval(this._pingTimer);
+    if (this._stream) this._stream.end();
+
+    var event$1 = new event('close');
+    event$1.initEvent('close', false, false);
+    this.dispatchEvent(event$1);
+
+    return true;
+  }
+};
+
+for (var method$1 in instance$b) EventSource.prototype[method$1] = instance$b[method$1];
+for (var key$b in event_target) EventSource.prototype[key$b] = event_target[key$b];
+
+var eventsource = EventSource;
+
+var WebSocket$1 = function(request, socket, body, protocols, options) {
+  options = options || {};
+
+  this._stream = socket;
+  this._driver = driver.http(request, {maxLength: options.maxLength, protocols: protocols});
+
+  var self = this;
+  if (!this._stream || !this._stream.writable) return;
+  if (!this._stream.readable) return this._stream.end();
+
+  var catchup = function() { self._stream.removeListener('data', catchup); };
+  this._stream.on('data', catchup);
+
+  api.call(this, options);
+
+  process.nextTick(function() {
+    self._driver.start();
+    self._driver.io.write(body);
+  });
+};
+util__default['default'].inherits(WebSocket$1, api);
+
+WebSocket$1.isWebSocket = function(request) {
+  return driver.isWebSocket(request);
+};
+
+WebSocket$1.validateOptions = function(options, validKeys) {
+  driver.validateOptions(options, validKeys);
+};
+
+WebSocket$1.WebSocket   = WebSocket$1;
+WebSocket$1.Client      = client$1;
+WebSocket$1.EventSource = eventsource;
+
+var websocket        = WebSocket$1;
+
+var index_node_cjs$2 = createCommonjsModule(function (module, exports) {
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+
+
+
+
+
 
 /**
  * @license
@@ -3271,7 +7820,7 @@ var DOMStorageWrapper = /** @class */ (function () {
             this.domStorage_.removeItem(this.prefixedName_(key));
         }
         else {
-            this.domStorage_.setItem(this.prefixedName_(key), stringify(value));
+            this.domStorage_.setItem(this.prefixedName_(key), index_node_cjs.stringify(value));
         }
     };
     /**
@@ -3284,7 +7833,7 @@ var DOMStorageWrapper = /** @class */ (function () {
             return null;
         }
         else {
-            return jsonEval(storedVal);
+            return index_node_cjs.jsonEval(storedVal);
         }
     };
     /**
@@ -3342,7 +7891,7 @@ var MemoryStorage = /** @class */ (function () {
         }
     };
     MemoryStorage.prototype.get = function (key) {
-        if (contains(this.cache_, key)) {
+        if (index_node_cjs.contains(this.cache_, key)) {
             return this.cache_[key];
         }
         return null;
@@ -3417,7 +7966,7 @@ var SessionStorage = createStoragefor('sessionStorage');
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var logClient = new Logger('@firebase/database');
+var logClient = new index_cjs$1.Logger('@firebase/database');
 /**
  * Returns a locally-unique ID (generated by just incrementing up from 0 each time its called).
  * @type {function(): number} Generated ID.
@@ -3434,11 +7983,11 @@ var LUIDGenerator = (function () {
  * @return {!string} The resulting hash
  */
 var sha1 = function (str) {
-    var utf8Bytes = stringToByteArray$1(str);
-    var sha1 = new Sha1();
+    var utf8Bytes = index_node_cjs.stringToByteArray(str);
+    var sha1 = new index_node_cjs.Sha1();
     sha1.update(utf8Bytes);
     var sha1Bytes = sha1.digest();
-    return base64.encodeByteArray(sha1Bytes);
+    return index_node_cjs.base64.encodeByteArray(sha1Bytes);
 };
 /**
  * @param {...*} varArgs
@@ -3461,7 +8010,7 @@ var buildLogMessage_ = function () {
             message += buildLogMessage_.apply(null, arg);
         }
         else if (typeof arg === 'object') {
-            message += stringify(arg);
+            message += index_node_cjs.stringify(arg);
         }
         else {
             message += arg;
@@ -3474,7 +8023,7 @@ var buildLogMessage_ = function () {
  * Use this for all debug messages in Firebase.
  * @type {?function(string)}
  */
-var logger$1 = null;
+var logger = null;
 /**
  * Flag to check for log availability on first log message
  * @type {boolean}
@@ -3487,19 +8036,19 @@ var firstLog_ = true;
  * @param {boolean=} persistent Whether or not to persist logging settings across refreshes
  */
 var enableLogging = function (logger_, persistent) {
-    assert(!persistent || logger_ === true || logger_ === false, "Can't turn on custom loggers persistently.");
+    index_node_cjs.assert(!persistent || logger_ === true || logger_ === false, "Can't turn on custom loggers persistently.");
     if (logger_ === true) {
-        logClient.logLevel = LogLevel.VERBOSE;
-        logger$1 = logClient.log.bind(logClient);
+        logClient.logLevel = index_cjs$1.LogLevel.VERBOSE;
+        logger = logClient.log.bind(logClient);
         if (persistent) {
             SessionStorage.set('logging_enabled', true);
         }
     }
     else if (typeof logger_ === 'function') {
-        logger$1 = logger_;
+        logger = logger_;
     }
     else {
-        logger$1 = null;
+        logger = null;
         SessionStorage.remove('logging_enabled');
     }
 };
@@ -3514,13 +8063,13 @@ var log = function () {
     }
     if (firstLog_ === true) {
         firstLog_ = false;
-        if (logger$1 === null && SessionStorage.get('logging_enabled') === true) {
+        if (logger === null && SessionStorage.get('logging_enabled') === true) {
             enableLogging(true);
         }
     }
-    if (logger$1) {
+    if (logger) {
         var message = buildLogMessage_.apply(null, varArgs);
-        logger$1(message);
+        logger(message);
     }
 };
 /**
@@ -3533,7 +8082,7 @@ var logWrapper = function (prefix) {
         for (var _i = 0; _i < arguments.length; _i++) {
             varArgs[_i] = arguments[_i];
         }
-        log.apply(void 0, __spread([prefix], varArgs));
+        log.apply(void 0, tslib.__spread([prefix], varArgs));
     };
 };
 /**
@@ -3544,7 +8093,7 @@ var error = function () {
     for (var _i = 0; _i < arguments.length; _i++) {
         varArgs[_i] = arguments[_i];
     }
-    var message = 'FIREBASE INTERNAL ERROR: ' + buildLogMessage_.apply(void 0, __spread(varArgs));
+    var message = 'FIREBASE INTERNAL ERROR: ' + buildLogMessage_.apply(void 0, tslib.__spread(varArgs));
     logClient.error(message);
 };
 /**
@@ -3555,7 +8104,7 @@ var fatal = function () {
     for (var _i = 0; _i < arguments.length; _i++) {
         varArgs[_i] = arguments[_i];
     }
-    var message = "FIREBASE FATAL ERROR: " + buildLogMessage_.apply(void 0, __spread(varArgs));
+    var message = "FIREBASE FATAL ERROR: " + buildLogMessage_.apply(void 0, tslib.__spread(varArgs));
     logClient.error(message);
     throw new Error(message);
 };
@@ -3567,7 +8116,7 @@ var warn = function () {
     for (var _i = 0; _i < arguments.length; _i++) {
         varArgs[_i] = arguments[_i];
     }
-    var message = 'FIREBASE WARNING: ' + buildLogMessage_.apply(void 0, __spread(varArgs));
+    var message = 'FIREBASE WARNING: ' + buildLogMessage_.apply(void 0, tslib.__spread(varArgs));
     logClient.warn(message);
 };
 /**
@@ -3599,7 +8148,7 @@ var isInvalidJSONNumber = function (data) {
  * @param {function()} fn
  */
 var executeWhenDOMReady = function (fn) {
-    if ( document.readyState === 'complete') {
+    if (index_node_cjs.isNodeSdk() || document.readyState === 'complete') {
         fn();
     }
     else {
@@ -3709,7 +8258,7 @@ var requireKey = function (key, obj) {
         return obj[key];
     }
     else {
-        throw new Error('Missing required key (' + key + ') in object: ' + stringify(obj));
+        throw new Error('Missing required key (' + key + ') in object: ' + index_node_cjs.stringify(obj));
     }
 };
 /**
@@ -3718,7 +8267,7 @@ var requireKey = function (key, obj) {
  */
 var ObjectToUniqueKey = function (obj) {
     if (typeof obj !== 'object' || obj === null) {
-        return stringify(obj);
+        return index_node_cjs.stringify(obj);
     }
     var keys = [];
     // eslint-disable-next-line guard-for-in
@@ -3732,7 +8281,7 @@ var ObjectToUniqueKey = function (obj) {
         if (i !== 0) {
             key += ',';
         }
-        key += stringify(keys[i]);
+        key += index_node_cjs.stringify(keys[i]);
         key += ':';
         key += ObjectToUniqueKey(obj[keys[i]]);
     }
@@ -3782,7 +8331,7 @@ function each(obj, fn) {
  * @return {string}
  */
 var doubleToIEEE754String = function (v) {
-    assert(!isInvalidJSONNumber(v), 'Invalid JSON number'); // MJL
+    index_node_cjs.assert(!isInvalidJSONNumber(v), 'Invalid JSON number'); // MJL
     var ebits = 11, fbits = 52;
     var bias = (1 << (ebits - 1)) - 1;
     var s, e, f, ln, i;
@@ -4223,7 +8772,7 @@ var ValidationPath = /** @class */ (function () {
         /** @type {number} Initialize to number of '/' chars needed in path. */
         this.byteLength_ = Math.max(1, this.parts_.length);
         for (var i = 0; i < this.parts_.length; i++) {
-            this.byteLength_ += stringLength(this.parts_[i]);
+            this.byteLength_ += index_node_cjs.stringLength(this.parts_[i]);
         }
         this.checkValid_();
     }
@@ -4250,12 +8799,12 @@ var ValidationPath = /** @class */ (function () {
             this.byteLength_ += 1;
         }
         this.parts_.push(child);
-        this.byteLength_ += stringLength(child);
+        this.byteLength_ += index_node_cjs.stringLength(child);
         this.checkValid_();
     };
     ValidationPath.prototype.pop = function () {
         var last = this.parts_.pop();
-        this.byteLength_ -= stringLength(last);
+        this.byteLength_ -= index_node_cjs.stringLength(last);
         // Un-count the previous '/'
         if (this.parts_.length > 0) {
             this.byteLength_ -= 1;
@@ -4393,8 +8942,8 @@ var RepoInfo = /** @class */ (function () {
      * @return {string} The URL for this repo
      */
     RepoInfo.prototype.connectionURL = function (type, params) {
-        assert(typeof type === 'string', 'typeof type must == string');
-        assert(typeof params === 'object', 'typeof params must == object');
+        index_node_cjs.assert(typeof type === 'string', 'typeof type must == string');
+        index_node_cjs.assert(typeof params === 'object', 'typeof params must == object');
         var connURL;
         if (type === WEBSOCKET) {
             connURL =
@@ -4477,7 +9026,7 @@ function decodeQuery(queryString) {
         queryString = queryString.substring(1);
     }
     try {
-        for (var _b = __values(queryString.split('&')), _c = _b.next(); !_c.done; _c = _b.next()) {
+        for (var _b = tslib.__values(queryString.split('&')), _c = _b.next(); !_c.done; _c = _b.next()) {
             var segment = _c.value;
             if (segment.length === 0) {
                 continue;
@@ -4636,7 +9185,7 @@ var MAX_LEAF_SIZE_ = 10 * 1024 * 1024;
  * @param {*} key
  * @return {boolean}
  */
-var isValidKey$1 = function (key) {
+var isValidKey = function (key) {
     return (typeof key === 'string' && key.length !== 0 && !INVALID_KEY_REGEX_.test(key));
 };
 /**
@@ -4670,7 +9219,7 @@ var isValidPriority = function (priority) {
         (priority &&
             typeof priority === 'object' &&
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            contains(priority, '.sv')));
+            index_node_cjs.contains(priority, '.sv')));
 };
 /**
  * Pre-validate a datum passed as an argument to Firebase function.
@@ -4685,7 +9234,7 @@ var validateFirebaseDataArg = function (fnName, argumentNumber, data, path, opti
     if (optional && data === undefined) {
         return;
     }
-    validateFirebaseData(errorPrefix(fnName, argumentNumber, optional), data, path);
+    validateFirebaseData(index_node_cjs.errorPrefix(fnName, argumentNumber, optional), data, path);
 };
 /**
  * Validate a data object client-side before sending to server.
@@ -4712,7 +9261,7 @@ var validateFirebaseData = function (errorPrefix, data, path_) {
     // Check max leaf size, but try to avoid the utf8 conversion if we can.
     if (typeof data === 'string' &&
         data.length > MAX_LEAF_SIZE_ / 3 &&
-        stringLength(data) > MAX_LEAF_SIZE_) {
+        index_node_cjs.stringLength(data) > MAX_LEAF_SIZE_) {
         throw new Error(errorPrefix +
             'contains a string greater than ' +
             MAX_LEAF_SIZE_ +
@@ -4733,7 +9282,7 @@ var validateFirebaseData = function (errorPrefix, data, path_) {
             }
             else if (key !== '.priority' && key !== '.sv') {
                 hasActualChild_1 = true;
-                if (!isValidKey$1(key)) {
+                if (!isValidKey(key)) {
                     throw new Error(errorPrefix +
                         ' contains an invalid key (' +
                         key +
@@ -4768,7 +9317,7 @@ var validateFirebaseMergePaths = function (errorPrefix, mergePaths) {
         var keys = curPath.slice();
         for (var j = 0; j < keys.length; j++) {
             if (keys[j] === '.priority' && j === keys.length - 1) ;
-            else if (!isValidKey$1(keys[j])) {
+            else if (!isValidKey(keys[j])) {
                 throw new Error(errorPrefix +
                     'contains an invalid key (' +
                     keys[j] +
@@ -4810,17 +9359,17 @@ var validateFirebaseMergeDataArg = function (fnName, argumentNumber, data, path,
     if (optional && data === undefined) {
         return;
     }
-    var errorPrefix$1 = errorPrefix(fnName, argumentNumber, optional);
+    var errorPrefix = index_node_cjs.errorPrefix(fnName, argumentNumber, optional);
     if (!(data && typeof data === 'object') || Array.isArray(data)) {
-        throw new Error(errorPrefix$1 + ' must be an object containing the children to replace.');
+        throw new Error(errorPrefix + ' must be an object containing the children to replace.');
     }
     var mergePaths = [];
     each(data, function (key, value) {
         var curPath = new Path(key);
-        validateFirebaseData(errorPrefix$1, value, path.child(curPath));
+        validateFirebaseData(errorPrefix, value, path.child(curPath));
         if (curPath.getBack() === '.priority') {
             if (!isValidPriority(value)) {
-                throw new Error(errorPrefix$1 +
+                throw new Error(errorPrefix +
                     "contains an invalid value for '" +
                     curPath.toString() +
                     "', which must be a valid " +
@@ -4829,14 +9378,14 @@ var validateFirebaseMergeDataArg = function (fnName, argumentNumber, data, path,
         }
         mergePaths.push(curPath);
     });
-    validateFirebaseMergePaths(errorPrefix$1, mergePaths);
+    validateFirebaseMergePaths(errorPrefix, mergePaths);
 };
 var validatePriority = function (fnName, argumentNumber, priority, optional) {
     if (optional && priority === undefined) {
         return;
     }
     if (isInvalidJSONNumber(priority)) {
-        throw new Error(errorPrefix(fnName, argumentNumber, optional) +
+        throw new Error(index_node_cjs.errorPrefix(fnName, argumentNumber, optional) +
             'is ' +
             priority.toString() +
             ', but must be a valid Firebase priority (a string, finite number, ' +
@@ -4844,7 +9393,7 @@ var validatePriority = function (fnName, argumentNumber, priority, optional) {
     }
     // Special case to allow importing data with a .sv.
     if (!isValidPriority(priority)) {
-        throw new Error(errorPrefix(fnName, argumentNumber, optional) +
+        throw new Error(index_node_cjs.errorPrefix(fnName, argumentNumber, optional) +
             'must be a valid Firebase priority ' +
             '(a string, finite number, server value, or null).');
     }
@@ -4861,7 +9410,7 @@ var validateEventType = function (fnName, argumentNumber, eventType, optional) {
         case 'child_moved':
             break;
         default:
-            throw new Error(errorPrefix(fnName, argumentNumber, optional) +
+            throw new Error(index_node_cjs.errorPrefix(fnName, argumentNumber, optional) +
                 'must be a valid event type = "value", "child_added", "child_removed", ' +
                 '"child_changed", or "child_moved".');
     }
@@ -4870,8 +9419,8 @@ var validateKey = function (fnName, argumentNumber, key, optional) {
     if (optional && key === undefined) {
         return;
     }
-    if (!isValidKey$1(key)) {
-        throw new Error(errorPrefix(fnName, argumentNumber, optional) +
+    if (!isValidKey(key)) {
+        throw new Error(index_node_cjs.errorPrefix(fnName, argumentNumber, optional) +
             'was an invalid key = "' +
             key +
             '".  Firebase keys must be non-empty strings and ' +
@@ -4883,7 +9432,7 @@ var validatePathString = function (fnName, argumentNumber, pathString, optional)
         return;
     }
     if (!isValidPathString(pathString)) {
-        throw new Error(errorPrefix(fnName, argumentNumber, optional) +
+        throw new Error(index_node_cjs.errorPrefix(fnName, argumentNumber, optional) +
             'was an invalid path = "' +
             pathString +
             '". Paths must be non-empty strings and ' +
@@ -4907,10 +9456,10 @@ var validateUrl = function (fnName, argumentNumber, parsedUrl) {
     var pathString = parsedUrl.path.toString();
     if (!(typeof parsedUrl.repoInfo.host === 'string') ||
         parsedUrl.repoInfo.host.length === 0 ||
-        (!isValidKey$1(parsedUrl.repoInfo.namespace) &&
+        (!isValidKey(parsedUrl.repoInfo.namespace) &&
             parsedUrl.repoInfo.host.split(':')[0] !== 'localhost') ||
         (pathString.length !== 0 && !isValidRootPathString(pathString))) {
-        throw new Error(errorPrefix(fnName, argumentNumber, false) +
+        throw new Error(index_node_cjs.errorPrefix(fnName, argumentNumber, false) +
             'must be a valid firebase URL and ' +
             'the path can\'t contain ".", "#", "$", "[", or "]".');
     }
@@ -4920,7 +9469,7 @@ var validateBoolean = function (fnName, argumentNumber, bool, optional) {
         return;
     }
     if (typeof bool !== 'boolean') {
-        throw new Error(errorPrefix(fnName, argumentNumber, optional) + 'must be a boolean.');
+        throw new Error(index_node_cjs.errorPrefix(fnName, argumentNumber, optional) + 'must be a boolean.');
     }
 };
 
@@ -4957,9 +9506,9 @@ var OnDisconnect = /** @class */ (function () {
      * @return {!firebase.Promise}
      */
     OnDisconnect.prototype.cancel = function (onComplete) {
-        validateArgCount('OnDisconnect.cancel', 0, 1, arguments.length);
-        validateCallback('OnDisconnect.cancel', 1, onComplete, true);
-        var deferred = new Deferred();
+        index_node_cjs.validateArgCount('OnDisconnect.cancel', 0, 1, arguments.length);
+        index_node_cjs.validateCallback('OnDisconnect.cancel', 1, onComplete, true);
+        var deferred = new index_node_cjs.Deferred();
         this.repo_.onDisconnectCancel(this.path_, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -4968,10 +9517,10 @@ var OnDisconnect = /** @class */ (function () {
      * @return {!firebase.Promise}
      */
     OnDisconnect.prototype.remove = function (onComplete) {
-        validateArgCount('OnDisconnect.remove', 0, 1, arguments.length);
+        index_node_cjs.validateArgCount('OnDisconnect.remove', 0, 1, arguments.length);
         validateWritablePath('OnDisconnect.remove', this.path_);
-        validateCallback('OnDisconnect.remove', 1, onComplete, true);
-        var deferred = new Deferred();
+        index_node_cjs.validateCallback('OnDisconnect.remove', 1, onComplete, true);
+        var deferred = new index_node_cjs.Deferred();
         this.repo_.onDisconnectSet(this.path_, null, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -4981,11 +9530,11 @@ var OnDisconnect = /** @class */ (function () {
      * @return {!firebase.Promise}
      */
     OnDisconnect.prototype.set = function (value, onComplete) {
-        validateArgCount('OnDisconnect.set', 1, 2, arguments.length);
+        index_node_cjs.validateArgCount('OnDisconnect.set', 1, 2, arguments.length);
         validateWritablePath('OnDisconnect.set', this.path_);
         validateFirebaseDataArg('OnDisconnect.set', 1, value, this.path_, false);
-        validateCallback('OnDisconnect.set', 2, onComplete, true);
-        var deferred = new Deferred();
+        index_node_cjs.validateCallback('OnDisconnect.set', 2, onComplete, true);
+        var deferred = new index_node_cjs.Deferred();
         this.repo_.onDisconnectSet(this.path_, value, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -4996,12 +9545,12 @@ var OnDisconnect = /** @class */ (function () {
      * @return {!firebase.Promise}
      */
     OnDisconnect.prototype.setWithPriority = function (value, priority, onComplete) {
-        validateArgCount('OnDisconnect.setWithPriority', 2, 3, arguments.length);
+        index_node_cjs.validateArgCount('OnDisconnect.setWithPriority', 2, 3, arguments.length);
         validateWritablePath('OnDisconnect.setWithPriority', this.path_);
         validateFirebaseDataArg('OnDisconnect.setWithPriority', 1, value, this.path_, false);
         validatePriority('OnDisconnect.setWithPriority', 2, priority, false);
-        validateCallback('OnDisconnect.setWithPriority', 3, onComplete, true);
-        var deferred = new Deferred();
+        index_node_cjs.validateCallback('OnDisconnect.setWithPriority', 3, onComplete, true);
+        var deferred = new index_node_cjs.Deferred();
         this.repo_.onDisconnectSetWithPriority(this.path_, value, priority, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -5011,7 +9560,7 @@ var OnDisconnect = /** @class */ (function () {
      * @return {!firebase.Promise}
      */
     OnDisconnect.prototype.update = function (objectToMerge, onComplete) {
-        validateArgCount('OnDisconnect.update', 1, 2, arguments.length);
+        index_node_cjs.validateArgCount('OnDisconnect.update', 1, 2, arguments.length);
         validateWritablePath('OnDisconnect.update', this.path_);
         if (Array.isArray(objectToMerge)) {
             var newObjectToMerge = {};
@@ -5023,8 +9572,8 @@ var OnDisconnect = /** @class */ (function () {
                 'existing data, or an Object with integer keys if you really do want to only update some of the children.');
         }
         validateFirebaseMergeDataArg('OnDisconnect.update', 1, objectToMerge, this.path_, false);
-        validateCallback('OnDisconnect.update', 2, onComplete, true);
-        var deferred = new Deferred();
+        index_node_cjs.validateCallback('OnDisconnect.update', 2, onComplete, true);
+        var deferred = new index_node_cjs.Deferred();
         this.repo_.onDisconnectUpdate(this.path_, objectToMerge, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -5062,7 +9611,7 @@ var TransactionResult = /** @class */ (function () {
     // Do not create public documentation. This is intended to make JSON serialization work but is otherwise unnecessary
     // for end-users
     TransactionResult.prototype.toJSON = function () {
-        validateArgCount('TransactionResult.toJSON', 0, 1, arguments.length);
+        index_node_cjs.validateArgCount('TransactionResult.toJSON', 0, 1, arguments.length);
         return { committed: this.committed, snapshot: this.snapshot.toJSON() };
     };
     return TransactionResult;
@@ -5120,7 +9669,7 @@ var nextPushId = (function () {
             // the upper bits.
             now = Math.floor(now / 64);
         }
-        assert(now === 0, 'Cannot push at time == 0');
+        index_node_cjs.assert(now === 0, 'Cannot push at time == 0');
         var id = timeStampChars.join('');
         if (!duplicateTime) {
             for (i = 0; i < 12; i++) {
@@ -5138,7 +9687,7 @@ var nextPushId = (function () {
         for (i = 0; i < 12; i++) {
             id += PUSH_CHARS.charAt(lastRandChars[i]);
         }
-        assert(id.length === 20, 'nextPushId: Length should be 20.');
+        index_node_cjs.assert(id.length === 20, 'nextPushId: Length should be 20.');
         return id;
     };
 })();
@@ -5255,7 +9804,7 @@ var Index = /** @class */ (function () {
  */
 var __EMPTY_NODE;
 var KeyIndex = /** @class */ (function (_super) {
-    __extends(KeyIndex, _super);
+    tslib.__extends(KeyIndex, _super);
     function KeyIndex() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -5281,7 +9830,7 @@ var KeyIndex = /** @class */ (function (_super) {
     KeyIndex.prototype.isDefinedOn = function (node) {
         // We could probably return true here (since every node has a key), but it's never called
         // so just leaving unimplemented for now.
-        throw assertionError('KeyIndex.isDefinedOn not expected to be called.');
+        throw index_node_cjs.assertionError('KeyIndex.isDefinedOn not expected to be called.');
     };
     /**
      * @inheritDoc
@@ -5310,7 +9859,7 @@ var KeyIndex = /** @class */ (function (_super) {
      * @return {!NamedNode}
      */
     KeyIndex.prototype.makePost = function (indexValue, name) {
-        assert(typeof indexValue === 'string', 'KeyIndex indexValue must always be a string.');
+        index_node_cjs.assert(typeof indexValue === 'string', 'KeyIndex indexValue must always be a string.');
         // We just use empty node, but it'll never be compared, since our comparator only looks at name.
         return new NamedNode(indexValue, __EMPTY_NODE);
     };
@@ -5364,15 +9913,15 @@ var priorityHashText = function (priority) {
 var validatePriorityNode = function (priorityNode) {
     if (priorityNode.isLeafNode()) {
         var val = priorityNode.val();
-        assert(typeof val === 'string' ||
+        index_node_cjs.assert(typeof val === 'string' ||
             typeof val === 'number' ||
-            (typeof val === 'object' && contains(val, '.sv')), 'Priority must be a string or number.');
+            (typeof val === 'object' && index_node_cjs.contains(val, '.sv')), 'Priority must be a string or number.');
     }
     else {
-        assert(priorityNode === MAX_NODE || priorityNode.isEmpty(), 'priority of unexpected type.');
+        index_node_cjs.assert(priorityNode === MAX_NODE || priorityNode.isEmpty(), 'priority of unexpected type.');
     }
     // Don't call getPriority() on MAX_NODE to avoid hitting assertion.
-    assert(priorityNode === MAX_NODE || priorityNode.getPriority().isEmpty(), "Priority nodes can't have a priority of their own.");
+    index_node_cjs.assert(priorityNode === MAX_NODE || priorityNode.getPriority().isEmpty(), "Priority nodes can't have a priority of their own.");
 };
 
 /**
@@ -5409,7 +9958,7 @@ var LeafNode = /** @class */ (function () {
         this.value_ = value_;
         this.priorityNode_ = priorityNode_;
         this.lazyHash_ = null;
-        assert(this.value_ !== undefined && this.value_ !== null, "LeafNode shouldn't be created with null/undefined value.");
+        index_node_cjs.assert(this.value_ !== undefined && this.value_ !== null, "LeafNode shouldn't be created with null/undefined value.");
         validatePriorityNode(this.priorityNode_);
     }
     Object.defineProperty(LeafNode, "__childrenNodeConstructor", {
@@ -5488,7 +10037,7 @@ var LeafNode = /** @class */ (function () {
             return this;
         }
         else {
-            assert(front !== '.priority' || path.getLength() === 1, '.priority must be the last token in a path');
+            index_node_cjs.assert(front !== '.priority' || path.getLength() === 1, '.priority must be the last token in a path');
             return this.updateImmediateChild(front, LeafNode.__childrenNodeConstructor.EMPTY_NODE.updateChild(path.popFront(), newChildNode));
         }
     };
@@ -5558,7 +10107,7 @@ var LeafNode = /** @class */ (function () {
             return -1;
         }
         else {
-            assert(other.isLeafNode(), 'Unknown node type');
+            index_node_cjs.assert(other.isLeafNode(), 'Unknown node type');
             return this.compareToLeafNode_(other);
         }
     };
@@ -5573,8 +10122,8 @@ var LeafNode = /** @class */ (function () {
         var thisLeafType = typeof this.value_;
         var otherIndex = LeafNode.VALUE_TYPE_ORDER.indexOf(otherLeafType);
         var thisIndex = LeafNode.VALUE_TYPE_ORDER.indexOf(thisLeafType);
-        assert(otherIndex >= 0, 'Unknown leaf type: ' + otherLeafType);
-        assert(thisIndex >= 0, 'Unknown leaf type: ' + thisLeafType);
+        index_node_cjs.assert(otherIndex >= 0, 'Unknown leaf type: ' + otherLeafType);
+        index_node_cjs.assert(thisIndex >= 0, 'Unknown leaf type: ' + thisLeafType);
         if (otherIndex === thisIndex) {
             // Same type, compare values
             if (thisLeafType === 'object') {
@@ -5669,7 +10218,7 @@ function setMaxNode$1(val) {
  * @private
  */
 var PriorityIndex = /** @class */ (function (_super) {
-    __extends(PriorityIndex, _super);
+    tslib.__extends(PriorityIndex, _super);
     function PriorityIndex() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -6549,7 +11098,7 @@ var IndexMap = /** @class */ (function () {
          * The default IndexMap for nodes without a priority
          */
         get: function () {
-            assert(fallbackObject && PRIORITY_INDEX, 'ChildrenNode.ts has not been loaded');
+            index_node_cjs.assert(fallbackObject && PRIORITY_INDEX, 'ChildrenNode.ts has not been loaded');
             _defaultIndexMap =
                 _defaultIndexMap ||
                     new IndexMap({ '.priority': fallbackObject }, { '.priority': PRIORITY_INDEX });
@@ -6559,7 +11108,7 @@ var IndexMap = /** @class */ (function () {
         configurable: true
     });
     IndexMap.prototype.get = function (indexKey) {
-        var sortedMap = safeGet(this.indexes_, indexKey);
+        var sortedMap = index_node_cjs.safeGet(this.indexes_, indexKey);
         if (!sortedMap) {
             throw new Error('No index defined for ' + indexKey);
         }
@@ -6573,10 +11122,10 @@ var IndexMap = /** @class */ (function () {
         }
     };
     IndexMap.prototype.hasIndex = function (indexDefinition) {
-        return contains(this.indexSet_, indexDefinition.toString());
+        return index_node_cjs.contains(this.indexSet_, indexDefinition.toString());
     };
     IndexMap.prototype.addIndex = function (indexDefinition, existingChildren) {
-        assert(indexDefinition !== KEY_INDEX, "KeyIndex always exists and isn't meant to be added to the IndexMap.");
+        index_node_cjs.assert(indexDefinition !== KEY_INDEX, "KeyIndex always exists and isn't meant to be added to the IndexMap.");
         var childList = [];
         var sawIndexedValue = false;
         var iter = existingChildren.getIterator(NamedNode.Wrap);
@@ -6595,9 +11144,9 @@ var IndexMap = /** @class */ (function () {
             newIndex = fallbackObject;
         }
         var indexName = indexDefinition.toString();
-        var newIndexSet = __assign({}, this.indexSet_);
+        var newIndexSet = tslib.__assign({}, this.indexSet_);
         newIndexSet[indexName] = indexDefinition;
-        var newIndexes = __assign({}, this.indexes_);
+        var newIndexes = tslib.__assign({}, this.indexes_);
         newIndexes[indexName] = newIndex;
         return new IndexMap(newIndexes, newIndexSet);
     };
@@ -6606,9 +11155,9 @@ var IndexMap = /** @class */ (function () {
      */
     IndexMap.prototype.addToIndexes = function (namedNode, existingChildren) {
         var _this = this;
-        var newIndexes = map(this.indexes_, function (indexedChildren, indexName) {
-            var index = safeGet(_this.indexSet_, indexName);
-            assert(index, 'Missing index implementation for ' + indexName);
+        var newIndexes = index_node_cjs.map(this.indexes_, function (indexedChildren, indexName) {
+            var index = index_node_cjs.safeGet(_this.indexSet_, indexName);
+            index_node_cjs.assert(index, 'Missing index implementation for ' + indexName);
             if (indexedChildren === fallbackObject) {
                 // Check to see if we need to index everything
                 if (index.isDefinedOn(namedNode.node)) {
@@ -6645,7 +11194,7 @@ var IndexMap = /** @class */ (function () {
      * Create a new IndexMap instance with the given value removed
      */
     IndexMap.prototype.removeFromIndexes = function (namedNode, existingChildren) {
-        var newIndexes = map(this.indexes_, function (indexedChildren) {
+        var newIndexes = index_node_cjs.map(this.indexes_, function (indexedChildren) {
             if (indexedChildren === fallbackObject) {
                 // This is the fallback. Just return it, nothing to do in this case
                 return indexedChildren;
@@ -6737,7 +11286,7 @@ var ChildrenNode = /** @class */ (function () {
             validatePriorityNode(this.priorityNode_);
         }
         if (this.children_.isEmpty()) {
-            assert(!this.priorityNode_ || this.priorityNode_.isEmpty(), 'An empty node cannot have a priority');
+            index_node_cjs.assert(!this.priorityNode_ || this.priorityNode_.isEmpty(), 'An empty node cannot have a priority');
         }
     }
     Object.defineProperty(ChildrenNode, "EMPTY_NODE", {
@@ -6791,7 +11340,7 @@ var ChildrenNode = /** @class */ (function () {
     };
     /** @inheritDoc */
     ChildrenNode.prototype.updateImmediateChild = function (childName, newChildNode) {
-        assert(newChildNode, 'We should always be passing snapshot nodes');
+        index_node_cjs.assert(newChildNode, 'We should always be passing snapshot nodes');
         if (childName === '.priority') {
             return this.updatePriority(newChildNode);
         }
@@ -6819,7 +11368,7 @@ var ChildrenNode = /** @class */ (function () {
             return newChildNode;
         }
         else {
-            assert(path.getFront() !== '.priority' || path.getLength() === 1, '.priority must be the last token in a path');
+            index_node_cjs.assert(path.getFront() !== '.priority' || path.getLength() === 1, '.priority must be the last token in a path');
             var newImmediateChild = this.getImmediateChild(front).updateChild(path.popFront(), newChildNode);
             return this.updateImmediateChild(front, newImmediateChild);
         }
@@ -7128,7 +11677,7 @@ var ChildrenNode = /** @class */ (function () {
  * @private
  */
 var MaxNode = /** @class */ (function (_super) {
-    __extends(MaxNode, _super);
+    tslib.__extends(MaxNode, _super);
     function MaxNode() {
         return _super.call(this, new SortedMap(NAME_COMPARATOR), ChildrenNode.EMPTY_NODE, IndexMap.Default) || this;
     }
@@ -7209,7 +11758,7 @@ function nodeFromJSON$1(json, priority) {
     if (typeof json === 'object' && '.priority' in json) {
         priority = json['.priority'];
     }
-    assert(priority === null ||
+    index_node_cjs.assert(priority === null ||
         typeof priority === 'string' ||
         typeof priority === 'number' ||
         (typeof priority === 'object' && '.sv' in priority), 'Invalid priority type found: ' + typeof priority);
@@ -7251,7 +11800,7 @@ function nodeFromJSON$1(json, priority) {
     else {
         var node_1 = ChildrenNode.EMPTY_NODE;
         each(json, function (key, childData) {
-            if (contains(json, key)) {
+            if (index_node_cjs.contains(json, key)) {
                 if (key.substring(0, 1) !== '.') {
                     // ignore metadata nodes.
                     var childNode = nodeFromJSON$1(childData);
@@ -7288,7 +11837,7 @@ setNodeFromJSON(nodeFromJSON$1);
  * @private
  */
 var ValueIndex = /** @class */ (function (_super) {
-    __extends(ValueIndex, _super);
+    tslib.__extends(ValueIndex, _super);
     function ValueIndex() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
@@ -7371,11 +11920,11 @@ var VALUE_INDEX = new ValueIndex();
  * @extends {Index}
  */
 var PathIndex = /** @class */ (function (_super) {
-    __extends(PathIndex, _super);
+    tslib.__extends(PathIndex, _super);
     function PathIndex(indexPath_) {
         var _this = _super.call(this) || this;
         _this.indexPath_ = indexPath_;
-        assert(!indexPath_.isEmpty() && indexPath_.getFront() !== '.priority', "Can't create PathIndex with empty path or .priority key");
+        index_node_cjs.assert(!indexPath_.isEmpty() && indexPath_.getFront() !== '.priority', "Can't create PathIndex with empty path or .priority key");
         return _this;
     }
     /**
@@ -7468,7 +12017,7 @@ var DataSnapshot = /** @class */ (function () {
      * @return {*} JSON representation of the DataSnapshot contents, or null if empty.
      */
     DataSnapshot.prototype.val = function () {
-        validateArgCount('DataSnapshot.val', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('DataSnapshot.val', 0, 0, arguments.length);
         return this.node_.val();
     };
     /**
@@ -7477,14 +12026,14 @@ var DataSnapshot = /** @class */ (function () {
      * @return {*} JSON representation of the DataSnapshot contents, or null if empty.
      */
     DataSnapshot.prototype.exportVal = function () {
-        validateArgCount('DataSnapshot.exportVal', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('DataSnapshot.exportVal', 0, 0, arguments.length);
         return this.node_.val(true);
     };
     // Do not create public documentation. This is intended to make JSON serialization work but is otherwise unnecessary
     // for end-users
     DataSnapshot.prototype.toJSON = function () {
         // Optional spacer argument is unnecessary because we're depending on recursion rather than stringifying the content
-        validateArgCount('DataSnapshot.toJSON', 0, 1, arguments.length);
+        index_node_cjs.validateArgCount('DataSnapshot.toJSON', 0, 1, arguments.length);
         return this.exportVal();
     };
     /**
@@ -7493,7 +12042,7 @@ var DataSnapshot = /** @class */ (function () {
      * @return {boolean} Whether the snapshot contains a non-null value, or is empty.
      */
     DataSnapshot.prototype.exists = function () {
-        validateArgCount('DataSnapshot.exists', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('DataSnapshot.exists', 0, 0, arguments.length);
         return !this.node_.isEmpty();
     };
     /**
@@ -7503,7 +12052,7 @@ var DataSnapshot = /** @class */ (function () {
      * @return {!DataSnapshot} DataSnapshot for child node.
      */
     DataSnapshot.prototype.child = function (childPathString) {
-        validateArgCount('DataSnapshot.child', 0, 1, arguments.length);
+        index_node_cjs.validateArgCount('DataSnapshot.child', 0, 1, arguments.length);
         // Ensure the childPath is a string (can be a number)
         childPathString = String(childPathString);
         validatePathString('DataSnapshot.child', 1, childPathString, false);
@@ -7518,7 +12067,7 @@ var DataSnapshot = /** @class */ (function () {
      * @return {boolean} Whether the child exists.
      */
     DataSnapshot.prototype.hasChild = function (childPathString) {
-        validateArgCount('DataSnapshot.hasChild', 1, 1, arguments.length);
+        index_node_cjs.validateArgCount('DataSnapshot.hasChild', 1, 1, arguments.length);
         validatePathString('DataSnapshot.hasChild', 1, childPathString, false);
         var childPath = new Path(childPathString);
         return !this.node_.getChild(childPath).isEmpty();
@@ -7529,7 +12078,7 @@ var DataSnapshot = /** @class */ (function () {
      * @return {string|number|null} The priority.
      */
     DataSnapshot.prototype.getPriority = function () {
-        validateArgCount('DataSnapshot.getPriority', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('DataSnapshot.getPriority', 0, 0, arguments.length);
         // typecast here because we never return deferred values or internal priorities (MAX_PRIORITY)
         return this.node_.getPriority().val();
     };
@@ -7543,8 +12092,8 @@ var DataSnapshot = /** @class */ (function () {
      */
     DataSnapshot.prototype.forEach = function (action) {
         var _this = this;
-        validateArgCount('DataSnapshot.forEach', 1, 1, arguments.length);
-        validateCallback('DataSnapshot.forEach', 1, action, false);
+        index_node_cjs.validateArgCount('DataSnapshot.forEach', 1, 1, arguments.length);
+        index_node_cjs.validateCallback('DataSnapshot.forEach', 1, action, false);
         if (this.node_.isLeafNode()) {
             return false;
         }
@@ -7559,7 +12108,7 @@ var DataSnapshot = /** @class */ (function () {
      * @return {boolean} True if the DataSnapshot contains 1 or more child nodes.
      */
     DataSnapshot.prototype.hasChildren = function () {
-        validateArgCount('DataSnapshot.hasChildren', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('DataSnapshot.hasChildren', 0, 0, arguments.length);
         if (this.node_.isLeafNode()) {
             return false;
         }
@@ -7579,14 +12128,14 @@ var DataSnapshot = /** @class */ (function () {
      * @return {number} The number of children that this DataSnapshot contains.
      */
     DataSnapshot.prototype.numChildren = function () {
-        validateArgCount('DataSnapshot.numChildren', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('DataSnapshot.numChildren', 0, 0, arguments.length);
         return this.node_.numChildren();
     };
     /**
      * @return {Reference} The Firebase reference for the location this snapshot's data came from.
      */
     DataSnapshot.prototype.getRef = function () {
-        validateArgCount('DataSnapshot.ref', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('DataSnapshot.ref', 0, 0, arguments.length);
         return this.ref_;
     };
     Object.defineProperty(DataSnapshot.prototype, "ref", {
@@ -7664,7 +12213,7 @@ var DataEvent = /** @class */ (function () {
             ':' +
             this.eventType +
             ':' +
-            stringify(this.snapshot.exportVal()));
+            index_node_cjs.stringify(this.snapshot.exportVal()));
     };
     return DataEvent;
 }());
@@ -7755,7 +12304,7 @@ var ValueEventRegistration = /** @class */ (function () {
     ValueEventRegistration.prototype.getEventRunner = function (eventData) {
         var ctx = this.context_;
         if (eventData.getEventType() === 'cancel') {
-            assert(this.cancelCallback_, 'Raising a cancel event on a listener with no cancel callback');
+            index_node_cjs.assert(this.cancelCallback_, 'Raising a cancel event on a listener with no cancel callback');
             var cancelCB_1 = this.cancelCallback_;
             return function () {
                 // We know that error exists, we checked above that this is a cancel event
@@ -7830,7 +12379,7 @@ var ChildEventRegistration = /** @class */ (function () {
         var eventToCheck = eventType === 'children_added' ? 'child_added' : eventType;
         eventToCheck =
             eventToCheck === 'children_removed' ? 'child_removed' : eventToCheck;
-        return contains(this.callbacks_, eventToCheck);
+        return index_node_cjs.contains(this.callbacks_, eventToCheck);
     };
     /**
      * @inheritDoc
@@ -7847,7 +12396,7 @@ var ChildEventRegistration = /** @class */ (function () {
      * @inheritDoc
      */
     ChildEventRegistration.prototype.createEvent = function (change, query) {
-        assert(change.childName != null, 'Child events should have a childName.');
+        index_node_cjs.assert(change.childName != null, 'Child events should have a childName.');
         var ref = query.getRef().child(/** @type {!string} */ change.childName);
         var index = query.getQueryParams().getIndex();
         return new DataEvent(change.type, this, new DataSnapshot(change.snapshotNode, ref, index), change.prevName);
@@ -7858,7 +12407,7 @@ var ChildEventRegistration = /** @class */ (function () {
     ChildEventRegistration.prototype.getEventRunner = function (eventData) {
         var ctx = this.context_;
         if (eventData.getEventType() === 'cancel') {
-            assert(this.cancelCallback_, 'Raising a cancel event on a listener with no cancel callback');
+            index_node_cjs.assert(this.cancelCallback_, 'Raising a cancel event on a listener with no cancel callback');
             var cancelCB_2 = this.cancelCallback_;
             return function () {
                 // We know that error exists, we checked above that this is a cancel event
@@ -7950,7 +12499,7 @@ var Query = /** @class */ (function () {
     }
     Object.defineProperty(Query, "__referenceConstructor", {
         get: function () {
-            assert(__referenceConstructor, 'Reference.ts has not been loaded');
+            index_node_cjs.assert(__referenceConstructor, 'Reference.ts has not been loaded');
             return __referenceConstructor;
         },
         set: function (val) {
@@ -8005,7 +12554,7 @@ var Query = /** @class */ (function () {
             }
         }
         else {
-            assert(params.getIndex() instanceof PathIndex ||
+            index_node_cjs.assert(params.getIndex() instanceof PathIndex ||
                 params.getIndex() === VALUE_INDEX, 'unknown index type.');
             if ((startNode != null && typeof startNode === 'object') ||
                 (endNode != null && typeof endNode === 'object')) {
@@ -8047,7 +12596,7 @@ var Query = /** @class */ (function () {
      * @return {!Reference}
      */
     Query.prototype.getRef = function () {
-        validateArgCount('Query.ref', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('Query.ref', 0, 0, arguments.length);
         // This is a slight hack. We cannot goog.require('fb.api.Firebase'), since Firebase requires fb.api.Query.
         // However, we will always export 'Firebase' to the global namespace, so it's guaranteed to exist by the time this
         // method gets called.
@@ -8061,9 +12610,9 @@ var Query = /** @class */ (function () {
      * @return {!function(DataSnapshot, string=)}
      */
     Query.prototype.on = function (eventType, callback, cancelCallbackOrContext, context) {
-        validateArgCount('Query.on', 2, 4, arguments.length);
+        index_node_cjs.validateArgCount('Query.on', 2, 4, arguments.length);
         validateEventType('Query.on', 1, eventType, false);
-        validateCallback('Query.on', 2, callback, false);
+        index_node_cjs.validateCallback('Query.on', 2, callback, false);
         var ret = Query.getCancelAndContextArgs_('Query.on', cancelCallbackOrContext, context);
         if (eventType === 'value') {
             this.onValueEvent(callback, ret.cancel, ret.context);
@@ -8101,10 +12650,10 @@ var Query = /** @class */ (function () {
      * @param {Object=} context
      */
     Query.prototype.off = function (eventType, callback, context) {
-        validateArgCount('Query.off', 0, 3, arguments.length);
+        index_node_cjs.validateArgCount('Query.off', 0, 3, arguments.length);
         validateEventType('Query.off', 1, eventType, true);
-        validateCallback('Query.off', 2, callback, true);
-        validateContextObject('Query.off', 3, context, true);
+        index_node_cjs.validateCallback('Query.off', 2, callback, true);
+        index_node_cjs.validateContextObject('Query.off', 3, context, true);
         var container = null;
         var callbacks = null;
         if (eventType === 'value') {
@@ -8130,16 +12679,16 @@ var Query = /** @class */ (function () {
      */
     Query.prototype.once = function (eventType, userCallback, failureCallbackOrContext, context) {
         var _this = this;
-        validateArgCount('Query.once', 1, 4, arguments.length);
+        index_node_cjs.validateArgCount('Query.once', 1, 4, arguments.length);
         validateEventType('Query.once', 1, eventType, false);
-        validateCallback('Query.once', 2, userCallback, true);
+        index_node_cjs.validateCallback('Query.once', 2, userCallback, true);
         var ret = Query.getCancelAndContextArgs_('Query.once', failureCallbackOrContext, context);
         // TODO: Implement this more efficiently (in particular, use 'get' wire protocol for 'value' event)
         // TODO: consider actually wiring the callbacks into the promise. We cannot do this without a breaking change
         // because the API currently expects callbacks will be called synchronously if the data is cached, but this is
         // against the Promise specification.
         var firstCall = true;
-        var deferred = new Deferred();
+        var deferred = new index_node_cjs.Deferred();
         // A dummy error handler in case a user wasn't expecting promises
         deferred.promise.catch(function () { });
         var onceCallback = function (snapshot) {
@@ -8170,7 +12719,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.limitToFirst = function (limit) {
-        validateArgCount('Query.limitToFirst', 1, 1, arguments.length);
+        index_node_cjs.validateArgCount('Query.limitToFirst', 1, 1, arguments.length);
         if (typeof limit !== 'number' ||
             Math.floor(limit) !== limit ||
             limit <= 0) {
@@ -8188,7 +12737,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.limitToLast = function (limit) {
-        validateArgCount('Query.limitToLast', 1, 1, arguments.length);
+        index_node_cjs.validateArgCount('Query.limitToLast', 1, 1, arguments.length);
         if (typeof limit !== 'number' ||
             Math.floor(limit) !== limit ||
             limit <= 0) {
@@ -8206,7 +12755,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.orderByChild = function (path) {
-        validateArgCount('Query.orderByChild', 1, 1, arguments.length);
+        index_node_cjs.validateArgCount('Query.orderByChild', 1, 1, arguments.length);
         if (path === '$key') {
             throw new Error('Query.orderByChild: "$key" is invalid.  Use Query.orderByKey() instead.');
         }
@@ -8232,7 +12781,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.orderByKey = function () {
-        validateArgCount('Query.orderByKey', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('Query.orderByKey', 0, 0, arguments.length);
         this.validateNoPreviousOrderByCall_('Query.orderByKey');
         var newParams = this.queryParams_.orderBy(KEY_INDEX);
         Query.validateQueryEndpoints_(newParams);
@@ -8243,7 +12792,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.orderByPriority = function () {
-        validateArgCount('Query.orderByPriority', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('Query.orderByPriority', 0, 0, arguments.length);
         this.validateNoPreviousOrderByCall_('Query.orderByPriority');
         var newParams = this.queryParams_.orderBy(PRIORITY_INDEX);
         Query.validateQueryEndpoints_(newParams);
@@ -8254,7 +12803,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.orderByValue = function () {
-        validateArgCount('Query.orderByValue', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('Query.orderByValue', 0, 0, arguments.length);
         this.validateNoPreviousOrderByCall_('Query.orderByValue');
         var newParams = this.queryParams_.orderBy(VALUE_INDEX);
         Query.validateQueryEndpoints_(newParams);
@@ -8267,7 +12816,7 @@ var Query = /** @class */ (function () {
      */
     Query.prototype.startAt = function (value, name) {
         if (value === void 0) { value = null; }
-        validateArgCount('Query.startAt', 0, 2, arguments.length);
+        index_node_cjs.validateArgCount('Query.startAt', 0, 2, arguments.length);
         validateFirebaseDataArg('Query.startAt', 1, value, this.path, true);
         validateKey('Query.startAt', 2, name, true);
         var newParams = this.queryParams_.startAt(value, name);
@@ -8291,7 +12840,7 @@ var Query = /** @class */ (function () {
      */
     Query.prototype.endAt = function (value, name) {
         if (value === void 0) { value = null; }
-        validateArgCount('Query.endAt', 0, 2, arguments.length);
+        index_node_cjs.validateArgCount('Query.endAt', 0, 2, arguments.length);
         validateFirebaseDataArg('Query.endAt', 1, value, this.path, true);
         validateKey('Query.endAt', 2, name, true);
         var newParams = this.queryParams_.endAt(value, name);
@@ -8311,7 +12860,7 @@ var Query = /** @class */ (function () {
      * @return {!Query}
      */
     Query.prototype.equalTo = function (value, name) {
-        validateArgCount('Query.equalTo', 1, 2, arguments.length);
+        index_node_cjs.validateArgCount('Query.equalTo', 1, 2, arguments.length);
         validateFirebaseDataArg('Query.equalTo', 1, value, this.path, false);
         validateKey('Query.equalTo', 2, name, true);
         if (this.queryParams_.hasStart()) {
@@ -8328,14 +12877,14 @@ var Query = /** @class */ (function () {
      * @return {!string} URL for this location.
      */
     Query.prototype.toString = function () {
-        validateArgCount('Query.toString', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('Query.toString', 0, 0, arguments.length);
         return this.repo.toString() + this.path.toUrlEncodedString();
     };
     // Do not create public documentation. This is intended to make JSON serialization work but is otherwise unnecessary
     // for end-users.
     Query.prototype.toJSON = function () {
         // An optional spacer argument is unnecessary for a string.
-        validateArgCount('Query.toJSON', 0, 1, arguments.length);
+        index_node_cjs.validateArgCount('Query.toJSON', 0, 1, arguments.length);
         return this.toString();
     };
     /**
@@ -8359,7 +12908,7 @@ var Query = /** @class */ (function () {
      * @return {boolean}
      */
     Query.prototype.isEqual = function (other) {
-        validateArgCount('Query.isEqual', 1, 1, arguments.length);
+        index_node_cjs.validateArgCount('Query.isEqual', 1, 1, arguments.length);
         if (!(other instanceof Query)) {
             var error = 'Query.isEqual failed: First argument must be an instance of firebase.database.Query.';
             throw new Error(error);
@@ -8381,9 +12930,9 @@ var Query = /** @class */ (function () {
         var ret = { cancel: null, context: null };
         if (cancelOrContext && context) {
             ret.cancel = cancelOrContext;
-            validateCallback(fnName, 3, ret.cancel, true);
+            index_node_cjs.validateCallback(fnName, 3, ret.cancel, true);
             ret.context = context;
-            validateContextObject(fnName, 4, ret.context, true);
+            index_node_cjs.validateContextObject(fnName, 4, ret.context, true);
         }
         else if (cancelOrContext) {
             // we have either a cancel callback or a context.
@@ -8395,7 +12944,7 @@ var Query = /** @class */ (function () {
                 ret.cancel = cancelOrContext;
             }
             else {
-                throw new Error(errorPrefix(fnName, 3, true) +
+                throw new Error(index_node_cjs.errorPrefix(fnName, 3, true) +
                     ' must either be a cancel callback or a context object.');
             }
         }
@@ -8475,7 +13024,7 @@ var resolveDeferredLeafValue = function (value, existingVal, serverValues) {
     if (!value || typeof value !== 'object') {
         return value;
     }
-    assert('.sv' in value, 'Unexpected leaf node or priority contents');
+    index_node_cjs.assert('.sv' in value, 'Unexpected leaf node or priority contents');
     if (typeof value['.sv'] === 'string') {
         return resolveScalarDeferredValue(value['.sv'], existingVal, serverValues);
     }
@@ -8483,7 +13032,7 @@ var resolveDeferredLeafValue = function (value, existingVal, serverValues) {
         return resolveComplexDeferredValue(value['.sv'], existingVal);
     }
     else {
-        assert(false, 'Unexpected server value: ' + JSON.stringify(value, null, 2));
+        index_node_cjs.assert(false, 'Unexpected server value: ' + JSON.stringify(value, null, 2));
     }
 };
 var resolveScalarDeferredValue = function (op, existing, serverValues) {
@@ -8491,19 +13040,19 @@ var resolveScalarDeferredValue = function (op, existing, serverValues) {
         case 'timestamp':
             return serverValues['timestamp'];
         default:
-            assert(false, 'Unexpected server value: ' + op);
+            index_node_cjs.assert(false, 'Unexpected server value: ' + op);
     }
 };
 var resolveComplexDeferredValue = function (op, existing, unused) {
     if (!op.hasOwnProperty('increment')) {
-        assert(false, 'Unexpected server value: ' + JSON.stringify(op, null, 2));
+        index_node_cjs.assert(false, 'Unexpected server value: ' + JSON.stringify(op, null, 2));
     }
     var delta = op['increment'];
     if (typeof delta !== 'number') {
-        assert(false, 'Unexpected increment value: ' + delta);
+        index_node_cjs.assert(false, 'Unexpected increment value: ' + delta);
     }
     var existingNode = existing.node();
-    assert(existingNode !== null && typeof existingNode !== 'undefined', 'Expected ChildrenNode.EMPTY_NODE for nulls');
+    index_node_cjs.assert(existingNode !== null && typeof existingNode !== 'undefined', 'Expected ChildrenNode.EMPTY_NODE for nulls');
     // Incrementing a non-number sets the value to the incremented amount
     if (!existingNode.isLeafNode()) {
         return delta;
@@ -8759,7 +13308,7 @@ var OperationSource = /** @class */ (function () {
         this.fromServer = fromServer;
         this.queryId = queryId;
         this.tagged = tagged;
-        assert(!tagged || fromServer, 'Tagged queries must be from server.');
+        index_node_cjs.assert(!tagged || fromServer, 'Tagged queries must be from server.');
     }
     /**
      * @const
@@ -8827,11 +13376,11 @@ var AckUserWrite = /** @class */ (function () {
      */
     AckUserWrite.prototype.operationForChild = function (childName) {
         if (!this.path.isEmpty()) {
-            assert(this.path.getFront() === childName, 'operationForChild called for unrelated child.');
+            index_node_cjs.assert(this.path.getFront() === childName, 'operationForChild called for unrelated child.');
             return new AckUserWrite(this.path.popFront(), this.affectedTree, this.revert);
         }
         else if (this.affectedTree.value != null) {
-            assert(this.affectedTree.children.isEmpty(), 'affectedTree should not have overlapping affected paths.');
+            index_node_cjs.assert(this.affectedTree.children.isEmpty(), 'affectedTree should not have overlapping affected paths.');
             // All child locations are affected as well; just return same operation.
             return this;
         }
@@ -9330,7 +13879,7 @@ var Merge = /** @class */ (function () {
             }
         }
         else {
-            assert(this.path.getFront() === childName, "Can't get a merge for a child not on the path of the operation");
+            index_node_cjs.assert(this.path.getFront() === childName, "Can't get a merge for a child not on the path of the operation");
             return new Merge(this.source, this.path.popFront(), this.children);
         }
     };
@@ -9629,7 +14178,7 @@ var IndexedFilter = /** @class */ (function () {
         this.index_ = index_;
     }
     IndexedFilter.prototype.updateChild = function (snap, key, newChild, affectedPath, source, optChangeAccumulator) {
-        assert(snap.isIndexed(this.index_), 'A node must be indexed if only a child is updated');
+        index_node_cjs.assert(snap.isIndexed(this.index_), 'A node must be indexed if only a child is updated');
         var oldChild = snap.getImmediateChild(key);
         // Check if anything actually changed.
         if (oldChild.getChild(affectedPath).equals(newChild.getChild(affectedPath))) {
@@ -9649,7 +14198,7 @@ var IndexedFilter = /** @class */ (function () {
                     optChangeAccumulator.trackChildChange(Change.childRemovedChange(key, oldChild));
                 }
                 else {
-                    assert(snap.isLeafNode(), 'A child remove without an old child only makes sense on a leaf node');
+                    index_node_cjs.assert(snap.isLeafNode(), 'A child remove without an old child only makes sense on a leaf node');
                 }
             }
             else if (oldChild.isEmpty()) {
@@ -9750,10 +14299,10 @@ var ChildChangeAccumulator = /** @class */ (function () {
     ChildChangeAccumulator.prototype.trackChildChange = function (change) {
         var type = change.type;
         var childKey = change.childName;
-        assert(type === Change.CHILD_ADDED ||
+        index_node_cjs.assert(type === Change.CHILD_ADDED ||
             type === Change.CHILD_CHANGED ||
             type === Change.CHILD_REMOVED, 'Only child changes supported for tracking');
-        assert(childKey !== '.priority', 'Only non-priority child changes can be tracked.');
+        index_node_cjs.assert(childKey !== '.priority', 'Only non-priority child changes can be tracked.');
         var oldChange = this.changeMap.get(childKey);
         if (oldChange) {
             var oldType = oldChange.type;
@@ -9777,7 +14326,7 @@ var ChildChangeAccumulator = /** @class */ (function () {
                 this.changeMap.set(childKey, Change.childChangedChange(childKey, change.snapshotNode, oldChange.oldSnap));
             }
             else {
-                throw assertionError('Illegal combination of changes: ' +
+                throw index_node_cjs.assertionError('Illegal combination of changes: ' +
                     change +
                     ' occurred after ' +
                     oldChange);
@@ -9937,8 +14486,8 @@ var ViewProcessor = /** @class */ (function () {
      * @param {!ViewCache} viewCache
      */
     ViewProcessor.prototype.assertIndexed = function (viewCache) {
-        assert(viewCache.getEventCache().getNode().isIndexed(this.filter_.getIndex()), 'Event snap not indexed');
-        assert(viewCache.getServerCache().getNode().isIndexed(this.filter_.getIndex()), 'Server snap not indexed');
+        index_node_cjs.assert(viewCache.getEventCache().getNode().isIndexed(this.filter_.getIndex()), 'Event snap not indexed');
+        index_node_cjs.assert(viewCache.getServerCache().getNode().isIndexed(this.filter_.getIndex()), 'Server snap not indexed');
     };
     /**
      * @param {!ViewCache} oldViewCache
@@ -9956,7 +14505,7 @@ var ViewProcessor = /** @class */ (function () {
                 newViewCache = this.applyUserOverwrite_(oldViewCache, overwrite.path, overwrite.snap, writesCache, completeCache, accumulator);
             }
             else {
-                assert(overwrite.source.fromServer, 'Unknown source.');
+                index_node_cjs.assert(overwrite.source.fromServer, 'Unknown source.');
                 // We filter the node if it's a tagged update or the node has been previously filtered  and the
                 // update is not at the root in which case it is ok (and necessary) to mark the node unfiltered
                 // again
@@ -9973,7 +14522,7 @@ var ViewProcessor = /** @class */ (function () {
                 newViewCache = this.applyUserMerge_(oldViewCache, merge.path, merge.children, writesCache, completeCache, accumulator);
             }
             else {
-                assert(merge.source.fromServer, 'Unknown source.');
+                index_node_cjs.assert(merge.source.fromServer, 'Unknown source.');
                 // We filter the node if it's a tagged update or the node has been previously filtered
                 filterServerNode =
                     merge.source.tagged || oldViewCache.getServerCache().isFiltered();
@@ -9993,7 +14542,7 @@ var ViewProcessor = /** @class */ (function () {
             newViewCache = this.listenComplete_(oldViewCache, operation.path, writesCache, accumulator);
         }
         else {
-            throw assertionError('Unknown operation type: ' + operation.type);
+            throw index_node_cjs.assertionError('Unknown operation type: ' + operation.type);
         }
         var changes = accumulator.getChanges();
         ViewProcessor.maybeAddValueEvent_(oldViewCache, newViewCache, changes);
@@ -10039,7 +14588,7 @@ var ViewProcessor = /** @class */ (function () {
             var newEventCache = void 0, serverNode = void 0;
             if (changePath.isEmpty()) {
                 // TODO: figure out how this plays with "sliding ack windows"
-                assert(viewCache.getServerCache().isFullyInitialized(), 'If change path is empty, we must have complete server data');
+                index_node_cjs.assert(viewCache.getServerCache().isFullyInitialized(), 'If change path is empty, we must have complete server data');
                 if (viewCache.getServerCache().isFiltered()) {
                     // We need to special case this, because we need to only apply writes to complete children, or
                     // we might end up raising events for incomplete children. If the server data is filtered deep
@@ -10059,7 +14608,7 @@ var ViewProcessor = /** @class */ (function () {
             else {
                 var childKey = changePath.getFront();
                 if (childKey === '.priority') {
-                    assert(changePath.getLength() === 1, "Can't have a priority with additional path components");
+                    index_node_cjs.assert(changePath.getLength() === 1, "Can't have a priority with additional path components");
                     var oldEventNode = oldEventSnap.getNode();
                     serverNode = viewCache.getServerCache().getNode();
                     // we might have overwrites for this priority
@@ -10416,7 +14965,7 @@ var ViewProcessor = /** @class */ (function () {
                 }
                 else {
                     var serverChildren = viewCache.getServerCache().getNode();
-                    assert(serverChildren instanceof ChildrenNode, 'serverChildren would be complete if leaf node');
+                    index_node_cjs.assert(serverChildren instanceof ChildrenNode, 'serverChildren would be complete if leaf node');
                     newNode = writesCache.calcCompleteEventChildren(serverChildren);
                 }
                 newNode = newNode;
@@ -10572,7 +15121,7 @@ var EventGenerator = /** @class */ (function () {
      */
     EventGenerator.prototype.compareChanges_ = function (a, b) {
         if (a.childName == null || b.childName == null) {
-            throw assertionError('Should only compare child_ events.');
+            throw index_node_cjs.assertionError('Should only compare child_ events.');
         }
         var aWrapped = new NamedNode(a.childName, a.snapshotNode);
         var bWrapped = new NamedNode(b.childName, b.snapshotNode);
@@ -10690,7 +15239,7 @@ var View = /** @class */ (function () {
     View.prototype.removeEventRegistration = function (eventRegistration, cancelError) {
         var cancelEvents = [];
         if (cancelError) {
-            assert(eventRegistration == null, 'A cancel should cancel all event registrations.');
+            index_node_cjs.assert(eventRegistration == null, 'A cancel should cancel all event registrations.');
             var path_1 = this.query_.path;
             this.eventRegistrations_.forEach(function (registration) {
                 cancelError /** @type {!Error} */ = cancelError;
@@ -10731,13 +15280,13 @@ var View = /** @class */ (function () {
     View.prototype.applyOperation = function (operation, writesCache, completeServerCache) {
         if (operation.type === OperationType.MERGE &&
             operation.source.queryId !== null) {
-            assert(this.viewCache_.getCompleteServerSnap(), 'We should always have a full cache before handling merges');
-            assert(this.viewCache_.getCompleteEventSnap(), 'Missing event cache, even though we have a server cache');
+            index_node_cjs.assert(this.viewCache_.getCompleteServerSnap(), 'We should always have a full cache before handling merges');
+            index_node_cjs.assert(this.viewCache_.getCompleteEventSnap(), 'Missing event cache, even though we have a server cache');
         }
         var oldViewCache = this.viewCache_;
         var result = this.processor_.applyOperation(oldViewCache, operation, writesCache, completeServerCache);
         this.processor_.assertIndexed(result.viewCache);
-        assert(result.viewCache.getServerCache().isFullyInitialized() ||
+        index_node_cjs.assert(result.viewCache.getServerCache().isFullyInitialized() ||
             !oldViewCache.getServerCache().isFullyInitialized(), 'Once a server snap is complete, it should never go back');
         this.viewCache_ = result.viewCache;
         return this.generateEventsForChanges_(result.changes, result.viewCache.getEventCache().getNode(), null);
@@ -10815,11 +15364,11 @@ var SyncPoint = /** @class */ (function () {
     }
     Object.defineProperty(SyncPoint, "__referenceConstructor", {
         get: function () {
-            assert(__referenceConstructor$1, 'Reference.ts has not been loaded');
+            index_node_cjs.assert(__referenceConstructor$1, 'Reference.ts has not been loaded');
             return __referenceConstructor$1;
         },
         set: function (val) {
-            assert(!__referenceConstructor$1, '__referenceConstructor has already been defined');
+            index_node_cjs.assert(!__referenceConstructor$1, '__referenceConstructor has already been defined');
             __referenceConstructor$1 = val;
         },
         enumerable: false,
@@ -10833,13 +15382,13 @@ var SyncPoint = /** @class */ (function () {
         var queryId = operation.source.queryId;
         if (queryId !== null) {
             var view = this.views.get(queryId);
-            assert(view != null, 'SyncTree gave us an op for an invalid query.');
+            index_node_cjs.assert(view != null, 'SyncTree gave us an op for an invalid query.');
             return view.applyOperation(operation, writesCache, optCompleteServerCache);
         }
         else {
             var events = [];
             try {
-                for (var _b = __values(this.views.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                for (var _b = tslib.__values(this.views.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var view = _c.value;
                     events = events.concat(view.applyOperation(operation, writesCache, optCompleteServerCache));
                 }
@@ -10912,8 +15461,8 @@ var SyncPoint = /** @class */ (function () {
         if (queryId === 'default') {
             try {
                 // When you do ref.off(...), we search all views for the registration to remove.
-                for (var _b = __values(this.views.entries()), _c = _b.next(); !_c.done; _c = _b.next()) {
-                    var _d = __read(_c.value, 2), viewQueryId = _d[0], view = _d[1];
+                for (var _b = tslib.__values(this.views.entries()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var _d = tslib.__read(_c.value, 2), viewQueryId = _d[0], view = _d[1];
                     cancelEvents = cancelEvents.concat(view.removeEventRegistration(eventRegistration, cancelError));
                     if (view.isEmpty()) {
                         this.views.delete(viewQueryId);
@@ -10956,7 +15505,7 @@ var SyncPoint = /** @class */ (function () {
         var e_3, _a;
         var result = [];
         try {
-            for (var _b = __values(this.views.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
+            for (var _b = tslib.__values(this.views.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
                 var view = _c.value;
                 if (!view.getQuery().getQueryParams().loadsAllData()) {
                     result.push(view);
@@ -10980,7 +15529,7 @@ var SyncPoint = /** @class */ (function () {
         var e_4, _a;
         var serverCache = null;
         try {
-            for (var _b = __values(this.views.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
+            for (var _b = tslib.__values(this.views.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
                 var view = _c.value;
                 serverCache = serverCache || view.getCompleteServerCache(path);
             }
@@ -11013,7 +15562,7 @@ var SyncPoint = /** @class */ (function () {
     SyncPoint.prototype.getCompleteView = function () {
         var e_5, _a;
         try {
-            for (var _b = __values(this.views.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
+            for (var _b = tslib.__values(this.views.values()), _c = _b.next(); !_c.done; _c = _b.next()) {
                 var view = _c.value;
                 if (view.getQuery().getQueryParams().loadsAllData()) {
                     return view;
@@ -11198,7 +15747,7 @@ function applySubtreeWrite(relativePath, writeTree, node) {
             if (childKey === '.priority') {
                 // Apply priorities at the end so we don't update priorities for either empty nodes or forget
                 // to apply priorities to empty nodes that are later filled
-                assert(childTree.value !== null, 'Priority writes must always be leaf nodes');
+                index_node_cjs.assert(childTree.value !== null, 'Priority writes must always be leaf nodes');
                 priorityWrite_1 = childTree.value;
             }
             else {
@@ -11275,7 +15824,7 @@ var WriteTree = /** @class */ (function () {
      * @param {boolean=} visible This is set to false by some transactions. It should be excluded from event caches
      */
     WriteTree.prototype.addOverwrite = function (path, snap, writeId, visible) {
-        assert(writeId > this.lastWriteId_, 'Stacking an older write on top of newer ones');
+        index_node_cjs.assert(writeId > this.lastWriteId_, 'Stacking an older write on top of newer ones');
         if (visible === undefined) {
             visible = true;
         }
@@ -11298,7 +15847,7 @@ var WriteTree = /** @class */ (function () {
      * @param {!number} writeId
      */
     WriteTree.prototype.addMerge = function (path, changedChildren, writeId) {
-        assert(writeId > this.lastWriteId_, 'Stacking an older merge on top of newer ones');
+        index_node_cjs.assert(writeId > this.lastWriteId_, 'Stacking an older merge on top of newer ones');
         this.allWrites_.push({
             path: path,
             children: changedChildren,
@@ -11338,7 +15887,7 @@ var WriteTree = /** @class */ (function () {
         var idx = this.allWrites_.findIndex(function (s) {
             return s.writeId === writeId;
         });
-        assert(idx >= 0, 'removeWrite called with nonexistent writeId.');
+        index_node_cjs.assert(idx >= 0, 'removeWrite called with nonexistent writeId.');
         var writeToRemove = this.allWrites_[idx];
         this.allWrites_.splice(idx, 1);
         var removedWriteWasVisible = writeToRemove.visible;
@@ -11516,7 +16065,7 @@ var WriteTree = /** @class */ (function () {
      * @return {?Node}
      */
     WriteTree.prototype.calcEventCacheAfterServerOverwrite = function (treePath, childPath, existingEventSnap, existingServerSnap) {
-        assert(existingEventSnap || existingServerSnap, 'Either existingEventSnap or existingServerSnap must exist');
+        index_node_cjs.assert(existingEventSnap || existingServerSnap, 'Either existingEventSnap or existingServerSnap must exist');
         var path = treePath.child(childPath);
         if (this.visibleWrites_.hasCompleteWrite(path)) {
             // At this point we can probably guarantee that we're in case 2, meaning no events
@@ -11680,7 +16229,7 @@ var WriteTree = /** @class */ (function () {
                             compoundWrite = compoundWrite.addWrites(Path.Empty, write.children);
                         }
                         else {
-                            var child = safeGet(write.children, relativePath.getFront());
+                            var child = index_node_cjs.safeGet(write.children, relativePath.getFront());
                             if (child) {
                                 // There exists a child in this node that matches the root path
                                 var deepNode = child.getChild(relativePath.popFront());
@@ -11691,7 +16240,7 @@ var WriteTree = /** @class */ (function () {
                     else ;
                 }
                 else {
-                    throw assertionError('WriteRecord should have .snap or .children');
+                    throw index_node_cjs.assertionError('WriteRecord should have .snap or .children');
                 }
             }
         }
@@ -12045,7 +16594,7 @@ var SyncTree = /** @class */ (function () {
         if (!viewAlreadyExists && !query.getQueryParams().loadsAllData()) {
             // We need to track a tag for this query
             var queryKey = SyncTree.makeQueryKey_(query);
-            assert(!this.queryToTagMap.has(queryKey), 'View does not exist, but we have a tag');
+            index_node_cjs.assert(!this.queryToTagMap.has(queryKey), 'View does not exist, but we have a tag');
             var tag = SyncTree.getNextQueryTag_();
             this.queryToTagMap.set(queryKey, tag);
             this.tagToQueryMap.set(tag, queryKey);
@@ -12229,7 +16778,7 @@ var SyncTree = /** @class */ (function () {
         // The root of this subtree has our query. We're here because we definitely need to send a listen for that, but we
         // may need to shadow other listens as well.
         if (tag) {
-            assert(!subtree.value.hasCompleteView(), "If we're adding a query, it shouldn't be shadowed");
+            index_node_cjs.assert(!subtree.value.hasCompleteView(), "If we're adding a query, it shouldn't be shadowed");
         }
         else {
             // Shadow everything at or below this location, this is a default listener.
@@ -12297,7 +16846,7 @@ var SyncTree = /** @class */ (function () {
      */
     SyncTree.parseQueryKey_ = function (queryKey) {
         var splitIndex = queryKey.indexOf('$');
-        assert(splitIndex !== -1 && splitIndex < queryKey.length - 1, 'Bad queryKey.');
+        index_node_cjs.assert(splitIndex !== -1 && splitIndex < queryKey.length - 1, 'Bad queryKey.');
         return {
             queryId: queryKey.substr(splitIndex + 1),
             path: new Path(queryKey.substr(0, splitIndex))
@@ -12327,7 +16876,7 @@ var SyncTree = /** @class */ (function () {
      */
     SyncTree.prototype.applyTaggedOperation_ = function (queryPath, operation) {
         var syncPoint = this.syncPointTree_.get(queryPath);
-        assert(syncPoint, "Missing sync point for query tag that we're tracking");
+        index_node_cjs.assert(syncPoint, "Missing sync point for query tag that we're tracking");
         var writesCache = this.pendingWriteTree_.childWrites(queryPath);
         return syncPoint.applyOperation(operation, writesCache, 
         /*serverCache=*/ null);
@@ -12473,13 +17022,13 @@ var StatsCollection = /** @class */ (function () {
     }
     StatsCollection.prototype.incrementCounter = function (name, amount) {
         if (amount === void 0) { amount = 1; }
-        if (!contains(this.counters_, name)) {
+        if (!index_node_cjs.contains(this.counters_, name)) {
             this.counters_[name] = 0;
         }
         this.counters_[name] += amount;
     };
     StatsCollection.prototype.get = function () {
-        return deepCopy(this.counters_);
+        return index_node_cjs.deepCopy(this.counters_);
     };
     return StatsCollection;
 }());
@@ -12551,7 +17100,7 @@ var StatsListener = /** @class */ (function () {
     }
     StatsListener.prototype.get = function () {
         var newStats = this.collection_.get();
-        var delta = __assign({}, newStats);
+        var delta = tslib.__assign({}, newStats);
         if (this.last_) {
             each(this.last_, function (stat, value) {
                 delta[stat] = delta[stat] - value;
@@ -12611,7 +17160,7 @@ var StatsReporter = /** @class */ (function () {
         var reportedStats = {};
         var haveStatsToReport = false;
         each(stats, function (stat, value) {
-            if (value > 0 && contains(_this.statsToReport_, stat)) {
+            if (value > 0 && index_node_cjs.contains(_this.statsToReport_, stat)) {
                 reportedStats[stat] = value;
                 haveStatsToReport = true;
             }
@@ -12776,7 +17325,7 @@ var EventList = /** @class */ (function () {
             if (eventData !== null) {
                 this.events_[i] = null;
                 var eventFn = eventData.getEventRunner();
-                if (logger$1) {
+                if (logger) {
                     log('event: ' + eventData.toString());
                 }
                 exceptionGuard(eventFn);
@@ -12819,7 +17368,7 @@ var EventEmitter = /** @class */ (function () {
     function EventEmitter(allowedEvents_) {
         this.allowedEvents_ = allowedEvents_;
         this.listeners_ = {};
-        assert(Array.isArray(allowedEvents_) && allowedEvents_.length > 0, 'Requires a non-empty array');
+        index_node_cjs.assert(Array.isArray(allowedEvents_) && allowedEvents_.length > 0, 'Requires a non-empty array');
     }
     /**
      * To be called by derived classes to trigger events.
@@ -12833,7 +17382,7 @@ var EventEmitter = /** @class */ (function () {
         }
         if (Array.isArray(this.listeners_[eventType])) {
             // Clone the list, since callbacks could add/remove listeners.
-            var listeners = __spread(this.listeners_[eventType]);
+            var listeners = tslib.__spread(this.listeners_[eventType]);
             for (var i = 0; i < listeners.length; i++) {
                 listeners[i].callback.apply(listeners[i].context, varArgs);
             }
@@ -12860,7 +17409,7 @@ var EventEmitter = /** @class */ (function () {
         }
     };
     EventEmitter.prototype.validateEventType_ = function (eventType) {
-        assert(this.allowedEvents_.find(function (et) {
+        index_node_cjs.assert(this.allowedEvents_.find(function (et) {
             return et === eventType;
         }), 'Unknown event: ' + eventType);
     };
@@ -12887,7 +17436,7 @@ var EventEmitter = /** @class */ (function () {
  * @extends {EventEmitter}
  */
 var VisibilityMonitor = /** @class */ (function (_super) {
-    __extends(VisibilityMonitor, _super);
+    tslib.__extends(VisibilityMonitor, _super);
     function VisibilityMonitor() {
         var _this = _super.call(this, ['visible']) || this;
         var hidden;
@@ -12936,7 +17485,7 @@ var VisibilityMonitor = /** @class */ (function (_super) {
      * @return {Array.<boolean>}
      */
     VisibilityMonitor.prototype.getInitialEvent = function (eventType) {
-        assert(eventType === 'visible', 'Unknown event type: ' + eventType);
+        index_node_cjs.assert(eventType === 'visible', 'Unknown event type: ' + eventType);
         return [this.visible_];
     };
     return VisibilityMonitor;
@@ -12968,7 +17517,7 @@ var VisibilityMonitor = /** @class */ (function (_super) {
  * @extends {EventEmitter}
  */
 var OnlineMonitor = /** @class */ (function (_super) {
-    __extends(OnlineMonitor, _super);
+    tslib.__extends(OnlineMonitor, _super);
     function OnlineMonitor() {
         var _this = _super.call(this, ['online']) || this;
         _this.online_ = true;
@@ -12978,7 +17527,7 @@ var OnlineMonitor = /** @class */ (function (_super) {
         // for Cordova.
         if (typeof window !== 'undefined' &&
             typeof window.addEventListener !== 'undefined' &&
-            !isMobileCordova()) {
+            !index_node_cjs.isMobileCordova()) {
             window.addEventListener('online', function () {
                 if (!_this.online_) {
                     _this.online_ = true;
@@ -13002,7 +17551,7 @@ var OnlineMonitor = /** @class */ (function (_super) {
      * @return {Array.<boolean>}
      */
     OnlineMonitor.prototype.getInitialEvent = function (eventType) {
-        assert(eventType === 'online', 'Unknown event type: ' + eventType);
+        index_node_cjs.assert(eventType === 'online', 'Unknown event type: ' + eventType);
         return [this.online_];
     };
     /**
@@ -13205,7 +17754,7 @@ var BrowserPollConnection = /** @class */ (function () {
                 for (var _i = 0; _i < arguments.length; _i++) {
                     args[_i] = arguments[_i];
                 }
-                var _a = __read(args, 5), command = _a[0], arg1 = _a[1], arg2 = _a[2], arg3 = _a[3], arg4 = _a[4];
+                var _a = tslib.__read(args, 5), command = _a[0], arg1 = _a[1], arg2 = _a[2], arg3 = _a[3], arg4 = _a[4];
                 _this.incrementIncomingBytes_(args);
                 if (!_this.scriptTagHolder) {
                     return; // we closed the connection.
@@ -13243,7 +17792,7 @@ var BrowserPollConnection = /** @class */ (function () {
                 for (var _i = 0; _i < arguments.length; _i++) {
                     args[_i] = arguments[_i];
                 }
-                var _a = __read(args, 2), pN = _a[0], data = _a[1];
+                var _a = tslib.__read(args, 2), pN = _a[0], data = _a[1];
                 _this.incrementIncomingBytes_(args);
                 _this.myPacketOrderer.handleResponse(pN, data);
             }, function () {
@@ -13300,7 +17849,10 @@ var BrowserPollConnection = /** @class */ (function () {
     };
     // Static method, use string literal so it can be accessed in a generic way
     BrowserPollConnection.isAvailable = function () {
-        if (BrowserPollConnection.forceAllow_) {
+        if (index_node_cjs.isNodeSdk()) {
+            return false;
+        }
+        else if (BrowserPollConnection.forceAllow_) {
             return true;
         }
         else {
@@ -13367,11 +17919,11 @@ var BrowserPollConnection = /** @class */ (function () {
      * @param {!Object} data The JSON data to transmit.
      */
     BrowserPollConnection.prototype.send = function (data) {
-        var dataStr = stringify(data);
+        var dataStr = index_node_cjs.stringify(data);
         this.bytesSent += dataStr.length;
         this.stats_.incrementCounter('bytes_sent', dataStr.length);
         //first, lets get the base64-encoded data
-        var base64data = base64Encode(dataStr);
+        var base64data = index_node_cjs.base64Encode(dataStr);
         //We can only fit a certain amount in each URL, so we need to split this request
         //up into multiple pieces if it doesn't fit in one request.
         var dataSegs = splitStringBySize(base64data, MAX_PAYLOAD_SIZE);
@@ -13390,6 +17942,9 @@ var BrowserPollConnection = /** @class */ (function () {
      * @param {!string} pw
      */
     BrowserPollConnection.prototype.addDisconnectPingFrame = function (id, pw) {
+        if (index_node_cjs.isNodeSdk()) {
+            return;
+        }
         this.myDisconnFrame = document.createElement('iframe');
         var urlParams = {};
         urlParams[FIREBASE_LONGPOLL_DISCONN_FRAME_REQUEST_PARAM] = 't';
@@ -13406,7 +17961,7 @@ var BrowserPollConnection = /** @class */ (function () {
      */
     BrowserPollConnection.prototype.incrementIncomingBytes_ = function (args) {
         // TODO: This is an annoying perf hit just to track the number of incoming bytes.  Maybe it should be opt-in.
-        var bytesReceived = stringify(args).length;
+        var bytesReceived = index_node_cjs.stringify(args).length;
         this.bytesReceived += bytesReceived;
         this.stats_.incrementCounter('bytes_received', bytesReceived);
     };
@@ -13440,7 +17995,7 @@ var FirebaseIFrameScriptHolder = /** @class */ (function () {
         // This gets set to false when we're "closing down" the connection (e.g. we're switching transports but there's still
         // incoming data from the server that we're waiting for).
         this.sendNewPolls = true;
-        {
+        if (!index_node_cjs.isNodeSdk()) {
             //Each script holder registers a couple of uniquely named callbacks with the window. These are called from the
             //iframes where we put the long-polling script tags. We have two callbacks:
             //   1) Command Callback - Triggered for control issues, like starting a connection.
@@ -13472,6 +18027,10 @@ var FirebaseIFrameScriptHolder = /** @class */ (function () {
                 }
                 log(e);
             }
+        }
+        else {
+            this.commandCB = commandCB;
+            this.onMessageCB = onMessageCB;
         }
     }
     /**
@@ -13672,7 +18231,11 @@ var FirebaseIFrameScriptHolder = /** @class */ (function () {
      */
     FirebaseIFrameScriptHolder.prototype.addTag = function (url, loadCB) {
         var _this = this;
-        {
+        if (index_node_cjs.isNodeSdk()) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            this.doNodeLongPoll(url, loadCB);
+        }
+        else {
             setTimeout(function () {
                 try {
                     // if we're already closed, don't add this poll
@@ -13760,6 +18323,9 @@ if (typeof MozWebSocket !== 'undefined') {
 else if (typeof WebSocket !== 'undefined') {
     WebSocketImpl = WebSocket;
 }
+function setWebSocketImpl(impl) {
+    WebSocketImpl = impl;
+}
 /**
  * Create a new websocket connection with the given callbacks.
  * @constructor
@@ -13798,7 +18364,7 @@ var WebSocketConnection = /** @class */ (function () {
     WebSocketConnection.connectionURL_ = function (repoInfo, transportSessionId, lastSessionId) {
         var urlParams = {};
         urlParams[VERSION_PARAM] = PROTOCOL_VERSION;
-        if (
+        if (!index_node_cjs.isNodeSdk() &&
             typeof location !== 'undefined' &&
             location.href &&
             location.href.indexOf(FORGE_DOMAIN) !== -1) {
@@ -13826,7 +18392,25 @@ var WebSocketConnection = /** @class */ (function () {
         // Assume failure until proven otherwise.
         PersistentStorage.set('previous_websocket_failure', true);
         try {
-            var device, options, env, proxy; if (isNodeSdk()) ;
+            if (index_node_cjs.isNodeSdk()) {
+                var device = this.nodeAdmin ? 'AdminNode' : 'Node';
+                // UA Format: Firebase/<wire_protocol>/<sdk_version>/<platform>/<device>
+                var options = {
+                    headers: {
+                        'User-Agent': "Firebase/" + PROTOCOL_VERSION + "/" + SDK_VERSION + "/" + process.platform + "/" + device,
+                        'X-Firebase-GMPID': this.applicationId || ''
+                    }
+                };
+                // Plumb appropriate http_proxy environment variable into faye-websocket if it exists.
+                var env = process['env'];
+                var proxy = this.connURL.indexOf('wss://') === 0
+                    ? env['HTTPS_PROXY'] || env['https_proxy']
+                    : env['HTTP_PROXY'] || env['http_proxy'];
+                if (proxy) {
+                    options['proxy'] = { origin: proxy };
+                }
+                this.mySock = new WebSocketImpl(this.connURL, [], options);
+            }
             else {
                 var options = {
                     headers: {
@@ -13907,7 +18491,7 @@ var WebSocketConnection = /** @class */ (function () {
         if (this.frames.length === this.totalFrames) {
             var fullMess = this.frames.join('');
             this.frames = null;
-            var jsonMess = jsonEval(fullMess);
+            var jsonMess = index_node_cjs.jsonEval(fullMess);
             //handle the message
             this.onMessage(jsonMess);
         }
@@ -13927,7 +18511,7 @@ var WebSocketConnection = /** @class */ (function () {
      * @private
      */
     WebSocketConnection.prototype.extractFrameCount_ = function (data) {
-        assert(this.frames === null, 'We already have a frame buffer');
+        index_node_cjs.assert(this.frames === null, 'We already have a frame buffer');
         // TODO: The server is only supposed to send up to 9999 frames (i.e. length <= 4), but that isn't being enforced
         // currently.  So allowing larger frame counts (length <= 6).  See https://app.asana.com/0/search/8688598998380/8237608042508
         if (data.length <= 6) {
@@ -13970,7 +18554,7 @@ var WebSocketConnection = /** @class */ (function () {
      */
     WebSocketConnection.prototype.send = function (data) {
         this.resetKeepAlive();
-        var dataStr = stringify(data);
+        var dataStr = index_node_cjs.stringify(data);
         this.bytesSent += dataStr.length;
         this.stats_.incrementCounter('bytes_sent', dataStr.length);
         //We can only fit a certain amount in each websocket frame, so we need to split this request
@@ -14126,7 +18710,7 @@ var TransportManager = /** @class */ (function () {
         else {
             var transports = (this.transports_ = []);
             try {
-                for (var _b = __values(TransportManager.ALL_TRANSPORTS), _c = _b.next(); !_c.done; _c = _b.next()) {
+                for (var _b = tslib.__values(TransportManager.ALL_TRANSPORTS), _c = _b.next(); !_c.done; _c = _b.next()) {
                     var transport = _c.value;
                     if (transport && transport['isAvailable']()) {
                         transports.push(transport);
@@ -14757,7 +19341,7 @@ var INVALID_AUTH_TOKEN_THRESHOLD = 3;
  * in quotes to make sure the closure compiler does not minify them.
  */
 var PersistentConnection = /** @class */ (function (_super) {
-    __extends(PersistentConnection, _super);
+    tslib.__extends(PersistentConnection, _super);
     /**
      * @implements {ServerActions}
      * @param repoInfo_ Data about the namespace we are connecting to
@@ -14799,7 +19383,7 @@ var PersistentConnection = /** @class */ (function (_super) {
         _this.firstConnection_ = true;
         _this.lastConnectionAttemptTime_ = null;
         _this.lastConnectionEstablishedTime_ = null;
-        if (authOverride_ && !isNodeSdk()) {
+        if (authOverride_ && !index_node_cjs.isNodeSdk()) {
             throw new Error('Auth override specified in options, but not supported on non Node.js platforms');
         }
         _this.scheduleConnect_(0);
@@ -14812,8 +19396,8 @@ var PersistentConnection = /** @class */ (function (_super) {
     PersistentConnection.prototype.sendRequest = function (action, body, onResponse) {
         var curReqNum = ++this.requestNumber_;
         var msg = { r: curReqNum, a: action, b: body };
-        this.log_(stringify(msg));
-        assert(this.connected_, "sendRequest call when we're not connected not allowed.");
+        this.log_(index_node_cjs.stringify(msg));
+        index_node_cjs.assert(this.connected_, "sendRequest call when we're not connected not allowed.");
         this.realtime_.sendRequest(msg);
         if (onResponse) {
             this.requestCBHash_[curReqNum] = onResponse;
@@ -14829,9 +19413,9 @@ var PersistentConnection = /** @class */ (function (_super) {
         if (!this.listens.has(pathString)) {
             this.listens.set(pathString, new Map());
         }
-        assert(query.getQueryParams().isDefault() ||
+        index_node_cjs.assert(query.getQueryParams().isDefault() ||
             !query.getQueryParams().loadsAllData(), 'listen() called for non-default but complete query');
-        assert(!this.listens.get(pathString).has(queryId), 'listen() called twice for same path/queryId.');
+        index_node_cjs.assert(!this.listens.get(pathString).has(queryId), 'listen() called twice for same path/queryId.');
         var listenSpec = {
             onComplete: onComplete,
             hashFn: currentHashFn,
@@ -14877,9 +19461,9 @@ var PersistentConnection = /** @class */ (function (_super) {
         });
     };
     PersistentConnection.warnOnListenWarnings_ = function (payload, query) {
-        if (payload && typeof payload === 'object' && contains(payload, 'w')) {
+        if (payload && typeof payload === 'object' && index_node_cjs.contains(payload, 'w')) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            var warnings = safeGet(payload, 'w');
+            var warnings = index_node_cjs.safeGet(payload, 'w');
             if (Array.isArray(warnings) && ~warnings.indexOf('no_index')) {
                 var indexSpec = '".indexOn": "' + query.getQueryParams().getIndex().toString() + '"';
                 var indexPath = query.path.toString();
@@ -14911,7 +19495,7 @@ var PersistentConnection = /** @class */ (function (_super) {
         // NOTE: This isn't intended to be bulletproof (a malicious developer can always just modify the client).
         // Additionally, we don't bother resetting the max delay back to the default if auth fails / expires.
         var isFirebaseSecret = credential && credential.length === 40;
-        if (isFirebaseSecret || isAdmin(credential)) {
+        if (isFirebaseSecret || index_node_cjs.isAdmin(credential)) {
             this.log_('Admin auth credential detected.  Reducing max reconnect time.');
             this.maxReconnectDelay_ = RECONNECT_MAX_DELAY_FOR_ADMINS;
         }
@@ -14924,7 +19508,7 @@ var PersistentConnection = /** @class */ (function (_super) {
         var _this = this;
         if (this.connected_ && this.authToken_) {
             var token_1 = this.authToken_;
-            var authMethod = isValidFormat(token_1) ? 'auth' : 'gauth';
+            var authMethod = index_node_cjs.isValidFormat(token_1) ? 'auth' : 'gauth';
             var requestData = { cred: token_1 };
             if (this.authOverride_ === null) {
                 requestData['noauth'] = true;
@@ -14954,7 +19538,7 @@ var PersistentConnection = /** @class */ (function (_super) {
         var pathString = query.path.toString();
         var queryId = query.queryIdentifier();
         this.log_('Unlisten called for ' + pathString + ' ' + queryId);
-        assert(query.getQueryParams().isDefault() ||
+        index_node_cjs.assert(query.getQueryParams().isDefault() ||
             !query.getQueryParams().loadsAllData(), 'unlisten() called for non-default but complete query');
         var listen = this.removeListen_(pathString, queryId);
         if (listen && this.connected_) {
@@ -15106,7 +19690,7 @@ var PersistentConnection = /** @class */ (function (_super) {
     PersistentConnection.prototype.onDataMessage_ = function (message) {
         if ('r' in message) {
             // this is a response
-            this.log_('from server: ' + stringify(message));
+            this.log_('from server: ' + index_node_cjs.stringify(message));
             var reqNum = message['r'];
             var onResponse = this.requestCBHash_[reqNum];
             if (onResponse) {
@@ -15143,7 +19727,7 @@ var PersistentConnection = /** @class */ (function (_super) {
         }
         else {
             error('Unrecognized action received from server: ' +
-                stringify(action) +
+                index_node_cjs.stringify(action) +
                 '\nAre you using the latest client?');
         }
     };
@@ -15162,7 +19746,7 @@ var PersistentConnection = /** @class */ (function (_super) {
     };
     PersistentConnection.prototype.scheduleConnect_ = function (timeout) {
         var _this = this;
-        assert(!this.realtime_, "Scheduling a connect when we're already connected/ing?");
+        index_node_cjs.assert(!this.realtime_, "Scheduling a connect when we're already connected/ing?");
         if (this.establishConnectionTimer_) {
             clearTimeout(this.establishConnectionTimer_);
         }
@@ -15258,7 +19842,7 @@ var PersistentConnection = /** @class */ (function (_super) {
                 }
             };
             var sendRequestFn = function (msg) {
-                assert(connection_1, "sendRequest call when we're not connected not allowed.");
+                index_node_cjs.assert(connection_1, "sendRequest call when we're not connected not allowed.");
                 connection_1.sendRequest(msg);
             };
             this.realtime_ = {
@@ -15317,7 +19901,7 @@ var PersistentConnection = /** @class */ (function (_super) {
     PersistentConnection.prototype.resume = function (reason) {
         log('Resuming connection for reason: ' + reason);
         delete this.interruptReasons_[reason];
-        if (isEmpty(this.interruptReasons_)) {
+        if (index_node_cjs.isEmpty(this.interruptReasons_)) {
             this.reconnectDelay_ = RECONNECT_MIN_DELAY;
             if (!this.realtime_) {
                 this.scheduleConnect_(0);
@@ -15411,10 +19995,10 @@ var PersistentConnection = /** @class */ (function (_super) {
         try {
             // Puts depend on having received the corresponding data update from the server before they complete, so we must
             // make sure to send listens before puts.
-            for (var _c = __values(this.listens.values()), _d = _c.next(); !_d.done; _d = _c.next()) {
+            for (var _c = tslib.__values(this.listens.values()), _d = _c.next(); !_d.done; _d = _c.next()) {
                 var queries = _d.value;
                 try {
-                    for (var _e = (e_2 = void 0, __values(queries.values())), _f = _e.next(); !_f.done; _f = _e.next()) {
+                    for (var _e = (e_2 = void 0, tslib.__values(queries.values())), _f = _e.next(); !_f.done; _f = _e.next()) {
                         var listenSpec = _f.value;
                         this.sendListen_(listenSpec);
                     }
@@ -15451,18 +20035,26 @@ var PersistentConnection = /** @class */ (function (_super) {
     PersistentConnection.prototype.sendConnectStats_ = function () {
         var stats = {};
         var clientName = 'js';
+        if (index_node_cjs.isNodeSdk()) {
+            if (this.repoInfo_.nodeAdmin) {
+                clientName = 'admin_node';
+            }
+            else {
+                clientName = 'node';
+            }
+        }
         stats['sdk.' + clientName + '.' + SDK_VERSION.replace(/\./g, '-')] = 1;
-        if (isMobileCordova()) {
+        if (index_node_cjs.isMobileCordova()) {
             stats['framework.cordova'] = 1;
         }
-        else if (isReactNative()) {
+        else if (index_node_cjs.isReactNative()) {
             stats['framework.reactnative'] = 1;
         }
         this.reportStats(stats);
     };
     PersistentConnection.prototype.shouldReconnect_ = function () {
         var online = OnlineMonitor.getInstance().currentlyOnline();
-        return isEmpty(this.interruptReasons_) && online;
+        return index_node_cjs.isEmpty(this.interruptReasons_) && online;
     };
     PersistentConnection.nextPersistentConnectionId_ = 0;
     /**
@@ -15494,7 +20086,7 @@ var PersistentConnection = /** @class */ (function (_super) {
  * persistent connection (using WebSockets or long-polling)
  */
 var ReadonlyRestClient = /** @class */ (function (_super) {
-    __extends(ReadonlyRestClient, _super);
+    tslib.__extends(ReadonlyRestClient, _super);
     /**
      * @param {!RepoInfo} repoInfo_ Data about the namespace we are connecting to
      * @param {function(string, *, boolean, ?number)} onDataUpdate_ A callback for new data from the server
@@ -15531,7 +20123,7 @@ var ReadonlyRestClient = /** @class */ (function (_super) {
             return 'tag$' + tag;
         }
         else {
-            assert(query.getQueryParams().isDefault(), "should have a tag if it's not a default query.");
+            index_node_cjs.assert(query.getQueryParams().isDefault(), "should have a tag if it's not a default query.");
             return query.path.toString();
         }
     };
@@ -15556,7 +20148,7 @@ var ReadonlyRestClient = /** @class */ (function (_super) {
             if (error === null) {
                 _this.onDataUpdate_(pathString, data, /*isMerge=*/ false, tag);
             }
-            if (safeGet(_this.listens_, listenId) === thisListen) {
+            if (index_node_cjs.safeGet(_this.listens_, listenId) === thisListen) {
                 var status_1;
                 if (!error) {
                     status_1 = 'ok';
@@ -15606,7 +20198,7 @@ var ReadonlyRestClient = /** @class */ (function (_super) {
                 '?' +
                 'ns=' +
                 _this.repoInfo_.namespace +
-                querystring(queryStringParameters);
+                index_node_cjs.querystring(queryStringParameters);
             _this.log_('Sending REST request for ' + url);
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function () {
@@ -15615,7 +20207,7 @@ var ReadonlyRestClient = /** @class */ (function (_super) {
                     var res = null;
                     if (xhr.status >= 200 && xhr.status < 300) {
                         try {
-                            res = jsonEval(xhr.responseText);
+                            res = index_node_cjs.jsonEval(xhr.responseText);
                         }
                         catch (e) {
                             warn('Failed to parse JSON response for ' +
@@ -15699,7 +20291,7 @@ var Repo = /** @class */ (function () {
                     throw new Error('Only objects are supported for option databaseAuthVariableOverride');
                 }
                 try {
-                    stringify(authOverride);
+                    index_node_cjs.stringify(authOverride);
                 }
                 catch (e) {
                     throw new Error('Invalid authOverride provided: ' + e);
@@ -15789,7 +20381,7 @@ var Repo = /** @class */ (function () {
         var events = [];
         if (tag) {
             if (isMerge) {
-                var taggedChildren = map(data, function (raw) { return nodeFromJSON$1(raw); });
+                var taggedChildren = index_node_cjs.map(data, function (raw) { return nodeFromJSON$1(raw); });
                 events = this.serverSyncTree_.applyTaggedQueryMerge(path, taggedChildren, tag);
             }
             else {
@@ -15798,7 +20390,7 @@ var Repo = /** @class */ (function () {
             }
         }
         else if (isMerge) {
-            var changedChildren = map(data, function (raw) { return nodeFromJSON$1(raw); });
+            var changedChildren = index_node_cjs.map(data, function (raw) { return nodeFromJSON$1(raw); });
             events = this.serverSyncTree_.applyServerMerge(path, changedChildren);
         }
         else {
@@ -15958,7 +20550,7 @@ var Repo = /** @class */ (function () {
     };
     Repo.prototype.onDisconnectUpdate = function (path, childrenToMerge, onComplete) {
         var _this = this;
-        if (isEmpty(childrenToMerge)) {
+        if (index_node_cjs.isEmpty(childrenToMerge)) {
             log("onDisconnect().update() called with empty data.  Don't do anything.");
             this.callOnCompleteCallback(onComplete, 'ok');
             return;
@@ -16045,7 +20637,7 @@ var Repo = /** @class */ (function () {
         if (this.persistentConnection_) {
             prefix = this.persistentConnection_.id + ':';
         }
-        log.apply(void 0, __spread([prefix], varArgs));
+        log.apply(void 0, tslib.__spread([prefix], varArgs));
     };
     Repo.prototype.callOnCompleteCallback = function (callback, status, errorReason) {
         if (callback) {
@@ -16398,7 +20990,7 @@ var LimitedFilter = /** @class */ (function () {
             cmp = this.index_.getCompare();
         }
         var oldEventCache = snap;
-        assert(oldEventCache.numChildren() === this.limit_, '');
+        index_node_cjs.assert(oldEventCache.numChildren() === this.limit_, '');
         var newChildNamedNode = new NamedNode(childKey, childSnap);
         var windowBoundary = this.reverse_
             ? oldEventCache.getFirstChild(this.index_)
@@ -16527,7 +21119,7 @@ var QueryParams = /** @class */ (function () {
      * @return {*}
      */
     QueryParams.prototype.getIndexStartValue = function () {
-        assert(this.startSet_, 'Only valid if start has been set');
+        index_node_cjs.assert(this.startSet_, 'Only valid if start has been set');
         return this.indexStartValue_;
     };
     /**
@@ -16536,7 +21128,7 @@ var QueryParams = /** @class */ (function () {
      * @return {!string}
      */
     QueryParams.prototype.getIndexStartName = function () {
-        assert(this.startSet_, 'Only valid if start has been set');
+        index_node_cjs.assert(this.startSet_, 'Only valid if start has been set');
         if (this.startNameSet_) {
             return this.indexStartName_;
         }
@@ -16555,7 +21147,7 @@ var QueryParams = /** @class */ (function () {
      * @return {*}
      */
     QueryParams.prototype.getIndexEndValue = function () {
-        assert(this.endSet_, 'Only valid if end has been set');
+        index_node_cjs.assert(this.endSet_, 'Only valid if end has been set');
         return this.indexEndValue_;
     };
     /**
@@ -16564,7 +21156,7 @@ var QueryParams = /** @class */ (function () {
      * @return {!string}
      */
     QueryParams.prototype.getIndexEndName = function () {
-        assert(this.endSet_, 'Only valid if end has been set');
+        index_node_cjs.assert(this.endSet_, 'Only valid if end has been set');
         if (this.endNameSet_) {
             return this.indexEndName_;
         }
@@ -16589,7 +21181,7 @@ var QueryParams = /** @class */ (function () {
      * @return {!number}
      */
     QueryParams.prototype.getLimit = function () {
-        assert(this.limitSet_, 'Only valid if limit has been set');
+        index_node_cjs.assert(this.limitSet_, 'Only valid if limit has been set');
         return this.limit_;
     };
     /**
@@ -16789,20 +21381,20 @@ var QueryParams = /** @class */ (function () {
             orderBy = REST_CONSTANTS.KEY_INDEX;
         }
         else {
-            assert(this.index_ instanceof PathIndex, 'Unrecognized index type!');
+            index_node_cjs.assert(this.index_ instanceof PathIndex, 'Unrecognized index type!');
             orderBy = this.index_.toString();
         }
-        qs[REST_CONSTANTS.ORDER_BY] = stringify(orderBy);
+        qs[REST_CONSTANTS.ORDER_BY] = index_node_cjs.stringify(orderBy);
         if (this.startSet_) {
-            qs[REST_CONSTANTS.START_AT] = stringify(this.indexStartValue_);
+            qs[REST_CONSTANTS.START_AT] = index_node_cjs.stringify(this.indexStartValue_);
             if (this.startNameSet_) {
-                qs[REST_CONSTANTS.START_AT] += ',' + stringify(this.indexStartName_);
+                qs[REST_CONSTANTS.START_AT] += ',' + index_node_cjs.stringify(this.indexStartName_);
             }
         }
         if (this.endSet_) {
-            qs[REST_CONSTANTS.END_AT] = stringify(this.indexEndValue_);
+            qs[REST_CONSTANTS.END_AT] = index_node_cjs.stringify(this.indexEndValue_);
             if (this.endNameSet_) {
-                qs[REST_CONSTANTS.END_AT] += ',' + stringify(this.indexEndName_);
+                qs[REST_CONSTANTS.END_AT] += ',' + index_node_cjs.stringify(this.indexEndName_);
             }
         }
         if (this.limitSet_) {
@@ -16874,7 +21466,7 @@ var QueryParams = /** @class */ (function () {
  * limitations under the License.
  */
 var Reference = /** @class */ (function (_super) {
-    __extends(Reference, _super);
+    tslib.__extends(Reference, _super);
     /**
      * Call options:
      *   new Reference(Repo, Path) or
@@ -16897,7 +21489,7 @@ var Reference = /** @class */ (function (_super) {
     }
     /** @return {?string} */
     Reference.prototype.getKey = function () {
-        validateArgCount('Reference.key', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('Reference.key', 0, 0, arguments.length);
         if (this.path.isEmpty()) {
             return null;
         }
@@ -16910,7 +21502,7 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Reference}
      */
     Reference.prototype.child = function (pathString) {
-        validateArgCount('Reference.child', 1, 1, arguments.length);
+        index_node_cjs.validateArgCount('Reference.child', 1, 1, arguments.length);
         if (typeof pathString === 'number') {
             pathString = String(pathString);
         }
@@ -16926,13 +21518,13 @@ var Reference = /** @class */ (function (_super) {
     };
     /** @return {?Reference} */
     Reference.prototype.getParent = function () {
-        validateArgCount('Reference.parent', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('Reference.parent', 0, 0, arguments.length);
         var parentPath = this.path.parent();
         return parentPath === null ? null : new Reference(this.repo, parentPath);
     };
     /** @return {!Reference} */
     Reference.prototype.getRoot = function () {
-        validateArgCount('Reference.root', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('Reference.root', 0, 0, arguments.length);
         var ref = this;
         while (ref.getParent() !== null) {
             ref = ref.getParent();
@@ -16949,11 +21541,11 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Promise}
      */
     Reference.prototype.set = function (newVal, onComplete) {
-        validateArgCount('Reference.set', 1, 2, arguments.length);
+        index_node_cjs.validateArgCount('Reference.set', 1, 2, arguments.length);
         validateWritablePath('Reference.set', this.path);
         validateFirebaseDataArg('Reference.set', 1, newVal, this.path, false);
-        validateCallback('Reference.set', 2, onComplete, true);
-        var deferred = new Deferred();
+        index_node_cjs.validateCallback('Reference.set', 2, onComplete, true);
+        var deferred = new index_node_cjs.Deferred();
         this.repo.setWithPriority(this.path, newVal, 
         /*priority=*/ null, deferred.wrapCallback(onComplete));
         return deferred.promise;
@@ -16964,7 +21556,7 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Promise}
      */
     Reference.prototype.update = function (objectToMerge, onComplete) {
-        validateArgCount('Reference.update', 1, 2, arguments.length);
+        index_node_cjs.validateArgCount('Reference.update', 1, 2, arguments.length);
         validateWritablePath('Reference.update', this.path);
         if (Array.isArray(objectToMerge)) {
             var newObjectToMerge = {};
@@ -16978,8 +21570,8 @@ var Reference = /** @class */ (function (_super) {
                 'only update some of the children.');
         }
         validateFirebaseMergeDataArg('Reference.update', 1, objectToMerge, this.path, false);
-        validateCallback('Reference.update', 2, onComplete, true);
-        var deferred = new Deferred();
+        index_node_cjs.validateCallback('Reference.update', 2, onComplete, true);
+        var deferred = new index_node_cjs.Deferred();
         this.repo.update(this.path, objectToMerge, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -16990,17 +21582,17 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Promise}
      */
     Reference.prototype.setWithPriority = function (newVal, newPriority, onComplete) {
-        validateArgCount('Reference.setWithPriority', 2, 3, arguments.length);
+        index_node_cjs.validateArgCount('Reference.setWithPriority', 2, 3, arguments.length);
         validateWritablePath('Reference.setWithPriority', this.path);
         validateFirebaseDataArg('Reference.setWithPriority', 1, newVal, this.path, false);
         validatePriority('Reference.setWithPriority', 2, newPriority, false);
-        validateCallback('Reference.setWithPriority', 3, onComplete, true);
+        index_node_cjs.validateCallback('Reference.setWithPriority', 3, onComplete, true);
         if (this.getKey() === '.length' || this.getKey() === '.keys') {
             throw ('Reference.setWithPriority failed: ' +
                 this.getKey() +
                 ' is a read-only object.');
         }
-        var deferred = new Deferred();
+        var deferred = new index_node_cjs.Deferred();
         this.repo.setWithPriority(this.path, newVal, newPriority, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -17009,9 +21601,9 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Promise}
      */
     Reference.prototype.remove = function (onComplete) {
-        validateArgCount('Reference.remove', 0, 1, arguments.length);
+        index_node_cjs.validateArgCount('Reference.remove', 0, 1, arguments.length);
         validateWritablePath('Reference.remove', this.path);
-        validateCallback('Reference.remove', 1, onComplete, true);
+        index_node_cjs.validateCallback('Reference.remove', 1, onComplete, true);
         return this.set(null, onComplete);
     };
     /**
@@ -17021,10 +21613,10 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Promise}
      */
     Reference.prototype.transaction = function (transactionUpdate, onComplete, applyLocally) {
-        validateArgCount('Reference.transaction', 1, 3, arguments.length);
+        index_node_cjs.validateArgCount('Reference.transaction', 1, 3, arguments.length);
         validateWritablePath('Reference.transaction', this.path);
-        validateCallback('Reference.transaction', 1, transactionUpdate, false);
-        validateCallback('Reference.transaction', 2, onComplete, true);
+        index_node_cjs.validateCallback('Reference.transaction', 1, transactionUpdate, false);
+        index_node_cjs.validateCallback('Reference.transaction', 2, onComplete, true);
         // NOTE: applyLocally is an internal-only option for now.  We need to decide if we want to keep it and how
         // to expose it.
         validateBoolean('Reference.transaction', 3, applyLocally, true);
@@ -17036,7 +21628,7 @@ var Reference = /** @class */ (function (_super) {
         if (applyLocally === undefined) {
             applyLocally = true;
         }
-        var deferred = new Deferred();
+        var deferred = new index_node_cjs.Deferred();
         if (typeof onComplete === 'function') {
             deferred.promise.catch(function () { });
         }
@@ -17060,11 +21652,11 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Promise}
      */
     Reference.prototype.setPriority = function (priority, onComplete) {
-        validateArgCount('Reference.setPriority', 1, 2, arguments.length);
+        index_node_cjs.validateArgCount('Reference.setPriority', 1, 2, arguments.length);
         validateWritablePath('Reference.setPriority', this.path);
         validatePriority('Reference.setPriority', 1, priority, false);
-        validateCallback('Reference.setPriority', 2, onComplete, true);
-        var deferred = new Deferred();
+        index_node_cjs.validateCallback('Reference.setPriority', 2, onComplete, true);
+        var deferred = new index_node_cjs.Deferred();
         this.repo.setWithPriority(this.path.child('.priority'), priority, null, deferred.wrapCallback(onComplete));
         return deferred.promise;
     };
@@ -17074,10 +21666,10 @@ var Reference = /** @class */ (function (_super) {
      * @return {!Reference}
      */
     Reference.prototype.push = function (value, onComplete) {
-        validateArgCount('Reference.push', 0, 2, arguments.length);
+        index_node_cjs.validateArgCount('Reference.push', 0, 2, arguments.length);
         validateWritablePath('Reference.push', this.path);
         validateFirebaseDataArg('Reference.push', 1, value, this.path, true);
-        validateCallback('Reference.push', 2, onComplete, true);
+        index_node_cjs.validateCallback('Reference.push', 2, onComplete, true);
         var now = this.repo.serverTime();
         var name = nextPushId(now);
         // push() returns a ThennableReference whose promise is fulfilled with a regular Reference.
@@ -17207,7 +21799,7 @@ var Tree = /** @class */ (function () {
         var path = pathObj instanceof Path ? pathObj : new Path(pathObj);
         var child = this, next = path.getFront();
         while (next !== null) {
-            var childNode = safeGet(child.node_.children, next) || new TreeNode();
+            var childNode = index_node_cjs.safeGet(child.node_.children, next) || new TreeNode();
             child = new Tree(next, child, childNode);
             path = path.popFront();
             next = path.getFront();
@@ -17228,7 +21820,7 @@ var Tree = /** @class */ (function () {
      * @param {!T} value Value to set.
      */
     Tree.prototype.setValue = function (value) {
-        assert(typeof value !== 'undefined', 'Cannot set value to undefined');
+        index_node_cjs.assert(typeof value !== 'undefined', 'Cannot set value to undefined');
         this.node_.value = value;
         this.updateParents_();
     };
@@ -17358,7 +21950,7 @@ var Tree = /** @class */ (function () {
      */
     Tree.prototype.updateChild_ = function (childName, child) {
         var childEmpty = child.isEmpty();
-        var childExists = contains(this.node_.children, childName);
+        var childExists = index_node_cjs.contains(this.node_.children, childName);
         if (childEmpty && childExists) {
             delete this.node_.children[childName];
             this.node_.childCount--;
@@ -17505,10 +22097,10 @@ Repo.prototype.startTransaction = function (path, transactionUpdate, onComplete,
         var priorityForNode = void 0;
         if (typeof newVal === 'object' &&
             newVal !== null &&
-            contains(newVal, '.priority')) {
+            index_node_cjs.contains(newVal, '.priority')) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            priorityForNode = safeGet(newVal, '.priority');
-            assert(isValidPriority(priorityForNode), 'Invalid priority returned by transaction. ' +
+            priorityForNode = index_node_cjs.safeGet(newVal, '.priority');
+            index_node_cjs.assert(isValidPriority(priorityForNode), 'Invalid priority returned by transaction. ' +
                 'Priority must be a valid string, finite number, server value, or null.');
         }
         else {
@@ -17559,7 +22151,7 @@ Repo.prototype.sendReadyTransactions_ = function (node) {
     }
     if (node.getValue() !== null) {
         var queue = this.buildTransactionQueue_(node);
-        assert(queue.length > 0, 'Sending zero length transaction queue');
+        index_node_cjs.assert(queue.length > 0, 'Sending zero length transaction queue');
         var allRun = queue.every(function (transaction) { return transaction.status === TransactionStatus.RUN; });
         // If they're all run (and not sent), we can send them.  Else, we must wait.
         if (allRun) {
@@ -17591,7 +22183,7 @@ Repo.prototype.sendTransactionQueue_ = function (path, queue) {
     var latestHash = latestState.hash();
     for (var i = 0; i < queue.length; i++) {
         var txn = queue[i];
-        assert(txn.status === TransactionStatus.RUN, 'tryToSendTransactionQueue_: items in queue should all be run.');
+        index_node_cjs.assert(txn.status === TransactionStatus.RUN, 'tryToSendTransactionQueue_: items in queue should all be run.');
         txn.status = TransactionStatus.SENT;
         txn.retryCount++;
         var relativePath = Path.relativePath(path, txn.path);
@@ -17703,7 +22295,7 @@ Repo.prototype.rerunTransactionQueue_ = function (queue, path) {
         var transaction = queue[i];
         var relativePath = Path.relativePath(path, transaction.path);
         var abortTransaction = false, abortReason = void 0;
-        assert(relativePath !== null, 'rerunTransactionsUnderNode_: relativePath should not be null.');
+        index_node_cjs.assert(relativePath !== null, 'rerunTransactionsUnderNode_: relativePath should not be null.');
         if (transaction.status === TransactionStatus.NEEDS_ABORT) {
             abortTransaction = true;
             abortReason = transaction.abortReason;
@@ -17726,7 +22318,7 @@ Repo.prototype.rerunTransactionQueue_ = function (queue, path) {
                     var newDataNode = nodeFromJSON$1(newData);
                     var hasExplicitPriority = typeof newData === 'object' &&
                         newData != null &&
-                        contains(newData, '.priority');
+                        index_node_cjs.contains(newData, '.priority');
                     if (!hasExplicitPriority) {
                         // Keep the old priority if there wasn't a priority explicitly specified.
                         newDataNode = newDataNode.updatePriority(currentNode.getPriority());
@@ -17906,14 +22498,14 @@ Repo.prototype.abortTransactionsOnNode_ = function (node) {
         for (var i = 0; i < queue.length; i++) {
             if (queue[i].status === TransactionStatus.SENT_NEEDS_ABORT) ;
             else if (queue[i].status === TransactionStatus.SENT) {
-                assert(lastSent === i - 1, 'All SENT items should be at beginning of queue.');
+                index_node_cjs.assert(lastSent === i - 1, 'All SENT items should be at beginning of queue.');
                 lastSent = i;
                 // Mark transaction for abort when it comes back.
                 queue[i].status = TransactionStatus.SENT_NEEDS_ABORT;
                 queue[i].abortReason = 'set';
             }
             else {
-                assert(queue[i].status === TransactionStatus.RUN, 'Unexpected transaction status in abort');
+                index_node_cjs.assert(queue[i].status === TransactionStatus.RUN, 'Unexpected transaction status in abort');
                 // We can abort it immediately.
                 queue[i].unwatcher();
                 events = events.concat(this.serverSyncTree_.ackUserWrite(queue[i].currentWriteId, true));
@@ -18105,10 +22697,10 @@ var RepoManager = /** @class */ (function () {
     RepoManager.prototype.interrupt = function () {
         var e_1, _a, e_2, _b;
         try {
-            for (var _c = __values(Object.keys(this.repos_)), _d = _c.next(); !_d.done; _d = _c.next()) {
+            for (var _c = tslib.__values(Object.keys(this.repos_)), _d = _c.next(); !_d.done; _d = _c.next()) {
                 var appName = _d.value;
                 try {
-                    for (var _e = (e_2 = void 0, __values(Object.keys(this.repos_[appName]))), _f = _e.next(); !_f.done; _f = _e.next()) {
+                    for (var _e = (e_2 = void 0, tslib.__values(Object.keys(this.repos_[appName]))), _f = _e.next(); !_f.done; _f = _e.next()) {
                         var dbUrl = _f.value;
                         this.repos_[appName][dbUrl].interrupt();
                     }
@@ -18133,10 +22725,10 @@ var RepoManager = /** @class */ (function () {
     RepoManager.prototype.resume = function () {
         var e_3, _a, e_4, _b;
         try {
-            for (var _c = __values(Object.keys(this.repos_)), _d = _c.next(); !_d.done; _d = _c.next()) {
+            for (var _c = tslib.__values(Object.keys(this.repos_)), _d = _c.next(); !_d.done; _d = _c.next()) {
                 var appName = _d.value;
                 try {
-                    for (var _e = (e_4 = void 0, __values(Object.keys(this.repos_[appName]))), _f = _e.next(); !_f.done; _f = _e.next()) {
+                    for (var _e = (e_4 = void 0, tslib.__values(Object.keys(this.repos_[appName]))), _f = _e.next(); !_f.done; _f = _e.next()) {
                         var dbUrl = _f.value;
                         this.repos_[appName][dbUrl].resume();
                     }
@@ -18217,9 +22809,9 @@ var RepoManager = /** @class */ (function () {
      * @param {!Repo} repo
      */
     RepoManager.prototype.deleteRepo = function (repo) {
-        var appRepos = safeGet(this.repos_, repo.app.name);
+        var appRepos = index_node_cjs.safeGet(this.repos_, repo.app.name);
         // This should never happen...
-        if (!appRepos || safeGet(appRepos, repo.key) !== repo) {
+        if (!appRepos || index_node_cjs.safeGet(appRepos, repo.key) !== repo) {
             fatal("Database " + repo.app.name + "(" + repo.repoInfo_ + ") has already been deleted.");
         }
         repo.interrupt();
@@ -18234,12 +22826,12 @@ var RepoManager = /** @class */ (function () {
      * @return {!Repo} The Repo object for the specified server / repoName.
      */
     RepoManager.prototype.createRepo = function (repoInfo, app, authTokenProvider) {
-        var appRepos = safeGet(this.repos_, app.name);
+        var appRepos = index_node_cjs.safeGet(this.repos_, app.name);
         if (!appRepos) {
             appRepos = {};
             this.repos_[app.name] = appRepos;
         }
-        var repo = safeGet(appRepos, repoInfo.toURLString());
+        var repo = index_node_cjs.safeGet(appRepos, repoInfo.toURLString());
         if (repo) {
             fatal('Database initialized multiple times. Please make sure the format of the database URL matches with each database() call.');
         }
@@ -18288,8 +22880,8 @@ var Database = /** @class */ (function () {
         /** Track if the instance has been used (root or repo accessed) */
         this.instanceStarted_ = false;
         this.INTERNAL = {
-            delete: function () { return __awaiter(_this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
+            delete: function () { return tslib.__awaiter(_this, void 0, void 0, function () {
+                return tslib.__generator(this, function (_a) {
                     this.checkDeleted_('delete');
                     RepoManager.getInstance().deleteRepo(this.repo_);
                     this.repoInternal_ = null;
@@ -18349,7 +22941,7 @@ var Database = /** @class */ (function () {
     };
     Database.prototype.ref = function (path) {
         this.checkDeleted_('ref');
-        validateArgCount('database.ref', 0, 1, arguments.length);
+        index_node_cjs.validateArgCount('database.ref', 0, 1, arguments.length);
         if (path instanceof Reference) {
             return this.refFromURL(path.toString());
         }
@@ -18366,7 +22958,7 @@ var Database = /** @class */ (function () {
         /** @const {string} */
         var apiName = 'database.refFromURL';
         this.checkDeleted_(apiName);
-        validateArgCount(apiName, 1, 1, arguments.length);
+        index_node_cjs.validateArgCount(apiName, 1, 1, arguments.length);
         var parsedURL = parseRepoInfo(url, this.repo_.repoInfo_.nodeAdmin);
         validateUrl(apiName, 1, parsedURL);
         var repoInfo = parsedURL.repoInfo;
@@ -18391,12 +22983,12 @@ var Database = /** @class */ (function () {
     };
     // Make individual repo go offline.
     Database.prototype.goOffline = function () {
-        validateArgCount('database.goOffline', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('database.goOffline', 0, 0, arguments.length);
         this.checkDeleted_('goOffline');
         this.repo_.interrupt();
     };
     Database.prototype.goOnline = function () {
-        validateArgCount('database.goOnline', 0, 0, arguments.length);
+        index_node_cjs.validateArgCount('database.goOnline', 0, 0, arguments.length);
         this.checkDeleted_('goOnline');
         this.repo_.resume();
     };
@@ -18481,8 +23073,8 @@ function initStandalone(_a) {
      * ComponentContainer('database-standalone') is just a placeholder that doesn't perform
      * any actual function.
      */
-    var authProvider = new Provider('auth-internal', new ComponentContainer('database-standalone'));
-    authProvider.setComponent(new Component('auth-internal', function () { return customAuthImpl; }, "PRIVATE" /* PRIVATE */));
+    var authProvider = new index_cjs.Provider('auth-internal', new index_cjs.ComponentContainer('database-standalone'));
+    authProvider.setComponent(new index_cjs.Component('auth-internal', function () { return customAuthImpl; }, "PRIVATE" /* PRIVATE */));
     return {
         instance: RepoManager.getInstance().databaseFromApp(app, authProvider, url, nodeAdmin),
         namespace: namespace
@@ -18583,8 +23175,8 @@ var TEST_ACCESS = /*#__PURE__*/Object.freeze({
   forceRestClient: forceRestClient
 });
 
-var name$e = "@firebase/database";
-var version$3 = "0.7.1";
+var name = "@firebase/database";
+var version = "0.7.1";
 
 /**
  * @license
@@ -18602,12 +23194,45 @@ var version$3 = "0.7.1";
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+setWebSocketImpl(websocket.Client);
 var ServerValue = Database.ServerValue;
+/**
+ * A one off register function which returns a database based on the app and
+ * passed database URL. (Used by the Admin SDK)
+ *
+ * @param app A valid FirebaseApp-like object
+ * @param url A valid Firebase databaseURL
+ * @param version custom version e.g. firebase-admin version
+ * @param nodeAdmin true if the SDK is being initialized from Firebase Admin.
+ */
+function initStandalone$1(app, url, version, nodeAdmin) {
+    if (nodeAdmin === void 0) { nodeAdmin = true; }
+    index_node_cjs.CONSTANTS.NODE_ADMIN = nodeAdmin;
+    return initStandalone({
+        app: app,
+        url: url,
+        version: version,
+        // firebase-admin-node's app.INTERNAL implements FirebaseAuthInternal interface
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        customAuthImpl: app.INTERNAL,
+        namespace: {
+            Reference: Reference,
+            Query: Query,
+            Database: Database,
+            DataSnapshot: DataSnapshot,
+            enableLogging: enableLogging,
+            INTERNAL: INTERNAL,
+            ServerValue: ServerValue,
+            TEST_ACCESS: TEST_ACCESS
+        },
+        nodeAdmin: nodeAdmin
+    });
+}
 function registerDatabase(instance) {
     // set SDK_VERSION
     setSDKVersion(instance.SDK_VERSION);
     // Register the Database Service with the 'firebase' namespace.
-    var namespace = instance.INTERNAL.registerComponent(new Component('database', function (container, url) {
+    var namespace = instance.INTERNAL.registerComponent(new index_cjs.Component('database', function (container, url) {
         /* Dependencies */
         // getImmediate for FirebaseApp will always succeed
         var app = container.getProvider('app').getImmediate();
@@ -18627,9 +23252,51 @@ function registerDatabase(instance) {
         TEST_ACCESS: TEST_ACCESS
     })
         .setMultipleInstances(true));
-    instance.registerVersion(name$e, version$3);
+    instance.registerVersion(name, version, 'node');
+    if (index_node_cjs.isNodeSdk()) {
+        module.exports = Object.assign({}, namespace, { initStandalone: initStandalone$1 });
+    }
 }
-registerDatabase(firebase$1);
+try {
+    // If @firebase/app is not present, skip registering database.
+    // It could happen when this package is used in firebase-admin which doesn't depend on @firebase/app.
+    // Previously firebase-admin depends on @firebase/app, which causes version conflict on
+    // @firebase/app when used together with the js sdk. More detail:
+    // https://github.com/firebase/firebase-js-sdk/issues/1696#issuecomment-501546596
+    // eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-require-imports
+    var firebase = index_node_cjs$1.default;
+    registerDatabase(firebase);
+}
+catch (err) {
+    // catch and ignore 'MODULE_NOT_FOUND' error in firebase-admin context
+    // we can safely ignore this error because RTDB in firebase-admin works without @firebase/app
+    if (err.code !== 'MODULE_NOT_FOUND') {
+        throw err;
+    }
+}
+
+exports.DataSnapshot = DataSnapshot;
+exports.Database = Database;
+exports.OnDisconnect = OnDisconnect;
+exports.Query = Query;
+exports.Reference = Reference;
+exports.ServerValue = ServerValue;
+exports.enableLogging = enableLogging;
+exports.initStandalone = initStandalone$1;
+exports.registerDatabase = registerDatabase;
+
+});
+
+unwrapExports(index_node_cjs$2);
+var index_node_cjs_1$2 = index_node_cjs$2.DataSnapshot;
+var index_node_cjs_2$1 = index_node_cjs$2.Database;
+var index_node_cjs_3$1 = index_node_cjs$2.OnDisconnect;
+var index_node_cjs_4$1 = index_node_cjs$2.Query;
+var index_node_cjs_5$1 = index_node_cjs$2.Reference;
+var index_node_cjs_6$1 = index_node_cjs$2.ServerValue;
+var index_node_cjs_7$1 = index_node_cjs$2.enableLogging;
+var index_node_cjs_8$1 = index_node_cjs$2.initStandalone;
+var index_node_cjs_9$1 = index_node_cjs$2.registerDatabase;
 
 var defaultFBConfig = {
   apiKey: "AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA",
@@ -18642,8 +23309,8 @@ var database;
 
 function getDatabase() {
     if (database) return database
-    firebase$1.initializeApp(defaultFBConfig);
-    database = firebase$1.database().ref('/').child('peers');
+    index_cjs$2.initializeApp(defaultFBConfig);
+    database = index_cjs$2.database().ref('/').child('peers');
     return database
 }
 
@@ -18699,7 +23366,7 @@ class P2PServer extends Evented {
         this.userRef = fbref.child(this.id);
         this.updateRef = this.userRef.child('lastUpdate');
         this.userRef.onDisconnect().remove();
-        this.updateRef.set(firebase$1.database.ServerValue.TIMESTAMP);
+        this.updateRef.set(index_cjs$2.database.ServerValue.TIMESTAMP);
         this.channelRef = this.userRef.child('channels');
         if (this.stream) {
             this.userRef.child('isStream').set(true);
@@ -18717,7 +23384,7 @@ class P2PServer extends Evented {
 
     _updateOnFireBase() {
         // one may want to overwrite this
-        this.updateRef.set(firebase$1.database.ServerValue.TIMESTAMP);
+        this.updateRef.set(index_cjs$2.database.ServerValue.TIMESTAMP);
     }
 
     sendToAll(data) {
@@ -19273,7 +23940,7 @@ exports.P2PServer = P2PServer;
 exports.PeerBinary = PeerBinary$1;
 exports.UnChunker = UnChunker$1;
 exports.arrayBufferToChunks = arrayBufferToChunks;
-exports.firebase = firebase$1;
+exports.firebase = index_cjs$2;
 exports.generateWebRTCpayload = generateWebRTCpayload;
 exports.imageToBlob = imageToBlob;
 exports.recursivelyEncodeBlobs = recursivelyEncodeBlobs;
