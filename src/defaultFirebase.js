@@ -1,4 +1,5 @@
 import firebase from 'firebase/app'
+import 'firebase/database'
 
 var defaultFBConfig = {
   apiKey: "AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA",
