@@ -1,5 +1,5 @@
-import Peer from 'simple-peer/simplepeer.min.js';
-import msgpacklite from 'msgpack-lite/dist/msgpack.min.js';
+import * as Peer2 from 'simple-peer/simplepeer.min.js';
+import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js';
 
 var settings = {
     // Get a reference to the database service
@@ -23,7 +23,7 @@ var settings = {
     debug: false,
 };
 
-var msgPack = msgpacklite;
+var msgPack = msgpacklite;//.default;
 
 var drawingCanvas; // this is a canvas used by imageToBlob
 
@@ -139,7 +139,8 @@ function imageToBlob(img, cb) {
   });
 }
 
-const msgPack$1 = msgpacklite;
+const msgPack$1 = msgpacklite;//.default
+const Peer = Peer2;//.default
 
 if (typeof window !== 'undefined') window.simpPeer = Peer;
 
@@ -19314,15 +19315,16 @@ class P2PClient extends Evented {
     }
 }
 
-const msgPack$2 = msgpacklite;
+const msgPack$2 = msgpacklite;//.default
+const Peer$1 = Peer2;//.default
 
-if (typeof window !== 'undefined') window.simpPeer = Peer;
+if (typeof window !== 'undefined') window.simpPeer = Peer$1;
 
 const sleep$1 = milliseconds => {
     return new Promise(resolve => setTimeout(resolve, milliseconds))
 };
 
-class PeerBinary$1 extends Peer {
+class PeerBinary$1 extends Peer$1 {
     constructor(options) {
         //console.log('PeerBinary contructor called')
         super(options);

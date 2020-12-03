@@ -4,6 +4,8 @@
 // import replace from 'rollup-plugin-replace';
 import resolve from 'rollup-plugin-node-resolve';
 import commonjs from 'rollup-plugin-commonjs';
+import nodeGlobals from 'rollup-plugin-node-globals'
+import nodeBuiltins from 'rollup-plugin-node-builtins'
 
 // import babel from "rollup-plugin-babel";
 
@@ -27,20 +29,22 @@ export default [
     {
         input: 'src/index.js',
         external: [
-            'fs',
-            'child_process',
-            'url',
-            'http',
-            'https',
-            'util',
-            'stream',
-            'net',
-            'events',
-            'tls',
-            'crypto',
-            'assert',
+            // 'fs',
+            // 'child_process',
+            // 'url',
+            // 'http',
+            // 'https',
+            // 'util',
+            // 'stream',
+            // 'net',
+            // 'events',
+            // 'tls',
+            // 'crypto',
+            // 'assert',
         ],
         plugins: [
+            nodeGlobals(),
+            nodeBuiltins(),
             resolve({
                 mainFields: ['main', 'module'],
                 preferBuiltins: true,

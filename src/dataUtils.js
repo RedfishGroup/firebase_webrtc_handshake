@@ -1,7 +1,7 @@
 import { settings } from './settings.js'
 import * as msgpacklite from "msgpack-lite/dist/msgpack.min.js";
 
-var msgPack = msgpacklite.default;
+var msgPack = msgpacklite//.default;
 
 var drawingCanvas; // this is a canvas used by imageToBlob
 
