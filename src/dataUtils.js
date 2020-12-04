@@ -1,7 +1,9 @@
 import { settings } from './settings.js'
-import * as msgpacklite from "msgpack-lite/dist/msgpack.min.js";
 
-var msgPack = msgpacklite//.default;
+var encode
+export function setEncode(newEncode) {
+    encode = newEncode
+}
 
 var drawingCanvas; // this is a canvas used by imageToBlob
 
@@ -72,7 +74,8 @@ export async function recursivelyDecodeBlobs(obj, depth = 0) {
 
 export async function _generateWebRTCpayload(obj, headerOpt = {}) {
   //console.time('generateWebRTCpayload')
-  let bin = msgPack.encode(obj);
+  let bin = encode(obj)
+  console.log({ bin, obj })
   var header = Object.assign(
     {
       iAmAHeader: true,
@@ -83,7 +86,10 @@ export async function _generateWebRTCpayload(obj, headerOpt = {}) {
   var chunks = arrayBufferToChunks(bin, header.payloadID);
   header.chunkCount = chunks.length;
   //console.timeEnd('generateWebRTCpayload')
-  return { header: msgPack.encode(header), chunks: chunks };
+
+  let encodedHeader = encode(header)
+  console.log(encodedHeader, header)
+  return { header: encodedHeader, chunks: chunks }
 }
 
 export function arrayBufferToChunks(buff, payloadID) {
@@ -96,10 +102,13 @@ export function arrayBufferToChunks(buff, payloadID) {
     var chunksize = Math.min(buff.byteLength - i, settings.CHUNK_SIZE);
     var chunk = wholeshebang.slice(i, i + chunksize);
     var id = count; //new Uint8Array(idSize);
-    let chbin = msgPack.encode({ payloadID: payloadID, id: id, chunk: chunk });
+    let chbin = encode({ payloadID: payloadID, id: id, chunk: chunk })
     result.push(chbin);
     count++;
   }
+
+  console.log(buff, result)
+
   //console.timeEnd('chunks')
   //console.log(`generated ${count} chunks`)
   return result;

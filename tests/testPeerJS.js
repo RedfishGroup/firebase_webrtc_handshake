@@ -5,6 +5,9 @@ import { P2PServer, P2PClient } from "../dist/build.full.js";
 
 window.P2PClient = P2PClient;
 window.P2PServer = P2PServer;
+
+// var serverID = 'plumkin capitiliztion server4221'
+
 //
 // make a very simple server that capitalizes the object coming in.
 //
@@ -34,16 +37,16 @@ function ab2str(buf) {
 //
 //    the first peer
 window.client1 = new P2PClient();
-client1.connectToPeerID(server.id, function(err, connection) {
-  connection.on("connect", function() {
-    sendToDiv("client1", "CONNECTED");
-    connection.send("hello world");
-    sendToDiv("client1", "client 1 sent data: hello world");
-  });
-  connection.on("data", function(data) {
-    sendToDiv("client1", "client 1 recieved data:" + data);
-  });
-});
+client1.connectToPeerID(server.id, function (err, connection) {
+    connection.on('connect', function () {
+        sendToDiv('client1', 'CONNECTED')
+        connection.send('hello world')
+        sendToDiv('client1', 'client 1 sent data: hello world')
+    })
+    connection.on('data', function (data) {
+        sendToDiv('client1', 'client 1 recieved data:' + data)
+    })
+})
 // the second peer
 // this one is using the evented events
 window.client2 = new P2PClient();

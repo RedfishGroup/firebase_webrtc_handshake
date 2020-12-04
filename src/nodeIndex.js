@@ -1,19 +1,14 @@
-import { P2PServerFactory } from './P2PServer.js'
 import { Channel } from './Channel.js'
+import { P2PServerFactory } from './P2PServer.js'
 import { P2PClientFactory } from './P2PClient.js'
-
-import firebase from 'firebase/app'
-import 'firebase/database'
 
 import { initFirebase } from './defaultFirebase.js'
 
-import * as Peer2 from 'simple-peer/simplepeer.min.js'
-const Peer = Peer2.default
+const Peer = require('simple-peer')
+const wrtc = require('wrtc')
 
 // import adapter from "webrtc-adapter/src/js/adapter_core.js";
-import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js'
-
-const msgPack = msgpacklite.default
+const { decode, encode } = require('msgpack-lite')
 
 import {
     generateWebRTCpayload,
@@ -27,11 +22,14 @@ import { PeerBinaryFactory } from './peerBinary.js'
 
 import { UnChunkerFactory } from './utils.js'
 
-initFirebase(firebase)
-setEncode(msgPack.encode)
+const firebase = require('firebase/app')
+require('firebase/database')
 
-const UnChunker = UnChunkerFactory({ decode: msgPack.decode })
-const PeerBinary = PeerBinaryFactory({ UnChunker, Peer })
+initFirebase(firebase)
+setEncode(encode)
+
+const UnChunker = UnChunkerFactory({ decode })
+const PeerBinary = PeerBinaryFactory({ UnChunker, Peer, wrtc })
 const P2PServer = P2PServerFactory({ PeerBinary })
 const P2PClient = P2PClientFactory({ PeerBinary })
 
