@@ -4,7 +4,7 @@ import { getFirebase, getDatabase } from './defaultFirebase.js'
 import { Channel } from './Channel.js'
 
 export function P2PServerFactory(options) {
-    const { PeerBinary } = options
+    const { PeerBinary, debug } = options
 
     return class P2PServer extends Evented {
         constructor(options = {}) {
@@ -14,7 +14,6 @@ export function P2PServerFactory(options) {
                 'Server: no ice servers yet. Using defaults'
             )
             this.MAX_CONNECTIONS = 50
-            this.debug = false
             this.isListening = false
 
             this.id = 'server_' + Math.floor(Math.random() * 100000)
@@ -35,6 +34,9 @@ export function P2PServerFactory(options) {
             } else {
                 this.database = getDatabase()
             }
+
+            this.debug = !!debug
+
             if (this.debug) console.log(this.id)
             if (!options.dontCallInitYet) {
                 this.init()
@@ -116,7 +118,7 @@ export function P2PServerFactory(options) {
                 }
                 for (var i in val.fromClient) {
                     var sig = val.fromClient[i]
-                    console.log({ sig })
+                    if (this.debug) console.log({ sig })
                     if (sig.type === 'offer') {
                         var mykey = ev.key
                         var { peerID, myID } = sig

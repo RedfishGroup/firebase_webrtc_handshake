@@ -3,7 +3,7 @@ import { Evented } from './Evented.js'
 import { getDatabase } from './defaultFirebase.js'
 
 export function P2PClientFactory(options) {
-    const {PeerBinary} = options
+    const { PeerBinary, debug } = options
 
     return class P2PClient extends Evented {
             constructor(options = {}) {
@@ -37,6 +37,7 @@ export function P2PClientFactory(options) {
                     typeof options.isStream === 'boolean' ? options.isStream : true
                 this.connectionCallbacks = []
                 this.lastNegotiationState = undefined
+                this.debug = !!debug
             }
 
             getPeerList(callback) {
@@ -137,7 +138,8 @@ export function P2PClientFactory(options) {
                 //this.channelRef = this.serverRef.child('channels').push({offer:offer})
                 offer.peerID = this.peerID
                 offer.myID = this.myID
-                console.log('Got create channel with offer: ', offer)
+                if (this.debug)
+                    console.log('Got create channel with offer: ', offer)
                 this.channelRef = this.serverRef.child('channels').push({
                     fromClient: [offer],
                 })
@@ -208,8 +210,7 @@ export function P2PClientFactory(options) {
                 })
                 this.connection.on('close', (data) => {
                     if (this.debug)
-    
-                                   console.log('connection closed', this.connection)
+                        console.log('connection closed', this.connection)
                     this.fire('close', { peer: this.connection })
                 })
                 this.connection.on('dataBig', (data) => {

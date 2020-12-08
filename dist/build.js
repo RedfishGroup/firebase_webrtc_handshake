@@ -111,7 +111,7 @@ class Channel {
 }
 
 function P2PServerFactory(options) {
-    const { PeerBinary } = options;
+    const { PeerBinary, debug } = options;
 
     return class P2PServer extends Evented {
         constructor(options = {}) {
@@ -121,7 +121,6 @@ function P2PServerFactory(options) {
                 'Server: no ice servers yet. Using defaults'
             );
             this.MAX_CONNECTIONS = 50;
-            this.debug = false;
             this.isListening = false;
 
             this.id = 'server_' + Math.floor(Math.random() * 100000);
@@ -142,6 +141,9 @@ function P2PServerFactory(options) {
             } else {
                 this.database = getDatabase();
             }
+
+            this.debug = !!debug;
+
             if (this.debug) console.log(this.id);
             if (!options.dontCallInitYet) {
                 this.init();
@@ -223,7 +225,7 @@ function P2PServerFactory(options) {
                 }
                 for (var i in val.fromClient) {
                     var sig = val.fromClient[i];
-                    console.log({ sig });
+                    if (this.debug) console.log({ sig });
                     if (sig.type === 'offer') {
                         var mykey = ev.key;
                         var { peerID, myID } = sig;
@@ -372,7 +374,7 @@ function P2PServerFactory(options) {
 }
 
 function P2PClientFactory(options) {
-    const {PeerBinary} = options;
+    const { PeerBinary, debug } = options;
 
     return class P2PClient extends Evented {
             constructor(options = {}) {
@@ -406,6 +408,7 @@ function P2PClientFactory(options) {
                     typeof options.isStream === 'boolean' ? options.isStream : true;
                 this.connectionCallbacks = [];
                 this.lastNegotiationState = undefined;
+                this.debug = !!debug;
             }
 
             getPeerList(callback) {
@@ -506,7 +509,8 @@ function P2PClientFactory(options) {
                 //this.channelRef = this.serverRef.child('channels').push({offer:offer})
                 offer.peerID = this.peerID;
                 offer.myID = this.myID;
-                console.log('Got create channel with offer: ', offer);
+                if (this.debug)
+                    console.log('Got create channel with offer: ', offer);
                 this.channelRef = this.serverRef.child('channels').push({
                     fromClient: [offer],
                 });
@@ -577,8 +581,7 @@ function P2PClientFactory(options) {
                 });
                 this.connection.on('close', (data) => {
                     if (this.debug)
-    
-                                   console.log('connection closed', this.connection);
+                        console.log('connection closed', this.connection);
                     this.fire('close', { peer: this.connection });
                 });
                 this.connection.on('dataBig', (data) => {
