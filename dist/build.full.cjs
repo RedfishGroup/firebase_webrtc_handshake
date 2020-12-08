@@ -143,7 +143,7 @@ function P2PServerFactory(options) {
                 this.database = getDatabase();
             }
 
-            this.debug = !!debug;
+            this.debug = !!debug || !!options.debug;
 
             if (this.debug) console.log(this.id);
             if (!options.dontCallInitYet) {
@@ -390,9 +390,7 @@ function P2PClientFactory(options) {
 
                 this.iceServers =
                     options.iceServers ||
-     
                           options.ICE_SERVERS ||
-    
                            settings.ICE_SERVERS;
 
                 if (options.database) {
@@ -409,7 +407,7 @@ function P2PClientFactory(options) {
                     typeof options.isStream === 'boolean' ? options.isStream : true;
                 this.connectionCallbacks = [];
                 this.lastNegotiationState = undefined;
-                this.debug = !!debug;
+                this.debug = !!debug ||  !!options.debug;
             }
 
             getPeerList(callback) {

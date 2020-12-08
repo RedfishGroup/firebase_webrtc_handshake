@@ -35,7 +35,7 @@ export function P2PServerFactory(options) {
                 this.database = getDatabase()
             }
 
-            this.debug = !!debug
+            this.debug = !!debug || !!options.debug
 
             if (this.debug) console.log(this.id)
             if (!options.dontCallInitYet) {

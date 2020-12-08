@@ -18,9 +18,7 @@ export function P2PClientFactory(options) {
 
                 this.iceServers =
                     options.iceServers ||
-     
                           options.ICE_SERVERS ||
-    
                            settings.ICE_SERVERS
 
                 if (options.database) {
@@ -37,7 +35,7 @@ export function P2PClientFactory(options) {
                     typeof options.isStream === 'boolean' ? options.isStream : true
                 this.connectionCallbacks = []
                 this.lastNegotiationState = undefined
-                this.debug = !!debug
+                this.debug = !!debug ||  !!options.debug
             }
 
             getPeerList(callback) {
