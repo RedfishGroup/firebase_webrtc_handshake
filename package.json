@@ -1,13 +1,15 @@
 {
     "name": "firebase_webrtc_handshake",
     "description": "Facilitate a webrtc connection using Firebase.",
-    "version": "1.0.35",
+    "version": "1.0.36",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/RedfishGroup/firebase_webrtc_handshake.git"
     },
     "author": "Cody Smith, Simtable",
-    "contributors": ["Joshua Thorp, Simtable"],
+    "contributors": [
+        "Joshua Thorp, Simtable"
+    ],
     "license": "MIT",
     "bugs": {
         "url": "https://github.com/RedfishGroup/firebase_webrtc_handshake/issues"
@@ -23,18 +25,17 @@
         "webrtc-adapter": "7.7.0"
     },
     "devDependencies": {
-        "firebase": "8.0.1",
+        "firebase": "8.1.2",
         "msgpack-lite": "0.1.26",
-        "rollup": "2.33.1",
+        "rollup": "2.34.2",
         "rollup-plugin-commonjs": "10.1.0",
         "rollup-plugin-node-builtins": "^2.1.2",
         "rollup-plugin-node-globals": "^1.4.0",
         "rollup-plugin-node-resolve": "5.2.0",
         "rollup-plugin-replace": "2.2.0",
-        "simple-peer": "9.8.0",
+        "simple-peer": "9.9.3",
         "webrtc-adapter": "7.7.0",
         "wrtc": "^0.4.6"
     },
-    "dependencies": {
-    }
+    "dependencies": {}
 }

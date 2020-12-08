@@ -3445,7 +3445,7 @@ var firebase$1$1 = firebase$1;
 registerCoreComponents(firebase$1$1);
 
 var name$d = "firebase";
-var version$2 = "8.0.1";
+var version$2 = "8.1.2";
 
 /**
  * @license
@@ -8579,6 +8579,12 @@ var Query = /** @class */ (function () {
             container = new ChildEventRegistration(callbacks, null, context || null);
         }
         this.repo.removeEventCallbackForQuery(this, container);
+    };
+    /**
+     * Get the server-value for this query, or return a cached value if not connected.
+     */
+    Query.prototype.get = function () {
+        return this.repo.getValue(this);
     };
     /**
      * Attaches a listener, waits for the first event, and then removes the listener
@@ -15204,6 +15210,7 @@ var ServerActions = /** @class */ (function () {
  */
 var RECONNECT_MIN_DELAY = 1000;
 var RECONNECT_MAX_DELAY_DEFAULT = 60 * 5 * 1000; // 5 minutes in milliseconds (Case: 1858)
+var GET_CONNECT_TIMEOUT = 3 * 1000;
 var RECONNECT_MAX_DELAY_FOR_ADMINS = 30 * 1000; // 30 seconds for admin clients (likely to be a backend server)
 var RECONNECT_DELAY_MULTIPLIER = 1.3;
 var RECONNECT_DELAY_RESET_TIMEOUT = 30000; // Reset delay back to MIN_DELAY after being connected for 30sec.
@@ -15240,7 +15247,9 @@ var PersistentConnection = /** @class */ (function (_super) {
         /** Map<path, Map<queryId, ListenSpec>> */
         _this.listens = new Map();
         _this.outstandingPuts_ = [];
+        _this.outstandingGets_ = [];
         _this.outstandingPutCount_ = 0;
+        _this.outstandingGetCount_ = 0;
         _this.onDisconnectRequestQueue_ = [];
         _this.connected_ = false;
         _this.reconnectDelay_ = RECONNECT_MIN_DELAY;
@@ -15279,6 +15288,52 @@ var PersistentConnection = /** @class */ (function (_super) {
             this.requestCBHash_[curReqNum] = onResponse;
         }
     };
+    PersistentConnection.prototype.get = function (query) {
+        var _this = this;
+        var deferred = new Deferred();
+        var request = {
+            p: query.path.toString(),
+            q: query.queryObject()
+        };
+        var outstandingGet = {
+            action: 'g',
+            request: request,
+            onComplete: function (message) {
+                var payload = message['d'];
+                if (message['s'] === 'ok') {
+                    _this.onDataUpdate_(request['p'], payload, 
+                    /*isMerge*/ false, 
+                    /*tag*/ null);
+                    deferred.resolve(payload);
+                }
+                else {
+                    deferred.reject(payload);
+                }
+            }
+        };
+        this.outstandingGets_.push(outstandingGet);
+        this.outstandingGetCount_++;
+        var index = this.outstandingGets_.length - 1;
+        if (!this.connected_) {
+            setTimeout(function () {
+                var get = _this.outstandingGets_[index];
+                if (get === undefined || outstandingGet !== get) {
+                    return;
+                }
+                delete _this.outstandingGets_[index];
+                _this.outstandingGetCount_--;
+                if (_this.outstandingGetCount_ === 0) {
+                    _this.outstandingGets_ = [];
+                }
+                _this.log_('get ' + index + ' timed out on connection');
+                deferred.reject(new Error('Client is offline.'));
+            }, GET_CONNECT_TIMEOUT);
+        }
+        if (this.connected_) {
+            this.sendGet_(index);
+        }
+        return deferred.promise;
+    };
     /**
      * @inheritDoc
      */
@@ -15302,6 +15357,20 @@ var PersistentConnection = /** @class */ (function (_super) {
         if (this.connected_) {
             this.sendListen_(listenSpec);
         }
+    };
+    PersistentConnection.prototype.sendGet_ = function (index) {
+        var _this = this;
+        var get = this.outstandingGets_[index];
+        this.sendRequest('g', get.request, function (message) {
+            delete _this.outstandingGets_[index];
+            _this.outstandingGetCount_--;
+            if (_this.outstandingGetCount_ === 0) {
+                _this.outstandingGets_ = [];
+            }
+            if (get.onComplete) {
+                get.onComplete(message);
+            }
+        });
     };
     PersistentConnection.prototype.sendListen_ = function (listenSpec) {
         var _this = this;
@@ -15904,6 +15973,11 @@ var PersistentConnection = /** @class */ (function (_super) {
             var request = this.onDisconnectRequestQueue_.shift();
             this.sendOnDisconnect_(request.action, request.pathString, request.data, request.onComplete);
         }
+        for (var i = 0; i < this.outstandingGets_.length; i++) {
+            if (this.outstandingGets_[i]) {
+                this.sendGet_(i);
+            }
+        }
     };
     /**
      * Sends client stats for first connection
@@ -16035,6 +16109,31 @@ var ReadonlyRestClient = /** @class */ (function (_super) {
     ReadonlyRestClient.prototype.unlisten = function (query, tag) {
         var listenId = ReadonlyRestClient.getListenId_(query, tag);
         delete this.listens_[listenId];
+    };
+    ReadonlyRestClient.prototype.get = function (query) {
+        var _this = this;
+        var queryStringParameters = query
+            .getQueryParams()
+            .toRestQueryStringParameters();
+        var pathString = query.path.toString();
+        var deferred = new Deferred();
+        this.restRequest_(pathString + '.json', queryStringParameters, function (error, result) {
+            var data = result;
+            if (error === 404) {
+                data = null;
+                error = null;
+            }
+            if (error === null) {
+                _this.onDataUpdate_(pathString, data, 
+                /*isMerge=*/ false, 
+                /*tag=*/ null);
+                deferred.resolve(data);
+            }
+            else {
+                deferred.reject(new Error(data));
+            }
+        });
+        return deferred.promise;
     };
     /** @inheritDoc */
     ReadonlyRestClient.prototype.refreshAuthToken = function (token) {
@@ -16298,6 +16397,51 @@ var Repo = /** @class */ (function () {
     };
     Repo.prototype.getNextWriteId_ = function () {
         return this.nextWriteId_++;
+    };
+    /**
+     * The purpose of `getValue` is to return the latest known value
+     * satisfying `query`.
+     *
+     * If the client is connected, this method will send a request
+     * to the server. If the client is not connected, then either:
+     *
+     * 1. The client was once connected, but not anymore.
+     * 2. The client has never connected, this is the first operation
+     *    this repo is handling.
+     *
+     * In case (1), it's possible that the client still has an active
+     * listener, with cached data. Since this is the latest known
+     * value satisfying the query, that's what getValue will return.
+     * If there is no cached data, `getValue` surfaces an "offline"
+     * error.
+     *
+     * In case (2), `getValue` will trigger a time-limited connection
+     * attempt. If the client is unable to connect to the server, it
+     * will surface an "offline" error because there cannot be any
+     * cached data. On the other hand, if the client is able to connect,
+     * `getValue` will return the server's value for the query, if one
+     * exists.
+     *
+     * @param query - The query to surface a value for.
+     */
+    Repo.prototype.getValue = function (query) {
+        var _this = this;
+        return this.server_.get(query).then(function (payload) {
+            var node = nodeFromJSON$1(payload);
+            var events = _this.serverSyncTree_.applyServerOverwrite(query.path, node);
+            _this.eventQueue_.raiseEventsAtPath(query.path, events);
+            return Promise.resolve(new DataSnapshot(node, query.getRef(), query.getQueryParams().getIndex()));
+        }, function (err) {
+            _this.log_('get for query ' +
+                stringify(query) +
+                ' falling back to cache after error: ' +
+                err);
+            var cached = _this.serverSyncTree_.calcCompleteEventCache(query.path);
+            if (!cached.isEmpty()) {
+                return Promise.resolve(new DataSnapshot(cached, query.getRef(), query.getQueryParams().getIndex()));
+            }
+            return Promise.reject(new Error(err));
+        });
     };
     Repo.prototype.setWithPriority = function (path, newVal, newPriority, onComplete) {
         var _this = this;
@@ -18830,7 +18974,8 @@ var Database = /** @class */ (function () {
         var parsedURL = parseRepoInfo(url, this.repo_.repoInfo_.nodeAdmin);
         validateUrl(apiName, 1, parsedURL);
         var repoInfo = parsedURL.repoInfo;
-        if (!repoInfo.isCustomHost() && repoInfo.host !== this.repo_.repoInfo_.host) {
+        if (!repoInfo.isCustomHost() &&
+            repoInfo.host !== this.repo_.repoInfo_.host) {
             fatal(apiName +
                 ': Host name does not match the current database: ' +
                 '(found ' +
@@ -19044,7 +19189,7 @@ var TEST_ACCESS = /*#__PURE__*/Object.freeze({
 });
 
 var name$e = "@firebase/database";
-var version$4 = "0.7.1";
+var version$4 = "0.8.1";
 
 /**
  * @license
