@@ -435,6 +435,7 @@ function P2PClientFactory(options) {
                                 config: {
                                     iceServers: this.iceServers,
                                 },
+                                peerID: id,
                             };
 
                             if (sval.isStream || this.isStream) {
