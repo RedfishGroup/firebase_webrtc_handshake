@@ -128,7 +128,7 @@ export function imageToBlob(img, cb) {
 }
 
 //
-// Takes a bunch of possibly out of order shunks and assembles them into one
+// Takes a bunch of possibly out of order chunks and assembles them into one
 //
 export function UnChunkerFactory(options = {}) {
   const decode =
@@ -136,7 +136,6 @@ export function UnChunkerFactory(options = {}) {
       function decode(data) {
           return data
       }
-  const _recursivelyDecodeBlob = recursivelyDecodeBlob
 
   return class UnChunker {
       constructor(opts = {}) {
@@ -207,7 +206,7 @@ export function UnChunkerFactory(options = {}) {
           }
           try {
               let val1 = decode(result)
-              let val2 = await _recursivelyDecodeBlob(val1)
+              let val2 = await recursivelyDecodeBlobs(val1)
               cb(val2)
               this._removePayload(payloadID)
           } catch (err) {
