@@ -16,11 +16,11 @@ import {
     imageToBlob,
     recursivelyEncodeBlobs,
     setEncode,
+    UnChunkerFactory,
 } from './dataUtils.js'
 
 import { PeerBinaryFactory } from './peerBinary.js'
 
-import { UnChunkerFactory } from './utils.js'
 
 const firebase = require('firebase/app')
 require('firebase/database')

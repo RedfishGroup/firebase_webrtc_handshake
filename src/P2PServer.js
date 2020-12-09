@@ -197,6 +197,7 @@ export function P2PServerFactory(options) {
             }
             if (this.stream) myoptions.stream = this.stream
             var p = new PeerBinary(myoptions)
+
             // fire events
             p.on('error', (err) => {
                 console.error('server: error', err)
@@ -228,6 +229,7 @@ export function P2PServerFactory(options) {
                 if (this.debug) console.log('Server: received signal', data)
                 this.fire('signal', data)
             })
+     
             //TODO make it so server can register events that will get called on each individual connection
             return p
         }
