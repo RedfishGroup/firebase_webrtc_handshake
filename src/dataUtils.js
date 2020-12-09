@@ -1,6 +1,6 @@
 import { settings } from './settings.js'
 
-var encode
+var encode  //encodce method dependency injection
 export function setEncode(newEncode) {
     encode = newEncode
 }
@@ -16,6 +16,7 @@ export async function generateWebRTCpayload(obj) {
   let result = _generateWebRTCpayload(deBlobbed);
   return result;
 }
+
 export function deBlob(obj) {
   return new Promise((resolve, reject) => {
     var reader = new FileReader();
@@ -135,6 +136,7 @@ export function UnChunkerFactory(options = {}) {
       function decode(data) {
           return data
       }
+  const _recursivelyDecodeBlob = recursivelyDecodeBlob
 
   return class UnChunker {
       constructor(opts = {}) {
@@ -205,7 +207,7 @@ export function UnChunkerFactory(options = {}) {
           }
           try {
               let val1 = decode(result)
-              let val2 = await recursivelyDecodeBlob (val1)
+              let val2 = await _recursivelyDecodeBlob(val1)
               cb(val2)
               this._removePayload(payloadID)
           } catch (err) {
