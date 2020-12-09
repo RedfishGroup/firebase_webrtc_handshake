@@ -14,6 +14,7 @@ import {
     generateWebRTCpayload,
     arrayBufferToChunks,
     imageToBlob,
+    recursivelyDecodeBlobs,
     recursivelyEncodeBlobs,
     setEncode,
     UnChunkerFactory,
@@ -42,6 +43,7 @@ export {
     PeerBinary,
     UnChunker,
     Channel,
+    recursivelyDecodeBlobs,
     recursivelyEncodeBlobs,
     firebase,
 }

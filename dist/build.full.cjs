@@ -651,6 +651,29 @@ async function recursivelyEncodeBlobs(obj, depth = 0) {
   return obj;
 }
 
+async function recursivelyDecodeBlobs(obj, depth = 0) {
+  if (depth > MAX_RECURSIVE_DEPTH) {
+    throw (depth);
+  }
+  if (obj.constructor == Object && obj.type && obj.isBlob) {
+    let descript = {};
+    for (var i in obj) {
+      if (i !== "view" && i != "chunks") {
+        descript[i] = obj[i];
+      }
+    }
+    let val1 = new Blob([obj.view], descript);
+    return val1;
+  } else if (obj.constructor == Object) {
+    let res = {};
+    for (var i in obj) {
+      res[i] = await recursivelyDecodeBlobs(obj[i], depth + 1);
+    }
+    return res;
+  }
+  return obj;
+}
+
 async function _generateWebRTCpayload(obj, headerOpt = {}) {
   //console.time('generateWebRTCpayload')
   let bin = encode(obj);
@@ -908,5 +931,6 @@ exports.arrayBufferToChunks = arrayBufferToChunks;
 exports.firebase = firebase$1;
 exports.generateWebRTCpayload = generateWebRTCpayload;
 exports.imageToBlob = imageToBlob;
+exports.recursivelyDecodeBlobs = recursivelyDecodeBlobs;
 exports.recursivelyEncodeBlobs = recursivelyEncodeBlobs;
 //# sourceMappingURL=build.full.cjs.map

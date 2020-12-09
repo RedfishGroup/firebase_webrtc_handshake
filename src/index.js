@@ -19,6 +19,7 @@ import {
     arrayBufferToChunks,
     imageToBlob,
     recursivelyEncodeBlobs,
+    recursivelyDecodeBlobs,
     setEncode,
     UnChunkerFactory,
 } from './dataUtils.js'
@@ -44,5 +45,6 @@ export {
     UnChunker,
     Channel,
     recursivelyEncodeBlobs,
+    recursivelyDecodeBlobs,
     firebase,
 }

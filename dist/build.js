@@ -19289,6 +19289,29 @@ async function recursivelyEncodeBlobs(obj, depth = 0) {
   return obj;
 }
 
+async function recursivelyDecodeBlobs(obj, depth = 0) {
+  if (depth > MAX_RECURSIVE_DEPTH) {
+    throw (depth);
+  }
+  if (obj.constructor == Object && obj.type && obj.isBlob) {
+    let descript = {};
+    for (var i in obj) {
+      if (i !== "view" && i != "chunks") {
+        descript[i] = obj[i];
+      }
+    }
+    let val1 = new Blob([obj.view], descript);
+    return val1;
+  } else if (obj.constructor == Object) {
+    let res = {};
+    for (var i in obj) {
+      res[i] = await recursivelyDecodeBlobs(obj[i], depth + 1);
+    }
+    return res;
+  }
+  return obj;
+}
+
 async function _generateWebRTCpayload(obj, headerOpt = {}) {
   //console.time('generateWebRTCpayload')
   let bin = encode(obj);
@@ -19531,5 +19554,5 @@ const PeerBinary = PeerBinaryFactory({ UnChunker, Peer });
 const P2PServer = P2PServerFactory({ PeerBinary });
 const P2PClient = P2PClientFactory({ PeerBinary });
 
-export { Channel, P2PClient, P2PServer, PeerBinary, UnChunker, arrayBufferToChunks, firebase$1$1 as firebase, generateWebRTCpayload, imageToBlob, recursivelyEncodeBlobs };
+export { Channel, P2PClient, P2PServer, PeerBinary, UnChunker, arrayBufferToChunks, firebase$1$1 as firebase, generateWebRTCpayload, imageToBlob, recursivelyDecodeBlobs, recursivelyEncodeBlobs };
 //# sourceMappingURL=build.js.map
