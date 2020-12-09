@@ -20,11 +20,11 @@ import {
     imageToBlob,
     recursivelyEncodeBlobs,
     setEncode,
+    UnChunkerFactory,
 } from './dataUtils.js'
 
 import { PeerBinaryFactory } from './peerBinary.js'
 
-import { UnChunkerFactory } from './utils.js'
 
 initFirebase(firebase)
 setEncode(msgPack.encode)
