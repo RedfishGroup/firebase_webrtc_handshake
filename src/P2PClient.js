@@ -203,8 +203,7 @@ export function P2PClientFactory(options) {
                 })
                 this.connection.on('data', (data) => {
                     if (this.debug)
-         
-                              console.log('client: recieved some data: ', data)
+                        console.log('client: recieved some data: ', data)
                     this.fire('data', { peer: this.connection, data: data })
                 })
                 this.connection.on('close', (data) => {

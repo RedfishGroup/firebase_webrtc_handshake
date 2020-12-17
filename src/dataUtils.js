@@ -38,14 +38,17 @@ export async function recursivelyEncodeBlobs(obj, depth = 0) {
   if (depth > MAX_RECURSIVE_DEPTH) {
     throw ("max depth reached", depth);
   }
-  if (obj.constructor == File || obj.constructor == Blob) {
-    return await deBlob(obj);
+  if (
+      (typeof File !== 'undefined' && obj.constructor == File) ||
+      (typeof Blob !== 'undefined' && obj.constructor == Blob)
+  ) {
+      return await deBlob(obj)
   } else if (obj.constructor == Object) {
-    let res = {};
-    for (var i in obj) {
-      res[i] = await recursivelyEncodeBlobs(obj[i], depth + 1);
-    }
-    return res;
+      let res = {}
+      for (var i in obj) {
+          res[i] = await recursivelyEncodeBlobs(obj[i], depth + 1)
+      }
+      return res
   }
   return obj;
 }

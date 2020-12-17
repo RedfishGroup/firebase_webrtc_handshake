@@ -1,5 +1,5 @@
 
-import { generateWebRTCpayload, recursivelyDecodeBlobs } from './dataUtils.js'
+import { generateWebRTCpayload } from './dataUtils.js'
 
 
 

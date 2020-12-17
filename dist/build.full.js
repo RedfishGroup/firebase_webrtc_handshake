@@ -573,8 +573,7 @@ function P2PClientFactory(options) {
                 });
                 this.connection.on('data', (data) => {
                     if (this.debug)
-         
-                              console.log('client: recieved some data: ', data);
+                        console.log('client: recieved some data: ', data);
                     this.fire('data', { peer: this.connection, data: data });
                 });
                 this.connection.on('close', (data) => {
@@ -19068,14 +19067,17 @@ async function recursivelyEncodeBlobs(obj, depth = 0) {
   if (depth > MAX_RECURSIVE_DEPTH) {
     throw (depth);
   }
-  if (obj.constructor == File || obj.constructor == Blob) {
-    return await deBlob(obj);
+  if (
+      (typeof File !== 'undefined' && obj.constructor == File) ||
+      (typeof Blob !== 'undefined' && obj.constructor == Blob)
+  ) {
+      return await deBlob(obj)
   } else if (obj.constructor == Object) {
-    let res = {};
-    for (var i in obj) {
-      res[i] = await recursivelyEncodeBlobs(obj[i], depth + 1);
-    }
-    return res;
+      let res = {};
+      for (var i in obj) {
+          res[i] = await recursivelyEncodeBlobs(obj[i], depth + 1);
+      }
+      return res
   }
   return obj;
 }
