@@ -1,7 +1,7 @@
 import { settings } from './settings.js'
 import { Evented } from './Evented.js'
 import { getDatabase } from './defaultFirebase.js'
-import { getPeerList } from './peerDatabaseUtils.js'
+import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
 
 export function P2PClientFactory(options) {
     const { PeerBinary, debug } = options
@@ -38,8 +38,8 @@ export function P2PClientFactory(options) {
             this.debug = !!debug || !!options.debug
         }
 
-        getPeerList = (callback) => {
-            getPeerList(this.database, callback)
+        getPeerList(callback) {
+            return _getPeerList(this.database, callback)
         }
 
         connectToPeerID(id, callback = () => {}) {

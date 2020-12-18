@@ -3,7 +3,7 @@ import { Evented } from './Evented.js'
 import { getFirebase, getDatabase } from './defaultFirebase.js'
 import { Channel } from './Channel.js'
 
-import { getPeerList } from './peerDatabaseUtils.js'
+import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
 
 export function P2PServerFactory(options) {
     const { PeerBinary, debug } = options
@@ -236,8 +236,8 @@ export function P2PServerFactory(options) {
             return p
         }
 
-        getPeerList = (callback) => {
-            getPeerList(this.database, callback)
+        getPeerList(callback) {
+            return _getPeerList(this.database, callback)
         }
 
         destroy() {

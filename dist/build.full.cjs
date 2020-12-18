@@ -352,8 +352,8 @@ function P2PServerFactory(options) {
             return p
         }
 
-        getPeerList = (callback) => {
-            getPeerList(this.database, callback);
+        getPeerList(callback) {
+            return getPeerList(this.database, callback)
         }
 
         destroy() {
@@ -427,8 +427,8 @@ function P2PClientFactory(options) {
             this.debug = !!debug || !!options.debug;
         }
 
-        getPeerList = (callback) => {
-            getPeerList(this.database, callback);
+        getPeerList(callback) {
+            return getPeerList(this.database, callback)
         }
 
         connectToPeerID(id, callback = () => {}) {
