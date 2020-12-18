@@ -441,9 +441,10 @@ function P2PClientFactory(options) {
                                 peerID: id,
                             };
 
-                            if (sval.isStream || this.isStream) {
+                            if (this.isStream) {
                                 pOpts.stream = this.getMyStream();
                             }
+
                             var p = new PeerBinary(pOpts);
                             this.connection = p;
                             this._registerEvents();
