@@ -3,6 +3,8 @@ import { Evented } from './Evented.js'
 import { getFirebase, getDatabase } from './defaultFirebase.js'
 import { Channel } from './Channel.js'
 
+import { getPeerList } from './peerDatabaseUtils.js'
+
 export function P2PServerFactory(options) {
     const { PeerBinary, debug } = options
 
@@ -229,9 +231,13 @@ export function P2PServerFactory(options) {
                 if (this.debug) console.log('Server: received signal', data)
                 this.fire('signal', data)
             })
-     
+
             //TODO make it so server can register events that will get called on each individual connection
             return p
+        }
+
+        getPeerList = (callback) => {
+            getPeerList(this.database, callback)
         }
 
         destroy() {

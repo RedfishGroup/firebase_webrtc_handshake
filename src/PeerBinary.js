@@ -2,19 +2,17 @@
 import { generateWebRTCpayload } from './dataUtils.js'
 
 
-
 const sleep = (milliseconds) => {
     return new Promise((resolve) => setTimeout(resolve, milliseconds))
 }
 
 export function PeerBinaryFactory(options) {
-    const { UnChunker, Peer, wrtc } = options
+    const { UnChunker, Peer, wrtc } = options // dependency injection
     if (typeof window !== 'undefined') window.simplePeer = Peer
-    
+
     return class PeerBinary extends Peer {
         constructor(options) {
-            //console.log('PeerBinary contructor called')
-            super({  wrtc, ...options  })
+            super({ wrtc, ...options })
 
             this._registerDataMessage()
             this.unchunker = new UnChunker() //
