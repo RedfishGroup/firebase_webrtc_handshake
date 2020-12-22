@@ -117,10 +117,15 @@ function getFirebase() {
  * @param {*} callback
  */
 function getPeerList(database, callback) {
-    database.once('value', (ev) => {
-        var val = ev.val();
-        callback(null, val);
-    });
+    database
+        .once('value')
+        .then((ev) => {
+                var val = ev.val();
+                callback(null, val);
+            })
+        .catch((err) => {
+            callback(err);        
+        });
 }
 
 function P2PServerFactory(options) {
