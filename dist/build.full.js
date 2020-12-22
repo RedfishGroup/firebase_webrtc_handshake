@@ -434,8 +434,12 @@ function P2PClientFactory(options) {
 
         connectToPeerID(id, callback = () => {}) {
             this.connectionCallbacks.push(callback);
-            this.getPeerList(() => {
-                var peer = this.peerList[id];
+            this.getPeerList((err, peerList) => {
+                if (err) {
+                    console.error(err);
+                    return
+                }
+                var peer = peerList[id];
                 if (!peer) {
                     console.error('peer not defined. id:', id);
                     callback('peer not defined');
