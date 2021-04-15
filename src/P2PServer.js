@@ -61,6 +61,7 @@ export function P2PServerFactory(options, initialPeerInfo = {}) {
                 this.userRef.child('isStream').set(true)
             }
             this.channelRef.set([])
+
             this.connections = []
             this._intervalID = setInterval(() => {
                 this.fire('updateTimeStamp', undefined)

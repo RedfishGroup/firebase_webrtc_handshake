@@ -1,7 +1,7 @@
 {
     "name": "firebase_webrtc_handshake",
     "description": "Facilitate a webrtc connection using Firebase.",
-    "version": "1.0.45",
+    "version": "1.0.46",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/RedfishGroup/firebase_webrtc_handshake.git"
