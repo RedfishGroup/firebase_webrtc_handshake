@@ -172,7 +172,11 @@ function P2PServerFactory(options) {
             var fbref = this.database;
 
             this.userRef = fbref.child(this.id);
+            this.userRef.on('value', (snapshot) => {
+                console.log('got new user info: ', snapshot.val());
+            });
             this.userRef.onDisconnect().remove();
+
             if (this.initialPeerInfo) this.userRef.update(this.initialPeerInfo);
 
             this.updateRef = this.userRef.child('lastUpdate');
