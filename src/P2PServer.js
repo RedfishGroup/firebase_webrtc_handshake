@@ -51,7 +51,7 @@ export function P2PServerFactory(options, initialPeerInfo = {}) {
 
             this.userRef = fbref.child(this.id)
             this.userRef.onDisconnect().remove()
-            if (this.initialPeerInfo) this.updateRef.set(this.initialPeerInfo)
+            if (this.initialPeerInfo) this.userRef.set(this.initialPeerInfo)
 
             this.updateRef = this.userRef.child('lastUpdate')
             this.updateRef.set(getFirebase().database.ServerValue.TIMESTAMP)
