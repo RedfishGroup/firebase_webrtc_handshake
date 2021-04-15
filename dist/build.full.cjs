@@ -128,7 +128,7 @@ function getPeerList(database, callback) {
         });
 }
 
-function P2PServerFactory(options) {
+function P2PServerFactory(options, initialPeerInfo = {}) {
     const { PeerBinary, debug } = options;
 
     return class P2PServer extends Evented {
@@ -150,7 +150,6 @@ function P2PServerFactory(options) {
                 options.iceServers ||
                 options.ICE_SERVERS ||
                 settings.ICE_SERVERS;
-            this.database;
             this.POLLING_FREQUENCY =
                 options.POLLING_FREQUENCY || settings.POLLING_FREQUENCY;
             Object.assign(this, options);
@@ -161,6 +160,8 @@ function P2PServerFactory(options) {
             }
 
             this.debug = !!debug || !!options.debug;
+            this.initialPeerInfo = initialPeerInfo;
+            this.initialPeerInfo.id = this.id;
 
             if (this.debug) console.log(this.id);
             if (!options.dontCallInitYet) {
@@ -170,10 +171,14 @@ function P2PServerFactory(options) {
 
         init() {
             var fbref = this.database;
+
             this.userRef = fbref.child(this.id);
-            this.updateRef = this.userRef.child('lastUpdate');
             this.userRef.onDisconnect().remove();
+            if (this.initialPeerInfo) this.updateRef.set(this.initialPeerInfo);
+
+            this.updateRef = this.userRef.child('lastUpdate');
             this.updateRef.set(getFirebase().database.ServerValue.TIMESTAMP);
+
             this.channelRef = this.userRef.child('channels');
             if (this.stream) {
                 this.userRef.child('isStream').set(true);

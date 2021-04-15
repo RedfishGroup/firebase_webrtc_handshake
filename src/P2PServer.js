@@ -5,7 +5,7 @@ import { Channel } from './Channel.js'
 
 import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
 
-export function P2PServerFactory(options) {
+export function P2PServerFactory(options, initialPeerInfo = {}) {
     const { PeerBinary, debug } = options
 
     return class P2PServer extends Evented {
@@ -37,6 +37,8 @@ export function P2PServerFactory(options) {
             }
 
             this.debug = !!debug || !!options.debug
+            this.initialPeerInfo = initialPeerInfo
+            this.initialPeerInfo.id = this.id
 
             if (this.debug) console.log(this.id)
             if (!options.dontCallInitYet) {
@@ -46,10 +48,14 @@ export function P2PServerFactory(options) {
 
         init() {
             var fbref = this.database
+
             this.userRef = fbref.child(this.id)
-            this.updateRef = this.userRef.child('lastUpdate')
             this.userRef.onDisconnect().remove()
+            if (this.initialPeerInfo) this.updateRef.set(this.initialPeerInfo)
+
+            this.updateRef = this.userRef.child('lastUpdate')
             this.updateRef.set(getFirebase().database.ServerValue.TIMESTAMP)
+
             this.channelRef = this.userRef.child('channels')
             if (this.stream) {
                 this.userRef.child('isStream').set(true)
