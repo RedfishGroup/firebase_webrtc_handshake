@@ -127,11 +127,11 @@ function getPeerList(database, callback) {
         });
 }
 
-function P2PServerFactory(options, initialPeerInfo = {}) {
+function P2PServerFactory(options) {
     const { PeerBinary, debug } = options;
 
     return class P2PServer extends Evented {
-        constructor(options = {}) {
+        constructor(options = {},initialPeerInfo = {}) {
             super(); //no idea what this does
             console.assert(
                 options.iceServers,

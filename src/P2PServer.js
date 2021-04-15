@@ -5,11 +5,11 @@ import { Channel } from './Channel.js'
 
 import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
 
-export function P2PServerFactory(options, initialPeerInfo = {}) {
+export function P2PServerFactory(options) {
     const { PeerBinary, debug } = options
 
     return class P2PServer extends Evented {
-        constructor(options = {}) {
+        constructor(options = {},initialPeerInfo = {}) {
             super() //no idea what this does
             console.assert(
                 options.iceServers,
