@@ -27,7 +27,6 @@ export function P2PServerFactory(options) {
                 options.iceServers ||
                 options.ICE_SERVERS ||
                 settings.ICE_SERVERS
-            this.database
             this.POLLING_FREQUENCY =
                 options.POLLING_FREQUENCY || settings.POLLING_FREQUENCY
             Object.assign(this, options)
