@@ -177,7 +177,7 @@ function P2PServerFactory(options, initialPeerInfo = {}) {
             if (this.initialPeerInfo) this.userRef.set(this.initialPeerInfo);
 
             this.updateRef = this.userRef.child('lastUpdate');
-            this.updateRef.set(getFirebase().database.ServerValue.TIMESTAMP);
+            this.updateRef.update(getFirebase().database.ServerValue.TIMESTAMP);
 
             this.channelRef = this.userRef.child('channels');
             if (this.stream) {
