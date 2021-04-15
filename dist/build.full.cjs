@@ -174,10 +174,10 @@ function P2PServerFactory(options, initialPeerInfo = {}) {
 
             this.userRef = fbref.child(this.id);
             this.userRef.onDisconnect().remove();
-            if (this.initialPeerInfo) this.userRef.set(this.initialPeerInfo);
+            if (this.initialPeerInfo) this.userRef.update(this.initialPeerInfo);
 
             this.updateRef = this.userRef.child('lastUpdate');
-            this.updateRef.update(getFirebase().database.ServerValue.TIMESTAMP);
+            this.updateRef.set(getFirebase().database.ServerValue.TIMESTAMP);
 
             this.channelRef = this.userRef.child('channels');
             if (this.stream) {
