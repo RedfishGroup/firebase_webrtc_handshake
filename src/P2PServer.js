@@ -4,12 +4,13 @@ import { getFirebase, getDatabase } from './defaultFirebase.js'
 import { Channel } from './Channel.js'
 
 import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
+import { firebaseTreeTrimmer } from './firebaseTreeTrimmer.js'
 
 export function P2PServerFactory(options) {
     const { PeerBinary, debug } = options
 
     return class P2PServer extends Evented {
-        constructor(options = {},initialPeerInfo = {}) {
+        constructor(options = {}, initialPeerInfo = {}) {
             super() //no idea what this does
             console.assert(
                 options.iceServers,
@@ -48,6 +49,11 @@ export function P2PServerFactory(options) {
 
         init() {
             var fbref = this.database
+            this.treeTrimmer = new firebaseTreeTrimmer({
+                peersRef: this.database,
+                treeTrimmingRef: this.database.parent().child('treeTrimming'),
+                id: this.id,
+            })
 
             this.userRef = fbref.child(this.id)
             this.userRef.on('value', (snapshot) => {
