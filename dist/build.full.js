@@ -255,9 +255,13 @@ function P2PServerFactory(options) {
 
         init() {
             var fbref = this.database;
+
+            // the below assumes that tree trimming would happen at the same lavel as the peers ref or would be passed explicitly
             this.treeTrimmer = new firebaseTreeTrimmer({
                 peersRef: this.database,
-                treeTrimmingRef: this.database.parent().child('treeTrimming'),
+                treeTrimmingRef:
+                    this.treeTrimmingRef ||
+                    this.database.parent.child('treeTrimming'),
                 id: this.id,
             });
 
