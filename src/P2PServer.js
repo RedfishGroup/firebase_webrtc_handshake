@@ -1,3 +1,4 @@
+import { deepEqual } from 'fast-equals'
 import { settings } from './settings.js'
 import { Evented } from './Evented.js'
 import { getFirebase, getDatabase } from './defaultFirebase.js'
@@ -66,7 +67,7 @@ export function P2PServerFactory(options) {
             this.userRef.on('value', (snapshot) => {
                 // handle being tree trimmed while asleep
                 let newPeerInfo = snapshot.val()
-                if (newPeerInfo.id) {
+                if (newPeerInfo.id && !deepEqual(this._peerInfo, newPeerInfo)) {
                     console.log('got new user info: ', newPeerInfo)
                     this._peerInfo = newPeerInfo
                 } else if (this._peerInfo && this._peerInfo.id) {
