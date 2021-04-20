@@ -715,8 +715,12 @@ function P2PServerFactory(options) {
                         lastUpdate: getFirebase().database.ServerValue
                             .TIMESTAMP,
                     });
-                } else {
-                    console.warn('Appears we have not yet set peerInfo');
+                } else if (this._peerInfo) ; else {
+                    console.warn(
+                        'Appears we have not yet set peerInfo: ',
+                        this._peerInfo,
+                        newPeerInfo
+                    );
                 }
             });
             this.userRef.onDisconnect().remove();
