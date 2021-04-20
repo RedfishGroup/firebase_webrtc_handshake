@@ -279,7 +279,7 @@ function P2PServerFactory(options) {
                 if (newPeerInfo.id) {
                     console.log('got new user info: ', newPeerInfo);
                     this._peerInfo = newPeerInfo;
-                } else if (this._peerInfo?.id) {
+                } else if (this._peerInfo && this._peerInfo.id) {
                     console.log(
                         'peerInfo lost, updating with saved version: ',
                         this._peerInfo
