@@ -691,7 +691,13 @@ function P2PServerFactory(options) {
             this.userRef.on('value', (snapshot) => {
                 // handle being tree trimmed while asleep
                 let newPeerInfo = snapshot.val();
-                if (newPeerInfo.id && !deepEqual(this._peerInfo, newPeerInfo)) {
+                if (
+                    newPeerInfo.id &&
+                    !deepEqual(
+                        { ...this._peerInfo, lastUpdate: null },
+                        { ...newPeerInfo, lastUpdate: null }
+                    )
+                ) {
                     console.log('got new user info: ', newPeerInfo);
                     this._peerInfo = newPeerInfo;
                 } else if (this._peerInfo && this._peerInfo.id) {
@@ -699,7 +705,11 @@ function P2PServerFactory(options) {
                         'peerInfo lost, updating with saved version: ',
                         this._peerInfo
                     );
-                    this.userRef.update(this._peerInfo);
+                    this.userRef.update({
+                        ...this._peerInfo,
+                        lastUpdate: getFirebase().database.ServerValue
+                            .TIMESTAMP,
+                    });
                 } else {
                     console.warn('Appears we have not yet set peerInfo');
                 }
