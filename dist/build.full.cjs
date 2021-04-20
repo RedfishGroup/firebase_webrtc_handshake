@@ -722,7 +722,7 @@ function P2PServerFactory(options) {
                 // handle being tree trimmed while asleep
                 let newPeerInfo = snapshot.val();
                 if (
-                    newPeerInfo.id &&
+                    (newPeerInfo.id && this._peerInfo === null) ||
                     !fastEquals_cjs_4(
                         { ...this._peerInfo, lastUpdate: null },
                         { ...newPeerInfo, lastUpdate: null }
@@ -730,10 +730,15 @@ function P2PServerFactory(options) {
                 ) {
                     console.log('got new user info: ', newPeerInfo);
                     this._peerInfo = newPeerInfo;
-                } else if (this._peerInfo && this._peerInfo.id) {
+                } else if (
+                    this._peerInfo &&
+                    this._peerInfo.id &&
+                    !newPeerInfo.id
+                ) {
                     console.log(
                         'peerInfo lost, updating with saved version: ',
-                        this._peerInfo
+                        this._peerInfo,
+                        newPeerInfo
                     );
                     this.userRef.update({
                         ...this._peerInfo,
