@@ -254,6 +254,8 @@ function P2PServerFactory(options) {
             if (!options.dontCallInitYet) {
                 this.init();
             }
+
+            this._peerInfo = null;
         }
 
         init() {
@@ -269,8 +271,22 @@ function P2PServerFactory(options) {
             });
 
             this.userRef = fbref.child(this.id);
+
             this.userRef.on('value', (snapshot) => {
-                console.log('got new user info: ', snapshot.val());
+                // handle being tree trimmed while asleep
+                let newPeerInfo = snapshot.val();
+                if (newPeerInfo.id) {
+                    console.log('got new user info: ', newPeerInfo);
+                    this._peerInfo = newPeerInfo;
+                } else if (this._peerInfo?.id) {
+                    console.log(
+                        'peerInfo lost, updating with saved version: ',
+                        this._peerInfo
+                    );
+                    this.userRef.update(this._peerInfo);
+                } else {
+                    console.warn('Appears we have not yet set peerInfo');
+                }
             });
             this.userRef.onDisconnect().remove();
 
