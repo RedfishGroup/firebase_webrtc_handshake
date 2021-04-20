@@ -722,7 +722,7 @@ function P2PServerFactory(options) {
                 // handle being tree trimmed while asleep
                 let newPeerInfo = snapshot.val();
                 if (
-                    (newPeerInfo.id && this._peerInfo === null) ||
+                    newPeerInfo.id &&
                     !fastEquals_cjs_4(
                         { ...this._peerInfo, lastUpdate: null },
                         { ...newPeerInfo, lastUpdate: null }
