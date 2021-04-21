@@ -692,6 +692,7 @@ function P2PServerFactory(options) {
                 // handle being tree trimmed while asleep
                 let newPeerInfo = snapshot.val();
                 if (
+                    newPeerInfo &&
                     newPeerInfo.id &&
                     !deepEqual(
                         { ...this._peerInfo, lastUpdate: null },
@@ -703,7 +704,7 @@ function P2PServerFactory(options) {
                 } else if (
                     this._peerInfo &&
                     this._peerInfo.id &&
-                    !newPeerInfo.id
+                    !(newPeerInfo && newPeerInfo.id)
                 ) {
                     console.log(
                         'peerInfo lost, updating with saved version: ',
