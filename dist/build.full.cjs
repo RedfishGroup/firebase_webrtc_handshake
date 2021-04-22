@@ -935,7 +935,7 @@ function P2PServerFactory(options) {
                 if (data && data.type === 'ack')
                     p.sendBig({
                         type: 'ackack',
-                        data: { id: this.id, date: new Date.getTime() },
+                        data: { id: this.id, date: new Date().getTime() },
                     });
                 this.fire('dataBig', { peer: p, data: data });
             });
