@@ -282,6 +282,11 @@ export function P2PServerFactory(options) {
                 this.fire('close', { peer: p })
             })
             p.on('dataBig', (data) => {
+                if (data && data.type === 'ack')
+                    p.sendBig({
+                        type: 'ackack',
+                        data: { id: this.id, date: new Date.getTime() },
+                    })
                 this.fire('dataBig', { peer: p, data: data })
             })
             p.on('stream', (stream) => {
