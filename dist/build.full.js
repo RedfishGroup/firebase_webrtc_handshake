@@ -903,10 +903,12 @@ function P2PServerFactory(options) {
                     p.sendBig({
                         type: 'ackack',
                         data: {
-                            ...data.data,
-                            fromToID: this.id,
-                            fromID: peerID,
-                            fromDate: new Date().getTime(),
+                            ack: { ...data.data },
+                            ackack: {
+                                id: this.id,
+                                peerID,
+                                date: new Date().getTime(),
+                            },
                         },
                     });
                 this.fire('dataBig', { peer: p, data: data });
