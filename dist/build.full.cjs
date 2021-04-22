@@ -1332,7 +1332,7 @@ async function recursivelyDecodeBlobs(obj, depth = 0) {
 async function _generateWebRTCpayload(obj, headerOpt = {}) {
     //console.time('generateWebRTCpayload')
     let bin = encode(obj);
-    console.log({ bin, obj });
+    // console.log({ bin, obj })
     var header = Object.assign(
         {
             iAmAHeader: true,
@@ -1345,7 +1345,7 @@ async function _generateWebRTCpayload(obj, headerOpt = {}) {
     //console.timeEnd('generateWebRTCpayload')
 
     let encodedHeader = encode(header);
-    console.log(encodedHeader, header);
+    // console.log(encodedHeader, header)
     return { header: encodedHeader, chunks: chunks }
 }
 
@@ -1364,7 +1364,7 @@ function arrayBufferToChunks(buff, payloadID) {
         count++;
     }
 
-    console.log(buff, result);
+    // console.log(buff, result)
 
     //console.timeEnd('chunks')
     //console.log(`generated ${count} chunks`)
@@ -1494,7 +1494,7 @@ function UnChunkerFactory(options = {}) {
                         }
                     }
                 } catch (er) {
-                    console.log(er);
+                    console.warn(er);
                 }
             }
             return undefined
