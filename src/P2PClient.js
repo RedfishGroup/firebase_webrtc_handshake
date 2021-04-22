@@ -42,6 +42,23 @@ export function P2PClientFactory(options) {
             return _getPeerList(this.database, callback)
         }
 
+        sendAck(message) {
+            if (!this.connection) {
+                console.warn('no connection')
+                return
+            }
+
+            return this.connection.sendBig({
+                type: 'ack',
+                data: {
+                    ackID: client.id,
+                    serverID: clientOptions.serverID,
+                    startDate: new Date().getTime(),
+                    message,
+                },
+            })
+        }
+
         connectToPeerID(id, callback = () => {}) {
             this.connectionCallbacks.push(callback)
             this.getPeerList((err, peerList) => {
