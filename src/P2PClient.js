@@ -12,6 +12,9 @@ export function P2PClientFactory(options) {
 
             this.id = 'client_' + Math.floor(Math.random() * 100000)
             this.myID = this.id
+            this.peerID = this.id
+
+            this.ackID = 0
 
             Object.assign(this, settings)
             Object.assign(this, options)
@@ -47,11 +50,13 @@ export function P2PClientFactory(options) {
                 return
             }
 
+            this.ackID += 1
+
             return this.connection.sendBig({
                 type: 'ack',
                 data: {
-                    ackID: this.id,
-                    peerID: this.peerID,
+                    ackID: this.ackID,
+                    peerID: this.serverID,
                     startDate: new Date().getTime(),
                     message,
                 },
@@ -60,7 +65,7 @@ export function P2PClientFactory(options) {
 
         connectToPeerID(id, callback = () => {}) {
             this.connectionCallbacks.push(callback)
-            this.peerID = id
+            this.serverID = id
             this.getPeerList((err, peerList) => {
                 if (err) {
                     console.error(err)
