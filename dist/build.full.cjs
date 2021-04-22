@@ -1513,12 +1513,16 @@ function PeerBinaryFactory(options) {
         }
 
         async sendBig(chunk) {
-            let stuff = await generateWebRTCpayload(chunk);
-            this.send(stuff.header);
-            for (var i in stuff.chunks) {
-                var ch = stuff.chunks[i];
-                this.send(ch);
-                await sleep(60); //give the other side time to handle message
+            try {
+                let stuff = await generateWebRTCpayload(chunk);
+                await this.send(stuff.header);
+                for (var i in stuff.chunks) {
+                    var ch = stuff.chunks[i];
+                    await this.send(ch);
+                    await sleep(60); //give the other side time to handle message
+                }    
+            } catch (error) {
+                console.error('GOT AN ERROR: ', err);
             }
         }
     }
