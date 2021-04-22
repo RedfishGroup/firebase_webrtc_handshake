@@ -1102,7 +1102,10 @@ function P2PClientFactory(options) {
                 var val = ev.val();
                 if (val.type === 'answer') {
                     setTimeout(() => {
-                        let state = this.connection?._pc?.signalingState;
+                        let state =
+                            this.connection &&
+                            this.connection._pc &&
+                            this.connection._pc.signalingState;
                         if (state == this.lastNegotiationState) {
                             if (this.debug)
                                 console.log(
@@ -1169,7 +1172,12 @@ function P2PClientFactory(options) {
                 this.fire('stream', { peer: this.connection, stream: stream });
             });
             this.connection._pc.addEventListener('signalingstatechange', () => {
-                console.log('signalState', this.connection?._pc?.signalingState);
+                console.log(
+                    'signalState',
+                    this.connection &&
+                        this.connection._pc &&
+                        this.connection._pc.signalingState
+                );
             });
         }
     }
