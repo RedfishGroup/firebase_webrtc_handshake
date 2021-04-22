@@ -655,7 +655,9 @@ function P2PServerFactory(options) {
                 settings.ICE_SERVERS;
             this.POLLING_FREQUENCY =
                 options.POLLING_FREQUENCY || settings.POLLING_FREQUENCY;
+
             Object.assign(this, options);
+
             if (options.database) {
                 this.database = options.database;
             } else {
@@ -724,6 +726,7 @@ function P2PServerFactory(options) {
                     );
                 }
             });
+
             this.userRef.onDisconnect().remove();
 
             if (this.initialPeerInfo) this.userRef.update(this.initialPeerInfo);
@@ -1102,7 +1105,7 @@ function P2PClientFactory(options) {
                 var val = ev.val();
                 if (val.type === 'answer') {
                     setTimeout(() => {
-                        let state = this.connection._pc.signalingState;
+                        let state = this.connection?._pc?.signalingState;
                         if (state == this.lastNegotiationState) {
                             if (this.debug)
                                 console.log(
@@ -1169,7 +1172,7 @@ function P2PClientFactory(options) {
                 this.fire('stream', { peer: this.connection, stream: stream });
             });
             this.connection._pc.addEventListener('signalingstatechange', () => {
-                console.log('signalState', this.connection._pc.signalingState);
+                console.log('signalState', this.connection?._pc?.signalingState);
             });
         }
     }

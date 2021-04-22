@@ -31,7 +31,9 @@ export function P2PServerFactory(options) {
                 settings.ICE_SERVERS
             this.POLLING_FREQUENCY =
                 options.POLLING_FREQUENCY || settings.POLLING_FREQUENCY
+
             Object.assign(this, options)
+
             if (options.database) {
                 this.database = options.database
             } else {
@@ -102,6 +104,7 @@ export function P2PServerFactory(options) {
                     )
                 }
             })
+
             this.userRef.onDisconnect().remove()
 
             if (this.initialPeerInfo) this.userRef.update(this.initialPeerInfo)
