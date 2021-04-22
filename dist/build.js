@@ -20131,7 +20131,7 @@ function PeerBinaryFactory(options) {
                     await sleep(60); //give the other side time to handle message
                 }    
             } catch (error) {
-                console.error('GOT AN ERROR: ', err);
+                console.error('GOT AN ERROR: ', error);
             }
         }
     }
