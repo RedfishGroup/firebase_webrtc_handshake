@@ -74,7 +74,7 @@ export function P2PClientFactory(options) {
                 var peer = peerList[id]
                 if (!peer) {
                     console.error('peer not defined. id:', id)
-                    _notifyCallbacks('peer not defined')
+                    this._notifyCallbacks('peer not defined')
                 } else {
                     this.id = id
                     this.serverRef = this.database.child(id)
@@ -237,7 +237,6 @@ export function P2PClientFactory(options) {
                 this.fire('close', { peer: this.connection })
             })
             this.connection.on('dataBig', (data) => {
-                console.log('fired dataBig')
                 this.fire('dataBig', { peer: this.connection, data: data })
             })
             this.connection.on('stream', (stream) => {
