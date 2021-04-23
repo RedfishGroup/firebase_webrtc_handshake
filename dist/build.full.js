@@ -1038,7 +1038,7 @@ function P2PClientFactory(options) {
                 var peer = peerList[id];
                 if (!peer) {
                     console.error('peer not defined. id:', id);
-                    callback('peer not defined');
+                    _notifyCallbacks('peer not defined');
                 } else {
                     this.id = id;
                     this.serverRef = this.database.child(id);
@@ -1078,7 +1078,6 @@ function P2PClientFactory(options) {
                                 );
                             }
                         });
-                        callback(null, this.connection);
                     });
                 }
             });
@@ -1169,6 +1168,17 @@ function P2PClientFactory(options) {
             });
         }
 
+        _notifyCallbacks(err, connection) {
+            try {
+                for (var callback of this.connectionCallbacks) {
+                    callback(err, connection);
+                }
+                this.connectionCallbacks = [];
+            } catch (err) {
+                console.warn(err);
+            }
+        }
+
         _registerEvents() {
             // fire events
             this.connection.on('error', (err) => {
@@ -1177,14 +1187,7 @@ function P2PClientFactory(options) {
             });
             this.connection.on('connect', () => {
                 if (this.debug) console.log('client: client connected');
-                try {
-                    for (var callback of this.connectionCallbacks) {
-                        callback(null, this.connection);
-                    }
-                    this.connectionCallbacks = [];
-                } catch (err) {
-                    console.warn(err);
-                }
+                this._notifyCallbacks(null, this.connection);
                 this.fire('connect', { peer: this.connection });
             });
             this.connection.on('data', (data) => {
