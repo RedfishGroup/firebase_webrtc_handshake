@@ -234,6 +234,7 @@ export function P2PClientFactory(options) {
                 this.fire('close', { peer: this.connection })
             })
             this.connection.on('dataBig', (data) => {
+                console.log('fired dataBig')
                 this.fire('dataBig', { peer: this.connection, data: data })
             })
             this.connection.on('stream', (stream) => {
