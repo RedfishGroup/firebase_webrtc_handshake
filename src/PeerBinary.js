@@ -13,7 +13,7 @@ export function PeerBinaryFactory(options) {
     return class PeerBinary extends Peer {
         constructor(options) {
             super({ wrtc, ...options })
-
+            this.PER_CHUNK_WAIT = options.PER_CHUNK_WAIT || 50
             this._registerDataMessage()
             this.unchunker = new UnChunker() //
             this.unchunker.onData = (val) => {
@@ -37,7 +37,7 @@ export function PeerBinaryFactory(options) {
                 for (var i in stuff.chunks) {
                     var ch = stuff.chunks[i]
                     await this.send(ch)
-                    await sleep(60) //give the other side time to handle message
+                    await sleep(this.PER_CHUNK_WAIT) //give the other side time to handle message
                 }    
             } catch (error) {
                 console.error('GOT AN ERROR: ', error)

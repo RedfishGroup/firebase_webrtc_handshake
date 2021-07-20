@@ -282,7 +282,7 @@ export function P2PServerFactory(options) {
                 this.fire('close', { peer: p })
             })
             p.on('dataBig', (data) => {
-                if (data && data.type === 'ack')
+                if (data && data.type === 'ack') {
                     p.sendBig({
                         type: 'ackack',
                         data: {
@@ -294,6 +294,10 @@ export function P2PServerFactory(options) {
                             },
                         },
                     })
+                } else if (data && data.type === 'ackack') {
+                    let {  ackID  } = data.data.ack
+                    p.ackCallback(ackID, data)
+                }
                 this.fire('dataBig', { peer: p, data: data })
             })
             p.on('stream', (stream) => {

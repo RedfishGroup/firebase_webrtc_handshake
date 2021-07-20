@@ -15,6 +15,7 @@ export function P2PClientFactory(options) {
             this.peerID = this.id
 
             this.ackID = 0
+            this.ackCallbacks = {}
 
             Object.assign(this, settings)
             Object.assign(this, options)
@@ -44,13 +45,31 @@ export function P2PClientFactory(options) {
             return _getPeerList(this.database, callback)
         }
 
-        sendAck(message) {
+        ackCallback(ackID, data) {
+            let { callback, timeoutID } = this.ackCallbacks[ackID]
+            if (callback) {
+                clearTimeout(timeoutID)
+                callback(data)
+                delete this.ackCallbacks[ackID]
+            } else {
+                console.warn('Got ackID without a callback registered.', data)
+            }
+        }
+
+        sendAck(message, callback = () => {}, timeout = 30000) {
             if (!this.connection) {
                 console.warn('no connection')
                 return
             }
 
             this.ackID += 1
+            let ackID = this.ackID
+
+            let timeoutID = setTimeout(() => {
+                this.ackCallback(ackID, {  error: 'timeout'  })
+            }, timeout)
+
+            this.ackCallbacks[ackID] = {  callback, timeoutID  }
 
             return this.connection.sendBig({
                 type: 'ack',
