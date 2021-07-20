@@ -31,69 +31,6 @@ Object.defineProperty(exports, '__esModule', { value: true });
 var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
 var keys = Object.keys;
 /**
- * @function addToCache
- *
- * add object to cache if an object
- *
- * @param value the value to potentially add to cache
- * @param cache the cache to add to
- */
-function addToCache(value, cache) {
-    if (value && typeof value === 'object') {
-        cache.add(value);
-    }
-}
-/**
- * @function hasPair
- *
- * @description
- * does the `pairToMatch` exist in the list of `pairs` provided based on the
- * `isEqual` check
- *
- * @param pairs the pairs to compare against
- * @param pairToMatch the pair to match
- * @param isEqual the equality comparator used
- * @param meta the meta provided
- * @returns does the pair exist in the pairs provided
- */
-function hasPair(pairs, pairToMatch, isEqual, meta) {
-    var length = pairs.length;
-    var pair;
-    for (var index = 0; index < length; index++) {
-        pair = pairs[index];
-        if (isEqual(pair[0], pairToMatch[0], meta) &&
-            isEqual(pair[1], pairToMatch[1], meta)) {
-            return true;
-        }
-    }
-    return false;
-}
-/**
- * @function hasValue
- *
- * @description
- * does the `valueToMatch` exist in the list of `values` provided based on the
- * `isEqual` check
- *
- * @param values the values to compare against
- * @param valueToMatch the value to match
- * @param isEqual the equality comparator used
- * @param meta the meta provided
- * @returns does the value exist in the values provided
- */
-function hasValue(values, valueToMatch, isEqual, meta) {
-    var length = values.length;
-    for (var index = 0; index < length; index++) {
-        if (isEqual(values[index], valueToMatch, meta)) {
-            return true;
-        }
-    }
-    return false;
-}
-/**
- * @function sameValueZeroEqual
- *
- * @description
  * are the values passed strictly equal or both NaN
  *
  * @param a the value to compare against
@@ -104,9 +41,6 @@ function sameValueZeroEqual(a, b) {
     return a === b || (a !== a && b !== b);
 }
 /**
- * @function isPlainObject
- *
- * @description
  * is the value a plain object
  *
  * @param value the value to test
@@ -116,9 +50,6 @@ function isPlainObject(value) {
     return value.constructor === Object || value.constructor == null;
 }
 /**
- * @function isPromiseLike
- *
- * @description
  * is the value promise-like (meaning it is thenable)
  *
  * @param value the value to test
@@ -128,9 +59,6 @@ function isPromiseLike(value) {
     return !!value && typeof value.then === 'function';
 }
 /**
- * @function isReactElement
- *
- * @description
  * is the value passed a react element
  *
  * @param value the value to test
@@ -140,29 +68,23 @@ function isReactElement(value) {
     return !!(value && value.$$typeof);
 }
 /**
- * @function getNewCacheFallback
- *
- * @description
  * in cases where WeakSet is not supported, creates a new custom
  * object that mimics the necessary API aspects for cache purposes
  *
  * @returns the new cache object
  */
 function getNewCacheFallback() {
-    return Object.create({
-        _values: [],
+    var values = [];
+    return {
         add: function (value) {
-            this._values.push(value);
+            values.push(value);
         },
         has: function (value) {
-            return this._values.indexOf(value) !== -1;
+            return values.indexOf(value) !== -1;
         },
-    });
+    };
 }
 /**
- * @function getNewCache
- *
- * @description
  * get a new cache object to prevent circular references
  *
  * @returns the new cache object
@@ -176,9 +98,6 @@ var getNewCache = (function (canUseWeakMap) {
     return getNewCacheFallback;
 })(HAS_WEAKSET_SUPPORT);
 /**
- * @function createCircularEqualCreator
- *
- * @description
  * create a custom isEqual handler specific to circular objects
  *
  * @param [isEqual] the isEqual comparator to use instead of isDeepEqual
@@ -189,55 +108,26 @@ function createCircularEqualCreator(isEqual) {
         var _comparator = isEqual || comparator;
         return function circularEqual(a, b, cache) {
             if (cache === void 0) { cache = getNewCache(); }
-            var hasA = cache.has(a);
-            var hasB = cache.has(b);
-            if (hasA || hasB) {
-                return hasA && hasB;
+            var isCacheableA = !!a && typeof a === 'object';
+            var isCacheableB = !!b && typeof b === 'object';
+            if (isCacheableA || isCacheableB) {
+                var hasA = isCacheableA && cache.has(a);
+                var hasB = isCacheableB && cache.has(b);
+                if (hasA || hasB) {
+                    return hasA && hasB;
+                }
+                if (isCacheableA) {
+                    cache.add(a);
+                }
+                if (isCacheableB) {
+                    cache.add(b);
+                }
             }
-            addToCache(a, cache);
-            addToCache(b, cache);
             return _comparator(a, b, cache);
         };
     };
 }
 /**
- * @function toPairs
- *
- * @description
- * convert the map passed into pairs (meaning an array of [key, value] tuples)
- *
- * @param map the map to convert to [key, value] pairs (entries)
- * @returns the [key, value] pairs
- */
-function toPairs(map) {
-    var pairs = new Array(map.size);
-    var index = 0;
-    map.forEach(function (value, key) {
-        pairs[index++] = [key, value];
-    });
-    return pairs;
-}
-/**
- * @function toValues
- *
- * @description
- * convert the set passed into values
- *
- * @param set the set to convert to values
- * @returns the values
- */
-function toValues(set) {
-    var values = new Array(set.size);
-    var index = 0;
-    set.forEach(function (value) {
-        values[index++] = value;
-    });
-    return values;
-}
-/**
- * @function areArraysEqual
- *
- * @description
  * are the arrays equal in value
  *
  * @param a the array to test
@@ -247,11 +137,11 @@ function toValues(set) {
  * @returns are the arrays equal
  */
 function areArraysEqual(a, b, isEqual, meta) {
-    var length = a.length;
-    if (b.length !== length) {
+    var index = a.length;
+    if (b.length !== index) {
         return false;
     }
-    for (var index = 0; index < length; index++) {
+    while (index-- > 0) {
         if (!isEqual(a[index], b[index], meta)) {
             return false;
         }
@@ -259,9 +149,6 @@ function areArraysEqual(a, b, isEqual, meta) {
     return true;
 }
 /**
- * @function areMapsEqual
- *
- * @description
  * are the maps equal in value
  *
  * @param a the map to test
@@ -271,26 +158,24 @@ function areArraysEqual(a, b, isEqual, meta) {
  * @returns are the maps equal
  */
 function areMapsEqual(a, b, isEqual, meta) {
-    if (a.size !== b.size) {
-        return false;
+    var isValueEqual = a.size === b.size;
+    if (isValueEqual && a.size) {
+        a.forEach(function (aValue, aKey) {
+            if (isValueEqual) {
+                isValueEqual = false;
+                b.forEach(function (bValue, bKey) {
+                    if (!isValueEqual && isEqual(aKey, bKey, meta)) {
+                        isValueEqual = isEqual(aValue, bValue, meta);
+                    }
+                });
+            }
+        });
     }
-    var pairsA = toPairs(a);
-    var pairsB = toPairs(b);
-    var length = pairsA.length;
-    for (var index = 0; index < length; index++) {
-        if (!hasPair(pairsB, pairsA[index], isEqual, meta) ||
-            !hasPair(pairsA, pairsB[index], isEqual, meta)) {
-            return false;
-        }
-    }
-    return true;
+    return isValueEqual;
 }
 var OWNER = '_owner';
 var hasOwnProperty = Function.prototype.bind.call(Function.prototype.call, Object.prototype.hasOwnProperty);
 /**
- * @function areObjectsEqual
- *
- * @description
  * are the objects equal in value
  *
  * @param a the object to test
@@ -301,31 +186,30 @@ var hasOwnProperty = Function.prototype.bind.call(Function.prototype.call, Objec
  */
 function areObjectsEqual(a, b, isEqual, meta) {
     var keysA = keys(a);
-    var length = keysA.length;
-    if (keys(b).length !== length) {
+    var index = keysA.length;
+    if (keys(b).length !== index) {
         return false;
     }
-    var key;
-    for (var index = 0; index < length; index++) {
-        key = keysA[index];
-        if (!hasOwnProperty(b, key)) {
-            return false;
-        }
-        if (key === OWNER && isReactElement(a)) {
-            if (!isReactElement(b)) {
+    if (index) {
+        var key = void 0;
+        while (index-- > 0) {
+            key = keysA[index];
+            if (key === OWNER) {
+                var reactElementA = isReactElement(a);
+                var reactElementB = isReactElement(b);
+                if ((reactElementA || reactElementB) &&
+                    reactElementA !== reactElementB) {
+                    return false;
+                }
+            }
+            if (!hasOwnProperty(b, key) || !isEqual(a[key], b[key], meta)) {
                 return false;
             }
-        }
-        else if (!isEqual(a[key], b[key], meta)) {
-            return false;
         }
     }
     return true;
 }
 /**
- * @function areRegExpsEqual
- *
- * @description
  * are the regExps equal in value
  *
  * @param a the regExp to test
@@ -342,9 +226,6 @@ function areRegExpsEqual(a, b) {
         a.lastIndex === b.lastIndex);
 }
 /**
- * @function areSetsEqual
- *
- * @description
  * are the sets equal in value
  *
  * @param a the set to test
@@ -354,25 +235,24 @@ function areRegExpsEqual(a, b) {
  * @returns are the sets equal
  */
 function areSetsEqual(a, b, isEqual, meta) {
-    if (a.size !== b.size) {
-        return false;
+    var isValueEqual = a.size === b.size;
+    if (isValueEqual && a.size) {
+        a.forEach(function (aValue) {
+            if (isValueEqual) {
+                isValueEqual = false;
+                b.forEach(function (bValue) {
+                    if (!isValueEqual) {
+                        isValueEqual = isEqual(aValue, bValue, meta);
+                    }
+                });
+            }
+        });
     }
-    var valuesA = toValues(a);
-    var valuesB = toValues(b);
-    var length = valuesA.length;
-    for (var index = 0; index < length; index++) {
-        if (!hasValue(valuesB, valuesA[index], isEqual, meta) ||
-            !hasValue(valuesA, valuesB[index], isEqual, meta)) {
-            return false;
-        }
-    }
-    return true;
+    return isValueEqual;
 }
 
-var isArray = Array.isArray;
 var HAS_MAP_SUPPORT = typeof Map === 'function';
 var HAS_SET_SUPPORT = typeof Set === 'function';
-var OBJECT_TYPEOF = 'object';
 function createComparator(createIsEqual) {
     var isEqual = 
     /* eslint-disable no-use-before-define */
@@ -381,9 +261,6 @@ function createComparator(createIsEqual) {
         : comparator;
     /* eslint-enable */
     /**
-     * @function comparator
-     *
-     * @description
      * compare the value of the two objects and return true if they are equivalent in values
      *
      * @param a the value to test against
@@ -392,53 +269,52 @@ function createComparator(createIsEqual) {
      * @returns are a and b equivalent in value
      */
     function comparator(a, b, meta) {
-        if (sameValueZeroEqual(a, b)) {
+        if (a === b) {
             return true;
         }
-        if (a && b && typeof a === OBJECT_TYPEOF && typeof b === OBJECT_TYPEOF) {
+        if (a && b && typeof a === 'object' && typeof b === 'object') {
             if (isPlainObject(a) && isPlainObject(b)) {
                 return areObjectsEqual(a, b, isEqual, meta);
             }
-            var arrayA = isArray(a);
-            var arrayB = isArray(b);
-            if (arrayA || arrayB) {
-                return arrayA === arrayB && areArraysEqual(a, b, isEqual, meta);
+            var aShape = Array.isArray(a);
+            var bShape = Array.isArray(b);
+            if (aShape || bShape) {
+                return aShape === bShape && areArraysEqual(a, b, isEqual, meta);
             }
-            var aDate = a instanceof Date;
-            var bDate = b instanceof Date;
-            if (aDate || bDate) {
-                return aDate === bDate && sameValueZeroEqual(a.getTime(), b.getTime());
+            aShape = a instanceof Date;
+            bShape = b instanceof Date;
+            if (aShape || bShape) {
+                return (aShape === bShape && sameValueZeroEqual(a.getTime(), b.getTime()));
             }
-            var aRegExp = a instanceof RegExp;
-            var bRegExp = b instanceof RegExp;
-            if (aRegExp || bRegExp) {
-                return aRegExp === bRegExp && areRegExpsEqual(a, b);
+            aShape = a instanceof RegExp;
+            bShape = b instanceof RegExp;
+            if (aShape || bShape) {
+                return aShape === bShape && areRegExpsEqual(a, b);
             }
             if (isPromiseLike(a) || isPromiseLike(b)) {
                 return a === b;
             }
             if (HAS_MAP_SUPPORT) {
-                var aMap = a instanceof Map;
-                var bMap = b instanceof Map;
-                if (aMap || bMap) {
-                    return aMap === bMap && areMapsEqual(a, b, isEqual, meta);
+                aShape = a instanceof Map;
+                bShape = b instanceof Map;
+                if (aShape || bShape) {
+                    return aShape === bShape && areMapsEqual(a, b, isEqual, meta);
                 }
             }
             if (HAS_SET_SUPPORT) {
-                var aSet = a instanceof Set;
-                var bSet = b instanceof Set;
-                if (aSet || bSet) {
-                    return aSet === bSet && areSetsEqual(a, b, isEqual, meta);
+                aShape = a instanceof Set;
+                bShape = b instanceof Set;
+                if (aShape || bShape) {
+                    return aShape === bShape && areSetsEqual(a, b, isEqual, meta);
                 }
             }
             return areObjectsEqual(a, b, isEqual, meta);
         }
-        return false;
+        return a !== a && b !== b;
     }
     return comparator;
 }
 
-// comparator
 var deepEqual = createComparator();
 var shallowEqual = createComparator(function () { return sameValueZeroEqual; });
 var circularDeepEqual = createComparator(createCircularEqualCreator());
@@ -454,12 +330,12 @@ exports.shallowEqual = shallowEqual;
 });
 
 unwrapExports(fastEquals_cjs);
-var fastEquals_cjs_1 = fastEquals_cjs.circularDeepEqual;
-var fastEquals_cjs_2 = fastEquals_cjs.circularShallowEqual;
-var fastEquals_cjs_3 = fastEquals_cjs.createCustomEqual;
+fastEquals_cjs.circularDeepEqual;
+fastEquals_cjs.circularShallowEqual;
+fastEquals_cjs.createCustomEqual;
 var fastEquals_cjs_4 = fastEquals_cjs.deepEqual;
-var fastEquals_cjs_5 = fastEquals_cjs.sameValueZeroEqual;
-var fastEquals_cjs_6 = fastEquals_cjs.shallowEqual;
+fastEquals_cjs.sameValueZeroEqual;
+fastEquals_cjs.shallowEqual;
 
 var settings = {
     // Get a reference to the database service
@@ -532,11 +408,11 @@ var defaultFBConfig = {
   projectId: "torrid-torch-716"
 };
 
-var firebase;
+var firebase$1;
 function initFirebase(newFirebase, fbConfig = null) {
-    firebase = newFirebase;
+    firebase$1 = newFirebase;
     if (fbConfig) defaultFBConfig = fbConfig;
-    return { firebase, database: getDatabase() }
+    return { firebase: firebase$1, database: getDatabase() }
 }
 
 
@@ -544,16 +420,16 @@ var database;
 
 function getDatabase() {
     if (database) return database
-    if (!firebase)
+    if (!firebase$1)
         throw new Error('init must be called before accessing database')
 
-    firebase.initializeApp(defaultFBConfig);
-    database = firebase.database().ref('/').child('peers');
+    firebase$1.initializeApp(defaultFBConfig);
+    database = firebase$1.database().ref('/').child('peers');
     return database
 }
 
 function getFirebase() {
-    return firebase
+    return firebase$1
 }
 
 /**
@@ -932,7 +808,7 @@ function P2PServerFactory(options) {
                 this.fire('close', { peer: p });
             });
             p.on('dataBig', (data) => {
-                if (data && data.type === 'ack')
+                if (data && data.type === 'ack') {
                     p.sendBig({
                         type: 'ackack',
                         data: {
@@ -944,6 +820,10 @@ function P2PServerFactory(options) {
                             },
                         },
                     });
+                } else if (data && data.type === 'ackack') {
+                    let {  ackID  } = data.data.ack;
+                    p.ackCallback(ackID, data);
+                }
                 this.fire('dataBig', { peer: p, data: data });
             });
             p.on('stream', (stream) => {
@@ -1012,6 +892,7 @@ function P2PClientFactory(options) {
             this.peerID = this.id;
 
             this.ackID = 0;
+            this.ackCallbacks = {};
 
             Object.assign(this, settings);
             Object.assign(this, options);
@@ -1041,13 +922,31 @@ function P2PClientFactory(options) {
             return getPeerList(this.database, callback)
         }
 
-        sendAck(message) {
+        ackCallback(ackID, data) {
+            let { callback, timeoutID } = this.ackCallbacks[ackID];
+            if (callback) {
+                clearTimeout(timeoutID);
+                callback(data);
+                delete this.ackCallbacks[ackID];
+            } else {
+                console.warn('Got ackID without a callback registered.', data);
+            }
+        }
+
+        sendAck(message, callback = () => {}, timeout = 30000) {
             if (!this.connection) {
                 console.warn('no connection');
                 return
             }
 
             this.ackID += 1;
+            let ackID = this.ackID;
+
+            let timeoutID = setTimeout(() => {
+                this.ackCallback(ackID, {  error: 'timeout'  });
+            }, timeout);
+
+            this.ackCallbacks[ackID] = {  callback, timeoutID  };
 
             return this.connection.sendBig({
                 type: 'ack',
@@ -1076,7 +975,7 @@ function P2PClientFactory(options) {
                     this.id = id;
                     this.serverRef = this.database.child(id);
                     this.serverRef.once('value', (ev1) => {
-                        var sval = ev1.val();
+                        ev1.val();
                         let pOpts = {
                             initiator: true,
                             trickle: true,
@@ -1253,9 +1152,9 @@ function P2PClientFactory(options) {
     }
 }
 
-var encode; //encodce method dependency injection
+var encode$1; //encodce method dependency injection
 function setEncode(newEncode) {
-    encode = newEncode;
+    encode$1 = newEncode;
 }
 
 var drawingCanvas; // this is a canvas used by imageToBlob
@@ -1334,7 +1233,7 @@ async function recursivelyDecodeBlobs(obj, depth = 0) {
 
 async function _generateWebRTCpayload(obj, headerOpt = {}) {
     //console.time('generateWebRTCpayload')
-    let bin = encode(obj);
+    let bin = encode$1(obj);
     // console.log({ bin, obj })
     var header = Object.assign(
         {
@@ -1347,7 +1246,7 @@ async function _generateWebRTCpayload(obj, headerOpt = {}) {
     header.chunkCount = chunks.length;
     //console.timeEnd('generateWebRTCpayload')
 
-    let encodedHeader = encode(header);
+    let encodedHeader = encode$1(header);
     // console.log(encodedHeader, header)
     return { header: encodedHeader, chunks: chunks }
 }
@@ -1362,7 +1261,7 @@ function arrayBufferToChunks(buff, payloadID) {
         var chunksize = Math.min(buff.byteLength - i, settings.CHUNK_SIZE);
         var chunk = wholeshebang.slice(i, i + chunksize);
         var id = count; //new Uint8Array(idSize);
-        let chbin = encode({ payloadID: payloadID, id: id, chunk: chunk });
+        let chbin = encode$1({ payloadID: payloadID, id: id, chunk: chunk });
         result.push(chbin);
         count++;
     }
@@ -1531,7 +1430,7 @@ function PeerBinaryFactory(options) {
     return class PeerBinary extends Peer {
         constructor(options) {
             super({ wrtc, ...options });
-
+            this.PER_CHUNK_WAIT = options.PER_CHUNK_WAIT || 50;
             this._registerDataMessage();
             this.unchunker = new UnChunker(); //
             this.unchunker.onData = (val) => {
@@ -1555,7 +1454,7 @@ function PeerBinaryFactory(options) {
                 for (var i in stuff.chunks) {
                     var ch = stuff.chunks[i];
                     await this.send(ch);
-                    await sleep(60); //give the other side time to handle message
+                    await sleep(this.PER_CHUNK_WAIT); //give the other side time to handle message
                 }    
             } catch (error) {
                 console.error('GOT AN ERROR: ', error);
@@ -1568,14 +1467,14 @@ const Peer = require('simple-peer');
 const wrtc = require('wrtc');
 
 // import adapter from "webrtc-adapter/src/js/adapter_core.js";
-const { decode, encode: encode$1 } = require('msgpack-lite');
+const { decode, encode } = require('msgpack-lite');
 
 
-const firebase$1 = require('firebase/app');
+const firebase = require('firebase/app');
 require('firebase/database');
 
-initFirebase(firebase$1);
-setEncode(encode$1);
+initFirebase(firebase);
+setEncode(encode);
 
 const UnChunker = UnChunkerFactory({ decode });
 const PeerBinary = PeerBinaryFactory({ UnChunker, Peer, wrtc });
@@ -1588,7 +1487,7 @@ exports.P2PServer = P2PServer;
 exports.PeerBinary = PeerBinary;
 exports.UnChunker = UnChunker;
 exports.arrayBufferToChunks = arrayBufferToChunks;
-exports.firebase = firebase$1;
+exports.firebase = firebase;
 exports.generateWebRTCpayload = generateWebRTCpayload;
 exports.imageToBlob = imageToBlob;
 exports.recursivelyDecodeBlobs = recursivelyDecodeBlobs;
