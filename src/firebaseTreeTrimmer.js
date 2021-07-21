@@ -36,6 +36,9 @@ export class firebaseTreeTrimmer {
                 })
 
                 let me = children[this.id]
+                this.rank = me.rank
+                this.superior = me.superior
+
                 console.log(
                     'Treetrimmer rank: ',
                     me.rank,

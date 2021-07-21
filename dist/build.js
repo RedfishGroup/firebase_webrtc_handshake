@@ -457,6 +457,9 @@ class firebaseTreeTrimmer {
                 });
 
                 let me = children[this.id];
+                this.rank = me.rank;
+                this.superior = me.superior;
+
                 console.log(
                     'Treetrimmer rank: ',
                     me.rank,
@@ -640,7 +643,6 @@ function P2PServerFactory(options) {
                     } catch (err) {
                         console.error(
                             err,
-
                             'Got an error, interrupted connection? '
                         );
                     }
@@ -786,6 +788,11 @@ function P2PServerFactory(options) {
                             ack: { ...data.data },
                             ackack: {
                                 id: this.id,
+                                numConnections: this.connections.length,
+                                treeTrimmer: {
+                                    rank: this.treeTrimmer.rank,
+                                    superior: this.treeTrimmer.superior,
+                                },
                                 peerID,
                                 date: new Date().getTime(),
                             },
