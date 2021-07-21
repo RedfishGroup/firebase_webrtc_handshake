@@ -22,8 +22,8 @@ import {
 
 import { PeerBinaryFactory } from './peerBinary.js'
 
-const firebase = require('@firebase/app')
-require('@firebase/database')
+const firebase = require('firebase/app')
+require('firebase/database')
 
 initFirebase(firebase)
 setEncode(encode)

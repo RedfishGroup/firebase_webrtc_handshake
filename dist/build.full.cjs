@@ -1481,8 +1481,8 @@ const wrtc = require('wrtc');
 // import adapter from "webrtc-adapter/src/js/adapter_core.js";
 const { decode, encode } = require('msgpack-lite');
 
-const firebase = require('@firebase/app');
-require('@firebase/database');
+const firebase = require('firebase/app');
+require('firebase/database');
 
 initFirebase(firebase);
 setEncode(encode);
