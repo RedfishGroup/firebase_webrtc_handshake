@@ -258,13 +258,10 @@ export function P2PClientFactory(options) {
             })
             this.connection.on('dataBig', (data) => {
                 if (data && data.type === 'ackack') {
-                    console.log('got ^^^^ ackack....', data)
                     let { ackID } = data.data.ack
                     this.ackCallback(ackID, data)
                 } else {
-
                     this.fire('dataBig', { peer: this.connection, data: data })
-
                 }
             })
             this.connection.on('stream', (stream) => {
