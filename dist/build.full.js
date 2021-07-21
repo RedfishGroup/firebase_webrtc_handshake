@@ -867,6 +867,9 @@ function P2PClientFactory(options) {
             this.ackID = 0;
             this.ackCallbacks = {};
 
+            this.requestID = 0;
+            this.requestCallbacks = {};
+
             Object.assign(this, settings);
             Object.assign(this, options);
 
@@ -931,6 +934,42 @@ function P2PClientFactory(options) {
                     message,
                 },
             })
+        }
+
+        requestCallback(requestID, data) {
+            console.log('requestCallback: ', { requestID, data });
+            let { callback, timeoutID } = this.requestCallbacks[requestID] || {};
+
+            if (callback) {
+                clearTimeout(timeoutID);
+                callback(data);
+                delete this.requestCallbacks[requestID];
+            } else {
+                console.warn(
+                    'Got requestID without a callback registered.',
+                    data
+                );
+            }
+        }
+
+        sendRequest(request, callback = () => {}, timeout = 30000) {
+            if (!this.connection) {
+                console.warn('no connection');
+                return
+            }
+
+            this.requestID += 1;
+            let requestID = this.requestID;
+
+            let timeoutID = setTimeout(() => {
+                this.requestCallback(requestID, { error: 'timeout' });
+            }, timeout);
+
+            this.requestCallbacks[requestID] = { callback, timeoutID };
+
+            request.requestID = requestID;
+
+            return this.connection.sendBig(request)
         }
 
         connectToPeerID(id, callback = () => {}) {
