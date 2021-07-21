@@ -47,7 +47,7 @@ export function P2PClientFactory(options) {
 
         ackCallback(ackID, data) {
             console.log('ackCallback: ', { ackID, data })
-            let { callback, timeoutID } = this.ackCallbacks[ackID]
+            let { callback, timeoutID } = this.ackCallbacks[ackID] || {}
             if (callback) {
                 clearTimeout(timeoutID)
                 callback(data)
