@@ -2,8 +2,8 @@ import { P2PServerFactory } from './P2PServer.js'
 import { Channel } from './Channel.js'
 import { P2PClientFactory } from './P2PClient.js'
 
-import firebase from 'firebase/app'
-import 'firebase/database'
+import firebase from '@firebase/app'
+import '@firebase/database'
 
 import { initFirebase } from './defaultFirebase.js'
 
@@ -25,7 +25,6 @@ import {
 } from './dataUtils.js'
 
 import { PeerBinaryFactory } from './peerBinary.js'
-
 
 initFirebase(firebase)
 setEncode(msgPack.encode)

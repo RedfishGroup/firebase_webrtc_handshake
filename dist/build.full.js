@@ -3534,7 +3534,7 @@ var ERRORS = (_a$1 = {},
 var ERROR_FACTORY = new ErrorFactory('app', 'Firebase', ERRORS);
 
 var name$c = "@firebase/app";
-var version$1$1 = "0.6.28";
+var version$1 = "0.6.28";
 
 var name$b = "@firebase/analytics";
 
@@ -3556,7 +3556,7 @@ var name$3 = "@firebase/remote-config";
 
 var name$2 = "@firebase/storage";
 
-var name$1$1 = "@firebase/firestore";
+var name$1 = "@firebase/firestore";
 
 var name$d = "firebase-wrapper";
 
@@ -3590,7 +3590,7 @@ var PLATFORM_LOG_STRING = (_a = {},
     _a[name$4] = 'fire-perf',
     _a[name$3] = 'fire-rc',
     _a[name$2] = 'fire-gcs',
-    _a[name$1$1] = 'fire-fst',
+    _a[name$1] = 'fire-fst',
     _a['fire-js'] = 'fire-js',
     _a[name$d] = 'fire-js-all',
     _a);
@@ -4109,7 +4109,7 @@ function isVersionServiceProvider(provider) {
 function registerCoreComponents(firebase, variant) {
     firebase.INTERNAL.registerComponent(new Component('platform-logger', function (container) { return new PlatformLoggerService(container); }, "PRIVATE" /* PRIVATE */));
     // Register `app` package.
-    firebase.registerVersion(name$c, version$1$1, variant);
+    firebase.registerVersion(name$c, version$1, variant);
     // Register platform SDK identifier (no version).
     firebase.registerVersion('fire-js', '');
 }
@@ -4159,28 +4159,6 @@ firebase$1.initializeApp = function () {
 };
 var firebase = firebase$1;
 registerCoreComponents(firebase);
-
-var name$1 = "firebase";
-var version$1 = "8.7.1";
-
-/**
- * @license
- * Copyright 2018 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-firebase.registerVersion(name$1, version$1, 'app');
-firebase.SDK_VERSION = version$1;
 
 var name = "@firebase/database";
 var version = "0.10.7";
@@ -19780,7 +19758,6 @@ function PeerBinaryFactory(options) {
 
 const Peer = simplepeer_min;
 const msgPack = msgpack_min;
-
 
 initFirebase(firebase);
 setEncode(msgPack.encode);

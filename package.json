@@ -27,7 +27,7 @@
     "devDependencies": {
         "firebase": "8.7.1",
         "msgpack-lite": "0.1.26",
-        "rollup": "2.53.2",
+        "rollup": "2.53.3",
         "rollup-plugin-commonjs": "10.1.0",
         "rollup-plugin-node-builtins": "2.1.2",
         "rollup-plugin-node-globals": "1.4.0",
