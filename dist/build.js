@@ -791,6 +791,7 @@ function P2PServerFactory(options) {
                         },
                     });
                 } else if (data && data.type === 'ackack') {
+                    console.log('got ackack....', data);
                     let {  ackID  } = data.data.ack;
                     p.ackCallback(ackID, data);
                 }
@@ -893,6 +894,7 @@ function P2PClientFactory(options) {
         }
 
         ackCallback(ackID, data) {
+            console.log('ackCallback: ', { ackID, data });
             let { callback, timeoutID } = this.ackCallbacks[ackID];
             if (callback) {
                 clearTimeout(timeoutID);
