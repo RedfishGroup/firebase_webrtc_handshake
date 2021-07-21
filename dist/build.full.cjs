@@ -918,9 +918,8 @@ function P2PClientFactory(options) {
                 if (data && data.type === 'ackack') {
                     console.log('got ^^^^ ackack....', data);
                     let { ackID } = data.data.ack;
-                    p.ackCallback(ackID, data);
+                    this.ackCallback(ackID, data);
                 }
-                this.fire('dataBig', { peer: p, data: data });
             });                        
 
         }
