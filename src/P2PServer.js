@@ -123,6 +123,7 @@ export function P2PServerFactory(options) {
                 this.fire('updateTimeStamp', undefined)
                 this._updateOnFireBase()
             }, this.POLLING_FREQUENCY)
+
             this.listenToChannels()
             this.isListening = true
             this.fire('init', undefined)
@@ -297,6 +298,7 @@ export function P2PServerFactory(options) {
                 } 
                 this.fire('dataBig', { peer: p, data: data })
             })
+
             p.on('stream', (stream) => {
                 if (this.debug)
                     console.log('Server: connected to stream', stream)

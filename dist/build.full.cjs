@@ -651,6 +651,7 @@ function P2PServerFactory(options) {
                 this.fire('updateTimeStamp', undefined);
                 this._updateOnFireBase();
             }, this.POLLING_FREQUENCY);
+
             this.listenToChannels();
             this.isListening = true;
             this.fire('init', undefined);
@@ -823,6 +824,7 @@ function P2PServerFactory(options) {
                 } 
                 this.fire('dataBig', { peer: p, data: data });
             });
+
             p.on('stream', (stream) => {
                 if (this.debug)
                     console.log('Server: connected to stream', stream);
@@ -913,15 +915,6 @@ function P2PClientFactory(options) {
             this.connectionCallbacks = [];
             this.lastNegotiationState = undefined;
             this.debug = !!debug || !!options.debug;
-
-            this.on('dataBig', (data) => {
-                if (data && data.type === 'ackack') {
-                    console.log('got ^^^^ ackack....', data);
-                    let { ackID } = data.data.ack;
-                    this.ackCallback(ackID, data);
-                }
-            });                        
-
         }
 
         getPeerList(callback) {
@@ -950,10 +943,10 @@ function P2PClientFactory(options) {
             let ackID = this.ackID;
 
             let timeoutID = setTimeout(() => {
-                this.ackCallback(ackID, {  error: 'timeout'  });
+                this.ackCallback(ackID, { error: 'timeout' });
             }, timeout);
 
-            this.ackCallbacks[ackID] = {  callback, timeoutID  };
+            this.ackCallbacks[ackID] = { callback, timeoutID };
 
             return this.connection.sendBig({
                 type: 'ack',
@@ -1140,7 +1133,15 @@ function P2PClientFactory(options) {
                 this.fire('close', { peer: this.connection });
             });
             this.connection.on('dataBig', (data) => {
-                this.fire('dataBig', { peer: this.connection, data: data });
+                if (data && data.type === 'ackack') {
+                    console.log('got ^^^^ ackack....', data);
+                    let { ackID } = data.data.ack;
+                    this.ackCallback(ackID, data);
+                } else {
+
+                    this.fire('dataBig', { peer: this.connection, data: data });
+
+                }
             });
             this.connection.on('stream', (stream) => {
                 if (this.debug)
