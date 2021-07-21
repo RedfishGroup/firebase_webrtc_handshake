@@ -294,11 +294,7 @@ export function P2PServerFactory(options) {
                             },
                         },
                     })
-                } else if (data && data.type === 'ackack') {
-                    console.log('got ackack....', data)
-                    let {  ackID  } = data.data.ack
-                    p.ackCallback(ackID, data)
-                }
+                } 
                 this.fire('dataBig', { peer: p, data: data })
             })
             p.on('stream', (stream) => {
