@@ -1183,7 +1183,7 @@ function P2PClientFactory(options) {
                     let { ackID } = data.data.ack;
                     this.ackCallback(ackID, data);
                 } else {
-                    let { requestID } = data;
+                    let { requestID } = data.data;
                     if (requestID) {
                         this.requestCallback(requestID, data);
                     }
