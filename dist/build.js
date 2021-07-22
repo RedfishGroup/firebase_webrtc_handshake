@@ -580,7 +580,6 @@ function P2PServerFactory(options) {
                         { ...newPeerInfo, lastUpdate: null }
                     )
                 ) {
-                    console.log('got new user info: ', newPeerInfo);
                     this._peerInfo = newPeerInfo;
                 } else if (
                     this._peerInfo &&
@@ -594,8 +593,8 @@ function P2PServerFactory(options) {
                     );
                     this.userRef.update({
                         ...this._peerInfo,
-                        lastUpdate: getFirebase().database.ServerValue
-                            .TIMESTAMP,
+                        lastUpdate:
+                            getFirebase().database.ServerValue.TIMESTAMP,
                     });
                 } else if (this._peerInfo) ; else {
                     console.warn(
