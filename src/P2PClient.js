@@ -118,6 +118,7 @@ export function P2PClientFactory(options) {
             this.requestCallbacks[requestID] = { callback, timeoutID }
 
             request.requestID = requestID
+            console.log('sending request: ', request)
 
             return this.connection.sendBig(request)
         }
