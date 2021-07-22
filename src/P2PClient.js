@@ -303,7 +303,7 @@ export function P2PClientFactory(options) {
                 } else {
                     console.log('~~~ DataBig ~~~~')
                     console.log(data)
-                    let { requestID } = (data && data.data) || {}
+                    let { requestID } = data || {}
                     if (requestID) {
                         this.requestCallback(requestID, data)
                     }
