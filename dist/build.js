@@ -1383,7 +1383,7 @@ var assertionError = function (message) {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var stringToByteArray = function (str) {
+var stringToByteArray$1 = function (str) {
     // TODO(user): Use native implementations if/when available
     var out = [];
     var p = 0;
@@ -1550,7 +1550,7 @@ var base64 = {
         if (this.HAS_NATIVE_SUPPORT && !webSafe) {
             return btoa(input);
         }
-        return this.encodeByteArray(stringToByteArray(input), webSafe);
+        return this.encodeByteArray(stringToByteArray$1(input), webSafe);
     },
     /**
      * Base64-decode a string.
@@ -1646,7 +1646,7 @@ var base64 = {
  * URL-safe base64 encoding
  */
 var base64Encode = function (str) {
-    var utf8Bytes = stringToByteArray(str);
+    var utf8Bytes = stringToByteArray$1(str);
     return base64.encodeByteArray(utf8Bytes, true);
 };
 /**
@@ -2738,7 +2738,7 @@ function validateContextObject(fnName, argumentName, context, optional) {
  * @param {string} str
  * @return {Array}
  */
-var stringToByteArray$1 = function (str) {
+var stringToByteArray = function (str) {
     var out = [];
     var p = 0;
     for (var i = 0; i < str.length; i++) {
@@ -3587,7 +3587,7 @@ var ERRORS = (_a$1 = {},
 var ERROR_FACTORY = new ErrorFactory('app', 'Firebase', ERRORS);
 
 var name$c = "@firebase/app";
-var version$1$1 = "0.6.28";
+var version$1$1 = "0.6.29";
 
 var name$b = "@firebase/analytics";
 
@@ -3827,7 +3827,7 @@ var FirebaseAppImpl = /** @class */ (function () {
     FirebaseAppImpl.prototype.delete ||
     console.log('dc');
 
-var version$2 = "8.7.0";
+var version$2 = "8.8.1";
 
 /**
  * @license
@@ -4436,7 +4436,7 @@ var process = {
 };
 
 var name = "@firebase/database";
-var version = "0.10.7";
+var version = "0.10.9";
 
 /**
  * @license
@@ -4656,7 +4656,7 @@ var LUIDGenerator = (function () {
  * @returns {!string} The resulting hash
  */
 var sha1 = function (str) {
-    var utf8Bytes = stringToByteArray$1(str);
+    var utf8Bytes = stringToByteArray(str);
     var sha1 = new Sha1();
     sha1.update(utf8Bytes);
     var sha1Bytes = sha1.digest();
@@ -6730,7 +6730,7 @@ var Connection = /** @class */ (function () {
     Connection.prototype.start_ = function () {
         var _this = this;
         var conn = this.transportManager_.initialTransport();
-        this.conn_ = new conn(this.nextTransportId_(), this.repoInfo_, this.applicationId_, this.appCheckToken_, this.lastSessionId);
+        this.conn_ = new conn(this.nextTransportId_(), this.repoInfo_, this.applicationId_, this.appCheckToken_, this.authToken_, null, this.lastSessionId);
         // For certain transports (WebSockets), we need to send and receive several messages back and forth before we
         // can consider the transport healthy.
         this.primaryResponsesRequired_ = conn['responsesRequiredToBeHealthy'] || 0;
@@ -18441,7 +18441,7 @@ function repoManagerDatabaseFromApp(app, authProvider, appCheckProvider, url, no
             '(not including a child path).');
     }
     var repo = repoManagerCreateRepo(repoInfo, app, authTokenProvider, new AppCheckTokenProvider(app.name, appCheckProvider));
-    return new FirebaseDatabase(repo, app);
+    return new Database$1(repo, app);
 }
 /**
  * Remove the repo and make sure it is disconnected.
@@ -18486,9 +18486,9 @@ function repoManagerForceRestClient(forceRestClient) {
 /**
  * Class representing a Firebase Realtime Database.
  */
-var FirebaseDatabase = /** @class */ (function () {
+var Database$1 = /** @class */ (function () {
     /** @hideconstructor */
-    function FirebaseDatabase(_repoInternal, 
+    function Database(_repoInternal, 
     /** The FirebaseApp associated with this Realtime Database instance. */
     app) {
         this._repoInternal = _repoInternal;
@@ -18498,7 +18498,7 @@ var FirebaseDatabase = /** @class */ (function () {
         /** Track if the instance has been used (root or repo accessed) */
         this._instanceStarted = false;
     }
-    Object.defineProperty(FirebaseDatabase.prototype, "_repo", {
+    Object.defineProperty(Database.prototype, "_repo", {
         get: function () {
             if (!this._instanceStarted) {
                 repoStart(this._repoInternal, this.app.options.appId, this.app.options['databaseAuthVariableOverride']);
@@ -18509,7 +18509,7 @@ var FirebaseDatabase = /** @class */ (function () {
         enumerable: false,
         configurable: true
     });
-    Object.defineProperty(FirebaseDatabase.prototype, "_root", {
+    Object.defineProperty(Database.prototype, "_root", {
         get: function () {
             if (!this._rootInternal) {
                 this._rootInternal = new ReferenceImpl(this._repo, newEmptyPath());
@@ -18519,19 +18519,20 @@ var FirebaseDatabase = /** @class */ (function () {
         enumerable: false,
         configurable: true
     });
-    FirebaseDatabase.prototype._delete = function () {
-        this._checkNotDeleted('delete');
-        repoManagerDeleteRepo(this._repo, this.app.name);
-        this._repoInternal = null;
-        this._rootInternal = null;
+    Database.prototype._delete = function () {
+        if (this._rootInternal !== null) {
+            repoManagerDeleteRepo(this._repo, this.app.name);
+            this._repoInternal = null;
+            this._rootInternal = null;
+        }
         return Promise.resolve();
     };
-    FirebaseDatabase.prototype._checkNotDeleted = function (apiName) {
+    Database.prototype._checkNotDeleted = function (apiName) {
         if (this._rootInternal === null) {
             fatal('Cannot call ' + apiName + ' on a deleted database.');
         }
     };
-    return FirebaseDatabase;
+    return Database;
 }());
 /**
  * Modify the provided instance to communicate with the Realtime Database
@@ -18544,7 +18545,7 @@ var FirebaseDatabase = /** @class */ (function () {
  * @param port - The emulator port (ex: 8080)
  * @param options.mockUserToken - the mock auth token to use for unit testing Security Rules
  */
-function useDatabaseEmulator(db, host, port, options) {
+function connectDatabaseEmulator(db, host, port, options) {
     if (options === void 0) { options = {}; }
     db = getModularInstance(db);
     db._checkNotDeleted('useEmulator');
@@ -19466,7 +19467,7 @@ var Database = /** @class */ (function () {
      */
     Database.prototype.useEmulator = function (host, port, options) {
         if (options === void 0) { options = {}; }
-        useDatabaseEmulator(this._delegate, host, port, options);
+        connectDatabaseEmulator(this._delegate, host, port, options);
     };
     Database.prototype.ref = function (path) {
         validateArgCount('database.ref', 0, 1, arguments.length);
