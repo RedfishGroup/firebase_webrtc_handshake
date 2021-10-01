@@ -285,7 +285,7 @@ function createComparator(createIsEqual) {
     return comparator;
 }
 
-var deepEqual = createComparator();
+var deepEqual$1 = createComparator();
 createComparator(function () { return sameValueZeroEqual; });
 createComparator(createCircularEqualCreator());
 createComparator(createCircularEqualCreator(sameValueZeroEqual));
@@ -361,17 +361,16 @@ var defaultFBConfig = {
   projectId: "torrid-torch-716"
 };
 
-var firebase$1;
-var firebaseGetDatabase;
-function initFirebase(newInitFirebase, newGetDataBase, fbConfig = null) {
+var firebase$2;
+function initFirebase(newFirebase, fbConfig = null) {
     if (fbConfig) defaultFBConfig = fbConfig;
 
-    if (!firebase$1) {
-        firebase$1 = newInitFirebase(defaultFBConfig);
-        firebaseGetDatabase = newGetDataBase;
+    if (!firebase$2) {
+        firebase$2 = newFirebase;
+        firebase$2.initializeApp(defaultFBConfig);
     }
 
-    return { firebase: firebase$1, database: getDatabase() }
+    return { firebase: firebase$2, database: getDatabase() }
 }
 
 var database;
@@ -379,24 +378,18 @@ var database;
 function getDatabase() {
     if (database) return database
 
-    if (!firebase$1) {
+    if (!firebase$2) {
         throw new Error(
             `init must be called before accessing database.  no firebase`
         )
     }
 
-    if (!firebaseGetDatabase) {
-        throw new Error(
-            `init must be called before accessing database. no firebaseGetDatabase`
-        )
-    }
-
-    database = firebaseGetDatabase(firebase$1).ref('/').child('peers');
+    database = firebase$2.database().ref('/').child('peers');
     return database
 }
 
 function getFirebase() {
-    return firebase$1
+    return firebase$2
 }
 
 class Channel {
@@ -586,7 +579,7 @@ function P2PServerFactory(options) {
                 if (
                     newPeerInfo &&
                     newPeerInfo.id &&
-                    !deepEqual(
+                    !deepEqual$1(
                         { ...this._peerInfo, lastUpdate: null },
                         { ...newPeerInfo, lastUpdate: null }
                     )
@@ -1542,6 +1535,14 @@ const base64Encode = function (str) {
     return base64.encodeByteArray(utf8Bytes, true);
 };
 /**
+ * URL-safe base64 encoding (without "." padding in the end).
+ * e.g. Used in JSON Web Token (JWT) parts.
+ */
+const base64urlEncodeWithoutPadding = function (str) {
+    // Use base64url encoding and remove padding in the end (dot characters).
+    return base64Encode(str).replace(/\./g, '');
+};
+/**
  * URL-safe base64 decoding
  *
  * NOTE: DO NOT use the global atob() function - it does NOT support the
@@ -1689,6 +1690,52 @@ class Deferred {
 
 /**
  * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+function createMockUserToken(token, projectId) {
+    if (token.uid) {
+        throw new Error('The "uid" field is no longer supported by mockUserToken. Please use "sub" instead for Firebase Auth User ID.');
+    }
+    // Unsecured JWTs use "none" as the algorithm.
+    const header = {
+        alg: 'none',
+        type: 'JWT'
+    };
+    const project = projectId || 'demo-project';
+    const iat = token.iat || 0;
+    const sub = token.sub || token.user_id;
+    if (!sub) {
+        throw new Error("mockUserToken must contain 'sub' or 'user_id' field!");
+    }
+    const payload = Object.assign({ 
+        // Set all required fields to decent defaults
+        iss: `https://securetoken.google.com/${project}`, aud: project, iat, exp: iat + 3600, auth_time: iat, sub, user_id: sub, firebase: {
+            sign_in_provider: 'custom',
+            identities: {}
+        } }, token);
+    // Unsecured JWTs use the empty string as a signature.
+    const signature = '';
+    return [
+        base64urlEncodeWithoutPadding(JSON.stringify(header)),
+        base64urlEncodeWithoutPadding(JSON.stringify(payload)),
+        signature
+    ].join('.');
+}
+
+/**
+ * @license
  * Copyright 2017 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -1731,6 +1778,12 @@ function isMobileCordova() {
         /ios|iphone|ipod|ipad|android|blackberry|iemobile/i.test(getUA()));
 }
 /**
+ * Detect Browser Environment
+ */
+function isBrowser() {
+    return typeof self === 'object' && self.self === self;
+}
+/**
  * Detect React Native.
  *
  * @return true if ReactNative environment is detected.
@@ -1746,6 +1799,106 @@ function isReactNative() {
 function isNodeSdk() {
     return CONSTANTS.NODE_ADMIN === true;
 }
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * @fileoverview Standardized Firebase Error.
+ *
+ * Usage:
+ *
+ *   // Typescript string literals for type-safe codes
+ *   type Err =
+ *     'unknown' |
+ *     'object-not-found'
+ *     ;
+ *
+ *   // Closure enum for type-safe error codes
+ *   // at-enum {string}
+ *   var Err = {
+ *     UNKNOWN: 'unknown',
+ *     OBJECT_NOT_FOUND: 'object-not-found',
+ *   }
+ *
+ *   let errors: Map<Err, string> = {
+ *     'generic-error': "Unknown error",
+ *     'file-not-found': "Could not find file: {$file}",
+ *   };
+ *
+ *   // Type-safe function - must pass a valid error code as param.
+ *   let error = new ErrorFactory<Err>('service', 'Service', errors);
+ *
+ *   ...
+ *   throw error.create(Err.GENERIC);
+ *   ...
+ *   throw error.create(Err.FILE_NOT_FOUND, {'file': fileName});
+ *   ...
+ *   // Service: Could not file file: foo.txt (service/file-not-found).
+ *
+ *   catch (e) {
+ *     assert(e.message === "Could not find file: foo.txt.");
+ *     if (e.code === 'service/file-not-found') {
+ *       console.log("Could not read file: " + e['file']);
+ *     }
+ *   }
+ */
+const ERROR_NAME = 'FirebaseError';
+// Based on code from:
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error#Custom_Error_Types
+class FirebaseError extends Error {
+    constructor(code, message, customData) {
+        super(message);
+        this.code = code;
+        this.customData = customData;
+        this.name = ERROR_NAME;
+        // Fix For ES5
+        // https://github.com/Microsoft/TypeScript-wiki/blob/master/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
+        Object.setPrototypeOf(this, FirebaseError.prototype);
+        // Maintains proper stack trace for where our error was thrown.
+        // Only available on V8.
+        if (Error.captureStackTrace) {
+            Error.captureStackTrace(this, ErrorFactory.prototype.create);
+        }
+    }
+}
+class ErrorFactory {
+    constructor(service, serviceName, errors) {
+        this.service = service;
+        this.serviceName = serviceName;
+        this.errors = errors;
+    }
+    create(code, ...data) {
+        const customData = data[0] || {};
+        const fullCode = `${this.service}/${code}`;
+        const template = this.errors[code];
+        const message = template ? replaceTemplate(template, customData) : 'Error';
+        // Service Name: Error message (service/code).
+        const fullMessage = `${this.serviceName}: ${message} (${fullCode}).`;
+        const error = new FirebaseError(fullCode, fullMessage, customData);
+        return error;
+    }
+}
+function replaceTemplate(template, data) {
+    return template.replace(PATTERN, (_, key) => {
+        const value = data[key];
+        return value != null ? String(value) : `<${key}?>`;
+    });
+}
+const PATTERN = /\{\$([^}]+)}/g;
 
 /**
  * @license
@@ -1888,6 +2041,40 @@ function map(obj, fn, contextObj) {
         }
     }
     return res;
+}
+/**
+ * Deep equal two objects. Support Arrays and Objects.
+ */
+function deepEqual(a, b) {
+    if (a === b) {
+        return true;
+    }
+    const aKeys = Object.keys(a);
+    const bKeys = Object.keys(b);
+    for (const k of aKeys) {
+        if (!bKeys.includes(k)) {
+            return false;
+        }
+        const aProp = a[k];
+        const bProp = b[k];
+        if (isObject(aProp) && isObject(bProp)) {
+            if (!deepEqual(aProp, bProp)) {
+                return false;
+            }
+        }
+        else if (aProp !== bProp) {
+            return false;
+        }
+    }
+    for (const k of bKeys) {
+        if (!aKeys.includes(k)) {
+            return false;
+        }
+    }
+    return true;
+}
+function isObject(thing) {
+    return thing !== null && typeof thing === 'object';
 }
 
 /**
@@ -2181,6 +2368,249 @@ class Sha1 {
         return digest;
     }
 }
+
+/**
+ * Helper to make a Subscribe function (just like Promise helps make a
+ * Thenable).
+ *
+ * @param executor Function which can make calls to a single Observer
+ *     as a proxy.
+ * @param onNoObservers Callback when count of Observers goes to zero.
+ */
+function createSubscribe(executor, onNoObservers) {
+    const proxy = new ObserverProxy(executor, onNoObservers);
+    return proxy.subscribe.bind(proxy);
+}
+/**
+ * Implement fan-out for any number of Observers attached via a subscribe
+ * function.
+ */
+class ObserverProxy {
+    /**
+     * @param executor Function which can make calls to a single Observer
+     *     as a proxy.
+     * @param onNoObservers Callback when count of Observers goes to zero.
+     */
+    constructor(executor, onNoObservers) {
+        this.observers = [];
+        this.unsubscribes = [];
+        this.observerCount = 0;
+        // Micro-task scheduling by calling task.then().
+        this.task = Promise.resolve();
+        this.finalized = false;
+        this.onNoObservers = onNoObservers;
+        // Call the executor asynchronously so subscribers that are called
+        // synchronously after the creation of the subscribe function
+        // can still receive the very first value generated in the executor.
+        this.task
+            .then(() => {
+            executor(this);
+        })
+            .catch(e => {
+            this.error(e);
+        });
+    }
+    next(value) {
+        this.forEachObserver((observer) => {
+            observer.next(value);
+        });
+    }
+    error(error) {
+        this.forEachObserver((observer) => {
+            observer.error(error);
+        });
+        this.close(error);
+    }
+    complete() {
+        this.forEachObserver((observer) => {
+            observer.complete();
+        });
+        this.close();
+    }
+    /**
+     * Subscribe function that can be used to add an Observer to the fan-out list.
+     *
+     * - We require that no event is sent to a subscriber sychronously to their
+     *   call to subscribe().
+     */
+    subscribe(nextOrObserver, error, complete) {
+        let observer;
+        if (nextOrObserver === undefined &&
+            error === undefined &&
+            complete === undefined) {
+            throw new Error('Missing Observer.');
+        }
+        // Assemble an Observer object when passed as callback functions.
+        if (implementsAnyMethods(nextOrObserver, [
+            'next',
+            'error',
+            'complete'
+        ])) {
+            observer = nextOrObserver;
+        }
+        else {
+            observer = {
+                next: nextOrObserver,
+                error,
+                complete
+            };
+        }
+        if (observer.next === undefined) {
+            observer.next = noop;
+        }
+        if (observer.error === undefined) {
+            observer.error = noop;
+        }
+        if (observer.complete === undefined) {
+            observer.complete = noop;
+        }
+        const unsub = this.unsubscribeOne.bind(this, this.observers.length);
+        // Attempt to subscribe to a terminated Observable - we
+        // just respond to the Observer with the final error or complete
+        // event.
+        if (this.finalized) {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            this.task.then(() => {
+                try {
+                    if (this.finalError) {
+                        observer.error(this.finalError);
+                    }
+                    else {
+                        observer.complete();
+                    }
+                }
+                catch (e) {
+                    // nothing
+                }
+                return;
+            });
+        }
+        this.observers.push(observer);
+        return unsub;
+    }
+    // Unsubscribe is synchronous - we guarantee that no events are sent to
+    // any unsubscribed Observer.
+    unsubscribeOne(i) {
+        if (this.observers === undefined || this.observers[i] === undefined) {
+            return;
+        }
+        delete this.observers[i];
+        this.observerCount -= 1;
+        if (this.observerCount === 0 && this.onNoObservers !== undefined) {
+            this.onNoObservers(this);
+        }
+    }
+    forEachObserver(fn) {
+        if (this.finalized) {
+            // Already closed by previous event....just eat the additional values.
+            return;
+        }
+        // Since sendOne calls asynchronously - there is no chance that
+        // this.observers will become undefined.
+        for (let i = 0; i < this.observers.length; i++) {
+            this.sendOne(i, fn);
+        }
+    }
+    // Call the Observer via one of it's callback function. We are careful to
+    // confirm that the observe has not been unsubscribed since this asynchronous
+    // function had been queued.
+    sendOne(i, fn) {
+        // Execute the callback asynchronously
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.task.then(() => {
+            if (this.observers !== undefined && this.observers[i] !== undefined) {
+                try {
+                    fn(this.observers[i]);
+                }
+                catch (e) {
+                    // Ignore exceptions raised in Observers or missing methods of an
+                    // Observer.
+                    // Log error to console. b/31404806
+                    if (typeof console !== 'undefined' && console.error) {
+                        console.error(e);
+                    }
+                }
+            }
+        });
+    }
+    close(err) {
+        if (this.finalized) {
+            return;
+        }
+        this.finalized = true;
+        if (err !== undefined) {
+            this.finalError = err;
+        }
+        // Proxy is no longer needed - garbage collect references
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.task.then(() => {
+            this.observers = undefined;
+            this.onNoObservers = undefined;
+        });
+    }
+}
+/**
+ * Return true if the object passed in implements any of the named methods.
+ */
+function implementsAnyMethods(obj, methods) {
+    if (typeof obj !== 'object' || obj === null) {
+        return false;
+    }
+    for (const method of methods) {
+        if (method in obj && typeof obj[method] === 'function') {
+            return true;
+        }
+    }
+    return false;
+}
+function noop() {
+    // do nothing
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Check to make sure the appropriate number of arguments are provided for a public function.
+ * Throws an error if it fails.
+ *
+ * @param fnName The function name
+ * @param minCount The minimum number of arguments to allow for the function call
+ * @param maxCount The maximum number of argument to allow for the function call
+ * @param argCount The actual number of arguments provided.
+ */
+const validateArgCount = function (fnName, minCount, maxCount, argCount) {
+    let argError;
+    if (argCount < minCount) {
+        argError = 'at least ' + minCount;
+    }
+    else if (argCount > maxCount) {
+        argError = maxCount === 0 ? 'none' : 'no more than ' + maxCount;
+    }
+    if (argError) {
+        const error = fnName +
+            ' failed: Was called with ' +
+            argCount +
+            (argCount === 1 ? ' argument.' : ' arguments.') +
+            ' Expects ' +
+            argError +
+            '.';
+        throw new Error(error);
+    }
+};
 /**
  * Generates a string to prefix an error message about failed argument validation
  *
@@ -2190,6 +2620,24 @@ class Sha1 {
  */
 function errorPrefix(fnName, argName) {
     return `${fnName} failed: ${argName} argument `;
+}
+function validateCallback(fnName, argumentName, 
+// eslint-disable-next-line @typescript-eslint/ban-types
+callback, optional) {
+    if (optional && !callback) {
+        return;
+    }
+    if (typeof callback !== 'function') {
+        throw new Error(errorPrefix(fnName, argumentName) + 'must be a valid function.');
+    }
+}
+function validateContextObject(fnName, argumentName, context, optional) {
+    if (optional && !context) {
+        return;
+    }
+    if (typeof context !== 'object' || context === null) {
+        throw new Error(errorPrefix(fnName, argumentName) + 'must be a valid context object.');
+    }
 }
 
 /**
@@ -2307,6 +2755,94 @@ function getModularInstance(service) {
     }
 }
 
+/*! *****************************************************************************
+Copyright (c) Microsoft Corporation.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+***************************************************************************** */
+
+function __awaiter(thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+}
+
+function __generator(thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (_) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+}
+
+function __values(o) {
+    var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
+    if (m) return m.call(o);
+    if (o && typeof o.length === "number") return {
+        next: function () {
+            if (o && i >= o.length) o = void 0;
+            return { value: o && o[i++], done: !o };
+        }
+    };
+    throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
+}
+
+function __read(o, n) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator];
+    if (!m) return o;
+    var i = m.call(o), r, ar = [], e;
+    try {
+        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+    }
+    catch (error) { e = { error: error }; }
+    finally {
+        try {
+            if (r && !r.done && (m = i["return"])) m.call(i);
+        }
+        finally { if (e) throw e.error; }
+    }
+    return ar;
+}
+
+function __spreadArray(to, from) {
+    for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
+        to[j] = from[i];
+    return to;
+}
+
 /**
  * Component for service name T, e.g. `auth`, `auth-internal`
  */
@@ -2350,6 +2886,420 @@ var Component = /** @class */ (function () {
 
 /**
  * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+var DEFAULT_ENTRY_NAME$1 = '[DEFAULT]';
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Provider for instance for service name T, e.g. 'auth', 'auth-internal'
+ * NameServiceMapping[T] is an alias for the type of the instance
+ */
+var Provider = /** @class */ (function () {
+    function Provider(name, container) {
+        this.name = name;
+        this.container = container;
+        this.component = null;
+        this.instances = new Map();
+        this.instancesDeferred = new Map();
+        this.instancesOptions = new Map();
+        this.onInitCallbacks = new Map();
+    }
+    /**
+     * @param identifier A provider can provide mulitple instances of a service
+     * if this.component.multipleInstances is true.
+     */
+    Provider.prototype.get = function (identifier) {
+        // if multipleInstances is not supported, use the default name
+        var normalizedIdentifier = this.normalizeInstanceIdentifier(identifier);
+        if (!this.instancesDeferred.has(normalizedIdentifier)) {
+            var deferred = new Deferred();
+            this.instancesDeferred.set(normalizedIdentifier, deferred);
+            if (this.isInitialized(normalizedIdentifier) ||
+                this.shouldAutoInitialize()) {
+                // initialize the service if it can be auto-initialized
+                try {
+                    var instance = this.getOrInitializeService({
+                        instanceIdentifier: normalizedIdentifier
+                    });
+                    if (instance) {
+                        deferred.resolve(instance);
+                    }
+                }
+                catch (e) {
+                    // when the instance factory throws an exception during get(), it should not cause
+                    // a fatal error. We just return the unresolved promise in this case.
+                }
+            }
+        }
+        return this.instancesDeferred.get(normalizedIdentifier).promise;
+    };
+    Provider.prototype.getImmediate = function (options) {
+        var _a;
+        // if multipleInstances is not supported, use the default name
+        var normalizedIdentifier = this.normalizeInstanceIdentifier(options === null || options === void 0 ? void 0 : options.identifier);
+        var optional = (_a = options === null || options === void 0 ? void 0 : options.optional) !== null && _a !== void 0 ? _a : false;
+        if (this.isInitialized(normalizedIdentifier) ||
+            this.shouldAutoInitialize()) {
+            try {
+                return this.getOrInitializeService({
+                    instanceIdentifier: normalizedIdentifier
+                });
+            }
+            catch (e) {
+                if (optional) {
+                    return null;
+                }
+                else {
+                    throw e;
+                }
+            }
+        }
+        else {
+            // In case a component is not initialized and should/can not be auto-initialized at the moment, return null if the optional flag is set, or throw
+            if (optional) {
+                return null;
+            }
+            else {
+                throw Error("Service " + this.name + " is not available");
+            }
+        }
+    };
+    Provider.prototype.getComponent = function () {
+        return this.component;
+    };
+    Provider.prototype.setComponent = function (component) {
+        var e_1, _a;
+        if (component.name !== this.name) {
+            throw Error("Mismatching Component " + component.name + " for Provider " + this.name + ".");
+        }
+        if (this.component) {
+            throw Error("Component for " + this.name + " has already been provided");
+        }
+        this.component = component;
+        // return early without attempting to initialize the component if the component requires explicit initialization (calling `Provider.initialize()`)
+        if (!this.shouldAutoInitialize()) {
+            return;
+        }
+        // if the service is eager, initialize the default instance
+        if (isComponentEager(component)) {
+            try {
+                this.getOrInitializeService({ instanceIdentifier: DEFAULT_ENTRY_NAME$1 });
+            }
+            catch (e) {
+                // when the instance factory for an eager Component throws an exception during the eager
+                // initialization, it should not cause a fatal error.
+                // TODO: Investigate if we need to make it configurable, because some component may want to cause
+                // a fatal error in this case?
+            }
+        }
+        try {
+            // Create service instances for the pending promises and resolve them
+            // NOTE: if this.multipleInstances is false, only the default instance will be created
+            // and all promises with resolve with it regardless of the identifier.
+            for (var _b = __values(this.instancesDeferred.entries()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                var _d = __read(_c.value, 2), instanceIdentifier = _d[0], instanceDeferred = _d[1];
+                var normalizedIdentifier = this.normalizeInstanceIdentifier(instanceIdentifier);
+                try {
+                    // `getOrInitializeService()` should always return a valid instance since a component is guaranteed. use ! to make typescript happy.
+                    var instance = this.getOrInitializeService({
+                        instanceIdentifier: normalizedIdentifier
+                    });
+                    instanceDeferred.resolve(instance);
+                }
+                catch (e) {
+                    // when the instance factory throws an exception, it should not cause
+                    // a fatal error. We just leave the promise unresolved.
+                }
+            }
+        }
+        catch (e_1_1) { e_1 = { error: e_1_1 }; }
+        finally {
+            try {
+                if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+            }
+            finally { if (e_1) throw e_1.error; }
+        }
+    };
+    Provider.prototype.clearInstance = function (identifier) {
+        if (identifier === void 0) { identifier = DEFAULT_ENTRY_NAME$1; }
+        this.instancesDeferred.delete(identifier);
+        this.instancesOptions.delete(identifier);
+        this.instances.delete(identifier);
+    };
+    // app.delete() will call this method on every provider to delete the services
+    // TODO: should we mark the provider as deleted?
+    Provider.prototype.delete = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var services;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        services = Array.from(this.instances.values());
+                        return [4 /*yield*/, Promise.all(__spreadArray(__spreadArray([], __read(services
+                                .filter(function (service) { return 'INTERNAL' in service; }) // legacy services
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                .map(function (service) { return service.INTERNAL.delete(); }))), __read(services
+                                .filter(function (service) { return '_delete' in service; }) // modularized services
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                .map(function (service) { return service._delete(); }))))];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    Provider.prototype.isComponentSet = function () {
+        return this.component != null;
+    };
+    Provider.prototype.isInitialized = function (identifier) {
+        if (identifier === void 0) { identifier = DEFAULT_ENTRY_NAME$1; }
+        return this.instances.has(identifier);
+    };
+    Provider.prototype.getOptions = function (identifier) {
+        if (identifier === void 0) { identifier = DEFAULT_ENTRY_NAME$1; }
+        return this.instancesOptions.get(identifier) || {};
+    };
+    Provider.prototype.initialize = function (opts) {
+        var e_2, _a;
+        if (opts === void 0) { opts = {}; }
+        var _b = opts.options, options = _b === void 0 ? {} : _b;
+        var normalizedIdentifier = this.normalizeInstanceIdentifier(opts.instanceIdentifier);
+        if (this.isInitialized(normalizedIdentifier)) {
+            throw Error(this.name + "(" + normalizedIdentifier + ") has already been initialized");
+        }
+        if (!this.isComponentSet()) {
+            throw Error("Component " + this.name + " has not been registered yet");
+        }
+        var instance = this.getOrInitializeService({
+            instanceIdentifier: normalizedIdentifier,
+            options: options
+        });
+        try {
+            // resolve any pending promise waiting for the service instance
+            for (var _c = __values(this.instancesDeferred.entries()), _d = _c.next(); !_d.done; _d = _c.next()) {
+                var _e = __read(_d.value, 2), instanceIdentifier = _e[0], instanceDeferred = _e[1];
+                var normalizedDeferredIdentifier = this.normalizeInstanceIdentifier(instanceIdentifier);
+                if (normalizedIdentifier === normalizedDeferredIdentifier) {
+                    instanceDeferred.resolve(instance);
+                }
+            }
+        }
+        catch (e_2_1) { e_2 = { error: e_2_1 }; }
+        finally {
+            try {
+                if (_d && !_d.done && (_a = _c.return)) _a.call(_c);
+            }
+            finally { if (e_2) throw e_2.error; }
+        }
+        return instance;
+    };
+    /**
+     *
+     * @param callback - a function that will be invoked  after the provider has been initialized by calling provider.initialize().
+     * The function is invoked SYNCHRONOUSLY, so it should not execute any longrunning tasks in order to not block the program.
+     *
+     * @param identifier An optional instance identifier
+     * @returns a function to unregister the callback
+     */
+    Provider.prototype.onInit = function (callback, identifier) {
+        var _a;
+        var normalizedIdentifier = this.normalizeInstanceIdentifier(identifier);
+        var existingCallbacks = (_a = this.onInitCallbacks.get(normalizedIdentifier)) !== null && _a !== void 0 ? _a : new Set();
+        existingCallbacks.add(callback);
+        this.onInitCallbacks.set(normalizedIdentifier, existingCallbacks);
+        var existingInstance = this.instances.get(normalizedIdentifier);
+        if (existingInstance) {
+            callback(existingInstance, normalizedIdentifier);
+        }
+        return function () {
+            existingCallbacks.delete(callback);
+        };
+    };
+    /**
+     * Invoke onInit callbacks synchronously
+     * @param instance the service instance`
+     */
+    Provider.prototype.invokeOnInitCallbacks = function (instance, identifier) {
+        var e_3, _a;
+        var callbacks = this.onInitCallbacks.get(identifier);
+        if (!callbacks) {
+            return;
+        }
+        try {
+            for (var callbacks_1 = __values(callbacks), callbacks_1_1 = callbacks_1.next(); !callbacks_1_1.done; callbacks_1_1 = callbacks_1.next()) {
+                var callback = callbacks_1_1.value;
+                try {
+                    callback(instance, identifier);
+                }
+                catch (_b) {
+                    // ignore errors in the onInit callback
+                }
+            }
+        }
+        catch (e_3_1) { e_3 = { error: e_3_1 }; }
+        finally {
+            try {
+                if (callbacks_1_1 && !callbacks_1_1.done && (_a = callbacks_1.return)) _a.call(callbacks_1);
+            }
+            finally { if (e_3) throw e_3.error; }
+        }
+    };
+    Provider.prototype.getOrInitializeService = function (_a) {
+        var instanceIdentifier = _a.instanceIdentifier, _b = _a.options, options = _b === void 0 ? {} : _b;
+        var instance = this.instances.get(instanceIdentifier);
+        if (!instance && this.component) {
+            instance = this.component.instanceFactory(this.container, {
+                instanceIdentifier: normalizeIdentifierForFactory(instanceIdentifier),
+                options: options
+            });
+            this.instances.set(instanceIdentifier, instance);
+            this.instancesOptions.set(instanceIdentifier, options);
+            /**
+             * Invoke onInit listeners.
+             * Note this.component.onInstanceCreated is different, which is used by the component creator,
+             * while onInit listeners are registered by consumers of the provider.
+             */
+            this.invokeOnInitCallbacks(instance, instanceIdentifier);
+            /**
+             * Order is important
+             * onInstanceCreated() should be called after this.instances.set(instanceIdentifier, instance); which
+             * makes `isInitialized()` return true.
+             */
+            if (this.component.onInstanceCreated) {
+                try {
+                    this.component.onInstanceCreated(this.container, instanceIdentifier, instance);
+                }
+                catch (_c) {
+                    // ignore errors in the onInstanceCreatedCallback
+                }
+            }
+        }
+        return instance || null;
+    };
+    Provider.prototype.normalizeInstanceIdentifier = function (identifier) {
+        if (identifier === void 0) { identifier = DEFAULT_ENTRY_NAME$1; }
+        if (this.component) {
+            return this.component.multipleInstances ? identifier : DEFAULT_ENTRY_NAME$1;
+        }
+        else {
+            return identifier; // assume multiple instances are supported before the component is provided.
+        }
+    };
+    Provider.prototype.shouldAutoInitialize = function () {
+        return (!!this.component &&
+            this.component.instantiationMode !== "EXPLICIT" /* EXPLICIT */);
+    };
+    return Provider;
+}());
+// undefined should be passed to the service factory for the default instance
+function normalizeIdentifierForFactory(identifier) {
+    return identifier === DEFAULT_ENTRY_NAME$1 ? undefined : identifier;
+}
+function isComponentEager(component) {
+    return component.instantiationMode === "EAGER" /* EAGER */;
+}
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * ComponentContainer that provides Providers for service name T, e.g. `auth`, `auth-internal`
+ */
+var ComponentContainer = /** @class */ (function () {
+    function ComponentContainer(name) {
+        this.name = name;
+        this.providers = new Map();
+    }
+    /**
+     *
+     * @param component Component being added
+     * @param overwrite When a component with the same name has already been registered,
+     * if overwrite is true: overwrite the existing component with the new component and create a new
+     * provider with the new component. It can be useful in tests where you want to use different mocks
+     * for different tests.
+     * if overwrite is false: throw an exception
+     */
+    ComponentContainer.prototype.addComponent = function (component) {
+        var provider = this.getProvider(component.name);
+        if (provider.isComponentSet()) {
+            throw new Error("Component " + component.name + " has already been registered with " + this.name);
+        }
+        provider.setComponent(component);
+    };
+    ComponentContainer.prototype.addOrOverwriteComponent = function (component) {
+        var provider = this.getProvider(component.name);
+        if (provider.isComponentSet()) {
+            // delete the existing provider from the container, so we can register the new component
+            this.providers.delete(component.name);
+        }
+        this.addComponent(component);
+    };
+    /**
+     * getProvider provides a type safe interface where it can only be called with a field name
+     * present in NameServiceMapping interface.
+     *
+     * Firebase SDKs providing services should extend NameServiceMapping interface to register
+     * themselves.
+     */
+    ComponentContainer.prototype.getProvider = function (name) {
+        if (this.providers.has(name)) {
+            return this.providers.get(name);
+        }
+        // create a Provider for a service that hasn't registered with Firebase
+        var provider = new Provider(name, this);
+        this.providers.set(name, provider);
+        return provider;
+    };
+    ComponentContainer.prototype.getProviders = function () {
+        return Array.from(this.providers.values());
+    };
+    return ComponentContainer;
+}());
+
+/**
+ * @license
  * Copyright 2017 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -2364,6 +3314,10 @@ var Component = /** @class */ (function () {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ * A container for all of the Logger instances
+ */
+const instances = [];
 /**
  * The JS SDK supports 5 log levels and also allows a user the ability to
  * silence the logs altogether.
@@ -2449,6 +3403,10 @@ class Logger {
          * The optional, additional, user-defined log handler for the Logger instance.
          */
         this._userLogHandler = null;
+        /**
+         * Capture the current instance for later use
+         */
+        instances.push(this);
     }
     get logLevel() {
         return this._logLevel;
@@ -2501,6 +3459,59 @@ class Logger {
     error(...args) {
         this._userLogHandler && this._userLogHandler(this, LogLevel.ERROR, ...args);
         this._logHandler(this, LogLevel.ERROR, ...args);
+    }
+}
+function setLogLevel$1(level) {
+    instances.forEach(inst => {
+        inst.setLogLevel(level);
+    });
+}
+function setUserLogHandler(logCallback, options) {
+    for (const instance of instances) {
+        let customLogLevel = null;
+        if (options && options.level) {
+            customLogLevel = levelStringToEnum[options.level];
+        }
+        if (logCallback === null) {
+            instance.userLogHandler = null;
+        }
+        else {
+            instance.userLogHandler = (instance, level, ...args) => {
+                const message = args
+                    .map(arg => {
+                    if (arg == null) {
+                        return null;
+                    }
+                    else if (typeof arg === 'string') {
+                        return arg;
+                    }
+                    else if (typeof arg === 'number' || typeof arg === 'boolean') {
+                        return arg.toString();
+                    }
+                    else if (arg instanceof Error) {
+                        return arg.message;
+                    }
+                    else {
+                        try {
+                            return JSON.stringify(arg);
+                        }
+                        catch (ignored) {
+                            return null;
+                        }
+                    }
+                })
+                    .filter(arg => arg)
+                    .join(' ');
+                if (level >= (customLogLevel !== null && customLogLevel !== void 0 ? customLogLevel : instance.logLevel)) {
+                    logCallback({
+                        level: LogLevel[level].toLowerCase(),
+                        message,
+                        args,
+                        type: instance.name
+                    });
+                }
+            };
+        }
     }
 }
 
@@ -2576,7 +3587,7 @@ const version$1$1 = "0.7.2";
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const logger$1 = new Logger('@firebase/app');
+const logger$2 = new Logger('@firebase/app');
 
 const name$n = "@firebase/app-compat";
 
@@ -2618,14 +3629,37 @@ const name$5 = "@firebase/remote-config-compat";
 
 const name$4 = "@firebase/storage";
 
-const name$3 = "@firebase/storage-compat";
+const name$3$1 = "@firebase/storage-compat";
 
-const name$2 = "@firebase/firestore";
+const name$2$1 = "@firebase/firestore";
 
 const name$1$1 = "@firebase/firestore-compat";
 
 const name$p = "firebase";
-const version$2 = "9.1.1";
+const version$4 = "9.1.1";
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * The default app name
+ *
+ * @internal
+ */
+const DEFAULT_ENTRY_NAME = '[DEFAULT]';
 const PLATFORM_LOG_STRING = {
     [name$o]: 'fire-core',
     [name$n]: 'fire-core-compat',
@@ -2648,8 +3682,8 @@ const PLATFORM_LOG_STRING = {
     [name$6]: 'fire-rc',
     [name$5]: 'fire-rc-compat',
     [name$4]: 'fire-gcs',
-    [name$3]: 'fire-gcs-compat',
-    [name$2]: 'fire-fst',
+    [name$3$1]: 'fire-gcs-compat',
+    [name$2$1]: 'fire-fst',
     [name$1$1]: 'fire-fst-compat',
     'fire-js': 'fire-js',
     [name$p]: 'fire-js-all'
@@ -2692,8 +3726,15 @@ function _addComponent(app, component) {
         app.container.addComponent(component);
     }
     catch (e) {
-        logger$1.debug(`Component ${component.name} failed to register with FirebaseApp ${app.name}`, e);
+        logger$2.debug(`Component ${component.name} failed to register with FirebaseApp ${app.name}`, e);
     }
+}
+/**
+ *
+ * @internal
+ */
+function _addOrOverwriteComponent(app, component) {
+    app.container.addOrOverwriteComponent(component);
 }
 /**
  *
@@ -2705,7 +3746,7 @@ function _addComponent(app, component) {
 function _registerComponent(component) {
     const componentName = component.name;
     if (_components.has(componentName)) {
-        logger$1.debug(`There were multiple attempts to register component ${componentName}.`);
+        logger$2.debug(`There were multiple attempts to register component ${componentName}.`);
         return false;
     }
     _components.set(componentName, component);
@@ -2714,6 +3755,132 @@ function _registerComponent(component) {
         _addComponent(app, component);
     }
     return true;
+}
+/**
+ *
+ * @param app - FirebaseApp instance
+ * @param name - service name
+ *
+ * @returns the provider for the service with the matching name
+ *
+ * @internal
+ */
+function _getProvider(app, name) {
+    return app.container.getProvider(name);
+}
+/**
+ *
+ * @param app - FirebaseApp instance
+ * @param name - service name
+ * @param instanceIdentifier - service instance identifier in case the service supports multiple instances
+ *
+ * @internal
+ */
+function _removeServiceInstance(app, name, instanceIdentifier = DEFAULT_ENTRY_NAME) {
+    _getProvider(app, name).clearInstance(instanceIdentifier);
+}
+/**
+ * Test only
+ *
+ * @internal
+ */
+function _clearComponents() {
+    _components.clear();
+}
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const ERRORS$1 = {
+    ["no-app" /* NO_APP */]: "No Firebase App '{$appName}' has been created - " +
+        'call Firebase App.initializeApp()',
+    ["bad-app-name" /* BAD_APP_NAME */]: "Illegal App name: '{$appName}",
+    ["duplicate-app" /* DUPLICATE_APP */]: "Firebase App named '{$appName}' already exists with different options or config",
+    ["app-deleted" /* APP_DELETED */]: "Firebase App named '{$appName}' already deleted",
+    ["invalid-app-argument" /* INVALID_APP_ARGUMENT */]: 'firebase.{$appName}() takes either no argument or a ' +
+        'Firebase App instance.',
+    ["invalid-log-argument" /* INVALID_LOG_ARGUMENT */]: 'First argument to `onLog` must be null or a function.'
+};
+const ERROR_FACTORY$1 = new ErrorFactory('app', 'Firebase', ERRORS$1);
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+class FirebaseAppImpl$1 {
+    constructor(options, config, container) {
+        this._isDeleted = false;
+        this._options = Object.assign({}, options);
+        this._config = Object.assign({}, config);
+        this._name = config.name;
+        this._automaticDataCollectionEnabled =
+            config.automaticDataCollectionEnabled;
+        this._container = container;
+        this.container.addComponent(new Component('app', () => this, "PUBLIC" /* PUBLIC */));
+    }
+    get automaticDataCollectionEnabled() {
+        this.checkDestroyed();
+        return this._automaticDataCollectionEnabled;
+    }
+    set automaticDataCollectionEnabled(val) {
+        this.checkDestroyed();
+        this._automaticDataCollectionEnabled = val;
+    }
+    get name() {
+        this.checkDestroyed();
+        return this._name;
+    }
+    get options() {
+        this.checkDestroyed();
+        return this._options;
+    }
+    get config() {
+        this.checkDestroyed();
+        return this._config;
+    }
+    get container() {
+        return this._container;
+    }
+    get isDeleted() {
+        return this._isDeleted;
+    }
+    set isDeleted(val) {
+        this._isDeleted = val;
+    }
+    /**
+     * This function will throw an Error if the App has already been deleted -
+     * use before performing API actions on the App.
+     */
+    checkDestroyed() {
+        if (this.isDeleted) {
+            throw ERROR_FACTORY$1.create("app-deleted" /* APP_DELETED */, { appName: this._name });
+        }
+    }
 }
 
 /**
@@ -2737,7 +3904,108 @@ function _registerComponent(component) {
  *
  * @public
  */
-const SDK_VERSION$1 = version$2;
+const SDK_VERSION$1 = version$4;
+function initializeApp(options, rawConfig = {}) {
+    if (typeof rawConfig !== 'object') {
+        const name = rawConfig;
+        rawConfig = { name };
+    }
+    const config = Object.assign({ name: DEFAULT_ENTRY_NAME, automaticDataCollectionEnabled: false }, rawConfig);
+    const name = config.name;
+    if (typeof name !== 'string' || !name) {
+        throw ERROR_FACTORY$1.create("bad-app-name" /* BAD_APP_NAME */, {
+            appName: String(name)
+        });
+    }
+    const existingApp = _apps.get(name);
+    if (existingApp) {
+        // return the existing app if options and config deep equal the ones in the existing app.
+        if (deepEqual(options, existingApp.options) &&
+            deepEqual(config, existingApp.config)) {
+            return existingApp;
+        }
+        else {
+            throw ERROR_FACTORY$1.create("duplicate-app" /* DUPLICATE_APP */, { appName: name });
+        }
+    }
+    const container = new ComponentContainer(name);
+    for (const component of _components.values()) {
+        container.addComponent(component);
+    }
+    const newApp = new FirebaseAppImpl$1(options, config, container);
+    _apps.set(name, newApp);
+    return newApp;
+}
+/**
+ * Retrieves a {@link @firebase/app#FirebaseApp} instance.
+ *
+ * When called with no arguments, the default app is returned. When an app name
+ * is provided, the app corresponding to that name is returned.
+ *
+ * An exception is thrown if the app being retrieved has not yet been
+ * initialized.
+ *
+ * @example
+ * ```javascript
+ * // Return the default app
+ * const app = getApp();
+ * ```
+ *
+ * @example
+ * ```javascript
+ * // Return a named app
+ * const otherApp = getApp("otherApp");
+ * ```
+ *
+ * @param name - Optional name of the app to return. If no name is
+ *   provided, the default is `"[DEFAULT]"`.
+ *
+ * @returns The app corresponding to the provided app name.
+ *   If no app name is provided, the default app is returned.
+ *
+ * @public
+ */
+function getApp(name = DEFAULT_ENTRY_NAME) {
+    const app = _apps.get(name);
+    if (!app) {
+        throw ERROR_FACTORY$1.create("no-app" /* NO_APP */, { appName: name });
+    }
+    return app;
+}
+/**
+ * A (read-only) array of all initialized apps.
+ * @public
+ */
+function getApps() {
+    return Array.from(_apps.values());
+}
+/**
+ * Renders this app unusable and frees the resources of all associated
+ * services.
+ *
+ * @example
+ * ```javascript
+ * deleteApp(app)
+ *   .then(function() {
+ *     console.log("App deleted successfully");
+ *   })
+ *   .catch(function(error) {
+ *     console.log("Error deleting app:", error);
+ *   });
+ * ```
+ *
+ * @public
+ */
+async function deleteApp(app) {
+    const name = app.name;
+    if (_apps.has(name)) {
+        _apps.delete(name);
+        await Promise.all(app.container
+            .getProviders()
+            .map(provider => provider.delete()));
+        app.isDeleted = true;
+    }
+}
 /**
  * Registers a library's name and version for platform logging purposes.
  * @param library - Name of 1p or 3p library (e.g. firestore, angularfire)
@@ -2769,10 +4037,35 @@ function registerVersion(libraryKeyOrName, version, variant) {
         if (versionMismatch) {
             warning.push(`version name "${version}" contains illegal characters (whitespace or "/")`);
         }
-        logger$1.warn(warning.join(' '));
+        logger$2.warn(warning.join(' '));
         return;
     }
     _registerComponent(new Component(`${library}-version`, () => ({ library, version }), "VERSION" /* VERSION */));
+}
+/**
+ * Sets log handler for all Firebase SDKs.
+ * @param logCallback - An optional custom log handler that executes user code whenever
+ * the Firebase SDK makes a logging call.
+ *
+ * @public
+ */
+function onLog(logCallback, options) {
+    if (logCallback !== null && typeof logCallback !== 'function') {
+        throw ERROR_FACTORY$1.create("invalid-log-argument" /* INVALID_LOG_ARGUMENT */);
+    }
+    setUserLogHandler(logCallback, options);
+}
+/**
+ * Sets log level for all Firebase SDKs.
+ *
+ * All of the log types above the current log level are captured (i.e. if
+ * you set the log level to `info`, errors are logged, but `debug` and
+ * `verbose` logs are not).
+ *
+ * @public
+ */
+function setLogLevel(logLevel) {
+    setLogLevel$1(logLevel);
 }
 
 /**
@@ -2791,7 +4084,7 @@ function registerVersion(libraryKeyOrName, version, variant) {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-function registerCoreComponents(variant) {
+function registerCoreComponents$1(variant) {
     _registerComponent(new Component('platform-logger', container => new PlatformLoggerServiceImpl(container), "PRIVATE" /* PRIVATE */));
     // Register `app` package.
     registerVersion(name$o, version$1$1, variant);
@@ -2805,10 +4098,29 @@ function registerCoreComponents(variant) {
  * @remarks This package coordinates the communication between the different Firebase components
  * @packageDocumentation
  */
-registerCoreComponents();
+registerCoreComponents$1();
 
-var name$1 = "firebase";
-var version$1 = "9.1.1";
+var modularAPIs = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    SDK_VERSION: SDK_VERSION$1,
+    _DEFAULT_ENTRY_NAME: DEFAULT_ENTRY_NAME,
+    _addComponent: _addComponent,
+    _addOrOverwriteComponent: _addOrOverwriteComponent,
+    _apps: _apps,
+    _clearComponents: _clearComponents,
+    _components: _components,
+    _getProvider: _getProvider,
+    _registerComponent: _registerComponent,
+    _removeServiceInstance: _removeServiceInstance,
+    deleteApp: deleteApp,
+    getApp: getApp,
+    getApps: getApps,
+    initializeApp: initializeApp,
+    onLog: onLog,
+    registerVersion: registerVersion,
+    setLogLevel: setLogLevel,
+    FirebaseError: FirebaseError
+});
 
 /**
  * @license
@@ -2826,10 +4138,436 @@ var version$1 = "9.1.1";
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-registerVersion(name$1, version$1, 'app');
+/**
+ * Global context object for a collection of services using
+ * a shared authentication state.
+ *
+ * marked as internal because it references internal types exported from @firebase/app
+ * @internal
+ */
+class FirebaseAppImpl {
+    constructor(_delegate, firebase) {
+        this._delegate = _delegate;
+        this.firebase = firebase;
+        // add itself to container
+        _addComponent(_delegate, new Component('app-compat', () => this, "PUBLIC" /* PUBLIC */));
+        this.container = _delegate.container;
+    }
+    get automaticDataCollectionEnabled() {
+        return this._delegate.automaticDataCollectionEnabled;
+    }
+    set automaticDataCollectionEnabled(val) {
+        this._delegate.automaticDataCollectionEnabled = val;
+    }
+    get name() {
+        return this._delegate.name;
+    }
+    get options() {
+        return this._delegate.options;
+    }
+    delete() {
+        return new Promise(resolve => {
+            this._delegate.checkDestroyed();
+            resolve();
+        }).then(() => {
+            this.firebase.INTERNAL.removeApp(this.name);
+            return deleteApp(this._delegate);
+        });
+    }
+    /**
+     * Return a service instance associated with this app (creating it
+     * on demand), identified by the passed instanceIdentifier.
+     *
+     * NOTE: Currently storage and functions are the only ones that are leveraging this
+     * functionality. They invoke it by calling:
+     *
+     * ```javascript
+     * firebase.app().storage('STORAGE BUCKET ID')
+     * ```
+     *
+     * The service name is passed to this already
+     * @internal
+     */
+    _getService(name, instanceIdentifier = DEFAULT_ENTRY_NAME) {
+        var _a;
+        this._delegate.checkDestroyed();
+        // Initialize instance if InstatiationMode is `EXPLICIT`.
+        const provider = this._delegate.container.getProvider(name);
+        if (!provider.isInitialized() &&
+            ((_a = provider.getComponent()) === null || _a === void 0 ? void 0 : _a.instantiationMode) === "EXPLICIT" /* EXPLICIT */) {
+            provider.initialize();
+        }
+        // getImmediate will always succeed because _getService is only called for registered components.
+        return provider.getImmediate({
+            identifier: instanceIdentifier
+        });
+    }
+    /**
+     * Remove a service instance from the cache, so we will create a new instance for this service
+     * when people try to get it again.
+     *
+     * NOTE: currently only firestore uses this functionality to support firestore shutdown.
+     *
+     * @param name The service name
+     * @param instanceIdentifier instance identifier in case multiple instances are allowed
+     * @internal
+     */
+    _removeServiceInstance(name, instanceIdentifier = DEFAULT_ENTRY_NAME) {
+        this._delegate.container
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .getProvider(name)
+            .clearInstance(instanceIdentifier);
+    }
+    /**
+     * @param component the component being added to this app's container
+     * @internal
+     */
+    _addComponent(component) {
+        _addComponent(this._delegate, component);
+    }
+    _addOrOverwriteComponent(component) {
+        _addOrOverwriteComponent(this._delegate, component);
+    }
+    toJSON() {
+        return {
+            name: this.name,
+            automaticDataCollectionEnabled: this.automaticDataCollectionEnabled,
+            options: this.options
+        };
+    }
+}
+// TODO: investigate why the following needs to be commented out
+// Prevent dead-code elimination of these methods w/o invalid property
+// copying.
+// (FirebaseAppImpl.prototype.name && FirebaseAppImpl.prototype.options) ||
+//   FirebaseAppImpl.prototype.delete ||
+//   console.log('dc');
 
-const name = "@firebase/database";
-const version = "0.12.1";
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const ERRORS = {
+    ["no-app" /* NO_APP */]: "No Firebase App '{$appName}' has been created - " +
+        'call Firebase App.initializeApp()',
+    ["invalid-app-argument" /* INVALID_APP_ARGUMENT */]: 'firebase.{$appName}() takes either no argument or a ' +
+        'Firebase App instance.'
+};
+const ERROR_FACTORY = new ErrorFactory('app-compat', 'Firebase', ERRORS);
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Because auth can't share code with other components, we attach the utility functions
+ * in an internal namespace to share code.
+ * This function return a firebase namespace object without
+ * any utility functions, so it can be shared between the regular firebaseNamespace and
+ * the lite version.
+ */
+function createFirebaseNamespaceCore(firebaseAppImpl) {
+    const apps = {};
+    // // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // const components = new Map<string, Component<any>>();
+    // A namespace is a plain JavaScript Object.
+    const namespace = {
+        // Hack to prevent Babel from modifying the object returned
+        // as the firebase namespace.
+        // @ts-ignore
+        __esModule: true,
+        initializeApp: initializeAppCompat,
+        // @ts-ignore
+        app,
+        registerVersion: registerVersion,
+        setLogLevel: setLogLevel,
+        onLog: onLog,
+        // @ts-ignore
+        apps: null,
+        SDK_VERSION: SDK_VERSION$1,
+        INTERNAL: {
+            registerComponent: registerComponentCompat,
+            removeApp,
+            useAsService,
+            modularAPIs
+        }
+    };
+    // Inject a circular default export to allow Babel users who were previously
+    // using:
+    //
+    //   import firebase from 'firebase';
+    //   which becomes: var firebase = require('firebase').default;
+    //
+    // instead of
+    //
+    //   import * as firebase from 'firebase';
+    //   which becomes: var firebase = require('firebase');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    namespace['default'] = namespace;
+    // firebase.apps is a read-only getter.
+    Object.defineProperty(namespace, 'apps', {
+        get: getApps
+    });
+    /**
+     * Called by App.delete() - but before any services associated with the App
+     * are deleted.
+     */
+    function removeApp(name) {
+        delete apps[name];
+    }
+    /**
+     * Get the App object for a given name (or DEFAULT).
+     */
+    function app(name) {
+        name = name || DEFAULT_ENTRY_NAME;
+        if (!contains(apps, name)) {
+            throw ERROR_FACTORY.create("no-app" /* NO_APP */, { appName: name });
+        }
+        return apps[name];
+    }
+    // @ts-ignore
+    app['App'] = firebaseAppImpl;
+    /**
+     * Create a new App instance (name must be unique).
+     *
+     * This function is idempotent. It can be called more than once and return the same instance using the same options and config.
+     */
+    function initializeAppCompat(options, rawConfig = {}) {
+        const app = initializeApp(options, rawConfig);
+        if (contains(apps, app.name)) {
+            return apps[app.name];
+        }
+        const appCompat = new firebaseAppImpl(app, namespace);
+        apps[app.name] = appCompat;
+        return appCompat;
+    }
+    /*
+     * Return an array of all the non-deleted FirebaseApps.
+     */
+    function getApps() {
+        // Make a copy so caller cannot mutate the apps list.
+        return Object.keys(apps).map(name => apps[name]);
+    }
+    function registerComponentCompat(component) {
+        const componentName = component.name;
+        const componentNameWithoutCompat = componentName.replace('-compat', '');
+        if (_registerComponent(component) &&
+            component.type === "PUBLIC" /* PUBLIC */) {
+            // create service namespace for public components
+            // The Service namespace is an accessor function ...
+            const serviceNamespace = (appArg = app()) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if (typeof appArg[componentNameWithoutCompat] !== 'function') {
+                    // Invalid argument.
+                    // This happens in the following case: firebase.storage('gs:/')
+                    throw ERROR_FACTORY.create("invalid-app-argument" /* INVALID_APP_ARGUMENT */, {
+                        appName: componentName
+                    });
+                }
+                // Forward service instance lookup to the FirebaseApp.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return appArg[componentNameWithoutCompat]();
+            };
+            // ... and a container for service-level properties.
+            if (component.serviceProps !== undefined) {
+                deepExtend(serviceNamespace, component.serviceProps);
+            }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            namespace[componentNameWithoutCompat] = serviceNamespace;
+            // Patch the FirebaseAppImpl prototype
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            firebaseAppImpl.prototype[componentNameWithoutCompat] =
+                // TODO: The eslint disable can be removed and the 'ignoreRestArgs'
+                // option added to the no-explicit-any rule when ESlint releases it.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                function (...args) {
+                    const serviceFxn = this._getService.bind(this, componentName);
+                    return serviceFxn.apply(this, component.multipleInstances ? args : []);
+                };
+        }
+        return component.type === "PUBLIC" /* PUBLIC */
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                namespace[componentNameWithoutCompat]
+            : null;
+    }
+    // Map the requested service to a registered service name
+    // (used to map auth to serverAuth service when needed).
+    function useAsService(app, name) {
+        if (name === 'serverAuth') {
+            return null;
+        }
+        const useService = name;
+        return useService;
+    }
+    return namespace;
+}
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Return a firebase namespace object.
+ *
+ * In production, this will be called exactly once and the result
+ * assigned to the 'firebase' global.  It may be called multiple times
+ * in unit tests.
+ */
+function createFirebaseNamespace() {
+    const namespace = createFirebaseNamespaceCore(FirebaseAppImpl);
+    namespace.INTERNAL = Object.assign(Object.assign({}, namespace.INTERNAL), { createFirebaseNamespace,
+        extendNamespace,
+        createSubscribe,
+        ErrorFactory,
+        deepExtend });
+    /**
+     * Patch the top-level firebase namespace with additional properties.
+     *
+     * firebase.INTERNAL.extendNamespace()
+     */
+    function extendNamespace(props) {
+        deepExtend(namespace, props);
+    }
+    return namespace;
+}
+const firebase$1 = createFirebaseNamespace();
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const logger$1 = new Logger('@firebase/app-compat');
+
+const name$3 = "@firebase/app-compat";
+const version$3 = "0.1.3";
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+function registerCoreComponents(variant) {
+    // Register `app` package.
+    registerVersion(name$3, version$3, variant);
+}
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+// Firebase Lite detection
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (isBrowser() && self.firebase !== undefined) {
+    logger$1.warn(`
+    Warning: Firebase is already defined in the global scope. Please make sure
+    Firebase library is only loaded once.
+  `);
+    // eslint-disable-next-line
+    const sdkVersion = self.firebase.SDK_VERSION;
+    if (sdkVersion && sdkVersion.indexOf('LITE') >= 0) {
+        logger$1.warn(`
+    Warning: You are trying to load Firebase while using Firebase Performance standalone script.
+    You should load Firebase Performance with this instance of Firebase to avoid loading duplicate code.
+    `);
+    }
+}
+const firebase = firebase$1;
+registerCoreComponents();
+
+var name$2 = "firebase";
+var version$2 = "9.1.1";
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+firebase.registerVersion(name$2, version$2, 'app-compat');
+
+const name$1 = "@firebase/database";
+const version$1 = "0.12.1";
 
 /**
  * @license
@@ -3034,7 +4772,7 @@ const SessionStorage = createStoragefor('sessionStorage');
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const logClient = new Logger('@firebase/database');
+const logClient$1 = new Logger('@firebase/database');
 /**
  * Returns a locally-unique ID (generated by just incrementing up from 0 each time its called).
  */
@@ -3093,8 +4831,8 @@ let firstLog_ = true;
 const enableLogging$1 = function (logger_, persistent) {
     assert(!persistent || logger_ === true || logger_ === false, "Can't turn on custom loggers persistently.");
     if (logger_ === true) {
-        logClient.logLevel = LogLevel.VERBOSE;
-        logger = logClient.log.bind(logClient);
+        logClient$1.logLevel = LogLevel.VERBOSE;
+        logger = logClient$1.log.bind(logClient$1);
         if (persistent) {
             SessionStorage.set('logging_enabled', true);
         }
@@ -3126,16 +4864,16 @@ const logWrapper = function (prefix) {
 };
 const error = function (...varArgs) {
     const message = 'FIREBASE INTERNAL ERROR: ' + buildLogMessage_(...varArgs);
-    logClient.error(message);
+    logClient$1.error(message);
 };
 const fatal = function (...varArgs) {
     const message = `FIREBASE FATAL ERROR: ${buildLogMessage_(...varArgs)}`;
-    logClient.error(message);
+    logClient$1.error(message);
     throw new Error(message);
 };
-const warn = function (...varArgs) {
+const warn$1 = function (...varArgs) {
     const message = 'FIREBASE WARNING: ' + buildLogMessage_(...varArgs);
-    logClient.warn(message);
+    logClient$1.warn(message);
 };
 /**
  * Logs a warning if the containing page uses https. Called when a call to new Firebase
@@ -3147,7 +4885,7 @@ const warnIfPageIsSecure = function () {
         window.location &&
         window.location.protocol &&
         window.location.protocol.indexOf('https:') !== -1) {
-        warn('Insecure Firebase access from a secure page. ' +
+        warn$1('Insecure Firebase access from a secure page. ' +
             'Please use https in calls to new Firebase().');
     }
 };
@@ -3396,6 +5134,27 @@ const isWindowsStoreApp = function () {
     return typeof Windows === 'object' && typeof Windows.UI === 'object';
 };
 /**
+ * Converts a server error code to a Javascript Error
+ */
+function errorForServerCode(code, query) {
+    let reason = 'Unknown Error';
+    if (code === 'too_big') {
+        reason =
+            'The data requested exceeds the maximum size ' +
+                'that can be accessed with a single request.';
+    }
+    else if (code === 'permission_denied') {
+        reason = "Client doesn't have permission to access the desired data.";
+    }
+    else if (code === 'unavailable') {
+        reason = 'The service is unavailable';
+    }
+    const error = new Error(code + ' at ' + query._path.toString() + ': ' + reason);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    error.code = code.toUpperCase();
+    return error;
+}
+/**
  * Used to test for integer-looking strings
  */
 const INTEGER_REGEXP_ = new RegExp('^-?(0*)\\d{1,10}$');
@@ -3448,7 +5207,7 @@ const exceptionGuard = function (fn) {
             // file/line number where we re-throw it, which is useless. So we log
             // e.stack explicitly.
             const stack = e.stack || '';
-            warn('Exception was thrown by user callback.', stack);
+            warn$1('Exception was thrown by user callback.', stack);
             throw e;
         }, Math.floor(0));
     }
@@ -3538,7 +5297,7 @@ class AppCheckTokenProvider {
         (_a = this.appCheckProvider) === null || _a === void 0 ? void 0 : _a.get().then(appCheck => appCheck.addTokenListener(listener));
     }
     notifyForInvalidToken() {
-        warn(`Provided AppCheck credentials for the app named "${this.appName_}" ` +
+        warn$1(`Provided AppCheck credentials for the app named "${this.appName_}" ` +
             'are invalid. This usually indicates your app was not initialized correctly.');
     }
 }
@@ -3642,7 +5401,7 @@ class FirebaseAuthTokenProvider {
                     'initializeApp() match the values provided for your app at ' +
                     'https://console.firebase.google.com/.';
         }
-        warn(errorMessage);
+        warn$1(errorMessage);
     }
 }
 /* AuthTokenProvider that supplies a constant token. Used by Admin SDK or mockUserToken with emulators. */
@@ -4902,7 +6661,7 @@ class TransportManager {
         let isSkipPollConnection = isWebSocketsAvailable && !WebSocketConnection.previouslyFailed();
         if (repoInfo.webSocketOnly) {
             if (!isWebSocketsAvailable) {
-                warn("wss:// URL used, but browser isn't known to support websockets.  Trying anyway.");
+                warn$1("wss:// URL used, but browser isn't known to support websockets.  Trying anyway.");
             }
             isSkipPollConnection = true;
         }
@@ -5258,7 +7017,7 @@ class Connection {
             this.conn_.start();
             this.onConnectionEstablished_(this.conn_, timestamp);
             if (PROTOCOL_VERSION !== version) {
-                warn('Protocol version mismatch detected');
+                warn$1('Protocol version mismatch detected');
             }
             // TODO: do we want to upgrade? when? maybe a delay?
             this.tryStartUpgrade_();
@@ -5734,6 +7493,23 @@ function newRelativePath(outerPath, innerPath) {
     }
 }
 /**
+ * @returns -1, 0, 1 if left is less, equal, or greater than the right.
+ */
+function pathCompare(left, right) {
+    const leftKeys = pathSlice(left, 0);
+    const rightKeys = pathSlice(right, 0);
+    for (let i = 0; i < leftKeys.length && i < rightKeys.length; i++) {
+        const cmp = nameCompare(leftKeys[i], rightKeys[i]);
+        if (cmp !== 0) {
+            return cmp;
+        }
+    }
+    if (leftKeys.length === rightKeys.length) {
+        return 0;
+    }
+    return leftKeys.length < rightKeys.length ? -1 : 1;
+}
+/**
  * @returns true if paths are the same.
  */
 function pathEquals(path, other) {
@@ -6113,7 +7889,7 @@ class PersistentConnection extends ServerActions {
             if (Array.isArray(warnings) && ~warnings.indexOf('no_index')) {
                 const indexSpec = '".indexOn": "' + query._queryParams.getIndex().toString() + '"';
                 const indexPath = query._path.toString();
-                warn(`Using an unspecified index. Your data will be downloaded and ` +
+                warn$1(`Using an unspecified index. Your data will be downloaded and ` +
                     `filtered on the client. Consider adding ${indexSpec} at ` +
                     `${indexPath} to your security rules for better performance.`);
             }
@@ -6528,7 +8304,7 @@ class PersistentConnection extends ServerActions {
                     this.appCheckToken_ = appCheckToken && appCheckToken.token;
                     connection = new Connection(connId, this.repoInfo_, this.applicationId_, this.appCheckToken_, this.authToken_, onDataMessage, onReady, onDisconnect, 
                     /* onKill= */ reason => {
-                        warn(reason + ' (' + this.repoInfo_.toString() + ')');
+                        warn$1(reason + ' (' + this.repoInfo_.toString() + ')');
                         this.interrupt(SERVER_KILL_INTERRUPT_REASON);
                     }, lastSessionId);
                 }
@@ -6543,7 +8319,7 @@ class PersistentConnection extends ServerActions {
                         // This may be a critical error for the Admin Node.js SDK, so log a warning.
                         // But getToken() may also just have temporarily failed, so we still want to
                         // continue retrying.
-                        warn(error);
+                        warn$1(error);
                     }
                     closeFn();
                 }
@@ -8707,6 +10483,153 @@ const VALUE_INDEX = new ValueIndex();
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// Modeled after base64 web-safe chars, but ordered by ASCII.
+const PUSH_CHARS = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+const MIN_PUSH_CHAR = '-';
+const MAX_PUSH_CHAR = 'z';
+const MAX_KEY_LEN = 786;
+/**
+ * Fancy ID generator that creates 20-character string identifiers with the
+ * following properties:
+ *
+ * 1. They're based on timestamp so that they sort *after* any existing ids.
+ * 2. They contain 72-bits of random data after the timestamp so that IDs won't
+ *    collide with other clients' IDs.
+ * 3. They sort *lexicographically* (so the timestamp is converted to characters
+ *    that will sort properly).
+ * 4. They're monotonically increasing. Even if you generate more than one in
+ *    the same timestamp, the latter ones will sort after the former ones. We do
+ *    this by using the previous random bits but "incrementing" them by 1 (only
+ *    in the case of a timestamp collision).
+ */
+const nextPushId = (function () {
+    // Timestamp of last push, used to prevent local collisions if you push twice
+    // in one ms.
+    let lastPushTime = 0;
+    // We generate 72-bits of randomness which get turned into 12 characters and
+    // appended to the timestamp to prevent collisions with other clients. We
+    // store the last characters we generated because in the event of a collision,
+    // we'll use those same characters except "incremented" by one.
+    const lastRandChars = [];
+    return function (now) {
+        const duplicateTime = now === lastPushTime;
+        lastPushTime = now;
+        let i;
+        const timeStampChars = new Array(8);
+        for (i = 7; i >= 0; i--) {
+            timeStampChars[i] = PUSH_CHARS.charAt(now % 64);
+            // NOTE: Can't use << here because javascript will convert to int and lose
+            // the upper bits.
+            now = Math.floor(now / 64);
+        }
+        assert(now === 0, 'Cannot push at time == 0');
+        let id = timeStampChars.join('');
+        if (!duplicateTime) {
+            for (i = 0; i < 12; i++) {
+                lastRandChars[i] = Math.floor(Math.random() * 64);
+            }
+        }
+        else {
+            // If the timestamp hasn't changed since last push, use the same random
+            // number, except incremented by 1.
+            for (i = 11; i >= 0 && lastRandChars[i] === 63; i--) {
+                lastRandChars[i] = 0;
+            }
+            lastRandChars[i]++;
+        }
+        for (i = 0; i < 12; i++) {
+            id += PUSH_CHARS.charAt(lastRandChars[i]);
+        }
+        assert(id.length === 20, 'nextPushId: Length should be 20.');
+        return id;
+    };
+})();
+const successor = function (key) {
+    if (key === '' + INTEGER_32_MAX) {
+        // See https://firebase.google.com/docs/database/web/lists-of-data#data-order
+        return MIN_PUSH_CHAR;
+    }
+    const keyAsInt = tryParseInt(key);
+    if (keyAsInt != null) {
+        return '' + (keyAsInt + 1);
+    }
+    const next = new Array(key.length);
+    for (let i = 0; i < next.length; i++) {
+        next[i] = key.charAt(i);
+    }
+    if (next.length < MAX_KEY_LEN) {
+        next.push(MIN_PUSH_CHAR);
+        return next.join('');
+    }
+    let i = next.length - 1;
+    while (i >= 0 && next[i] === MAX_PUSH_CHAR) {
+        i--;
+    }
+    // `successor` was called on the largest possible key, so return the
+    // MAX_NAME, which sorts larger than all keys.
+    if (i === -1) {
+        return MAX_NAME;
+    }
+    const source = next[i];
+    const sourcePlusOne = PUSH_CHARS.charAt(PUSH_CHARS.indexOf(source) + 1);
+    next[i] = sourcePlusOne;
+    return next.slice(0, i + 1).join('');
+};
+// `key` is assumed to be non-empty.
+const predecessor = function (key) {
+    if (key === '' + INTEGER_32_MIN) {
+        return MIN_NAME;
+    }
+    const keyAsInt = tryParseInt(key);
+    if (keyAsInt != null) {
+        return '' + (keyAsInt - 1);
+    }
+    const next = new Array(key.length);
+    for (let i = 0; i < next.length; i++) {
+        next[i] = key.charAt(i);
+    }
+    // If `key` ends in `MIN_PUSH_CHAR`, the largest key lexicographically
+    // smaller than `key`, is `key[0:key.length - 1]`. The next key smaller
+    // than that, `predecessor(predecessor(key))`, is
+    //
+    // `key[0:key.length - 2] + (key[key.length - 1] - 1) + \
+    //   { MAX_PUSH_CHAR repeated MAX_KEY_LEN - (key.length - 1) times }
+    //
+    // analogous to increment/decrement for base-10 integers.
+    //
+    // This works because lexigographic comparison works character-by-character,
+    // using length as a tie-breaker if one key is a prefix of the other.
+    if (next[next.length - 1] === MIN_PUSH_CHAR) {
+        if (next.length === 1) {
+            // See https://firebase.google.com/docs/database/web/lists-of-data#orderbykey
+            return '' + INTEGER_32_MAX;
+        }
+        delete next[next.length - 1];
+        return next.join('');
+    }
+    // Replace the last character with it's immediate predecessor, and
+    // fill the suffix of the key with MAX_PUSH_CHAR. This is the
+    // lexicographically largest possible key smaller than `key`.
+    next[next.length - 1] = PUSH_CHARS.charAt(PUSH_CHARS.indexOf(next[next.length - 1]) - 1);
+    return next.join('') + MAX_PUSH_CHAR.repeat(MAX_KEY_LEN - next.length);
+};
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 function changeValue(snapshotNode) {
     return { type: "value" /* VALUE */, snapshotNode };
 }
@@ -8726,6 +10649,420 @@ function changeChildChanged(childName, snapshotNode, oldSnap) {
 }
 function changeChildMoved(childName, snapshotNode) {
     return { type: "child_moved" /* CHILD_MOVED */, snapshotNode, childName };
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Doesn't really filter nodes but applies an index to the node and keeps track of any changes
+ */
+class IndexedFilter {
+    constructor(index_) {
+        this.index_ = index_;
+    }
+    updateChild(snap, key, newChild, affectedPath, source, optChangeAccumulator) {
+        assert(snap.isIndexed(this.index_), 'A node must be indexed if only a child is updated');
+        const oldChild = snap.getImmediateChild(key);
+        // Check if anything actually changed.
+        if (oldChild.getChild(affectedPath).equals(newChild.getChild(affectedPath))) {
+            // There's an edge case where a child can enter or leave the view because affectedPath was set to null.
+            // In this case, affectedPath will appear null in both the old and new snapshots.  So we need
+            // to avoid treating these cases as "nothing changed."
+            if (oldChild.isEmpty() === newChild.isEmpty()) {
+                // Nothing changed.
+                // This assert should be valid, but it's expensive (can dominate perf testing) so don't actually do it.
+                //assert(oldChild.equals(newChild), 'Old and new snapshots should be equal.');
+                return snap;
+            }
+        }
+        if (optChangeAccumulator != null) {
+            if (newChild.isEmpty()) {
+                if (snap.hasChild(key)) {
+                    optChangeAccumulator.trackChildChange(changeChildRemoved(key, oldChild));
+                }
+                else {
+                    assert(snap.isLeafNode(), 'A child remove without an old child only makes sense on a leaf node');
+                }
+            }
+            else if (oldChild.isEmpty()) {
+                optChangeAccumulator.trackChildChange(changeChildAdded(key, newChild));
+            }
+            else {
+                optChangeAccumulator.trackChildChange(changeChildChanged(key, newChild, oldChild));
+            }
+        }
+        if (snap.isLeafNode() && newChild.isEmpty()) {
+            return snap;
+        }
+        else {
+            // Make sure the node is indexed
+            return snap.updateImmediateChild(key, newChild).withIndex(this.index_);
+        }
+    }
+    updateFullNode(oldSnap, newSnap, optChangeAccumulator) {
+        if (optChangeAccumulator != null) {
+            if (!oldSnap.isLeafNode()) {
+                oldSnap.forEachChild(PRIORITY_INDEX, (key, childNode) => {
+                    if (!newSnap.hasChild(key)) {
+                        optChangeAccumulator.trackChildChange(changeChildRemoved(key, childNode));
+                    }
+                });
+            }
+            if (!newSnap.isLeafNode()) {
+                newSnap.forEachChild(PRIORITY_INDEX, (key, childNode) => {
+                    if (oldSnap.hasChild(key)) {
+                        const oldChild = oldSnap.getImmediateChild(key);
+                        if (!oldChild.equals(childNode)) {
+                            optChangeAccumulator.trackChildChange(changeChildChanged(key, childNode, oldChild));
+                        }
+                    }
+                    else {
+                        optChangeAccumulator.trackChildChange(changeChildAdded(key, childNode));
+                    }
+                });
+            }
+        }
+        return newSnap.withIndex(this.index_);
+    }
+    updatePriority(oldSnap, newPriority) {
+        if (oldSnap.isEmpty()) {
+            return ChildrenNode.EMPTY_NODE;
+        }
+        else {
+            return oldSnap.updatePriority(newPriority);
+        }
+    }
+    filtersNodes() {
+        return false;
+    }
+    getIndexedFilter() {
+        return this;
+    }
+    getIndex() {
+        return this.index_;
+    }
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Filters nodes by range and uses an IndexFilter to track any changes after filtering the node
+ */
+class RangedFilter {
+    constructor(params) {
+        this.indexedFilter_ = new IndexedFilter(params.getIndex());
+        this.index_ = params.getIndex();
+        this.startPost_ = RangedFilter.getStartPost_(params);
+        this.endPost_ = RangedFilter.getEndPost_(params);
+    }
+    getStartPost() {
+        return this.startPost_;
+    }
+    getEndPost() {
+        return this.endPost_;
+    }
+    matches(node) {
+        return (this.index_.compare(this.getStartPost(), node) <= 0 &&
+            this.index_.compare(node, this.getEndPost()) <= 0);
+    }
+    updateChild(snap, key, newChild, affectedPath, source, optChangeAccumulator) {
+        if (!this.matches(new NamedNode(key, newChild))) {
+            newChild = ChildrenNode.EMPTY_NODE;
+        }
+        return this.indexedFilter_.updateChild(snap, key, newChild, affectedPath, source, optChangeAccumulator);
+    }
+    updateFullNode(oldSnap, newSnap, optChangeAccumulator) {
+        if (newSnap.isLeafNode()) {
+            // Make sure we have a children node with the correct index, not a leaf node;
+            newSnap = ChildrenNode.EMPTY_NODE;
+        }
+        let filtered = newSnap.withIndex(this.index_);
+        // Don't support priorities on queries
+        filtered = filtered.updatePriority(ChildrenNode.EMPTY_NODE);
+        const self = this;
+        newSnap.forEachChild(PRIORITY_INDEX, (key, childNode) => {
+            if (!self.matches(new NamedNode(key, childNode))) {
+                filtered = filtered.updateImmediateChild(key, ChildrenNode.EMPTY_NODE);
+            }
+        });
+        return this.indexedFilter_.updateFullNode(oldSnap, filtered, optChangeAccumulator);
+    }
+    updatePriority(oldSnap, newPriority) {
+        // Don't support priorities on queries
+        return oldSnap;
+    }
+    filtersNodes() {
+        return true;
+    }
+    getIndexedFilter() {
+        return this.indexedFilter_;
+    }
+    getIndex() {
+        return this.index_;
+    }
+    static getStartPost_(params) {
+        if (params.hasStart()) {
+            const startName = params.getIndexStartName();
+            return params.getIndex().makePost(params.getIndexStartValue(), startName);
+        }
+        else {
+            return params.getIndex().minPost();
+        }
+    }
+    static getEndPost_(params) {
+        if (params.hasEnd()) {
+            const endName = params.getIndexEndName();
+            return params.getIndex().makePost(params.getIndexEndValue(), endName);
+        }
+        else {
+            return params.getIndex().maxPost();
+        }
+    }
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Applies a limit and a range to a node and uses RangedFilter to do the heavy lifting where possible
+ */
+class LimitedFilter {
+    constructor(params) {
+        this.rangedFilter_ = new RangedFilter(params);
+        this.index_ = params.getIndex();
+        this.limit_ = params.getLimit();
+        this.reverse_ = !params.isViewFromLeft();
+    }
+    updateChild(snap, key, newChild, affectedPath, source, optChangeAccumulator) {
+        if (!this.rangedFilter_.matches(new NamedNode(key, newChild))) {
+            newChild = ChildrenNode.EMPTY_NODE;
+        }
+        if (snap.getImmediateChild(key).equals(newChild)) {
+            // No change
+            return snap;
+        }
+        else if (snap.numChildren() < this.limit_) {
+            return this.rangedFilter_
+                .getIndexedFilter()
+                .updateChild(snap, key, newChild, affectedPath, source, optChangeAccumulator);
+        }
+        else {
+            return this.fullLimitUpdateChild_(snap, key, newChild, source, optChangeAccumulator);
+        }
+    }
+    updateFullNode(oldSnap, newSnap, optChangeAccumulator) {
+        let filtered;
+        if (newSnap.isLeafNode() || newSnap.isEmpty()) {
+            // Make sure we have a children node with the correct index, not a leaf node;
+            filtered = ChildrenNode.EMPTY_NODE.withIndex(this.index_);
+        }
+        else {
+            if (this.limit_ * 2 < newSnap.numChildren() &&
+                newSnap.isIndexed(this.index_)) {
+                // Easier to build up a snapshot, since what we're given has more than twice the elements we want
+                filtered = ChildrenNode.EMPTY_NODE.withIndex(this.index_);
+                // anchor to the startPost, endPost, or last element as appropriate
+                let iterator;
+                if (this.reverse_) {
+                    iterator = newSnap.getReverseIteratorFrom(this.rangedFilter_.getEndPost(), this.index_);
+                }
+                else {
+                    iterator = newSnap.getIteratorFrom(this.rangedFilter_.getStartPost(), this.index_);
+                }
+                let count = 0;
+                while (iterator.hasNext() && count < this.limit_) {
+                    const next = iterator.getNext();
+                    let inRange;
+                    if (this.reverse_) {
+                        inRange =
+                            this.index_.compare(this.rangedFilter_.getStartPost(), next) <= 0;
+                    }
+                    else {
+                        inRange =
+                            this.index_.compare(next, this.rangedFilter_.getEndPost()) <= 0;
+                    }
+                    if (inRange) {
+                        filtered = filtered.updateImmediateChild(next.name, next.node);
+                        count++;
+                    }
+                    else {
+                        // if we have reached the end post, we cannot keep adding elemments
+                        break;
+                    }
+                }
+            }
+            else {
+                // The snap contains less than twice the limit. Faster to delete from the snap than build up a new one
+                filtered = newSnap.withIndex(this.index_);
+                // Don't support priorities on queries
+                filtered = filtered.updatePriority(ChildrenNode.EMPTY_NODE);
+                let startPost;
+                let endPost;
+                let cmp;
+                let iterator;
+                if (this.reverse_) {
+                    iterator = filtered.getReverseIterator(this.index_);
+                    startPost = this.rangedFilter_.getEndPost();
+                    endPost = this.rangedFilter_.getStartPost();
+                    const indexCompare = this.index_.getCompare();
+                    cmp = (a, b) => indexCompare(b, a);
+                }
+                else {
+                    iterator = filtered.getIterator(this.index_);
+                    startPost = this.rangedFilter_.getStartPost();
+                    endPost = this.rangedFilter_.getEndPost();
+                    cmp = this.index_.getCompare();
+                }
+                let count = 0;
+                let foundStartPost = false;
+                while (iterator.hasNext()) {
+                    const next = iterator.getNext();
+                    if (!foundStartPost && cmp(startPost, next) <= 0) {
+                        // start adding
+                        foundStartPost = true;
+                    }
+                    const inRange = foundStartPost && count < this.limit_ && cmp(next, endPost) <= 0;
+                    if (inRange) {
+                        count++;
+                    }
+                    else {
+                        filtered = filtered.updateImmediateChild(next.name, ChildrenNode.EMPTY_NODE);
+                    }
+                }
+            }
+        }
+        return this.rangedFilter_
+            .getIndexedFilter()
+            .updateFullNode(oldSnap, filtered, optChangeAccumulator);
+    }
+    updatePriority(oldSnap, newPriority) {
+        // Don't support priorities on queries
+        return oldSnap;
+    }
+    filtersNodes() {
+        return true;
+    }
+    getIndexedFilter() {
+        return this.rangedFilter_.getIndexedFilter();
+    }
+    getIndex() {
+        return this.index_;
+    }
+    fullLimitUpdateChild_(snap, childKey, childSnap, source, changeAccumulator) {
+        // TODO: rename all cache stuff etc to general snap terminology
+        let cmp;
+        if (this.reverse_) {
+            const indexCmp = this.index_.getCompare();
+            cmp = (a, b) => indexCmp(b, a);
+        }
+        else {
+            cmp = this.index_.getCompare();
+        }
+        const oldEventCache = snap;
+        assert(oldEventCache.numChildren() === this.limit_, '');
+        const newChildNamedNode = new NamedNode(childKey, childSnap);
+        const windowBoundary = this.reverse_
+            ? oldEventCache.getFirstChild(this.index_)
+            : oldEventCache.getLastChild(this.index_);
+        const inRange = this.rangedFilter_.matches(newChildNamedNode);
+        if (oldEventCache.hasChild(childKey)) {
+            const oldChildSnap = oldEventCache.getImmediateChild(childKey);
+            let nextChild = source.getChildAfterChild(this.index_, windowBoundary, this.reverse_);
+            while (nextChild != null &&
+                (nextChild.name === childKey || oldEventCache.hasChild(nextChild.name))) {
+                // There is a weird edge case where a node is updated as part of a merge in the write tree, but hasn't
+                // been applied to the limited filter yet. Ignore this next child which will be updated later in
+                // the limited filter...
+                nextChild = source.getChildAfterChild(this.index_, nextChild, this.reverse_);
+            }
+            const compareNext = nextChild == null ? 1 : cmp(nextChild, newChildNamedNode);
+            const remainsInWindow = inRange && !childSnap.isEmpty() && compareNext >= 0;
+            if (remainsInWindow) {
+                if (changeAccumulator != null) {
+                    changeAccumulator.trackChildChange(changeChildChanged(childKey, childSnap, oldChildSnap));
+                }
+                return oldEventCache.updateImmediateChild(childKey, childSnap);
+            }
+            else {
+                if (changeAccumulator != null) {
+                    changeAccumulator.trackChildChange(changeChildRemoved(childKey, oldChildSnap));
+                }
+                const newEventCache = oldEventCache.updateImmediateChild(childKey, ChildrenNode.EMPTY_NODE);
+                const nextChildInRange = nextChild != null && this.rangedFilter_.matches(nextChild);
+                if (nextChildInRange) {
+                    if (changeAccumulator != null) {
+                        changeAccumulator.trackChildChange(changeChildAdded(nextChild.name, nextChild.node));
+                    }
+                    return newEventCache.updateImmediateChild(nextChild.name, nextChild.node);
+                }
+                else {
+                    return newEventCache;
+                }
+            }
+        }
+        else if (childSnap.isEmpty()) {
+            // we're deleting a node, but it was not in the window, so ignore it
+            return snap;
+        }
+        else if (inRange) {
+            if (cmp(windowBoundary, newChildNamedNode) >= 0) {
+                if (changeAccumulator != null) {
+                    changeAccumulator.trackChildChange(changeChildRemoved(windowBoundary.name, windowBoundary.node));
+                    changeAccumulator.trackChildChange(changeChildAdded(childKey, childSnap));
+                }
+                return oldEventCache
+                    .updateImmediateChild(childKey, childSnap)
+                    .updateImmediateChild(windowBoundary.name, ChildrenNode.EMPTY_NODE);
+            }
+            else {
+                return snap;
+            }
+        }
+        else {
+            return snap;
+        }
+    }
 }
 
 /**
@@ -8876,6 +11213,112 @@ class QueryParams {
         copy.viewFrom_ = this.viewFrom_;
         return copy;
     }
+}
+function queryParamsGetNodeFilter(queryParams) {
+    if (queryParams.loadsAllData()) {
+        return new IndexedFilter(queryParams.getIndex());
+    }
+    else if (queryParams.hasLimit()) {
+        return new LimitedFilter(queryParams);
+    }
+    else {
+        return new RangedFilter(queryParams);
+    }
+}
+function queryParamsLimitToFirst(queryParams, newLimit) {
+    const newParams = queryParams.copy();
+    newParams.limitSet_ = true;
+    newParams.limit_ = newLimit;
+    newParams.viewFrom_ = "l" /* VIEW_FROM_LEFT */;
+    return newParams;
+}
+function queryParamsLimitToLast(queryParams, newLimit) {
+    const newParams = queryParams.copy();
+    newParams.limitSet_ = true;
+    newParams.limit_ = newLimit;
+    newParams.viewFrom_ = "r" /* VIEW_FROM_RIGHT */;
+    return newParams;
+}
+function queryParamsStartAt(queryParams, indexValue, key) {
+    const newParams = queryParams.copy();
+    newParams.startSet_ = true;
+    if (indexValue === undefined) {
+        indexValue = null;
+    }
+    newParams.indexStartValue_ = indexValue;
+    if (key != null) {
+        newParams.startNameSet_ = true;
+        newParams.indexStartName_ = key;
+    }
+    else {
+        newParams.startNameSet_ = false;
+        newParams.indexStartName_ = '';
+    }
+    return newParams;
+}
+function queryParamsStartAfter(queryParams, indexValue, key) {
+    let params;
+    if (queryParams.index_ === KEY_INDEX) {
+        if (typeof indexValue === 'string') {
+            indexValue = successor(indexValue);
+        }
+        params = queryParamsStartAt(queryParams, indexValue, key);
+    }
+    else {
+        let childKey;
+        if (key == null) {
+            childKey = MAX_NAME;
+        }
+        else {
+            childKey = successor(key);
+        }
+        params = queryParamsStartAt(queryParams, indexValue, childKey);
+    }
+    params.startAfterSet_ = true;
+    return params;
+}
+function queryParamsEndAt(queryParams, indexValue, key) {
+    const newParams = queryParams.copy();
+    newParams.endSet_ = true;
+    if (indexValue === undefined) {
+        indexValue = null;
+    }
+    newParams.indexEndValue_ = indexValue;
+    if (key !== undefined) {
+        newParams.endNameSet_ = true;
+        newParams.indexEndName_ = key;
+    }
+    else {
+        newParams.endNameSet_ = false;
+        newParams.indexEndName_ = '';
+    }
+    return newParams;
+}
+function queryParamsEndBefore(queryParams, indexValue, key) {
+    let childKey;
+    let params;
+    if (queryParams.index_ === KEY_INDEX) {
+        if (typeof indexValue === 'string') {
+            indexValue = predecessor(indexValue);
+        }
+        params = queryParamsEndAt(queryParams, indexValue, key);
+    }
+    else {
+        if (key == null) {
+            childKey = MIN_NAME;
+        }
+        else {
+            childKey = predecessor(key);
+        }
+        params = queryParamsEndAt(queryParams, indexValue, childKey);
+    }
+    params.endBeforeSet_ = true;
+    return params;
+}
+function queryParamsOrderBy(queryParams, index) {
+    const newParams = queryParams.copy();
+    newParams.index_ = index;
+    return newParams;
 }
 /**
  * Returns a set of REST query string parameters representing this query.
@@ -9112,7 +11555,7 @@ class ReadonlyRestClient extends ServerActions {
                             res = jsonEval(xhr.responseText);
                         }
                         catch (e) {
-                            warn('Failed to parse JSON response for ' +
+                            warn$1('Failed to parse JSON response for ' +
                                 url +
                                 ': ' +
                                 xhr.responseText);
@@ -9122,7 +11565,7 @@ class ReadonlyRestClient extends ServerActions {
                     else {
                         // 401 and 404 are expected.
                         if (xhr.status !== 401 && xhr.status !== 404) {
-                            warn('Got unsuccessful REST response for ' +
+                            warn$1('Got unsuccessful REST response for ' +
                                 url +
                                 ' Status: ' +
                                 xhr.status);
@@ -9214,6 +11657,49 @@ function sparseSnapshotTreeRemember(sparseSnapshotTree, path, data) {
         const child = sparseSnapshotTree.children.get(childKey);
         path = pathPopFront(path);
         sparseSnapshotTreeRemember(child, path, data);
+    }
+}
+/**
+ * Purge the data at path from the cache.
+ *
+ * @param path - Path to look up snapshot for.
+ * @returns True if this node should now be removed.
+ */
+function sparseSnapshotTreeForget(sparseSnapshotTree, path) {
+    if (pathIsEmpty(path)) {
+        sparseSnapshotTree.value = null;
+        sparseSnapshotTree.children.clear();
+        return true;
+    }
+    else {
+        if (sparseSnapshotTree.value !== null) {
+            if (sparseSnapshotTree.value.isLeafNode()) {
+                // We're trying to forget a node that doesn't exist
+                return false;
+            }
+            else {
+                const value = sparseSnapshotTree.value;
+                sparseSnapshotTree.value = null;
+                value.forEachChild(PRIORITY_INDEX, (key, tree) => {
+                    sparseSnapshotTreeRemember(sparseSnapshotTree, new Path(key), tree);
+                });
+                return sparseSnapshotTreeForget(sparseSnapshotTree, path);
+            }
+        }
+        else if (sparseSnapshotTree.children.size > 0) {
+            const childKey = pathGetFront(path);
+            path = pathPopFront(path);
+            if (sparseSnapshotTree.children.has(childKey)) {
+                const safeToRemove = sparseSnapshotTreeForget(sparseSnapshotTree.children.get(childKey), path);
+                if (safeToRemove) {
+                    sparseSnapshotTree.children.delete(childKey);
+                }
+            }
+            return sparseSnapshotTree.children.size === 0;
+        }
+        else {
+            return true;
+        }
     }
 }
 /**
@@ -9452,6 +11938,39 @@ class AckUserWrite {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+class ListenComplete {
+    constructor(source, path) {
+        this.source = source;
+        this.path = path;
+        /** @inheritDoc */
+        this.type = OperationType.LISTEN_COMPLETE;
+    }
+    operationForChild(childName) {
+        if (pathIsEmpty(this.path)) {
+            return new ListenComplete(this.source, newEmptyPath());
+        }
+        else {
+            return new ListenComplete(this.source, pathPopFront(this.path));
+        }
+    }
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 class Overwrite {
     constructor(source, path, snap) {
         this.source = source;
@@ -9581,6 +12100,35 @@ class CacheNode {
     }
     getNode() {
         return this.node_;
+    }
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * An EventGenerator is used to convert "raw" changes (Change) as computed by the
+ * CacheDiffer into actual events (Event) that can be raised.  See generateEventsForChanges()
+ * for details.
+ *
+ */
+class EventGenerator {
+    constructor(query_) {
+        this.query_ = query_;
+        this.index_ = this.query_._queryParams.getIndex();
     }
 }
 /**
@@ -10213,6 +12761,20 @@ function writeTreeAddOverwrite(writeTree, path, snap, writeId, visible) {
     }
     writeTree.lastWriteId = writeId;
 }
+/**
+ * Record a new merge from user code.
+ */
+function writeTreeAddMerge(writeTree, path, changedChildren, writeId) {
+    assert(writeId > writeTree.lastWriteId, 'Stacking an older merge on top of newer ones');
+    writeTree.allWrites.push({
+        path,
+        children: changedChildren,
+        writeId,
+        visible: true
+    });
+    writeTree.visibleWrites = compoundWriteAddWrites(writeTree.visibleWrites, path, changedChildren);
+    writeTree.lastWriteId = writeId;
+}
 function writeTreeGetWrite(writeTree, writeId) {
     for (let i = 0; i < writeTree.allWrites.length; i++) {
         const record = writeTree.allWrites[i];
@@ -10782,6 +13344,26 @@ class WriteTreeCompleteChildSource {
         }
     }
 }
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+function newViewProcessor(filter) {
+    return { filter };
+}
 function viewProcessorAssertIndexed(viewProcessor, viewCache) {
     assert(viewCache.eventCache.getNode().isIndexed(viewProcessor.filter.getIndex()), 'Event snap not indexed');
     assert(viewCache.serverCache.getNode().isIndexed(viewProcessor.filter.getIndex()), 'Server snap not indexed');
@@ -11188,6 +13770,60 @@ function viewProcessorRevertUserWrite(viewProcessor, viewCache, path, writesCach
         return viewCacheUpdateEventSnap(viewCache, newEventCache, complete, viewProcessor.filter.filtersNodes());
     }
 }
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * A view represents a specific location and query that has 1 or more event registrations.
+ *
+ * It does several things:
+ *  - Maintains the list of event registrations for this location/query.
+ *  - Maintains a cache of the data visible for this location/query.
+ *  - Applies new operations (via applyOperation), updates the cache, and based on the event
+ *    registrations returns the set of events to be raised.
+ */
+class View {
+    constructor(query_, initialViewCache) {
+        this.query_ = query_;
+        this.eventRegistrations_ = [];
+        const params = this.query_._queryParams;
+        const indexFilter = new IndexedFilter(params.getIndex());
+        const filter = queryParamsGetNodeFilter(params);
+        this.processor_ = newViewProcessor(filter);
+        const initialServerCache = initialViewCache.serverCache;
+        const initialEventCache = initialViewCache.eventCache;
+        // Don't filter server node with other filter than index, wait for tagged listen
+        const serverSnap = indexFilter.updateFullNode(ChildrenNode.EMPTY_NODE, initialServerCache.getNode(), null);
+        const eventSnap = filter.updateFullNode(ChildrenNode.EMPTY_NODE, initialEventCache.getNode(), null);
+        const newServerCache = new CacheNode(serverSnap, initialServerCache.isFullyInitialized(), indexFilter.filtersNodes());
+        const newEventCache = new CacheNode(eventSnap, initialEventCache.isFullyInitialized(), filter.filtersNodes());
+        this.viewCache_ = newViewCache(newEventCache, newServerCache);
+        this.eventGenerator_ = new EventGenerator(this.query_);
+    }
+    get query() {
+        return this.query_;
+    }
+}
+function viewGetServerCache(view) {
+    return view.viewCache_.serverCache.getNode();
+}
+function viewGetCompleteNode(view) {
+    return viewCacheGetCompleteEventSnap(view.viewCache_);
+}
 function viewGetCompleteServerCache(view, path) {
     const cache = viewCacheGetCompleteServerSnap(view.viewCache_);
     if (cache) {
@@ -11200,6 +13836,49 @@ function viewGetCompleteServerCache(view, path) {
         }
     }
     return null;
+}
+function viewIsEmpty(view) {
+    return view.eventRegistrations_.length === 0;
+}
+function viewAddEventRegistration(view, eventRegistration) {
+    view.eventRegistrations_.push(eventRegistration);
+}
+/**
+ * @param eventRegistration - If null, remove all callbacks.
+ * @param cancelError - If a cancelError is provided, appropriate cancel events will be returned.
+ * @returns Cancel events, if cancelError was provided.
+ */
+function viewRemoveEventRegistration(view, eventRegistration, cancelError) {
+    const cancelEvents = [];
+    if (cancelError) {
+        assert(eventRegistration == null, 'A cancel should cancel all event registrations.');
+        const path = view.query._path;
+        view.eventRegistrations_.forEach(registration => {
+            const maybeEvent = registration.createCancelEvent(cancelError, path);
+            if (maybeEvent) {
+                cancelEvents.push(maybeEvent);
+            }
+        });
+    }
+    if (eventRegistration) {
+        let remaining = [];
+        for (let i = 0; i < view.eventRegistrations_.length; ++i) {
+            const existing = view.eventRegistrations_[i];
+            if (!existing.matches(eventRegistration)) {
+                remaining.push(existing);
+            }
+            else if (eventRegistration.hasAnyCallback()) {
+                // We're removing just this one
+                remaining = remaining.concat(view.eventRegistrations_.slice(i + 1));
+                break;
+            }
+        }
+        view.eventRegistrations_ = remaining;
+    }
+    else {
+        view.eventRegistrations_ = [];
+    }
+    return cancelEvents;
 }
 /**
  * Applies the given Operation, updates our cache, and returns the appropriate events.
@@ -11217,6 +13896,20 @@ function viewApplyOperation(view, operation, writesCache, completeServerCache) {
         !oldViewCache.serverCache.isFullyInitialized(), 'Once a server snap is complete, it should never go back');
     view.viewCache_ = result.viewCache;
     return viewGenerateEventsForChanges_(view, result.changes, result.viewCache.eventCache.getNode(), null);
+}
+function viewGetInitialEvents(view, registration) {
+    const eventSnap = view.viewCache_.eventCache;
+    const initialChanges = [];
+    if (!eventSnap.getNode().isLeafNode()) {
+        const eventNode = eventSnap.getNode();
+        eventNode.forEachChild(PRIORITY_INDEX, (key, childNode) => {
+            initialChanges.push(changeChildAdded(key, childNode));
+        });
+    }
+    if (eventSnap.isFullyInitialized()) {
+        initialChanges.push(changeValue(eventSnap.getNode()));
+    }
+    return viewGenerateEventsForChanges_(view, initialChanges, eventSnap.getNode(), registration);
 }
 function viewGenerateEventsForChanges_(view, changes, eventCache, eventRegistration) {
     const registrations = eventRegistration
@@ -11242,9 +13935,37 @@ function viewGenerateEventsForChanges_(view, changes, eventCache, eventRegistrat
  * limitations under the License.
  */
 let referenceConstructor$1;
+/**
+ * SyncPoint represents a single location in a SyncTree with 1 or more event registrations, meaning we need to
+ * maintain 1 or more Views at this location to cache server data and raise appropriate events for server changes
+ * and user writes (set, transaction, update).
+ *
+ * It's responsible for:
+ *  - Maintaining the set of 1 or more views necessary at this location (a SyncPoint with 0 views should be removed).
+ *  - Proxying user / server operations to the views as appropriate (i.e. applyServerOverwrite,
+ *    applyUserOverwrite, etc.)
+ */
+class SyncPoint {
+    constructor() {
+        /**
+         * The Views being tracked at this location in the tree, stored as a map where the key is a
+         * queryId and the value is the View for that query.
+         *
+         * NOTE: This list will be quite small (usually 1, but perhaps 2 or 3; any more is an odd use case).
+         */
+        this.views = new Map();
+    }
+}
 function syncPointSetReferenceConstructor(val) {
     assert(!referenceConstructor$1, '__referenceConstructor has already been defined');
     referenceConstructor$1 = val;
+}
+function syncPointGetReferenceConstructor() {
+    assert(referenceConstructor$1, 'Reference.ts has not been loaded');
+    return referenceConstructor$1;
+}
+function syncPointIsEmpty(syncPoint) {
+    return syncPoint.views.size === 0;
 }
 function syncPointApplyOperation(syncPoint, operation, writesCache, optCompleteServerCache) {
     const queryId = operation.source.queryId;
@@ -11262,6 +13983,114 @@ function syncPointApplyOperation(syncPoint, operation, writesCache, optCompleteS
     }
 }
 /**
+ * Get a view for the specified query.
+ *
+ * @param query - The query to return a view for
+ * @param writesCache
+ * @param serverCache
+ * @param serverCacheComplete
+ * @returns Events to raise.
+ */
+function syncPointGetView(syncPoint, query, writesCache, serverCache, serverCacheComplete) {
+    const queryId = query._queryIdentifier;
+    const view = syncPoint.views.get(queryId);
+    if (!view) {
+        // TODO: make writesCache take flag for complete server node
+        let eventCache = writeTreeRefCalcCompleteEventCache(writesCache, serverCacheComplete ? serverCache : null);
+        let eventCacheComplete = false;
+        if (eventCache) {
+            eventCacheComplete = true;
+        }
+        else if (serverCache instanceof ChildrenNode) {
+            eventCache = writeTreeRefCalcCompleteEventChildren(writesCache, serverCache);
+            eventCacheComplete = false;
+        }
+        else {
+            eventCache = ChildrenNode.EMPTY_NODE;
+            eventCacheComplete = false;
+        }
+        const viewCache = newViewCache(new CacheNode(eventCache, eventCacheComplete, false), new CacheNode(serverCache, serverCacheComplete, false));
+        return new View(query, viewCache);
+    }
+    return view;
+}
+/**
+ * Add an event callback for the specified query.
+ *
+ * @param query
+ * @param eventRegistration
+ * @param writesCache
+ * @param serverCache - Complete server cache, if we have it.
+ * @param serverCacheComplete
+ * @returns Events to raise.
+ */
+function syncPointAddEventRegistration(syncPoint, query, eventRegistration, writesCache, serverCache, serverCacheComplete) {
+    const view = syncPointGetView(syncPoint, query, writesCache, serverCache, serverCacheComplete);
+    if (!syncPoint.views.has(query._queryIdentifier)) {
+        syncPoint.views.set(query._queryIdentifier, view);
+    }
+    // This is guaranteed to exist now, we just created anything that was missing
+    viewAddEventRegistration(view, eventRegistration);
+    return viewGetInitialEvents(view, eventRegistration);
+}
+/**
+ * Remove event callback(s).  Return cancelEvents if a cancelError is specified.
+ *
+ * If query is the default query, we'll check all views for the specified eventRegistration.
+ * If eventRegistration is null, we'll remove all callbacks for the specified view(s).
+ *
+ * @param eventRegistration - If null, remove all callbacks.
+ * @param cancelError - If a cancelError is provided, appropriate cancel events will be returned.
+ * @returns removed queries and any cancel events
+ */
+function syncPointRemoveEventRegistration(syncPoint, query, eventRegistration, cancelError) {
+    const queryId = query._queryIdentifier;
+    const removed = [];
+    let cancelEvents = [];
+    const hadCompleteView = syncPointHasCompleteView(syncPoint);
+    if (queryId === 'default') {
+        // When you do ref.off(...), we search all views for the registration to remove.
+        for (const [viewQueryId, view] of syncPoint.views.entries()) {
+            cancelEvents = cancelEvents.concat(viewRemoveEventRegistration(view, eventRegistration, cancelError));
+            if (viewIsEmpty(view)) {
+                syncPoint.views.delete(viewQueryId);
+                // We'll deal with complete views later.
+                if (!view.query._queryParams.loadsAllData()) {
+                    removed.push(view.query);
+                }
+            }
+        }
+    }
+    else {
+        // remove the callback from the specific view.
+        const view = syncPoint.views.get(queryId);
+        if (view) {
+            cancelEvents = cancelEvents.concat(viewRemoveEventRegistration(view, eventRegistration, cancelError));
+            if (viewIsEmpty(view)) {
+                syncPoint.views.delete(queryId);
+                // We'll deal with complete views later.
+                if (!view.query._queryParams.loadsAllData()) {
+                    removed.push(view.query);
+                }
+            }
+        }
+    }
+    if (hadCompleteView && !syncPointHasCompleteView(syncPoint)) {
+        // We removed our last complete view.
+        removed.push(new (syncPointGetReferenceConstructor())(query._repo, query._path));
+    }
+    return { removed, events: cancelEvents };
+}
+function syncPointGetQueryViews(syncPoint) {
+    const result = [];
+    for (const view of syncPoint.views.values()) {
+        if (!view.query._queryParams.loadsAllData()) {
+            result.push(view);
+        }
+    }
+    return result;
+}
+/**
  * @param path - The path to the desired complete snapshot
  * @returns A complete cache, if it exists
  */
@@ -11271,6 +14100,30 @@ function syncPointGetCompleteServerCache(syncPoint, path) {
         serverCache = serverCache || viewGetCompleteServerCache(view, path);
     }
     return serverCache;
+}
+function syncPointViewForQuery(syncPoint, query) {
+    const params = query._queryParams;
+    if (params.loadsAllData()) {
+        return syncPointGetCompleteView(syncPoint);
+    }
+    else {
+        const queryId = query._queryIdentifier;
+        return syncPoint.views.get(queryId);
+    }
+}
+function syncPointViewExistsForQuery(syncPoint, query) {
+    return syncPointViewForQuery(syncPoint, query) != null;
+}
+function syncPointHasCompleteView(syncPoint) {
+    return syncPointGetCompleteView(syncPoint) != null;
+}
+function syncPointGetCompleteView(syncPoint) {
+    for (const view of syncPoint.views.values()) {
+        if (view.query._queryParams.loadsAllData()) {
+            return view;
+        }
+    }
+    return null;
 }
 
 /**
@@ -11294,6 +14147,14 @@ function syncTreeSetReferenceConstructor(val) {
     assert(!referenceConstructor, '__referenceConstructor has already been defined');
     referenceConstructor = val;
 }
+function syncTreeGetReferenceConstructor() {
+    assert(referenceConstructor, 'Reference.ts has not been loaded');
+    return referenceConstructor;
+}
+/**
+ * Static tracker for next query tag.
+ */
+let syncTreeNextQueryTag_ = 1;
 /**
  * SyncTree is the central class for managing event callback registration, data caching, views
  * (query processing), and event generation.  There are typically two SyncTree instances for
@@ -11350,6 +14211,17 @@ function syncTreeApplyUserOverwrite(syncTree, path, newData, writeId, visible) {
     }
 }
 /**
+ * Apply the data from a user-generated update() call
+ *
+ * @returns Events to raise.
+ */
+function syncTreeApplyUserMerge(syncTree, path, changedChildren, writeId) {
+    // Record pending merge.
+    writeTreeAddMerge(syncTree.pendingWriteTree_, path, changedChildren, writeId);
+    const changeTree = ImmutableTree.fromObject(changedChildren);
+    return syncTreeApplyOperationToSyncPoints_(syncTree, new Merge(newOperationSourceUser(), path, changeTree));
+}
+/**
  * Acknowledge a pending user write that was previously registered with applyUserOverwrite() or applyUserMerge().
  *
  * @param revert - True if the given write failed and needs to be reverted
@@ -11393,6 +14265,109 @@ function syncTreeApplyServerMerge(syncTree, path, changedChildren) {
     return syncTreeApplyOperationToSyncPoints_(syncTree, new Merge(newOperationSourceServer(), path, changeTree));
 }
 /**
+ * Apply a listen complete for a query
+ *
+ * @returns Events to raise.
+ */
+function syncTreeApplyListenComplete(syncTree, path) {
+    return syncTreeApplyOperationToSyncPoints_(syncTree, new ListenComplete(newOperationSourceServer(), path));
+}
+/**
+ * Apply a listen complete for a tagged query
+ *
+ * @returns Events to raise.
+ */
+function syncTreeApplyTaggedListenComplete(syncTree, path, tag) {
+    const queryKey = syncTreeQueryKeyForTag_(syncTree, tag);
+    if (queryKey) {
+        const r = syncTreeParseQueryKey_(queryKey);
+        const queryPath = r.path, queryId = r.queryId;
+        const relativePath = newRelativePath(queryPath, path);
+        const op = new ListenComplete(newOperationSourceServerTaggedQuery(queryId), relativePath);
+        return syncTreeApplyTaggedOperation_(syncTree, queryPath, op);
+    }
+    else {
+        // We've already removed the query. No big deal, ignore the update
+        return [];
+    }
+}
+/**
+ * Remove event callback(s).
+ *
+ * If query is the default query, we'll check all queries for the specified eventRegistration.
+ * If eventRegistration is null, we'll remove all callbacks for the specified query/queries.
+ *
+ * @param eventRegistration - If null, all callbacks are removed.
+ * @param cancelError - If a cancelError is provided, appropriate cancel events will be returned.
+ * @returns Cancel events, if cancelError was provided.
+ */
+function syncTreeRemoveEventRegistration(syncTree, query, eventRegistration, cancelError) {
+    // Find the syncPoint first. Then deal with whether or not it has matching listeners
+    const path = query._path;
+    const maybeSyncPoint = syncTree.syncPointTree_.get(path);
+    let cancelEvents = [];
+    // A removal on a default query affects all queries at that location. A removal on an indexed query, even one without
+    // other query constraints, does *not* affect all queries at that location. So this check must be for 'default', and
+    // not loadsAllData().
+    if (maybeSyncPoint &&
+        (query._queryIdentifier === 'default' ||
+            syncPointViewExistsForQuery(maybeSyncPoint, query))) {
+        const removedAndEvents = syncPointRemoveEventRegistration(maybeSyncPoint, query, eventRegistration, cancelError);
+        if (syncPointIsEmpty(maybeSyncPoint)) {
+            syncTree.syncPointTree_ = syncTree.syncPointTree_.remove(path);
+        }
+        const removed = removedAndEvents.removed;
+        cancelEvents = removedAndEvents.events;
+        // We may have just removed one of many listeners and can short-circuit this whole process
+        // We may also not have removed a default listener, in which case all of the descendant listeners should already be
+        // properly set up.
+        //
+        // Since indexed queries can shadow if they don't have other query constraints, check for loadsAllData(), instead of
+        // queryId === 'default'
+        const removingDefault = -1 !==
+            removed.findIndex(query => {
+                return query._queryParams.loadsAllData();
+            });
+        const covered = syncTree.syncPointTree_.findOnPath(path, (relativePath, parentSyncPoint) => syncPointHasCompleteView(parentSyncPoint));
+        if (removingDefault && !covered) {
+            const subtree = syncTree.syncPointTree_.subtree(path);
+            // There are potentially child listeners. Determine what if any listens we need to send before executing the
+            // removal
+            if (!subtree.isEmpty()) {
+                // We need to fold over our subtree and collect the listeners to send
+                const newViews = syncTreeCollectDistinctViewsForSubTree_(subtree);
+                // Ok, we've collected all the listens we need. Set them up.
+                for (let i = 0; i < newViews.length; ++i) {
+                    const view = newViews[i], newQuery = view.query;
+                    const listener = syncTreeCreateListenerForView_(syncTree, view);
+                    syncTree.listenProvider_.startListening(syncTreeQueryForListening_(newQuery), syncTreeTagForQuery_(syncTree, newQuery), listener.hashFn, listener.onComplete);
+                }
+            }
+        }
+        // If we removed anything and we're not covered by a higher up listen, we need to stop listening on this query
+        // The above block has us covered in terms of making sure we're set up on listens lower in the tree.
+        // Also, note that if we have a cancelError, it's already been removed at the provider level.
+        if (!covered && removed.length > 0 && !cancelError) {
+            // If we removed a default, then we weren't listening on any of the other queries here. Just cancel the one
+            // default. Otherwise, we need to iterate through and cancel each individual query
+            if (removingDefault) {
+                // We don't tag default listeners
+                const defaultTag = null;
+                syncTree.listenProvider_.stopListening(syncTreeQueryForListening_(query), defaultTag);
+            }
+            else {
+                removed.forEach((queryToRemove) => {
+                    const tagToRemove = syncTree.queryToTagMap.get(syncTreeMakeQueryKey_(queryToRemove));
+                    syncTree.listenProvider_.stopListening(syncTreeQueryForListening_(queryToRemove), tagToRemove);
+                });
+            }
+        }
+        // Now, clear all of the tags we're tracking for the removed listens
+        syncTreeRemoveTags_(syncTree, removed);
+    }
+    return cancelEvents;
+}
+/**
  * Apply new server data for the specified tagged query.
  *
  * @returns Events to raise.
@@ -11432,6 +14407,67 @@ function syncTreeApplyTaggedQueryMerge(syncTree, path, changedChildren, tag) {
     }
 }
 /**
+ * Add an event callback for the specified query.
+ *
+ * @returns Events to raise.
+ */
+function syncTreeAddEventRegistration(syncTree, query, eventRegistration) {
+    const path = query._path;
+    let serverCache = null;
+    let foundAncestorDefaultView = false;
+    // Any covering writes will necessarily be at the root, so really all we need to find is the server cache.
+    // Consider optimizing this once there's a better understanding of what actual behavior will be.
+    syncTree.syncPointTree_.foreachOnPath(path, (pathToSyncPoint, sp) => {
+        const relativePath = newRelativePath(pathToSyncPoint, path);
+        serverCache =
+            serverCache || syncPointGetCompleteServerCache(sp, relativePath);
+        foundAncestorDefaultView =
+            foundAncestorDefaultView || syncPointHasCompleteView(sp);
+    });
+    let syncPoint = syncTree.syncPointTree_.get(path);
+    if (!syncPoint) {
+        syncPoint = new SyncPoint();
+        syncTree.syncPointTree_ = syncTree.syncPointTree_.set(path, syncPoint);
+    }
+    else {
+        foundAncestorDefaultView =
+            foundAncestorDefaultView || syncPointHasCompleteView(syncPoint);
+        serverCache =
+            serverCache || syncPointGetCompleteServerCache(syncPoint, newEmptyPath());
+    }
+    let serverCacheComplete;
+    if (serverCache != null) {
+        serverCacheComplete = true;
+    }
+    else {
+        serverCacheComplete = false;
+        serverCache = ChildrenNode.EMPTY_NODE;
+        const subtree = syncTree.syncPointTree_.subtree(path);
+        subtree.foreachChild((childName, childSyncPoint) => {
+            const completeCache = syncPointGetCompleteServerCache(childSyncPoint, newEmptyPath());
+            if (completeCache) {
+                serverCache = serverCache.updateImmediateChild(childName, completeCache);
+            }
+        });
+    }
+    const viewAlreadyExists = syncPointViewExistsForQuery(syncPoint, query);
+    if (!viewAlreadyExists && !query._queryParams.loadsAllData()) {
+        // We need to track a tag for this query
+        const queryKey = syncTreeMakeQueryKey_(query);
+        assert(!syncTree.queryToTagMap.has(queryKey), 'View does not exist, but we have a tag');
+        const tag = syncTreeGetNextQueryTag_();
+        syncTree.queryToTagMap.set(queryKey, tag);
+        syncTree.tagToQueryMap.set(tag, queryKey);
+    }
+    const writesCache = writeTreeChildWrites(syncTree.pendingWriteTree_, path);
+    let events = syncPointAddEventRegistration(syncPoint, query, eventRegistration, writesCache, serverCache, serverCacheComplete);
+    if (!viewAlreadyExists && !foundAncestorDefaultView) {
+        const view = syncPointViewForQuery(syncPoint, query);
+        events = events.concat(syncTreeSetupListener_(syncTree, query, view));
+    }
+    return events;
+}
+/**
  * Returns a complete cache, if we have one, of the data at a particular path. If the location does not have a
  * listener above it, we will get a false "null". This shouldn't be a problem because transactions will always
  * have a listener above, and atomic operations would correctly show a jitter of <increment value> ->
@@ -11453,6 +14489,33 @@ function syncTreeCalcCompleteEventCache(syncTree, path, writeIdsToExclude) {
         }
     });
     return writeTreeCalcCompleteEventCache(writeTree, path, serverCache, writeIdsToExclude, includeHiddenSets);
+}
+function syncTreeGetServerValue(syncTree, query) {
+    const path = query._path;
+    let serverCache = null;
+    // Any covering writes will necessarily be at the root, so really all we need to find is the server cache.
+    // Consider optimizing this once there's a better understanding of what actual behavior will be.
+    syncTree.syncPointTree_.foreachOnPath(path, (pathToSyncPoint, sp) => {
+        const relativePath = newRelativePath(pathToSyncPoint, path);
+        serverCache =
+            serverCache || syncPointGetCompleteServerCache(sp, relativePath);
+    });
+    let syncPoint = syncTree.syncPointTree_.get(path);
+    if (!syncPoint) {
+        syncPoint = new SyncPoint();
+        syncTree.syncPointTree_ = syncTree.syncPointTree_.set(path, syncPoint);
+    }
+    else {
+        serverCache =
+            serverCache || syncPointGetCompleteServerCache(syncPoint, newEmptyPath());
+    }
+    const serverCacheComplete = serverCache != null;
+    const serverCacheNode = serverCacheComplete
+        ? new CacheNode(serverCache, true, false)
+        : null;
+    const writesCache = writeTreeChildWrites(syncTree.pendingWriteTree_, query._path);
+    const view = syncPointGetView(syncPoint, query, writesCache, serverCacheComplete ? serverCacheNode.getNode() : ChildrenNode.EMPTY_NODE, serverCacheComplete);
+    return viewGetCompleteNode(view);
 }
 /**
  * A helper method that visits all descendant and ancestor SyncPoints, applying the operation.
@@ -11526,6 +14589,46 @@ function syncTreeApplyOperationDescendantsHelper_(operation, syncPointTree, serv
     }
     return events;
 }
+function syncTreeCreateListenerForView_(syncTree, view) {
+    const query = view.query;
+    const tag = syncTreeTagForQuery_(syncTree, query);
+    return {
+        hashFn: () => {
+            const cache = viewGetServerCache(view) || ChildrenNode.EMPTY_NODE;
+            return cache.hash();
+        },
+        onComplete: (status) => {
+            if (status === 'ok') {
+                if (tag) {
+                    return syncTreeApplyTaggedListenComplete(syncTree, query._path, tag);
+                }
+                else {
+                    return syncTreeApplyListenComplete(syncTree, query._path);
+                }
+            }
+            else {
+                // If a listen failed, kill all of the listeners here, not just the one that triggered the error.
+                // Note that this may need to be scoped to just this listener if we change permissions on filtered children
+                const error = errorForServerCode(status, query);
+                return syncTreeRemoveEventRegistration(syncTree, query, 
+                /*eventRegistration*/ null, error);
+            }
+        }
+    };
+}
+/**
+ * Return the tag associated with the given query.
+ */
+function syncTreeTagForQuery_(syncTree, query) {
+    const queryKey = syncTreeMakeQueryKey_(query);
+    return syncTree.queryToTagMap.get(queryKey);
+}
+/**
+ * Given a query, computes a "queryKey" suitable for use in our queryToTagMap_.
+ */
+function syncTreeMakeQueryKey_(query) {
+    return query._path.toString() + '$' + query._queryIdentifier;
+}
 /**
  * Return the query associated with the given tag, if we have one
  */
@@ -11551,6 +14654,106 @@ function syncTreeApplyTaggedOperation_(syncTree, queryPath, operation) {
     assert(syncPoint, "Missing sync point for query tag that we're tracking");
     const writesCache = writeTreeChildWrites(syncTree.pendingWriteTree_, queryPath);
     return syncPointApplyOperation(syncPoint, operation, writesCache, null);
+}
+/**
+ * This collapses multiple unfiltered views into a single view, since we only need a single
+ * listener for them.
+ */
+function syncTreeCollectDistinctViewsForSubTree_(subtree) {
+    return subtree.fold((relativePath, maybeChildSyncPoint, childMap) => {
+        if (maybeChildSyncPoint && syncPointHasCompleteView(maybeChildSyncPoint)) {
+            const completeView = syncPointGetCompleteView(maybeChildSyncPoint);
+            return [completeView];
+        }
+        else {
+            // No complete view here, flatten any deeper listens into an array
+            let views = [];
+            if (maybeChildSyncPoint) {
+                views = syncPointGetQueryViews(maybeChildSyncPoint);
+            }
+            each(childMap, (_key, childViews) => {
+                views = views.concat(childViews);
+            });
+            return views;
+        }
+    });
+}
+/**
+ * Normalizes a query to a query we send the server for listening
+ *
+ * @returns The normalized query
+ */
+function syncTreeQueryForListening_(query) {
+    if (query._queryParams.loadsAllData() && !query._queryParams.isDefault()) {
+        // We treat queries that load all data as default queries
+        // Cast is necessary because ref() technically returns Firebase which is actually fb.api.Firebase which inherits
+        // from Query
+        return new (syncTreeGetReferenceConstructor())(query._repo, query._path);
+    }
+    else {
+        return query;
+    }
+}
+function syncTreeRemoveTags_(syncTree, queries) {
+    for (let j = 0; j < queries.length; ++j) {
+        const removedQuery = queries[j];
+        if (!removedQuery._queryParams.loadsAllData()) {
+            // We should have a tag for this
+            const removedQueryKey = syncTreeMakeQueryKey_(removedQuery);
+            const removedQueryTag = syncTree.queryToTagMap.get(removedQueryKey);
+            syncTree.queryToTagMap.delete(removedQueryKey);
+            syncTree.tagToQueryMap.delete(removedQueryTag);
+        }
+    }
+}
+/**
+ * Static accessor for query tags.
+ */
+function syncTreeGetNextQueryTag_() {
+    return syncTreeNextQueryTag_++;
+}
+/**
+ * For a given new listen, manage the de-duplication of outstanding subscriptions.
+ *
+ * @returns This method can return events to support synchronous data sources
+ */
+function syncTreeSetupListener_(syncTree, query, view) {
+    const path = query._path;
+    const tag = syncTreeTagForQuery_(syncTree, query);
+    const listener = syncTreeCreateListenerForView_(syncTree, view);
+    const events = syncTree.listenProvider_.startListening(syncTreeQueryForListening_(query), tag, listener.hashFn, listener.onComplete);
+    const subtree = syncTree.syncPointTree_.subtree(path);
+    // The root of this subtree has our query. We're here because we definitely need to send a listen for that, but we
+    // may need to shadow other listens as well.
+    if (tag) {
+        assert(!syncPointHasCompleteView(subtree.value), "If we're adding a query, it shouldn't be shadowed");
+    }
+    else {
+        // Shadow everything at or below this location, this is a default listener.
+        const queriesToStop = subtree.fold((relativePath, maybeChildSyncPoint, childMap) => {
+            if (!pathIsEmpty(relativePath) &&
+                maybeChildSyncPoint &&
+                syncPointHasCompleteView(maybeChildSyncPoint)) {
+                return [syncPointGetCompleteView(maybeChildSyncPoint).query];
+            }
+            else {
+                // No default listener here, flatten any deeper queries into an array
+                let queries = [];
+                if (maybeChildSyncPoint) {
+                    queries = queries.concat(syncPointGetQueryViews(maybeChildSyncPoint).map(view => view.query));
+                }
+                each(childMap, (_key, childQueries) => {
+                    queries = queries.concat(childQueries);
+                });
+                return queries;
+            }
+        });
+        for (let i = 0; i < queriesToStop.length; ++i) {
+            const queryToStop = queriesToStop[i];
+            syncTree.listenProvider_.stopListening(syncTreeQueryForListening_(queryToStop), syncTreeTagForQuery_(syncTree, queryToStop));
+        }
+    }
+    return events;
 }
 
 /**
@@ -11912,6 +15115,24 @@ const isValidRootPathString = function (pathString) {
     }
     return isValidPathString(pathString);
 };
+const isValidPriority = function (priority) {
+    return (priority === null ||
+        typeof priority === 'string' ||
+        (typeof priority === 'number' && !isInvalidJSONNumber(priority)) ||
+        (priority &&
+            typeof priority === 'object' &&
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            contains(priority, '.sv')));
+};
+/**
+ * Pre-validate a datum passed as an argument to Firebase function.
+ */
+const validateFirebaseDataArg = function (fnName, value, path, optional) {
+    if (optional && value === undefined) {
+        return;
+    }
+    validateFirebaseData(errorPrefix(fnName, 'value'), value, path);
+};
 /**
  * Validate a data object client-side before sending to server.
  */
@@ -11978,6 +15199,133 @@ const validateFirebaseData = function (errorPrefix, data, path_) {
                 validationPathToErrorString(path) +
                 ' in addition to actual children.');
         }
+    }
+};
+/**
+ * Pre-validate paths passed in the firebase function.
+ */
+const validateFirebaseMergePaths = function (errorPrefix, mergePaths) {
+    let i, curPath;
+    for (i = 0; i < mergePaths.length; i++) {
+        curPath = mergePaths[i];
+        const keys = pathSlice(curPath);
+        for (let j = 0; j < keys.length; j++) {
+            if (keys[j] === '.priority' && j === keys.length - 1) ;
+            else if (!isValidKey(keys[j])) {
+                throw new Error(errorPrefix +
+                    'contains an invalid key (' +
+                    keys[j] +
+                    ') in path ' +
+                    curPath.toString() +
+                    '. Keys must be non-empty strings ' +
+                    'and can\'t contain ".", "#", "$", "/", "[", or "]"');
+            }
+        }
+    }
+    // Check that update keys are not descendants of each other.
+    // We rely on the property that sorting guarantees that ancestors come
+    // right before descendants.
+    mergePaths.sort(pathCompare);
+    let prevPath = null;
+    for (i = 0; i < mergePaths.length; i++) {
+        curPath = mergePaths[i];
+        if (prevPath !== null && pathContains(prevPath, curPath)) {
+            throw new Error(errorPrefix +
+                'contains a path ' +
+                prevPath.toString() +
+                ' that is ancestor of another path ' +
+                curPath.toString());
+        }
+        prevPath = curPath;
+    }
+};
+/**
+ * pre-validate an object passed as an argument to firebase function (
+ * must be an object - e.g. for firebase.update()).
+ */
+const validateFirebaseMergeDataArg = function (fnName, data, path, optional) {
+    if (optional && data === undefined) {
+        return;
+    }
+    const errorPrefix$1 = errorPrefix(fnName, 'values');
+    if (!(data && typeof data === 'object') || Array.isArray(data)) {
+        throw new Error(errorPrefix$1 + ' must be an object containing the children to replace.');
+    }
+    const mergePaths = [];
+    each(data, (key, value) => {
+        const curPath = new Path(key);
+        validateFirebaseData(errorPrefix$1, value, pathChild(path, curPath));
+        if (pathGetBack(curPath) === '.priority') {
+            if (!isValidPriority(value)) {
+                throw new Error(errorPrefix$1 +
+                    "contains an invalid value for '" +
+                    curPath.toString() +
+                    "', which must be a valid " +
+                    'Firebase priority (a string, finite number, server value, or null).');
+            }
+        }
+        mergePaths.push(curPath);
+    });
+    validateFirebaseMergePaths(errorPrefix$1, mergePaths);
+};
+const validatePriority = function (fnName, priority, optional) {
+    if (optional && priority === undefined) {
+        return;
+    }
+    if (isInvalidJSONNumber(priority)) {
+        throw new Error(errorPrefix(fnName, 'priority') +
+            'is ' +
+            priority.toString() +
+            ', but must be a valid Firebase priority (a string, finite number, ' +
+            'server value, or null).');
+    }
+    // Special case to allow importing data with a .sv.
+    if (!isValidPriority(priority)) {
+        throw new Error(errorPrefix(fnName, 'priority') +
+            'must be a valid Firebase priority ' +
+            '(a string, finite number, server value, or null).');
+    }
+};
+const validateKey = function (fnName, argumentName, key, optional) {
+    if (optional && key === undefined) {
+        return;
+    }
+    if (!isValidKey(key)) {
+        throw new Error(errorPrefix(fnName, argumentName) +
+            'was an invalid key = "' +
+            key +
+            '".  Firebase keys must be non-empty strings and ' +
+            'can\'t contain ".", "#", "$", "/", "[", or "]").');
+    }
+};
+/**
+ * @internal
+ */
+const validatePathString = function (fnName, argumentName, pathString, optional) {
+    if (optional && pathString === undefined) {
+        return;
+    }
+    if (!isValidPathString(pathString)) {
+        throw new Error(errorPrefix(fnName, argumentName) +
+            'was an invalid path = "' +
+            pathString +
+            '". Paths must be non-empty strings and ' +
+            'can\'t contain ".", "#", "$", "[", or "]"');
+    }
+};
+const validateRootPathString = function (fnName, argumentName, pathString, optional) {
+    if (pathString) {
+        // Allow '/.info/' at the beginning.
+        pathString = pathString.replace(/^\/*\.info(\/|$)/, '/');
+    }
+    validatePathString(fnName, argumentName, pathString, optional);
+};
+/**
+ * @internal
+ */
+const validateWritablePath = function (fnName, path) {
+    if (pathGetFront(path) === '.info') {
+        throw new Error(fnName + " failed = Can't modify data under /.info/");
     }
 };
 const validateUrl = function (fnName, parsedUrl) {
@@ -12053,6 +15401,19 @@ function eventQueueQueueEvents(eventQueue, eventDataList) {
     if (currList) {
         eventQueue.eventLists_.push(currList);
     }
+}
+/**
+ * Queues the specified events and synchronously raises all events (including previously queued ones)
+ * for the specified path.
+ *
+ * It is assumed that the new events are all for the specified path.
+ *
+ * @param path - The path to raise events for.
+ * @param eventDataList - The new events to raise.
+ */
+function eventQueueRaiseEventsAtPath(eventQueue, path, eventDataList) {
+    eventQueueQueueEvents(eventQueue, eventDataList);
+    eventQueueRaiseQueuedEventsMatchingPredicate(eventQueue, eventPath => pathEquals(eventPath, path));
 }
 /**
  * Queues the specified events and synchronously raises all events (including previously queued ones) for
@@ -12307,6 +15668,102 @@ function repoGetNextWriteId(repo) {
     return repo.nextWriteId_++;
 }
 /**
+ * The purpose of `getValue` is to return the latest known value
+ * satisfying `query`.
+ *
+ * This method will first check for in-memory cached values
+ * belonging to active listeners. If they are found, such values
+ * are considered to be the most up-to-date.
+ *
+ * If the client is not connected, this method will try to
+ * establish a connection and request the value for `query`. If
+ * the client is not able to retrieve the query result, it reports
+ * an error.
+ *
+ * @param query - The query to surface a value for.
+ */
+function repoGetValue(repo, query) {
+    // Only active queries are cached. There is no persisted cache.
+    const cached = syncTreeGetServerValue(repo.serverSyncTree_, query);
+    if (cached != null) {
+        return Promise.resolve(cached);
+    }
+    return repo.server_.get(query).then(payload => {
+        const node = nodeFromJSON(payload).withIndex(query._queryParams.getIndex());
+        const events = syncTreeApplyServerOverwrite(repo.serverSyncTree_, query._path, node);
+        eventQueueRaiseEventsAtPath(repo.eventQueue_, query._path, events);
+        return Promise.resolve(node);
+    }, err => {
+        repoLog(repo, 'get for query ' + stringify(query) + ' failed: ' + err);
+        return Promise.reject(new Error(err));
+    });
+}
+function repoSetWithPriority(repo, path, newVal, newPriority, onComplete) {
+    repoLog(repo, 'set', {
+        path: path.toString(),
+        value: newVal,
+        priority: newPriority
+    });
+    // TODO: Optimize this behavior to either (a) store flag to skip resolving where possible and / or
+    // (b) store unresolved paths on JSON parse
+    const serverValues = repoGenerateServerValues(repo);
+    const newNodeUnresolved = nodeFromJSON(newVal, newPriority);
+    const existing = syncTreeCalcCompleteEventCache(repo.serverSyncTree_, path);
+    const newNode = resolveDeferredValueSnapshot(newNodeUnresolved, existing, serverValues);
+    const writeId = repoGetNextWriteId(repo);
+    const events = syncTreeApplyUserOverwrite(repo.serverSyncTree_, path, newNode, writeId, true);
+    eventQueueQueueEvents(repo.eventQueue_, events);
+    repo.server_.put(path.toString(), newNodeUnresolved.val(/*export=*/ true), (status, errorReason) => {
+        const success = status === 'ok';
+        if (!success) {
+            warn$1('set at ' + path + ' failed: ' + status);
+        }
+        const clearEvents = syncTreeAckUserWrite(repo.serverSyncTree_, writeId, !success);
+        eventQueueRaiseEventsForChangedPath(repo.eventQueue_, path, clearEvents);
+        repoCallOnCompleteCallback(repo, onComplete, status, errorReason);
+    });
+    const affectedPath = repoAbortTransactions(repo, path);
+    repoRerunTransactions(repo, affectedPath);
+    // We queued the events above, so just flush the queue here
+    eventQueueRaiseEventsForChangedPath(repo.eventQueue_, affectedPath, []);
+}
+function repoUpdate(repo, path, childrenToMerge, onComplete) {
+    repoLog(repo, 'update', { path: path.toString(), value: childrenToMerge });
+    // Start with our existing data and merge each child into it.
+    let empty = true;
+    const serverValues = repoGenerateServerValues(repo);
+    const changedChildren = {};
+    each(childrenToMerge, (changedKey, changedValue) => {
+        empty = false;
+        changedChildren[changedKey] = resolveDeferredValueTree(pathChild(path, changedKey), nodeFromJSON(changedValue), repo.serverSyncTree_, serverValues);
+    });
+    if (!empty) {
+        const writeId = repoGetNextWriteId(repo);
+        const events = syncTreeApplyUserMerge(repo.serverSyncTree_, path, changedChildren, writeId);
+        eventQueueQueueEvents(repo.eventQueue_, events);
+        repo.server_.merge(path.toString(), childrenToMerge, (status, errorReason) => {
+            const success = status === 'ok';
+            if (!success) {
+                warn$1('update at ' + path + ' failed: ' + status);
+            }
+            const clearEvents = syncTreeAckUserWrite(repo.serverSyncTree_, writeId, !success);
+            const affectedPath = clearEvents.length > 0 ? repoRerunTransactions(repo, path) : path;
+            eventQueueRaiseEventsForChangedPath(repo.eventQueue_, affectedPath, clearEvents);
+            repoCallOnCompleteCallback(repo, onComplete, status, errorReason);
+        });
+        each(childrenToMerge, (changedPath) => {
+            const affectedPath = repoAbortTransactions(repo, pathChild(path, changedPath));
+            repoRerunTransactions(repo, affectedPath);
+        });
+        // We queued the events above, so just flush the queue here
+        eventQueueRaiseEventsForChangedPath(repo.eventQueue_, path, []);
+    }
+    else {
+        log("update() called with empty data.  Don't do anything.");
+        repoCallOnCompleteCallback(repo, onComplete, 'ok', undefined);
+    }
+}
+/**
  * Applies all of the changes stored up in the onDisconnect_ tree.
  */
 function repoRunOnDisconnectEvents(repo) {
@@ -12326,9 +15783,78 @@ function repoRunOnDisconnectEvents(repo) {
     repo.onDisconnect_ = newSparseSnapshotTree();
     eventQueueRaiseEventsForChangedPath(repo.eventQueue_, newEmptyPath(), events);
 }
+function repoOnDisconnectCancel(repo, path, onComplete) {
+    repo.server_.onDisconnectCancel(path.toString(), (status, errorReason) => {
+        if (status === 'ok') {
+            sparseSnapshotTreeForget(repo.onDisconnect_, path);
+        }
+        repoCallOnCompleteCallback(repo, onComplete, status, errorReason);
+    });
+}
+function repoOnDisconnectSet(repo, path, value, onComplete) {
+    const newNode = nodeFromJSON(value);
+    repo.server_.onDisconnectPut(path.toString(), newNode.val(/*export=*/ true), (status, errorReason) => {
+        if (status === 'ok') {
+            sparseSnapshotTreeRemember(repo.onDisconnect_, path, newNode);
+        }
+        repoCallOnCompleteCallback(repo, onComplete, status, errorReason);
+    });
+}
+function repoOnDisconnectSetWithPriority(repo, path, value, priority, onComplete) {
+    const newNode = nodeFromJSON(value, priority);
+    repo.server_.onDisconnectPut(path.toString(), newNode.val(/*export=*/ true), (status, errorReason) => {
+        if (status === 'ok') {
+            sparseSnapshotTreeRemember(repo.onDisconnect_, path, newNode);
+        }
+        repoCallOnCompleteCallback(repo, onComplete, status, errorReason);
+    });
+}
+function repoOnDisconnectUpdate(repo, path, childrenToMerge, onComplete) {
+    if (isEmpty(childrenToMerge)) {
+        log("onDisconnect().update() called with empty data.  Don't do anything.");
+        repoCallOnCompleteCallback(repo, onComplete, 'ok', undefined);
+        return;
+    }
+    repo.server_.onDisconnectMerge(path.toString(), childrenToMerge, (status, errorReason) => {
+        if (status === 'ok') {
+            each(childrenToMerge, (childName, childNode) => {
+                const newChildNode = nodeFromJSON(childNode);
+                sparseSnapshotTreeRemember(repo.onDisconnect_, pathChild(path, childName), newChildNode);
+            });
+        }
+        repoCallOnCompleteCallback(repo, onComplete, status, errorReason);
+    });
+}
+function repoAddEventCallbackForQuery(repo, query, eventRegistration) {
+    let events;
+    if (pathGetFront(query._path) === '.info') {
+        events = syncTreeAddEventRegistration(repo.infoSyncTree_, query, eventRegistration);
+    }
+    else {
+        events = syncTreeAddEventRegistration(repo.serverSyncTree_, query, eventRegistration);
+    }
+    eventQueueRaiseEventsAtPath(repo.eventQueue_, query._path, events);
+}
+function repoRemoveEventCallbackForQuery(repo, query, eventRegistration) {
+    // These are guaranteed not to raise events, since we're not passing in a cancelError. However, we can future-proof
+    // a little bit by handling the return values anyways.
+    let events;
+    if (pathGetFront(query._path) === '.info') {
+        events = syncTreeRemoveEventRegistration(repo.infoSyncTree_, query, eventRegistration);
+    }
+    else {
+        events = syncTreeRemoveEventRegistration(repo.serverSyncTree_, query, eventRegistration);
+    }
+    eventQueueRaiseEventsAtPath(repo.eventQueue_, query._path, events);
+}
 function repoInterrupt(repo) {
     if (repo.persistentConnection_) {
         repo.persistentConnection_.interrupt(INTERRUPT_REASON);
+    }
+}
+function repoResume(repo) {
+    if (repo.persistentConnection_) {
+        repo.persistentConnection_.resume(INTERRUPT_REASON);
     }
 }
 function repoLog(repo, ...varArgs) {
@@ -12337,6 +15863,112 @@ function repoLog(repo, ...varArgs) {
         prefix = repo.persistentConnection_.id + ':';
     }
     log(prefix, ...varArgs);
+}
+function repoCallOnCompleteCallback(repo, callback, status, errorReason) {
+    if (callback) {
+        exceptionGuard(() => {
+            if (status === 'ok') {
+                callback(null);
+            }
+            else {
+                const code = (status || 'error').toUpperCase();
+                let message = code;
+                if (errorReason) {
+                    message += ': ' + errorReason;
+                }
+                const error = new Error(message);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                error.code = code;
+                callback(error);
+            }
+        });
+    }
+}
+/**
+ * Creates a new transaction, adds it to the transactions we're tracking, and
+ * sends it to the server if possible.
+ *
+ * @param path - Path at which to do transaction.
+ * @param transactionUpdate - Update callback.
+ * @param onComplete - Completion callback.
+ * @param unwatcher - Function that will be called when the transaction no longer
+ * need data updates for `path`.
+ * @param applyLocally - Whether or not to make intermediate results visible
+ */
+function repoStartTransaction(repo, path, transactionUpdate, onComplete, unwatcher, applyLocally) {
+    repoLog(repo, 'transaction on ' + path);
+    // Initialize transaction.
+    const transaction = {
+        path,
+        update: transactionUpdate,
+        onComplete,
+        // One of TransactionStatus enums.
+        status: null,
+        // Used when combining transactions at different locations to figure out
+        // which one goes first.
+        order: LUIDGenerator(),
+        // Whether to raise local events for this transaction.
+        applyLocally,
+        // Count of how many times we've retried the transaction.
+        retryCount: 0,
+        // Function to call to clean up our .on() listener.
+        unwatcher,
+        // Stores why a transaction was aborted.
+        abortReason: null,
+        currentWriteId: null,
+        currentInputSnapshot: null,
+        currentOutputSnapshotRaw: null,
+        currentOutputSnapshotResolved: null
+    };
+    // Run transaction initially.
+    const currentState = repoGetLatestState(repo, path, undefined);
+    transaction.currentInputSnapshot = currentState;
+    const newVal = transaction.update(currentState.val());
+    if (newVal === undefined) {
+        // Abort transaction.
+        transaction.unwatcher();
+        transaction.currentOutputSnapshotRaw = null;
+        transaction.currentOutputSnapshotResolved = null;
+        if (transaction.onComplete) {
+            transaction.onComplete(null, false, transaction.currentInputSnapshot);
+        }
+    }
+    else {
+        validateFirebaseData('transaction failed: Data returned ', newVal, transaction.path);
+        // Mark as run and add to our queue.
+        transaction.status = 0 /* RUN */;
+        const queueNode = treeSubTree(repo.transactionQueueTree_, path);
+        const nodeQueue = treeGetValue(queueNode) || [];
+        nodeQueue.push(transaction);
+        treeSetValue(queueNode, nodeQueue);
+        // Update visibleData and raise events
+        // Note: We intentionally raise events after updating all of our
+        // transaction state, since the user could start new transactions from the
+        // event callbacks.
+        let priorityForNode;
+        if (typeof newVal === 'object' &&
+            newVal !== null &&
+            contains(newVal, '.priority')) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            priorityForNode = safeGet(newVal, '.priority');
+            assert(isValidPriority(priorityForNode), 'Invalid priority returned by transaction. ' +
+                'Priority must be a valid string, finite number, server value, or null.');
+        }
+        else {
+            const currentNode = syncTreeCalcCompleteEventCache(repo.serverSyncTree_, path) ||
+                ChildrenNode.EMPTY_NODE;
+            priorityForNode = currentNode.getPriority().val();
+        }
+        const serverValues = repoGenerateServerValues(repo);
+        const newNodeUnresolved = nodeFromJSON(newVal, priorityForNode);
+        const newNode = resolveDeferredValueSnapshot(newNodeUnresolved, currentState, serverValues);
+        transaction.currentOutputSnapshotRaw = newNodeUnresolved;
+        transaction.currentOutputSnapshotResolved = newNode;
+        transaction.currentWriteId = repoGetNextWriteId(repo);
+        const events = syncTreeApplyUserOverwrite(repo.serverSyncTree_, path, newNode, transaction.currentWriteId, transaction.applyLocally);
+        eventQueueRaiseEventsForChangedPath(repo.eventQueue_, path, events);
+        repoSendReadyTransactions(repo, repo.transactionQueueTree_);
+    }
 }
 /**
  * @param excludeSets - A specific set to exclude
@@ -12445,7 +16077,7 @@ function repoSendTransactionQueue(repo, path, queue) {
                 }
             }
             else {
-                warn('transaction at ' + pathToSend.toString() + ' failed: ' + status);
+                warn$1('transaction at ' + pathToSend.toString() + ' failed: ' + status);
                 for (let i = 0; i < queue.length; i++) {
                     queue[i].status = 4 /* NEEDS_ABORT */;
                     queue[i].abortReason = status;
@@ -12760,7 +16392,7 @@ function decodeQuery(queryString) {
             results[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]);
         }
         else {
-            warn(`Invalid query segment '${segment}' in query '${queryString}'`);
+            warn$1(`Invalid query segment '${segment}' in query '${queryString}'`);
         }
     }
     return results;
@@ -12859,6 +16491,265 @@ const parseDatabaseURL = function (dataURL) {
 
 /**
  * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Encapsulates the data needed to raise an event
+ */
+class DataEvent {
+    /**
+     * @param eventType - One of: value, child_added, child_changed, child_moved, child_removed
+     * @param eventRegistration - The function to call to with the event data. User provided
+     * @param snapshot - The data backing the event
+     * @param prevName - Optional, the name of the previous child for child_* events.
+     */
+    constructor(eventType, eventRegistration, snapshot, prevName) {
+        this.eventType = eventType;
+        this.eventRegistration = eventRegistration;
+        this.snapshot = snapshot;
+        this.prevName = prevName;
+    }
+    getPath() {
+        const ref = this.snapshot.ref;
+        if (this.eventType === 'value') {
+            return ref._path;
+        }
+        else {
+            return ref.parent._path;
+        }
+    }
+    getEventType() {
+        return this.eventType;
+    }
+    getEventRunner() {
+        return this.eventRegistration.getEventRunner(this);
+    }
+    toString() {
+        return (this.getPath().toString() +
+            ':' +
+            this.eventType +
+            ':' +
+            stringify(this.snapshot.exportVal()));
+    }
+}
+class CancelEvent {
+    constructor(eventRegistration, error, path) {
+        this.eventRegistration = eventRegistration;
+        this.error = error;
+        this.path = path;
+    }
+    getPath() {
+        return this.path;
+    }
+    getEventType() {
+        return 'cancel';
+    }
+    getEventRunner() {
+        return this.eventRegistration.getEventRunner(this);
+    }
+    toString() {
+        return this.path.toString() + ':cancel';
+    }
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * A wrapper class that converts events from the database@exp SDK to the legacy
+ * Database SDK. Events are not converted directly as event registration relies
+ * on reference comparison of the original user callback (see `matches()`) and
+ * relies on equality of the legacy SDK's `context` object.
+ */
+class CallbackContext {
+    constructor(snapshotCallback, cancelCallback) {
+        this.snapshotCallback = snapshotCallback;
+        this.cancelCallback = cancelCallback;
+    }
+    onValue(expDataSnapshot, previousChildName) {
+        this.snapshotCallback.call(null, expDataSnapshot, previousChildName);
+    }
+    onCancel(error) {
+        assert(this.hasCancelCallback, 'Raising a cancel event on a listener with no cancel callback');
+        return this.cancelCallback.call(null, error);
+    }
+    get hasCancelCallback() {
+        return !!this.cancelCallback;
+    }
+    matches(other) {
+        return (this.snapshotCallback === other.snapshotCallback ||
+            (this.snapshotCallback.userCallback !== undefined &&
+                this.snapshotCallback.userCallback ===
+                    other.snapshotCallback.userCallback &&
+                this.snapshotCallback.context === other.snapshotCallback.context));
+    }
+}
+
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * The `onDisconnect` class allows you to write or clear data when your client
+ * disconnects from the Database server. These updates occur whether your
+ * client disconnects cleanly or not, so you can rely on them to clean up data
+ * even if a connection is dropped or a client crashes.
+ *
+ * The `onDisconnect` class is most commonly used to manage presence in
+ * applications where it is useful to detect how many clients are connected and
+ * when other clients disconnect. See
+ * {@link https://firebase.google.com/docs/database/web/offline-capabilities | Enabling Offline Capabilities in JavaScript}
+ * for more information.
+ *
+ * To avoid problems when a connection is dropped before the requests can be
+ * transferred to the Database server, these functions should be called before
+ * writing any data.
+ *
+ * Note that `onDisconnect` operations are only triggered once. If you want an
+ * operation to occur each time a disconnect occurs, you'll need to re-establish
+ * the `onDisconnect` operations each time you reconnect.
+ */
+class OnDisconnect$1 {
+    /** @hideconstructor */
+    constructor(_repo, _path) {
+        this._repo = _repo;
+        this._path = _path;
+    }
+    /**
+     * Cancels all previously queued `onDisconnect()` set or update events for this
+     * location and all children.
+     *
+     * If a write has been queued for this location via a `set()` or `update()` at a
+     * parent location, the write at this location will be canceled, though writes
+     * to sibling locations will still occur.
+     *
+     * @returns Resolves when synchronization to the server is complete.
+     */
+    cancel() {
+        const deferred = new Deferred();
+        repoOnDisconnectCancel(this._repo, this._path, deferred.wrapCallback(() => { }));
+        return deferred.promise;
+    }
+    /**
+     * Ensures the data at this location is deleted when the client is disconnected
+     * (due to closing the browser, navigating to a new page, or network issues).
+     *
+     * @returns Resolves when synchronization to the server is complete.
+     */
+    remove() {
+        validateWritablePath('OnDisconnect.remove', this._path);
+        const deferred = new Deferred();
+        repoOnDisconnectSet(this._repo, this._path, null, deferred.wrapCallback(() => { }));
+        return deferred.promise;
+    }
+    /**
+     * Ensures the data at this location is set to the specified value when the
+     * client is disconnected (due to closing the browser, navigating to a new page,
+     * or network issues).
+     *
+     * `set()` is especially useful for implementing "presence" systems, where a
+     * value should be changed or cleared when a user disconnects so that they
+     * appear "offline" to other users. See
+     * {@link https://firebase.google.com/docs/database/web/offline-capabilities | Enabling Offline Capabilities in JavaScript}
+     * for more information.
+     *
+     * Note that `onDisconnect` operations are only triggered once. If you want an
+     * operation to occur each time a disconnect occurs, you'll need to re-establish
+     * the `onDisconnect` operations each time.
+     *
+     * @param value - The value to be written to this location on disconnect (can
+     * be an object, array, string, number, boolean, or null).
+     * @returns Resolves when synchronization to the Database is complete.
+     */
+    set(value) {
+        validateWritablePath('OnDisconnect.set', this._path);
+        validateFirebaseDataArg('OnDisconnect.set', value, this._path, false);
+        const deferred = new Deferred();
+        repoOnDisconnectSet(this._repo, this._path, value, deferred.wrapCallback(() => { }));
+        return deferred.promise;
+    }
+    /**
+     * Ensures the data at this location is set to the specified value and priority
+     * when the client is disconnected (due to closing the browser, navigating to a
+     * new page, or network issues).
+     *
+     * @param value - The value to be written to this location on disconnect (can
+     * be an object, array, string, number, boolean, or null).
+     * @param priority - The priority to be written (string, number, or null).
+     * @returns Resolves when synchronization to the Database is complete.
+     */
+    setWithPriority(value, priority) {
+        validateWritablePath('OnDisconnect.setWithPriority', this._path);
+        validateFirebaseDataArg('OnDisconnect.setWithPriority', value, this._path, false);
+        validatePriority('OnDisconnect.setWithPriority', priority, false);
+        const deferred = new Deferred();
+        repoOnDisconnectSetWithPriority(this._repo, this._path, value, priority, deferred.wrapCallback(() => { }));
+        return deferred.promise;
+    }
+    /**
+     * Writes multiple values at this location when the client is disconnected (due
+     * to closing the browser, navigating to a new page, or network issues).
+     *
+     * The `values` argument contains multiple property-value pairs that will be
+     * written to the Database together. Each child property can either be a simple
+     * property (for example, "name") or a relative path (for example, "name/first")
+     * from the current location to the data to update.
+     *
+     * As opposed to the `set()` method, `update()` can be use to selectively update
+     * only the referenced properties at the current location (instead of replacing
+     * all the child properties at the current location).
+     *
+     * @param values - Object containing multiple values.
+     * @returns Resolves when synchronization to the Database is complete.
+     */
+    update(values) {
+        validateWritablePath('OnDisconnect.update', this._path);
+        validateFirebaseMergeDataArg('OnDisconnect.update', values, this._path, false);
+        const deferred = new Deferred();
+        repoOnDisconnectUpdate(this._repo, this._path, values, deferred.wrapCallback(() => { }));
+        return deferred.promise;
+    }
+}
+
+/**
+ * @license
  * Copyright 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -12926,6 +16817,80 @@ class QueryImpl {
     }
 }
 /**
+ * Validates that no other order by call has been made
+ */
+function validateNoPreviousOrderByCall(query, fnName) {
+    if (query._orderByCalled === true) {
+        throw new Error(fnName + ": You can't combine multiple orderBy calls.");
+    }
+}
+/**
+ * Validates start/end values for queries.
+ */
+function validateQueryEndpoints(params) {
+    let startNode = null;
+    let endNode = null;
+    if (params.hasStart()) {
+        startNode = params.getIndexStartValue();
+    }
+    if (params.hasEnd()) {
+        endNode = params.getIndexEndValue();
+    }
+    if (params.getIndex() === KEY_INDEX) {
+        const tooManyArgsError = 'Query: When ordering by key, you may only pass one argument to ' +
+            'startAt(), endAt(), or equalTo().';
+        const wrongArgTypeError = 'Query: When ordering by key, the argument passed to startAt(), startAfter(), ' +
+            'endAt(), endBefore(), or equalTo() must be a string.';
+        if (params.hasStart()) {
+            const startName = params.getIndexStartName();
+            if (startName !== MIN_NAME) {
+                throw new Error(tooManyArgsError);
+            }
+            else if (typeof startNode !== 'string') {
+                throw new Error(wrongArgTypeError);
+            }
+        }
+        if (params.hasEnd()) {
+            const endName = params.getIndexEndName();
+            if (endName !== MAX_NAME) {
+                throw new Error(tooManyArgsError);
+            }
+            else if (typeof endNode !== 'string') {
+                throw new Error(wrongArgTypeError);
+            }
+        }
+    }
+    else if (params.getIndex() === PRIORITY_INDEX) {
+        if ((startNode != null && !isValidPriority(startNode)) ||
+            (endNode != null && !isValidPriority(endNode))) {
+            throw new Error('Query: When ordering by priority, the first argument passed to startAt(), ' +
+                'startAfter() endAt(), endBefore(), or equalTo() must be a valid priority value ' +
+                '(null, a number, or a string).');
+        }
+    }
+    else {
+        assert(params.getIndex() instanceof PathIndex ||
+            params.getIndex() === VALUE_INDEX, 'unknown index type.');
+        if ((startNode != null && typeof startNode === 'object') ||
+            (endNode != null && typeof endNode === 'object')) {
+            throw new Error('Query: First argument passed to startAt(), startAfter(), endAt(), endBefore(), or ' +
+                'equalTo() cannot be an object.');
+        }
+    }
+}
+/**
+ * Validates that limit* has been called with the correct combination of parameters
+ */
+function validateLimit(params) {
+    if (params.hasStart() &&
+        params.hasEnd() &&
+        params.hasLimit() &&
+        !params.hasAnchoredLimit()) {
+        throw new Error("Query: Can't combine startAt(), startAfter(), endAt(), endBefore(), and limit(). Use " +
+            'limitToFirst() or limitToLast() instead.');
+    }
+}
+/**
  * @internal
  */
 class ReferenceImpl extends QueryImpl {
@@ -12946,6 +16911,1059 @@ class ReferenceImpl extends QueryImpl {
         }
         return ref;
     }
+}
+/**
+ * A `DataSnapshot` contains data from a Database location.
+ *
+ * Any time you read data from the Database, you receive the data as a
+ * `DataSnapshot`. A `DataSnapshot` is passed to the event callbacks you attach
+ * with `on()` or `once()`. You can extract the contents of the snapshot as a
+ * JavaScript object by calling the `val()` method. Alternatively, you can
+ * traverse into the snapshot by calling `child()` to return child snapshots
+ * (which you could then call `val()` on).
+ *
+ * A `DataSnapshot` is an efficiently generated, immutable copy of the data at
+ * a Database location. It cannot be modified and will never change (to modify
+ * data, you always call the `set()` method on a `Reference` directly).
+ */
+class DataSnapshot$1 {
+    /**
+     * @param _node - A SnapshotNode to wrap.
+     * @param ref - The location this snapshot came from.
+     * @param _index - The iteration order for this snapshot
+     * @hideconstructor
+     */
+    constructor(_node, 
+    /**
+     * The location of this DataSnapshot.
+     */
+    ref, _index) {
+        this._node = _node;
+        this.ref = ref;
+        this._index = _index;
+    }
+    /**
+     * Gets the priority value of the data in this `DataSnapshot`.
+     *
+     * Applications need not use priority but can order collections by
+     * ordinary properties (see
+     * {@link https://firebase.google.com/docs/database/web/lists-of-data#sorting_and_filtering_data |Sorting and filtering data}
+     * ).
+     */
+    get priority() {
+        // typecast here because we never return deferred values or internal priorities (MAX_PRIORITY)
+        return this._node.getPriority().val();
+    }
+    /**
+     * The key (last part of the path) of the location of this `DataSnapshot`.
+     *
+     * The last token in a Database location is considered its key. For example,
+     * "ada" is the key for the /users/ada/ node. Accessing the key on any
+     * `DataSnapshot` will return the key for the location that generated it.
+     * However, accessing the key on the root URL of a Database will return
+     * `null`.
+     */
+    get key() {
+        return this.ref.key;
+    }
+    /** Returns the number of child properties of this `DataSnapshot`. */
+    get size() {
+        return this._node.numChildren();
+    }
+    /**
+     * Gets another `DataSnapshot` for the location at the specified relative path.
+     *
+     * Passing a relative path to the `child()` method of a DataSnapshot returns
+     * another `DataSnapshot` for the location at the specified relative path. The
+     * relative path can either be a simple child name (for example, "ada") or a
+     * deeper, slash-separated path (for example, "ada/name/first"). If the child
+     * location has no data, an empty `DataSnapshot` (that is, a `DataSnapshot`
+     * whose value is `null`) is returned.
+     *
+     * @param path - A relative path to the location of child data.
+     */
+    child(path) {
+        const childPath = new Path(path);
+        const childRef = child(this.ref, path);
+        return new DataSnapshot$1(this._node.getChild(childPath), childRef, PRIORITY_INDEX);
+    }
+    /**
+     * Returns true if this `DataSnapshot` contains any data. It is slightly more
+     * efficient than using `snapshot.val() !== null`.
+     */
+    exists() {
+        return !this._node.isEmpty();
+    }
+    /**
+     * Exports the entire contents of the DataSnapshot as a JavaScript object.
+     *
+     * The `exportVal()` method is similar to `val()`, except priority information
+     * is included (if available), making it suitable for backing up your data.
+     *
+     * @returns The DataSnapshot's contents as a JavaScript value (Object,
+     *   Array, string, number, boolean, or `null`).
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    exportVal() {
+        return this._node.val(true);
+    }
+    /**
+     * Enumerates the top-level children in the `DataSnapshot`.
+     *
+     * Because of the way JavaScript objects work, the ordering of data in the
+     * JavaScript object returned by `val()` is not guaranteed to match the
+     * ordering on the server nor the ordering of `onChildAdded()` events. That is
+     * where `forEach()` comes in handy. It guarantees the children of a
+     * `DataSnapshot` will be iterated in their query order.
+     *
+     * If no explicit `orderBy*()` method is used, results are returned
+     * ordered by key (unless priorities are used, in which case, results are
+     * returned by priority).
+     *
+     * @param action - A function that will be called for each child DataSnapshot.
+     * The callback can return true to cancel further enumeration.
+     * @returns true if enumeration was canceled due to your callback returning
+     * true.
+     */
+    forEach(action) {
+        if (this._node.isLeafNode()) {
+            return false;
+        }
+        const childrenNode = this._node;
+        // Sanitize the return value to a boolean. ChildrenNode.forEachChild has a weird return type...
+        return !!childrenNode.forEachChild(this._index, (key, node) => {
+            return action(new DataSnapshot$1(node, child(this.ref, key), PRIORITY_INDEX));
+        });
+    }
+    /**
+     * Returns true if the specified child path has (non-null) data.
+     *
+     * @param path - A relative path to the location of a potential child.
+     * @returns `true` if data exists at the specified child path; else
+     *  `false`.
+     */
+    hasChild(path) {
+        const childPath = new Path(path);
+        return !this._node.getChild(childPath).isEmpty();
+    }
+    /**
+     * Returns whether or not the `DataSnapshot` has any non-`null` child
+     * properties.
+     *
+     * You can use `hasChildren()` to determine if a `DataSnapshot` has any
+     * children. If it does, you can enumerate them using `forEach()`. If it
+     * doesn't, then either this snapshot contains a primitive value (which can be
+     * retrieved with `val()`) or it is empty (in which case, `val()` will return
+     * `null`).
+     *
+     * @returns true if this snapshot has any children; else false.
+     */
+    hasChildren() {
+        if (this._node.isLeafNode()) {
+            return false;
+        }
+        else {
+            return !this._node.isEmpty();
+        }
+    }
+    /**
+     * Returns a JSON-serializable representation of this object.
+     */
+    toJSON() {
+        return this.exportVal();
+    }
+    /**
+     * Extracts a JavaScript value from a `DataSnapshot`.
+     *
+     * Depending on the data in a `DataSnapshot`, the `val()` method may return a
+     * scalar type (string, number, or boolean), an array, or an object. It may
+     * also return null, indicating that the `DataSnapshot` is empty (contains no
+     * data).
+     *
+     * @returns The DataSnapshot's contents as a JavaScript value (Object,
+     *   Array, string, number, boolean, or `null`).
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    val() {
+        return this._node.val();
+    }
+}
+/**
+ *
+ * Returns a `Reference` representing the location in the Database
+ * corresponding to the provided path. If no path is provided, the `Reference`
+ * will point to the root of the Database.
+ *
+ * @param db - The database instance to obtain a reference for.
+ * @param path - Optional path representing the location the returned
+ *   `Reference` will point. If not provided, the returned `Reference` will
+ *   point to the root of the Database.
+ * @returns If a path is provided, a `Reference`
+ *   pointing to the provided path. Otherwise, a `Reference` pointing to the
+ *   root of the Database.
+ */
+function ref(db, path) {
+    db = getModularInstance(db);
+    db._checkNotDeleted('ref');
+    return path !== undefined ? child(db._root, path) : db._root;
+}
+/**
+ * Returns a `Reference` representing the location in the Database
+ * corresponding to the provided Firebase URL.
+ *
+ * An exception is thrown if the URL is not a valid Firebase Database URL or it
+ * has a different domain than the current `Database` instance.
+ *
+ * Note that all query parameters (`orderBy`, `limitToLast`, etc.) are ignored
+ * and are not applied to the returned `Reference`.
+ *
+ * @param db - The database instance to obtain a reference for.
+ * @param url - The Firebase URL at which the returned `Reference` will
+ *   point.
+ * @returns A `Reference` pointing to the provided
+ *   Firebase URL.
+ */
+function refFromURL(db, url) {
+    db = getModularInstance(db);
+    db._checkNotDeleted('refFromURL');
+    const parsedURL = parseRepoInfo(url, db._repo.repoInfo_.nodeAdmin);
+    validateUrl('refFromURL', parsedURL);
+    const repoInfo = parsedURL.repoInfo;
+    if (!db._repo.repoInfo_.isCustomHost() &&
+        repoInfo.host !== db._repo.repoInfo_.host) {
+        fatal('refFromURL' +
+            ': Host name does not match the current database: ' +
+            '(found ' +
+            repoInfo.host +
+            ' but expected ' +
+            db._repo.repoInfo_.host +
+            ')');
+    }
+    return ref(db, parsedURL.path.toString());
+}
+/**
+ * Gets a `Reference` for the location at the specified relative path.
+ *
+ * The relative path can either be a simple child name (for example, "ada") or
+ * a deeper slash-separated path (for example, "ada/name/first").
+ *
+ * @param parent - The parent location.
+ * @param path - A relative path from this location to the desired child
+ *   location.
+ * @returns The specified child location.
+ */
+function child(parent, path) {
+    parent = getModularInstance(parent);
+    if (pathGetFront(parent._path) === null) {
+        validateRootPathString('child', 'path', path, false);
+    }
+    else {
+        validatePathString('child', 'path', path, false);
+    }
+    return new ReferenceImpl(parent._repo, pathChild(parent._path, path));
+}
+/**
+ * Generates a new child location using a unique key and returns its
+ * `Reference`.
+ *
+ * This is the most common pattern for adding data to a collection of items.
+ *
+ * If you provide a value to `push()`, the value is written to the
+ * generated location. If you don't pass a value, nothing is written to the
+ * database and the child remains empty (but you can use the `Reference`
+ * elsewhere).
+ *
+ * The unique keys generated by `push()` are ordered by the current time, so the
+ * resulting list of items is chronologically sorted. The keys are also
+ * designed to be unguessable (they contain 72 random bits of entropy).
+ *
+ * See {@link https://firebase.google.com/docs/database/web/lists-of-data#append_to_a_list_of_data | Append to a list of data}
+ * </br>See {@link ttps://firebase.googleblog.com/2015/02/the-2120-ways-to-ensure-unique_68.html | The 2^120 Ways to Ensure Unique Identifiers}
+ *
+ * @param parent - The parent location.
+ * @param value - Optional value to be written at the generated location.
+ * @returns Combined `Promise` and `Reference`; resolves when write is complete,
+ * but can be used immediately as the `Reference` to the child location.
+ */
+function push(parent, value) {
+    parent = getModularInstance(parent);
+    validateWritablePath('push', parent._path);
+    validateFirebaseDataArg('push', value, parent._path, true);
+    const now = repoServerTime(parent._repo);
+    const name = nextPushId(now);
+    // push() returns a ThennableReference whose promise is fulfilled with a
+    // regular Reference. We use child() to create handles to two different
+    // references. The first is turned into a ThennableReference below by adding
+    // then() and catch() methods and is used as the return value of push(). The
+    // second remains a regular Reference and is used as the fulfilled value of
+    // the first ThennableReference.
+    const thennablePushRef = child(parent, name);
+    const pushRef = child(parent, name);
+    let promise;
+    if (value != null) {
+        promise = set(pushRef, value).then(() => pushRef);
+    }
+    else {
+        promise = Promise.resolve(pushRef);
+    }
+    thennablePushRef.then = promise.then.bind(promise);
+    thennablePushRef.catch = promise.then.bind(promise, undefined);
+    return thennablePushRef;
+}
+/**
+ * Removes the data at this Database location.
+ *
+ * Any data at child locations will also be deleted.
+ *
+ * The effect of the remove will be visible immediately and the corresponding
+ * event 'value' will be triggered. Synchronization of the remove to the
+ * Firebase servers will also be started, and the returned Promise will resolve
+ * when complete. If provided, the onComplete callback will be called
+ * asynchronously after synchronization has finished.
+ *
+ * @param ref - The location to remove.
+ * @returns Resolves when remove on server is complete.
+ */
+function remove(ref) {
+    validateWritablePath('remove', ref._path);
+    return set(ref, null);
+}
+/**
+ * Writes data to this Database location.
+ *
+ * This will overwrite any data at this location and all child locations.
+ *
+ * The effect of the write will be visible immediately, and the corresponding
+ * events ("value", "child_added", etc.) will be triggered. Synchronization of
+ * the data to the Firebase servers will also be started, and the returned
+ * Promise will resolve when complete. If provided, the `onComplete` callback
+ * will be called asynchronously after synchronization has finished.
+ *
+ * Passing `null` for the new value is equivalent to calling `remove()`; namely,
+ * all data at this location and all child locations will be deleted.
+ *
+ * `set()` will remove any priority stored at this location, so if priority is
+ * meant to be preserved, you need to use `setWithPriority()` instead.
+ *
+ * Note that modifying data with `set()` will cancel any pending transactions
+ * at that location, so extreme care should be taken if mixing `set()` and
+ * `transaction()` to modify the same data.
+ *
+ * A single `set()` will generate a single "value" event at the location where
+ * the `set()` was performed.
+ *
+ * @param ref - The location to write to.
+ * @param value - The value to be written (string, number, boolean, object,
+ *   array, or null).
+ * @returns Resolves when write to server is complete.
+ */
+function set(ref, value) {
+    ref = getModularInstance(ref);
+    validateWritablePath('set', ref._path);
+    validateFirebaseDataArg('set', value, ref._path, false);
+    const deferred = new Deferred();
+    repoSetWithPriority(ref._repo, ref._path, value, 
+    /*priority=*/ null, deferred.wrapCallback(() => { }));
+    return deferred.promise;
+}
+/**
+ * Sets a priority for the data at this Database location.
+ *
+ * Applications need not use priority but can order collections by
+ * ordinary properties (see
+ * {@link https://firebase.google.com/docs/database/web/lists-of-data#sorting_and_filtering_data | Sorting and filtering data}
+ * ).
+ *
+ * @param ref - The location to write to.
+ * @param priority - The priority to be written (string, number, or null).
+ * @returns Resolves when write to server is complete.
+ */
+function setPriority(ref, priority) {
+    ref = getModularInstance(ref);
+    validateWritablePath('setPriority', ref._path);
+    validatePriority('setPriority', priority, false);
+    const deferred = new Deferred();
+    repoSetWithPriority(ref._repo, pathChild(ref._path, '.priority'), priority, null, deferred.wrapCallback(() => { }));
+    return deferred.promise;
+}
+/**
+ * Writes data the Database location. Like `set()` but also specifies the
+ * priority for that data.
+ *
+ * Applications need not use priority but can order collections by
+ * ordinary properties (see
+ * {@link https://firebase.google.com/docs/database/web/lists-of-data#sorting_and_filtering_data | Sorting and filtering data}
+ * ).
+ *
+ * @param ref - The location to write to.
+ * @param value - The value to be written (string, number, boolean, object,
+ *   array, or null).
+ * @param priority - The priority to be written (string, number, or null).
+ * @returns Resolves when write to server is complete.
+ */
+function setWithPriority(ref, value, priority) {
+    validateWritablePath('setWithPriority', ref._path);
+    validateFirebaseDataArg('setWithPriority', value, ref._path, false);
+    validatePriority('setWithPriority', priority, false);
+    if (ref.key === '.length' || ref.key === '.keys') {
+        throw 'setWithPriority failed: ' + ref.key + ' is a read-only object.';
+    }
+    const deferred = new Deferred();
+    repoSetWithPriority(ref._repo, ref._path, value, priority, deferred.wrapCallback(() => { }));
+    return deferred.promise;
+}
+/**
+ * Writes multiple values to the Database at once.
+ *
+ * The `values` argument contains multiple property-value pairs that will be
+ * written to the Database together. Each child property can either be a simple
+ * property (for example, "name") or a relative path (for example,
+ * "name/first") from the current location to the data to update.
+ *
+ * As opposed to the `set()` method, `update()` can be use to selectively update
+ * only the referenced properties at the current location (instead of replacing
+ * all the child properties at the current location).
+ *
+ * The effect of the write will be visible immediately, and the corresponding
+ * events ('value', 'child_added', etc.) will be triggered. Synchronization of
+ * the data to the Firebase servers will also be started, and the returned
+ * Promise will resolve when complete. If provided, the `onComplete` callback
+ * will be called asynchronously after synchronization has finished.
+ *
+ * A single `update()` will generate a single "value" event at the location
+ * where the `update()` was performed, regardless of how many children were
+ * modified.
+ *
+ * Note that modifying data with `update()` will cancel any pending
+ * transactions at that location, so extreme care should be taken if mixing
+ * `update()` and `transaction()` to modify the same data.
+ *
+ * Passing `null` to `update()` will remove the data at this location.
+ *
+ * See
+ * {@link https://firebase.googleblog.com/2015/09/introducing-multi-location-updates-and_86.html | Introducing multi-location updates and more}.
+ *
+ * @param ref - The location to write to.
+ * @param values - Object containing multiple values.
+ * @returns Resolves when update on server is complete.
+ */
+function update(ref, values) {
+    validateFirebaseMergeDataArg('update', values, ref._path, false);
+    const deferred = new Deferred();
+    repoUpdate(ref._repo, ref._path, values, deferred.wrapCallback(() => { }));
+    return deferred.promise;
+}
+/**
+ * Gets the most up-to-date result for this query.
+ *
+ * @param query - The query to run.
+ * @returns A `Promise` which resolves to the resulting DataSnapshot if a value is
+ * available, or rejects if the client is unable to return a value (e.g., if the
+ * server is unreachable and there is nothing cached).
+ */
+function get(query) {
+    query = getModularInstance(query);
+    return repoGetValue(query._repo, query).then(node => {
+        return new DataSnapshot$1(node, new ReferenceImpl(query._repo, query._path), query._queryParams.getIndex());
+    });
+}
+/**
+ * Represents registration for 'value' events.
+ */
+class ValueEventRegistration {
+    constructor(callbackContext) {
+        this.callbackContext = callbackContext;
+    }
+    respondsTo(eventType) {
+        return eventType === 'value';
+    }
+    createEvent(change, query) {
+        const index = query._queryParams.getIndex();
+        return new DataEvent('value', this, new DataSnapshot$1(change.snapshotNode, new ReferenceImpl(query._repo, query._path), index));
+    }
+    getEventRunner(eventData) {
+        if (eventData.getEventType() === 'cancel') {
+            return () => this.callbackContext.onCancel(eventData.error);
+        }
+        else {
+            return () => this.callbackContext.onValue(eventData.snapshot, null);
+        }
+    }
+    createCancelEvent(error, path) {
+        if (this.callbackContext.hasCancelCallback) {
+            return new CancelEvent(this, error, path);
+        }
+        else {
+            return null;
+        }
+    }
+    matches(other) {
+        if (!(other instanceof ValueEventRegistration)) {
+            return false;
+        }
+        else if (!other.callbackContext || !this.callbackContext) {
+            // If no callback specified, we consider it to match any callback.
+            return true;
+        }
+        else {
+            return other.callbackContext.matches(this.callbackContext);
+        }
+    }
+    hasAnyCallback() {
+        return this.callbackContext !== null;
+    }
+}
+/**
+ * Represents the registration of a child_x event.
+ */
+class ChildEventRegistration {
+    constructor(eventType, callbackContext) {
+        this.eventType = eventType;
+        this.callbackContext = callbackContext;
+    }
+    respondsTo(eventType) {
+        let eventToCheck = eventType === 'children_added' ? 'child_added' : eventType;
+        eventToCheck =
+            eventToCheck === 'children_removed' ? 'child_removed' : eventToCheck;
+        return this.eventType === eventToCheck;
+    }
+    createCancelEvent(error, path) {
+        if (this.callbackContext.hasCancelCallback) {
+            return new CancelEvent(this, error, path);
+        }
+        else {
+            return null;
+        }
+    }
+    createEvent(change, query) {
+        assert(change.childName != null, 'Child events should have a childName.');
+        const childRef = child(new ReferenceImpl(query._repo, query._path), change.childName);
+        const index = query._queryParams.getIndex();
+        return new DataEvent(change.type, this, new DataSnapshot$1(change.snapshotNode, childRef, index), change.prevName);
+    }
+    getEventRunner(eventData) {
+        if (eventData.getEventType() === 'cancel') {
+            return () => this.callbackContext.onCancel(eventData.error);
+        }
+        else {
+            return () => this.callbackContext.onValue(eventData.snapshot, eventData.prevName);
+        }
+    }
+    matches(other) {
+        if (other instanceof ChildEventRegistration) {
+            return (this.eventType === other.eventType &&
+                (!this.callbackContext ||
+                    !other.callbackContext ||
+                    this.callbackContext.matches(other.callbackContext)));
+        }
+        return false;
+    }
+    hasAnyCallback() {
+        return !!this.callbackContext;
+    }
+}
+function addEventListener(query, eventType, callback, cancelCallbackOrListenOptions, options) {
+    let cancelCallback;
+    if (typeof cancelCallbackOrListenOptions === 'object') {
+        cancelCallback = undefined;
+        options = cancelCallbackOrListenOptions;
+    }
+    if (typeof cancelCallbackOrListenOptions === 'function') {
+        cancelCallback = cancelCallbackOrListenOptions;
+    }
+    if (options && options.onlyOnce) {
+        const userCallback = callback;
+        const onceCallback = (dataSnapshot, previousChildName) => {
+            repoRemoveEventCallbackForQuery(query._repo, query, container);
+            userCallback(dataSnapshot, previousChildName);
+        };
+        onceCallback.userCallback = callback.userCallback;
+        onceCallback.context = callback.context;
+        callback = onceCallback;
+    }
+    const callbackContext = new CallbackContext(callback, cancelCallback || undefined);
+    const container = eventType === 'value'
+        ? new ValueEventRegistration(callbackContext)
+        : new ChildEventRegistration(eventType, callbackContext);
+    repoAddEventCallbackForQuery(query._repo, query, container);
+    return () => repoRemoveEventCallbackForQuery(query._repo, query, container);
+}
+function onValue(query, callback, cancelCallbackOrListenOptions, options) {
+    return addEventListener(query, 'value', callback, cancelCallbackOrListenOptions, options);
+}
+function onChildAdded(query, callback, cancelCallbackOrListenOptions, options) {
+    return addEventListener(query, 'child_added', callback, cancelCallbackOrListenOptions, options);
+}
+function onChildChanged(query, callback, cancelCallbackOrListenOptions, options) {
+    return addEventListener(query, 'child_changed', callback, cancelCallbackOrListenOptions, options);
+}
+function onChildMoved(query, callback, cancelCallbackOrListenOptions, options) {
+    return addEventListener(query, 'child_moved', callback, cancelCallbackOrListenOptions, options);
+}
+function onChildRemoved(query, callback, cancelCallbackOrListenOptions, options) {
+    return addEventListener(query, 'child_removed', callback, cancelCallbackOrListenOptions, options);
+}
+/**
+ * Detaches a callback previously attached with `on()`.
+ *
+ * Detach a callback previously attached with `on()`. Note that if `on()` was
+ * called multiple times with the same eventType and callback, the callback
+ * will be called multiple times for each event, and `off()` must be called
+ * multiple times to remove the callback. Calling `off()` on a parent listener
+ * will not automatically remove listeners registered on child nodes, `off()`
+ * must also be called on any child listeners to remove the callback.
+ *
+ * If a callback is not specified, all callbacks for the specified eventType
+ * will be removed. Similarly, if no eventType is specified, all callbacks
+ * for the `Reference` will be removed.
+ *
+ * Individual listeners can also be removed by invoking their unsubscribe
+ * callbacks.
+ *
+ * @param query - The query that the listener was registered with.
+ * @param eventType - One of the following strings: "value", "child_added",
+ * "child_changed", "child_removed", or "child_moved." If omitted, all callbacks
+ * for the `Reference` will be removed.
+ * @param callback - The callback function that was passed to `on()` or
+ * `undefined` to remove all callbacks.
+ */
+function off(query, eventType, callback) {
+    let container = null;
+    const expCallback = callback ? new CallbackContext(callback) : null;
+    if (eventType === 'value') {
+        container = new ValueEventRegistration(expCallback);
+    }
+    else if (eventType) {
+        container = new ChildEventRegistration(eventType, expCallback);
+    }
+    repoRemoveEventCallbackForQuery(query._repo, query, container);
+}
+/**
+ * A `QueryConstraint` is used to narrow the set of documents returned by a
+ * Database query. `QueryConstraint`s are created by invoking {@link endAt},
+ * {@link endBefore}, {@link startAt}, {@link startAfter}, {@link
+ * limitToFirst}, {@link limitToLast}, {@link orderByChild},
+ * {@link orderByChild}, {@link orderByKey} , {@link orderByPriority} ,
+ * {@link orderByValue}  or {@link equalTo} and
+ * can then be passed to {@link query} to create a new query instance that
+ * also contains this `QueryConstraint`.
+ */
+class QueryConstraint {
+}
+class QueryEndAtConstraint extends QueryConstraint {
+    constructor(_value, _key) {
+        super();
+        this._value = _value;
+        this._key = _key;
+    }
+    _apply(query) {
+        validateFirebaseDataArg('endAt', this._value, query._path, true);
+        const newParams = queryParamsEndAt(query._queryParams, this._value, this._key);
+        validateLimit(newParams);
+        validateQueryEndpoints(newParams);
+        if (query._queryParams.hasEnd()) {
+            throw new Error('endAt: Starting point was already set (by another call to endAt, ' +
+                'endBefore or equalTo).');
+        }
+        return new QueryImpl(query._repo, query._path, newParams, query._orderByCalled);
+    }
+}
+/**
+ * Creates a `QueryConstraint` with the specified ending point.
+ *
+ * Using `startAt()`, `startAfter()`, `endBefore()`, `endAt()` and `equalTo()`
+ * allows you to choose arbitrary starting and ending points for your queries.
+ *
+ * The ending point is inclusive, so children with exactly the specified value
+ * will be included in the query. The optional key argument can be used to
+ * further limit the range of the query. If it is specified, then children that
+ * have exactly the specified value must also have a key name less than or equal
+ * to the specified key.
+ *
+ * You can read more about `endAt()` in
+ * {@link https://firebase.google.com/docs/database/web/lists-of-data#filtering_data | Filtering data}.
+ *
+ * @param value - The value to end at. The argument type depends on which
+ * `orderBy*()` function was used in this query. Specify a value that matches
+ * the `orderBy*()` type. When used in combination with `orderByKey()`, the
+ * value must be a string.
+ * @param key - The child key to end at, among the children with the previously
+ * specified priority. This argument is only allowed if ordering by child,
+ * value, or priority.
+ */
+function endAt(value, key) {
+    validateKey('endAt', 'key', key, true);
+    return new QueryEndAtConstraint(value, key);
+}
+class QueryEndBeforeConstraint extends QueryConstraint {
+    constructor(_value, _key) {
+        super();
+        this._value = _value;
+        this._key = _key;
+    }
+    _apply(query) {
+        validateFirebaseDataArg('endBefore', this._value, query._path, false);
+        const newParams = queryParamsEndBefore(query._queryParams, this._value, this._key);
+        validateLimit(newParams);
+        validateQueryEndpoints(newParams);
+        if (query._queryParams.hasEnd()) {
+            throw new Error('endBefore: Starting point was already set (by another call to endAt, ' +
+                'endBefore or equalTo).');
+        }
+        return new QueryImpl(query._repo, query._path, newParams, query._orderByCalled);
+    }
+}
+/**
+ * Creates a `QueryConstraint` with the specified ending point (exclusive).
+ *
+ * Using `startAt()`, `startAfter()`, `endBefore()`, `endAt()` and `equalTo()`
+ * allows you to choose arbitrary starting and ending points for your queries.
+ *
+ * The ending point is exclusive. If only a value is provided, children
+ * with a value less than the specified value will be included in the query.
+ * If a key is specified, then children must have a value lesss than or equal
+ * to the specified value and a a key name less than the specified key.
+ *
+ * @param value - The value to end before. The argument type depends on which
+ * `orderBy*()` function was used in this query. Specify a value that matches
+ * the `orderBy*()` type. When used in combination with `orderByKey()`, the
+ * value must be a string.
+ * @param key - The child key to end before, among the children with the
+ * previously specified priority. This argument is only allowed if ordering by
+ * child, value, or priority.
+ */
+function endBefore(value, key) {
+    validateKey('endBefore', 'key', key, true);
+    return new QueryEndBeforeConstraint(value, key);
+}
+class QueryStartAtConstraint extends QueryConstraint {
+    constructor(_value, _key) {
+        super();
+        this._value = _value;
+        this._key = _key;
+    }
+    _apply(query) {
+        validateFirebaseDataArg('startAt', this._value, query._path, true);
+        const newParams = queryParamsStartAt(query._queryParams, this._value, this._key);
+        validateLimit(newParams);
+        validateQueryEndpoints(newParams);
+        if (query._queryParams.hasStart()) {
+            throw new Error('startAt: Starting point was already set (by another call to startAt, ' +
+                'startBefore or equalTo).');
+        }
+        return new QueryImpl(query._repo, query._path, newParams, query._orderByCalled);
+    }
+}
+/**
+ * Creates a `QueryConstraint` with the specified starting point.
+ *
+ * Using `startAt()`, `startAfter()`, `endBefore()`, `endAt()` and `equalTo()`
+ * allows you to choose arbitrary starting and ending points for your queries.
+ *
+ * The starting point is inclusive, so children with exactly the specified value
+ * will be included in the query. The optional key argument can be used to
+ * further limit the range of the query. If it is specified, then children that
+ * have exactly the specified value must also have a key name greater than or
+ * equal to the specified key.
+ *
+ * You can read more about `startAt()` in
+ * {@link https://firebase.google.com/docs/database/web/lists-of-data#filtering_data | Filtering data}.
+ *
+ * @param value - The value to start at. The argument type depends on which
+ * `orderBy*()` function was used in this query. Specify a value that matches
+ * the `orderBy*()` type. When used in combination with `orderByKey()`, the
+ * value must be a string.
+ * @param key - The child key to start at. This argument is only allowed if
+ * ordering by child, value, or priority.
+ */
+function startAt(value = null, key) {
+    validateKey('startAt', 'key', key, true);
+    return new QueryStartAtConstraint(value, key);
+}
+class QueryStartAfterConstraint extends QueryConstraint {
+    constructor(_value, _key) {
+        super();
+        this._value = _value;
+        this._key = _key;
+    }
+    _apply(query) {
+        validateFirebaseDataArg('startAfter', this._value, query._path, false);
+        const newParams = queryParamsStartAfter(query._queryParams, this._value, this._key);
+        validateLimit(newParams);
+        validateQueryEndpoints(newParams);
+        if (query._queryParams.hasStart()) {
+            throw new Error('startAfter: Starting point was already set (by another call to startAt, ' +
+                'startAfter, or equalTo).');
+        }
+        return new QueryImpl(query._repo, query._path, newParams, query._orderByCalled);
+    }
+}
+/**
+ * Creates a `QueryConstraint` with the specified starting point (exclusive).
+ *
+ * Using `startAt()`, `startAfter()`, `endBefore()`, `endAt()` and `equalTo()`
+ * allows you to choose arbitrary starting and ending points for your queries.
+ *
+ * The starting point is exclusive. If only a value is provided, children
+ * with a value greater than the specified value will be included in the query.
+ * If a key is specified, then children must have a value greater than or equal
+ * to the specified value and a a key name greater than the specified key.
+ *
+ * @param value - The value to start after. The argument type depends on which
+ * `orderBy*()` function was used in this query. Specify a value that matches
+ * the `orderBy*()` type. When used in combination with `orderByKey()`, the
+ * value must be a string.
+ * @param key - The child key to start after. This argument is only allowed if
+ * ordering by child, value, or priority.
+ */
+function startAfter(value, key) {
+    validateKey('startAfter', 'key', key, true);
+    return new QueryStartAfterConstraint(value, key);
+}
+class QueryLimitToFirstConstraint extends QueryConstraint {
+    constructor(_limit) {
+        super();
+        this._limit = _limit;
+    }
+    _apply(query) {
+        if (query._queryParams.hasLimit()) {
+            throw new Error('limitToFirst: Limit was already set (by another call to limitToFirst ' +
+                'or limitToLast).');
+        }
+        return new QueryImpl(query._repo, query._path, queryParamsLimitToFirst(query._queryParams, this._limit), query._orderByCalled);
+    }
+}
+/**
+ * Creates a new `QueryConstraint` that if limited to the first specific number
+ * of children.
+ *
+ * The `limitToFirst()` method is used to set a maximum number of children to be
+ * synced for a given callback. If we set a limit of 100, we will initially only
+ * receive up to 100 `child_added` events. If we have fewer than 100 messages
+ * stored in our Database, a `child_added` event will fire for each message.
+ * However, if we have over 100 messages, we will only receive a `child_added`
+ * event for the first 100 ordered messages. As items change, we will receive
+ * `child_removed` events for each item that drops out of the active list so
+ * that the total number stays at 100.
+ *
+ * You can read more about `limitToFirst()` in
+ * {@link https://firebase.google.com/docs/database/web/lists-of-data#filtering_data | Filtering data}.
+ *
+ * @param limit - The maximum number of nodes to include in this query.
+ */
+function limitToFirst(limit) {
+    if (typeof limit !== 'number' || Math.floor(limit) !== limit || limit <= 0) {
+        throw new Error('limitToFirst: First argument must be a positive integer.');
+    }
+    return new QueryLimitToFirstConstraint(limit);
+}
+class QueryLimitToLastConstraint extends QueryConstraint {
+    constructor(_limit) {
+        super();
+        this._limit = _limit;
+    }
+    _apply(query) {
+        if (query._queryParams.hasLimit()) {
+            throw new Error('limitToLast: Limit was already set (by another call to limitToFirst ' +
+                'or limitToLast).');
+        }
+        return new QueryImpl(query._repo, query._path, queryParamsLimitToLast(query._queryParams, this._limit), query._orderByCalled);
+    }
+}
+/**
+ * Creates a new `QueryConstraint` that is limited to return only the last
+ * specified number of children.
+ *
+ * The `limitToLast()` method is used to set a maximum number of children to be
+ * synced for a given callback. If we set a limit of 100, we will initially only
+ * receive up to 100 `child_added` events. If we have fewer than 100 messages
+ * stored in our Database, a `child_added` event will fire for each message.
+ * However, if we have over 100 messages, we will only receive a `child_added`
+ * event for the last 100 ordered messages. As items change, we will receive
+ * `child_removed` events for each item that drops out of the active list so
+ * that the total number stays at 100.
+ *
+ * You can read more about `limitToLast()` in
+ * {@link https://firebase.google.com/docs/database/web/lists-of-data#filtering_data | Filtering data}.
+ *
+ * @param limit - The maximum number of nodes to include in this query.
+ */
+function limitToLast(limit) {
+    if (typeof limit !== 'number' || Math.floor(limit) !== limit || limit <= 0) {
+        throw new Error('limitToLast: First argument must be a positive integer.');
+    }
+    return new QueryLimitToLastConstraint(limit);
+}
+class QueryOrderByChildConstraint extends QueryConstraint {
+    constructor(_path) {
+        super();
+        this._path = _path;
+    }
+    _apply(query) {
+        validateNoPreviousOrderByCall(query, 'orderByChild');
+        const parsedPath = new Path(this._path);
+        if (pathIsEmpty(parsedPath)) {
+            throw new Error('orderByChild: cannot pass in empty path. Use orderByValue() instead.');
+        }
+        const index = new PathIndex(parsedPath);
+        const newParams = queryParamsOrderBy(query._queryParams, index);
+        validateQueryEndpoints(newParams);
+        return new QueryImpl(query._repo, query._path, newParams, 
+        /*orderByCalled=*/ true);
+    }
+}
+/**
+ * Creates a new `QueryConstraint` that orders by the specified child key.
+ *
+ * Queries can only order by one key at a time. Calling `orderByChild()`
+ * multiple times on the same query is an error.
+ *
+ * Firebase queries allow you to order your data by any child key on the fly.
+ * However, if you know in advance what your indexes will be, you can define
+ * them via the .indexOn rule in your Security Rules for better performance. See
+ * the{@link https://firebase.google.com/docs/database/security/indexing-data}
+ * rule for more information.
+ *
+ * You can read more about `orderByChild()` in
+ * {@link https://firebase.google.com/docs/database/web/lists-of-data#sort_data | Sort data}.
+ *
+ * @param path - The path to order by.
+ */
+function orderByChild(path) {
+    if (path === '$key') {
+        throw new Error('orderByChild: "$key" is invalid.  Use orderByKey() instead.');
+    }
+    else if (path === '$priority') {
+        throw new Error('orderByChild: "$priority" is invalid.  Use orderByPriority() instead.');
+    }
+    else if (path === '$value') {
+        throw new Error('orderByChild: "$value" is invalid.  Use orderByValue() instead.');
+    }
+    validatePathString('orderByChild', 'path', path, false);
+    return new QueryOrderByChildConstraint(path);
+}
+class QueryOrderByKeyConstraint extends QueryConstraint {
+    _apply(query) {
+        validateNoPreviousOrderByCall(query, 'orderByKey');
+        const newParams = queryParamsOrderBy(query._queryParams, KEY_INDEX);
+        validateQueryEndpoints(newParams);
+        return new QueryImpl(query._repo, query._path, newParams, 
+        /*orderByCalled=*/ true);
+    }
+}
+/**
+ * Creates a new `QueryConstraint` that orders by the key.
+ *
+ * Sorts the results of a query by their (ascending) key values.
+ *
+ * You can read more about `orderByKey()` in
+ * {@link https://firebase.google.com/docs/database/web/lists-of-data#sort_data | Sort data}.
+ */
+function orderByKey() {
+    return new QueryOrderByKeyConstraint();
+}
+class QueryOrderByPriorityConstraint extends QueryConstraint {
+    _apply(query) {
+        validateNoPreviousOrderByCall(query, 'orderByPriority');
+        const newParams = queryParamsOrderBy(query._queryParams, PRIORITY_INDEX);
+        validateQueryEndpoints(newParams);
+        return new QueryImpl(query._repo, query._path, newParams, 
+        /*orderByCalled=*/ true);
+    }
+}
+/**
+ * Creates a new `QueryConstraint` that orders by priority.
+ *
+ * Applications need not use priority but can order collections by
+ * ordinary properties (see
+ * {@link https://firebase.google.com/docs/database/web/lists-of-data#sort_data | Sort data}
+ * for alternatives to priority.
+ */
+function orderByPriority() {
+    return new QueryOrderByPriorityConstraint();
+}
+class QueryOrderByValueConstraint extends QueryConstraint {
+    _apply(query) {
+        validateNoPreviousOrderByCall(query, 'orderByValue');
+        const newParams = queryParamsOrderBy(query._queryParams, VALUE_INDEX);
+        validateQueryEndpoints(newParams);
+        return new QueryImpl(query._repo, query._path, newParams, 
+        /*orderByCalled=*/ true);
+    }
+}
+/**
+ * Creates a new `QueryConstraint` that orders by value.
+ *
+ * If the children of a query are all scalar values (string, number, or
+ * boolean), you can order the results by their (ascending) values.
+ *
+ * You can read more about `orderByValue()` in
+ * {@link https://firebase.google.com/docs/database/web/lists-of-data#sort_data | Sort data}.
+ */
+function orderByValue() {
+    return new QueryOrderByValueConstraint();
+}
+class QueryEqualToValueConstraint extends QueryConstraint {
+    constructor(_value, _key) {
+        super();
+        this._value = _value;
+        this._key = _key;
+    }
+    _apply(query) {
+        validateFirebaseDataArg('equalTo', this._value, query._path, false);
+        if (query._queryParams.hasStart()) {
+            throw new Error('equalTo: Starting point was already set (by another call to startAt/startAfter or ' +
+                'equalTo).');
+        }
+        if (query._queryParams.hasEnd()) {
+            throw new Error('equalTo: Ending point was already set (by another call to endAt/endBefore or ' +
+                'equalTo).');
+        }
+        return new QueryEndAtConstraint(this._value, this._key)._apply(new QueryStartAtConstraint(this._value, this._key)._apply(query));
+    }
+}
+/**
+ * Creates a `QueryConstraint` that includes children that match the specified
+ * value.
+ *
+ * Using `startAt()`, `startAfter()`, `endBefore()`, `endAt()` and `equalTo()`
+ * allows you to choose arbitrary starting and ending points for your queries.
+ *
+ * The optional key argument can be used to further limit the range of the
+ * query. If it is specified, then children that have exactly the specified
+ * value must also have exactly the specified key as their key name. This can be
+ * used to filter result sets with many matches for the same value.
+ *
+ * You can read more about `equalTo()` in
+ * {@link https://firebase.google.com/docs/database/web/lists-of-data#filtering_data | Filtering data}.
+ *
+ * @param value - The value to match for. The argument type depends on which
+ * `orderBy*()` function was used in this query. Specify a value that matches
+ * the `orderBy*()` type. When used in combination with `orderByKey()`, the
+ * value must be a string.
+ * @param key - The child key to start at, among the children with the
+ * previously specified priority. This argument is only allowed if ordering by
+ * child, value, or priority.
+ */
+function equalTo(value, key) {
+    validateKey('equalTo', 'key', key, true);
+    return new QueryEqualToValueConstraint(value, key);
+}
+/**
+ * Creates a new immutable instance of `Query` that is extended to also include
+ * additional query constraints.
+ *
+ * @param query - The Query instance to use as a base for the new constraints.
+ * @param queryConstraints - The list of `QueryConstraint`s to apply.
+ * @throws if any of the provided query constraints cannot be combined with the
+ * existing or new constraints.
+ */
+function query(query, ...queryConstraints) {
+    let queryImpl = getModularInstance(query);
+    for (const constraint of queryConstraints) {
+        queryImpl = constraint._apply(queryImpl);
+    }
+    return queryImpl;
 }
 /**
  * Define reference constructor in various modules
@@ -12990,6 +18008,16 @@ const repos = {};
  */
 let useRestClient = false;
 /**
+ * Update an existing `Repo` in place to point to a new host/port.
+ */
+function repoManagerApplyEmulatorSettings(repo, host, port, tokenProvider) {
+    repo.repoInfo_ = new RepoInfo(`${host}:${port}`, 
+    /* secure= */ false, repo.repoInfo_.namespace, repo.repoInfo_.webSocketOnly, repo.repoInfo_.nodeAdmin, repo.repoInfo_.persistenceKey, repo.repoInfo_.includeNamespaceInQueryParams);
+    if (tokenProvider) {
+        repo.authTokenProvider_ = tokenProvider;
+    }
+}
+/**
  * This function should only ever be called to CREATE a new database instance.
  * @internal
  */
@@ -13028,7 +18056,7 @@ function repoManagerDatabaseFromApp(app, authProvider, appCheckProvider, url, no
             '(not including a child path).');
     }
     const repo = repoManagerCreateRepo(repoInfo, app, authTokenProvider, new AppCheckTokenProvider(app.name, appCheckProvider));
-    return new Database(repo, app);
+    return new Database$1(repo, app);
 }
 /**
  * Remove the repo and make sure it is disconnected.
@@ -13067,7 +18095,7 @@ function repoManagerCreateRepo(repoInfo, app, authTokenProvider, appCheckProvide
 /**
  * Class representing a Firebase Realtime Database.
  */
-class Database {
+class Database$1 {
     /** @hideconstructor */
     constructor(_repoInternal, 
     /** The {@link @firebase/app#FirebaseApp} associated with this Realtime Database instance. */
@@ -13106,6 +18134,85 @@ class Database {
         }
     }
 }
+/**
+ * Modify the provided instance to communicate with the Realtime Database
+ * emulator.
+ *
+ * <p>Note: This method must be called before performing any other operation.
+ *
+ * @param db - The instance to modify.
+ * @param host - The emulator host (ex: localhost)
+ * @param port - The emulator port (ex: 8080)
+ * @param options.mockUserToken - the mock auth token to use for unit testing Security Rules
+ */
+function connectDatabaseEmulator(db, host, port, options = {}) {
+    db = getModularInstance(db);
+    db._checkNotDeleted('useEmulator');
+    if (db._instanceStarted) {
+        fatal('Cannot call useEmulator() after instance has already been initialized.');
+    }
+    const repo = db._repoInternal;
+    let tokenProvider = undefined;
+    if (repo.repoInfo_.nodeAdmin) {
+        if (options.mockUserToken) {
+            fatal('mockUserToken is not supported by the Admin SDK. For client access with mock users, please use the "firebase" package instead of "firebase-admin".');
+        }
+        tokenProvider = new EmulatorTokenProvider(EmulatorTokenProvider.OWNER);
+    }
+    else if (options.mockUserToken) {
+        const token = typeof options.mockUserToken === 'string'
+            ? options.mockUserToken
+            : createMockUserToken(options.mockUserToken, db.app.options.projectId);
+        tokenProvider = new EmulatorTokenProvider(token);
+    }
+    // Modify the repo to apply emulator settings
+    repoManagerApplyEmulatorSettings(repo, host, port, tokenProvider);
+}
+/**
+ * Disconnects from the server (all Database operations will be completed
+ * offline).
+ *
+ * The client automatically maintains a persistent connection to the Database
+ * server, which will remain active indefinitely and reconnect when
+ * disconnected. However, the `goOffline()` and `goOnline()` methods may be used
+ * to control the client connection in cases where a persistent connection is
+ * undesirable.
+ *
+ * While offline, the client will no longer receive data updates from the
+ * Database. However, all Database operations performed locally will continue to
+ * immediately fire events, allowing your application to continue behaving
+ * normally. Additionally, each operation performed locally will automatically
+ * be queued and retried upon reconnection to the Database server.
+ *
+ * To reconnect to the Database and begin receiving remote events, see
+ * `goOnline()`.
+ *
+ * @param db - The instance to disconnect.
+ */
+function goOffline(db) {
+    db = getModularInstance(db);
+    db._checkNotDeleted('goOffline');
+    repoInterrupt(db._repo);
+}
+/**
+ * Reconnects to the server and synchronizes the offline Database state
+ * with the server state.
+ *
+ * This method should be used after disabling the active connection with
+ * `goOffline()`. Once reconnected, the client will transmit the proper data
+ * and fire the appropriate events so that your client "catches up"
+ * automatically.
+ *
+ * @param db - The instance to reconnect.
+ */
+function goOnline(db) {
+    db = getModularInstance(db);
+    db._checkNotDeleted('goOnline');
+    repoResume(db._repo);
+}
+function enableLogging(logger, persistent) {
+    enableLogging$1(logger, persistent);
+}
 
 /**
  * @license
@@ -13123,7 +18230,7 @@ class Database {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-function registerDatabase(variant) {
+function registerDatabase$1(variant) {
     setSDKVersion(SDK_VERSION$1);
     _registerComponent(new Component('database', (container, { instanceIdentifier: url }) => {
         const app = container.getProvider('app').getImmediate();
@@ -13131,7 +18238,147 @@ function registerDatabase(variant) {
         const appCheckProvider = container.getProvider('app-check-internal');
         return repoManagerDatabaseFromApp(app, authProvider, appCheckProvider, url);
     }, "PUBLIC" /* PUBLIC */).setMultipleInstances(true));
-    registerVersion(name, version, variant);
+    registerVersion(name$1, version$1, variant);
+}
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const SERVER_TIMESTAMP = {
+    '.sv': 'timestamp'
+};
+/**
+ * Returns a placeholder value for auto-populating the current timestamp (time
+ * since the Unix epoch, in milliseconds) as determined by the Firebase
+ * servers.
+ */
+function serverTimestamp() {
+    return SERVER_TIMESTAMP;
+}
+/**
+ * Returns a placeholder value that can be used to atomically increment the
+ * current database value by the provided delta.
+ *
+ * @param delta - the amount to modify the current value atomically.
+ * @returns A placeholder value for modifying data atomically server-side.
+ */
+function increment(delta) {
+    return {
+        '.sv': {
+            'increment': delta
+        }
+    };
+}
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * A type for the resolve value of {@link runTransaction}.
+ */
+class TransactionResult$1 {
+    /** @hideconstructor */
+    constructor(
+    /** Whether the transaction was successfully committed. */
+    committed, 
+    /** The resulting data snapshot. */
+    snapshot) {
+        this.committed = committed;
+        this.snapshot = snapshot;
+    }
+    /** Returns a JSON-serializable representation of this object. */
+    toJSON() {
+        return { committed: this.committed, snapshot: this.snapshot.toJSON() };
+    }
+}
+/**
+ * Atomically modifies the data at this location.
+ *
+ * Atomically modify the data at this location. Unlike a normal `set()`, which
+ * just overwrites the data regardless of its previous value, `runTransaction()` is
+ * used to modify the existing value to a new value, ensuring there are no
+ * conflicts with other clients writing to the same location at the same time.
+ *
+ * To accomplish this, you pass `runTransaction()` an update function which is
+ * used to transform the current value into a new value. If another client
+ * writes to the location before your new value is successfully written, your
+ * update function will be called again with the new current value, and the
+ * write will be retried. This will happen repeatedly until your write succeeds
+ * without conflict or you abort the transaction by not returning a value from
+ * your update function.
+ *
+ * Note: Modifying data with `set()` will cancel any pending transactions at
+ * that location, so extreme care should be taken if mixing `set()` and
+ * `runTransaction()` to update the same data.
+ *
+ * Note: When using transactions with Security and Firebase Rules in place, be
+ * aware that a client needs `.read` access in addition to `.write` access in
+ * order to perform a transaction. This is because the client-side nature of
+ * transactions requires the client to read the data in order to transactionally
+ * update it.
+ *
+ * @param ref - The location to atomically modify.
+ * @param transactionUpdate - A developer-supplied function which will be passed
+ * the current data stored at this location (as a JavaScript object). The
+ * function should return the new value it would like written (as a JavaScript
+ * object). If `undefined` is returned (i.e. you return with no arguments) the
+ * transaction will be aborted and the data at this location will not be
+ * modified.
+ * @param options - An options object to configure transactions.
+ * @returns A `Promise` that can optionally be used instead of the `onComplete`
+ * callback to handle success and failure.
+ */
+function runTransaction(ref, 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+transactionUpdate, options) {
+    var _a;
+    ref = getModularInstance(ref);
+    validateWritablePath('Reference.transaction', ref._path);
+    if (ref.key === '.length' || ref.key === '.keys') {
+        throw ('Reference.transaction failed: ' + ref.key + ' is a read-only object.');
+    }
+    const applyLocally = (_a = options === null || options === void 0 ? void 0 : options.applyLocally) !== null && _a !== void 0 ? _a : true;
+    const deferred = new Deferred();
+    const promiseComplete = (error, committed, node) => {
+        let dataSnapshot = null;
+        if (error) {
+            deferred.reject(error);
+        }
+        else {
+            dataSnapshot = new DataSnapshot$1(node, new ReferenceImpl(ref._repo, ref._path), PRIORITY_INDEX);
+            deferred.resolve(new TransactionResult$1(committed, dataSnapshot));
+        }
+    };
+    // Add a watch to make sure we get server updates.
+    const unwatcher = onValue(ref, () => { });
+    repoStartTransaction(ref._repo, ref._path, transactionUpdate, promiseComplete, unwatcher, applyLocally);
+    return deferred.promise;
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 PersistentConnection.prototype.simpleListen = function (pathString, onComplete) {
@@ -13147,7 +18394,869 @@ PersistentConnection.prototype.echo = function (data, onEcho) {
  *
  * @packageDocumentation
  */
-registerDatabase();
+registerDatabase$1();
+
+const name = "@firebase/database-compat";
+const version = "0.1.1";
+
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const logClient = new Logger('@firebase/database-compat');
+const warn = function (msg) {
+    const message = 'FIREBASE WARNING: ' + msg;
+    logClient.warn(message);
+};
+
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const validateBoolean = function (fnName, argumentName, bool, optional) {
+    if (optional && bool === undefined) {
+        return;
+    }
+    if (typeof bool !== 'boolean') {
+        throw new Error(errorPrefix(fnName, argumentName) + 'must be a boolean.');
+    }
+};
+const validateEventType = function (fnName, eventType, optional) {
+    if (optional && eventType === undefined) {
+        return;
+    }
+    switch (eventType) {
+        case 'value':
+        case 'child_added':
+        case 'child_removed':
+        case 'child_changed':
+        case 'child_moved':
+            break;
+        default:
+            throw new Error(errorPrefix(fnName, 'eventType') +
+                'must be a valid event type = "value", "child_added", "child_removed", ' +
+                '"child_changed", or "child_moved".');
+    }
+};
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+class OnDisconnect {
+    constructor(_delegate) {
+        this._delegate = _delegate;
+    }
+    cancel(onComplete) {
+        validateArgCount('OnDisconnect.cancel', 0, 1, arguments.length);
+        validateCallback('OnDisconnect.cancel', 'onComplete', onComplete, true);
+        const result = this._delegate.cancel();
+        if (onComplete) {
+            result.then(() => onComplete(null), error => onComplete(error));
+        }
+        return result;
+    }
+    remove(onComplete) {
+        validateArgCount('OnDisconnect.remove', 0, 1, arguments.length);
+        validateCallback('OnDisconnect.remove', 'onComplete', onComplete, true);
+        const result = this._delegate.remove();
+        if (onComplete) {
+            result.then(() => onComplete(null), error => onComplete(error));
+        }
+        return result;
+    }
+    set(value, onComplete) {
+        validateArgCount('OnDisconnect.set', 1, 2, arguments.length);
+        validateCallback('OnDisconnect.set', 'onComplete', onComplete, true);
+        const result = this._delegate.set(value);
+        if (onComplete) {
+            result.then(() => onComplete(null), error => onComplete(error));
+        }
+        return result;
+    }
+    setWithPriority(value, priority, onComplete) {
+        validateArgCount('OnDisconnect.setWithPriority', 2, 3, arguments.length);
+        validateCallback('OnDisconnect.setWithPriority', 'onComplete', onComplete, true);
+        const result = this._delegate.setWithPriority(value, priority);
+        if (onComplete) {
+            result.then(() => onComplete(null), error => onComplete(error));
+        }
+        return result;
+    }
+    update(objectToMerge, onComplete) {
+        validateArgCount('OnDisconnect.update', 1, 2, arguments.length);
+        if (Array.isArray(objectToMerge)) {
+            const newObjectToMerge = {};
+            for (let i = 0; i < objectToMerge.length; ++i) {
+                newObjectToMerge['' + i] = objectToMerge[i];
+            }
+            objectToMerge = newObjectToMerge;
+            warn('Passing an Array to firebase.database.onDisconnect().update() is deprecated. Use set() if you want to overwrite the ' +
+                'existing data, or an Object with integer keys if you really do want to only update some of the children.');
+        }
+        validateCallback('OnDisconnect.update', 'onComplete', onComplete, true);
+        const result = this._delegate.update(objectToMerge);
+        if (onComplete) {
+            result.then(() => onComplete(null), error => onComplete(error));
+        }
+        return result;
+    }
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+class TransactionResult {
+    /**
+     * A type for the resolve value of Firebase.transaction.
+     */
+    constructor(committed, snapshot) {
+        this.committed = committed;
+        this.snapshot = snapshot;
+    }
+    // Do not create public documentation. This is intended to make JSON serialization work but is otherwise unnecessary
+    // for end-users
+    toJSON() {
+        validateArgCount('TransactionResult.toJSON', 0, 1, arguments.length);
+        return { committed: this.committed, snapshot: this.snapshot.toJSON() };
+    }
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Class representing a firebase data snapshot.  It wraps a SnapshotNode and
+ * surfaces the public methods (val, forEach, etc.) we want to expose.
+ */
+class DataSnapshot {
+    constructor(_database, _delegate) {
+        this._database = _database;
+        this._delegate = _delegate;
+    }
+    /**
+     * Retrieves the snapshot contents as JSON.  Returns null if the snapshot is
+     * empty.
+     *
+     * @returns JSON representation of the DataSnapshot contents, or null if empty.
+     */
+    val() {
+        validateArgCount('DataSnapshot.val', 0, 0, arguments.length);
+        return this._delegate.val();
+    }
+    /**
+     * Returns the snapshot contents as JSON, including priorities of node.  Suitable for exporting
+     * the entire node contents.
+     * @returns JSON representation of the DataSnapshot contents, or null if empty.
+     */
+    exportVal() {
+        validateArgCount('DataSnapshot.exportVal', 0, 0, arguments.length);
+        return this._delegate.exportVal();
+    }
+    // Do not create public documentation. This is intended to make JSON serialization work but is otherwise unnecessary
+    // for end-users
+    toJSON() {
+        // Optional spacer argument is unnecessary because we're depending on recursion rather than stringifying the content
+        validateArgCount('DataSnapshot.toJSON', 0, 1, arguments.length);
+        return this._delegate.toJSON();
+    }
+    /**
+     * Returns whether the snapshot contains a non-null value.
+     *
+     * @returns Whether the snapshot contains a non-null value, or is empty.
+     */
+    exists() {
+        validateArgCount('DataSnapshot.exists', 0, 0, arguments.length);
+        return this._delegate.exists();
+    }
+    /**
+     * Returns a DataSnapshot of the specified child node's contents.
+     *
+     * @param path - Path to a child.
+     * @returns DataSnapshot for child node.
+     */
+    child(path) {
+        validateArgCount('DataSnapshot.child', 0, 1, arguments.length);
+        // Ensure the childPath is a string (can be a number)
+        path = String(path);
+        validatePathString('DataSnapshot.child', 'path', path, false);
+        return new DataSnapshot(this._database, this._delegate.child(path));
+    }
+    /**
+     * Returns whether the snapshot contains a child at the specified path.
+     *
+     * @param path - Path to a child.
+     * @returns Whether the child exists.
+     */
+    hasChild(path) {
+        validateArgCount('DataSnapshot.hasChild', 1, 1, arguments.length);
+        validatePathString('DataSnapshot.hasChild', 'path', path, false);
+        return this._delegate.hasChild(path);
+    }
+    /**
+     * Returns the priority of the object, or null if no priority was set.
+     *
+     * @returns The priority.
+     */
+    getPriority() {
+        validateArgCount('DataSnapshot.getPriority', 0, 0, arguments.length);
+        return this._delegate.priority;
+    }
+    /**
+     * Iterates through child nodes and calls the specified action for each one.
+     *
+     * @param action - Callback function to be called
+     * for each child.
+     * @returns True if forEach was canceled by action returning true for
+     * one of the child nodes.
+     */
+    forEach(action) {
+        validateArgCount('DataSnapshot.forEach', 1, 1, arguments.length);
+        validateCallback('DataSnapshot.forEach', 'action', action, false);
+        return this._delegate.forEach(expDataSnapshot => action(new DataSnapshot(this._database, expDataSnapshot)));
+    }
+    /**
+     * Returns whether this DataSnapshot has children.
+     * @returns True if the DataSnapshot contains 1 or more child nodes.
+     */
+    hasChildren() {
+        validateArgCount('DataSnapshot.hasChildren', 0, 0, arguments.length);
+        return this._delegate.hasChildren();
+    }
+    get key() {
+        return this._delegate.key;
+    }
+    /**
+     * Returns the number of children for this DataSnapshot.
+     * @returns The number of children that this DataSnapshot contains.
+     */
+    numChildren() {
+        validateArgCount('DataSnapshot.numChildren', 0, 0, arguments.length);
+        return this._delegate.size;
+    }
+    /**
+     * @returns The Firebase reference for the location this snapshot's data came
+     * from.
+     */
+    getRef() {
+        validateArgCount('DataSnapshot.ref', 0, 0, arguments.length);
+        return new Reference(this._database, this._delegate.ref);
+    }
+    get ref() {
+        return this.getRef();
+    }
+}
+/**
+ * A Query represents a filter to be applied to a firebase location.  This object purely represents the
+ * query expression (and exposes our public API to build the query).  The actual query logic is in ViewBase.js.
+ *
+ * Since every Firebase reference is a query, Firebase inherits from this object.
+ */
+class Query {
+    constructor(database, _delegate) {
+        this.database = database;
+        this._delegate = _delegate;
+    }
+    on(eventType, callback, cancelCallbackOrContext, context) {
+        var _a;
+        validateArgCount('Query.on', 2, 4, arguments.length);
+        validateCallback('Query.on', 'callback', callback, false);
+        const ret = Query.getCancelAndContextArgs_('Query.on', cancelCallbackOrContext, context);
+        const valueCallback = (expSnapshot, previousChildName) => {
+            callback.call(ret.context, new DataSnapshot(this.database, expSnapshot), previousChildName);
+        };
+        valueCallback.userCallback = callback;
+        valueCallback.context = ret.context;
+        const cancelCallback = (_a = ret.cancel) === null || _a === void 0 ? void 0 : _a.bind(ret.context);
+        switch (eventType) {
+            case 'value':
+                onValue(this._delegate, valueCallback, cancelCallback);
+                return callback;
+            case 'child_added':
+                onChildAdded(this._delegate, valueCallback, cancelCallback);
+                return callback;
+            case 'child_removed':
+                onChildRemoved(this._delegate, valueCallback, cancelCallback);
+                return callback;
+            case 'child_changed':
+                onChildChanged(this._delegate, valueCallback, cancelCallback);
+                return callback;
+            case 'child_moved':
+                onChildMoved(this._delegate, valueCallback, cancelCallback);
+                return callback;
+            default:
+                throw new Error(errorPrefix('Query.on', 'eventType') +
+                    'must be a valid event type = "value", "child_added", "child_removed", ' +
+                    '"child_changed", or "child_moved".');
+        }
+    }
+    off(eventType, callback, context) {
+        validateArgCount('Query.off', 0, 3, arguments.length);
+        validateEventType('Query.off', eventType, true);
+        validateCallback('Query.off', 'callback', callback, true);
+        validateContextObject('Query.off', 'context', context, true);
+        if (callback) {
+            const valueCallback = () => { };
+            valueCallback.userCallback = callback;
+            valueCallback.context = context;
+            off(this._delegate, eventType, valueCallback);
+        }
+        else {
+            off(this._delegate, eventType);
+        }
+    }
+    /**
+     * Get the server-value for this query, or return a cached value if not connected.
+     */
+    get() {
+        return get(this._delegate).then(expSnapshot => {
+            return new DataSnapshot(this.database, expSnapshot);
+        });
+    }
+    /**
+     * Attaches a listener, waits for the first event, and then removes the listener
+     */
+    once(eventType, callback, failureCallbackOrContext, context) {
+        validateArgCount('Query.once', 1, 4, arguments.length);
+        validateCallback('Query.once', 'callback', callback, true);
+        const ret = Query.getCancelAndContextArgs_('Query.once', failureCallbackOrContext, context);
+        const deferred = new Deferred();
+        const valueCallback = (expSnapshot, previousChildName) => {
+            const result = new DataSnapshot(this.database, expSnapshot);
+            if (callback) {
+                callback.call(ret.context, result, previousChildName);
+            }
+            deferred.resolve(result);
+        };
+        valueCallback.userCallback = callback;
+        valueCallback.context = ret.context;
+        const cancelCallback = (error) => {
+            if (ret.cancel) {
+                ret.cancel.call(ret.context, error);
+            }
+            deferred.reject(error);
+        };
+        switch (eventType) {
+            case 'value':
+                onValue(this._delegate, valueCallback, cancelCallback, {
+                    onlyOnce: true
+                });
+                break;
+            case 'child_added':
+                onChildAdded(this._delegate, valueCallback, cancelCallback, {
+                    onlyOnce: true
+                });
+                break;
+            case 'child_removed':
+                onChildRemoved(this._delegate, valueCallback, cancelCallback, {
+                    onlyOnce: true
+                });
+                break;
+            case 'child_changed':
+                onChildChanged(this._delegate, valueCallback, cancelCallback, {
+                    onlyOnce: true
+                });
+                break;
+            case 'child_moved':
+                onChildMoved(this._delegate, valueCallback, cancelCallback, {
+                    onlyOnce: true
+                });
+                break;
+            default:
+                throw new Error(errorPrefix('Query.once', 'eventType') +
+                    'must be a valid event type = "value", "child_added", "child_removed", ' +
+                    '"child_changed", or "child_moved".');
+        }
+        return deferred.promise;
+    }
+    /**
+     * Set a limit and anchor it to the start of the window.
+     */
+    limitToFirst(limit) {
+        validateArgCount('Query.limitToFirst', 1, 1, arguments.length);
+        return new Query(this.database, query(this._delegate, limitToFirst(limit)));
+    }
+    /**
+     * Set a limit and anchor it to the end of the window.
+     */
+    limitToLast(limit) {
+        validateArgCount('Query.limitToLast', 1, 1, arguments.length);
+        return new Query(this.database, query(this._delegate, limitToLast(limit)));
+    }
+    /**
+     * Given a child path, return a new query ordered by the specified grandchild path.
+     */
+    orderByChild(path) {
+        validateArgCount('Query.orderByChild', 1, 1, arguments.length);
+        return new Query(this.database, query(this._delegate, orderByChild(path)));
+    }
+    /**
+     * Return a new query ordered by the KeyIndex
+     */
+    orderByKey() {
+        validateArgCount('Query.orderByKey', 0, 0, arguments.length);
+        return new Query(this.database, query(this._delegate, orderByKey()));
+    }
+    /**
+     * Return a new query ordered by the PriorityIndex
+     */
+    orderByPriority() {
+        validateArgCount('Query.orderByPriority', 0, 0, arguments.length);
+        return new Query(this.database, query(this._delegate, orderByPriority()));
+    }
+    /**
+     * Return a new query ordered by the ValueIndex
+     */
+    orderByValue() {
+        validateArgCount('Query.orderByValue', 0, 0, arguments.length);
+        return new Query(this.database, query(this._delegate, orderByValue()));
+    }
+    startAt(value = null, name) {
+        validateArgCount('Query.startAt', 0, 2, arguments.length);
+        return new Query(this.database, query(this._delegate, startAt(value, name)));
+    }
+    startAfter(value = null, name) {
+        validateArgCount('Query.startAfter', 0, 2, arguments.length);
+        return new Query(this.database, query(this._delegate, startAfter(value, name)));
+    }
+    endAt(value = null, name) {
+        validateArgCount('Query.endAt', 0, 2, arguments.length);
+        return new Query(this.database, query(this._delegate, endAt(value, name)));
+    }
+    endBefore(value = null, name) {
+        validateArgCount('Query.endBefore', 0, 2, arguments.length);
+        return new Query(this.database, query(this._delegate, endBefore(value, name)));
+    }
+    /**
+     * Load the selection of children with exactly the specified value, and, optionally,
+     * the specified name.
+     */
+    equalTo(value, name) {
+        validateArgCount('Query.equalTo', 1, 2, arguments.length);
+        return new Query(this.database, query(this._delegate, equalTo(value, name)));
+    }
+    /**
+     * @returns URL for this location.
+     */
+    toString() {
+        validateArgCount('Query.toString', 0, 0, arguments.length);
+        return this._delegate.toString();
+    }
+    // Do not create public documentation. This is intended to make JSON serialization work but is otherwise unnecessary
+    // for end-users.
+    toJSON() {
+        // An optional spacer argument is unnecessary for a string.
+        validateArgCount('Query.toJSON', 0, 1, arguments.length);
+        return this._delegate.toJSON();
+    }
+    /**
+     * Return true if this query and the provided query are equivalent; otherwise, return false.
+     */
+    isEqual(other) {
+        validateArgCount('Query.isEqual', 1, 1, arguments.length);
+        if (!(other instanceof Query)) {
+            const error = 'Query.isEqual failed: First argument must be an instance of firebase.database.Query.';
+            throw new Error(error);
+        }
+        return this._delegate.isEqual(other._delegate);
+    }
+    /**
+     * Helper used by .on and .once to extract the context and or cancel arguments.
+     * @param fnName - The function name (on or once)
+     *
+     */
+    static getCancelAndContextArgs_(fnName, cancelOrContext, context) {
+        const ret = { cancel: undefined, context: undefined };
+        if (cancelOrContext && context) {
+            ret.cancel = cancelOrContext;
+            validateCallback(fnName, 'cancel', ret.cancel, true);
+            ret.context = context;
+            validateContextObject(fnName, 'context', ret.context, true);
+        }
+        else if (cancelOrContext) {
+            // we have either a cancel callback or a context.
+            if (typeof cancelOrContext === 'object' && cancelOrContext !== null) {
+                // it's a context!
+                ret.context = cancelOrContext;
+            }
+            else if (typeof cancelOrContext === 'function') {
+                ret.cancel = cancelOrContext;
+            }
+            else {
+                throw new Error(errorPrefix(fnName, 'cancelOrContext') +
+                    ' must either be a cancel callback or a context object.');
+            }
+        }
+        return ret;
+    }
+    get ref() {
+        return new Reference(this.database, new ReferenceImpl(this._delegate._repo, this._delegate._path));
+    }
+}
+class Reference extends Query {
+    /**
+     * Call options:
+     *   new Reference(Repo, Path) or
+     *   new Reference(url: string, string|RepoManager)
+     *
+     * Externally - this is the firebase.database.Reference type.
+     */
+    constructor(database, _delegate) {
+        super(database, new QueryImpl(_delegate._repo, _delegate._path, new QueryParams(), false));
+        this.database = database;
+        this._delegate = _delegate;
+    }
+    /** @returns {?string} */
+    getKey() {
+        validateArgCount('Reference.key', 0, 0, arguments.length);
+        return this._delegate.key;
+    }
+    child(pathString) {
+        validateArgCount('Reference.child', 1, 1, arguments.length);
+        if (typeof pathString === 'number') {
+            pathString = String(pathString);
+        }
+        return new Reference(this.database, child(this._delegate, pathString));
+    }
+    /** @returns {?Reference} */
+    getParent() {
+        validateArgCount('Reference.parent', 0, 0, arguments.length);
+        const parent = this._delegate.parent;
+        return parent ? new Reference(this.database, parent) : null;
+    }
+    /** @returns {!Reference} */
+    getRoot() {
+        validateArgCount('Reference.root', 0, 0, arguments.length);
+        return new Reference(this.database, this._delegate.root);
+    }
+    set(newVal, onComplete) {
+        validateArgCount('Reference.set', 1, 2, arguments.length);
+        validateCallback('Reference.set', 'onComplete', onComplete, true);
+        const result = set(this._delegate, newVal);
+        if (onComplete) {
+            result.then(() => onComplete(null), error => onComplete(error));
+        }
+        return result;
+    }
+    update(values, onComplete) {
+        validateArgCount('Reference.update', 1, 2, arguments.length);
+        if (Array.isArray(values)) {
+            const newObjectToMerge = {};
+            for (let i = 0; i < values.length; ++i) {
+                newObjectToMerge['' + i] = values[i];
+            }
+            values = newObjectToMerge;
+            warn('Passing an Array to Firebase.update() is deprecated. ' +
+                'Use set() if you want to overwrite the existing data, or ' +
+                'an Object with integer keys if you really do want to ' +
+                'only update some of the children.');
+        }
+        validateWritablePath('Reference.update', this._delegate._path);
+        validateCallback('Reference.update', 'onComplete', onComplete, true);
+        const result = update(this._delegate, values);
+        if (onComplete) {
+            result.then(() => onComplete(null), error => onComplete(error));
+        }
+        return result;
+    }
+    setWithPriority(newVal, newPriority, onComplete) {
+        validateArgCount('Reference.setWithPriority', 2, 3, arguments.length);
+        validateCallback('Reference.setWithPriority', 'onComplete', onComplete, true);
+        const result = setWithPriority(this._delegate, newVal, newPriority);
+        if (onComplete) {
+            result.then(() => onComplete(null), error => onComplete(error));
+        }
+        return result;
+    }
+    remove(onComplete) {
+        validateArgCount('Reference.remove', 0, 1, arguments.length);
+        validateCallback('Reference.remove', 'onComplete', onComplete, true);
+        const result = remove(this._delegate);
+        if (onComplete) {
+            result.then(() => onComplete(null), error => onComplete(error));
+        }
+        return result;
+    }
+    transaction(transactionUpdate, onComplete, applyLocally) {
+        validateArgCount('Reference.transaction', 1, 3, arguments.length);
+        validateCallback('Reference.transaction', 'transactionUpdate', transactionUpdate, false);
+        validateCallback('Reference.transaction', 'onComplete', onComplete, true);
+        validateBoolean('Reference.transaction', 'applyLocally', applyLocally, true);
+        const result = runTransaction(this._delegate, transactionUpdate, {
+            applyLocally
+        }).then(transactionResult => new TransactionResult(transactionResult.committed, new DataSnapshot(this.database, transactionResult.snapshot)));
+        if (onComplete) {
+            result.then(transactionResult => onComplete(null, transactionResult.committed, transactionResult.snapshot), error => onComplete(error, false, null));
+        }
+        return result;
+    }
+    setPriority(priority, onComplete) {
+        validateArgCount('Reference.setPriority', 1, 2, arguments.length);
+        validateCallback('Reference.setPriority', 'onComplete', onComplete, true);
+        const result = setPriority(this._delegate, priority);
+        if (onComplete) {
+            result.then(() => onComplete(null), error => onComplete(error));
+        }
+        return result;
+    }
+    push(value, onComplete) {
+        validateArgCount('Reference.push', 0, 2, arguments.length);
+        validateCallback('Reference.push', 'onComplete', onComplete, true);
+        const expPromise = push(this._delegate, value);
+        const promise = expPromise.then(expRef => new Reference(this.database, expRef));
+        if (onComplete) {
+            promise.then(() => onComplete(null), error => onComplete(error));
+        }
+        const result = new Reference(this.database, expPromise);
+        result.then = promise.then.bind(promise);
+        result.catch = promise.catch.bind(promise, undefined);
+        return result;
+    }
+    onDisconnect() {
+        validateWritablePath('Reference.onDisconnect', this._delegate._path);
+        return new OnDisconnect(new OnDisconnect$1(this._delegate._repo, this._delegate._path));
+    }
+    get key() {
+        return this.getKey();
+    }
+    get parent() {
+        return this.getParent();
+    }
+    get root() {
+        return this.getRoot();
+    }
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Class representing a firebase database.
+ */
+class Database {
+    /**
+     * The constructor should not be called by users of our public API.
+     */
+    constructor(_delegate, app) {
+        this._delegate = _delegate;
+        this.app = app;
+        this.INTERNAL = {
+            delete: () => this._delegate._delete()
+        };
+    }
+    /**
+     * Modify this instance to communicate with the Realtime Database emulator.
+     *
+     * <p>Note: This method must be called before performing any other operation.
+     *
+     * @param host - the emulator host (ex: localhost)
+     * @param port - the emulator port (ex: 8080)
+     * @param options.mockUserToken - the mock auth token to use for unit testing Security Rules
+     */
+    useEmulator(host, port, options = {}) {
+        connectDatabaseEmulator(this._delegate, host, port, options);
+    }
+    ref(path) {
+        validateArgCount('database.ref', 0, 1, arguments.length);
+        if (path instanceof Reference) {
+            const childRef = refFromURL(this._delegate, path.toString());
+            return new Reference(this, childRef);
+        }
+        else {
+            const childRef = ref(this._delegate, path);
+            return new Reference(this, childRef);
+        }
+    }
+    /**
+     * Returns a reference to the root or the path specified in url.
+     * We throw a exception if the url is not in the same domain as the
+     * current repo.
+     * @returns Firebase reference.
+     */
+    refFromURL(url) {
+        const apiName = 'database.refFromURL';
+        validateArgCount(apiName, 1, 1, arguments.length);
+        const childRef = refFromURL(this._delegate, url);
+        return new Reference(this, childRef);
+    }
+    // Make individual repo go offline.
+    goOffline() {
+        validateArgCount('database.goOffline', 0, 0, arguments.length);
+        return goOffline(this._delegate);
+    }
+    goOnline() {
+        validateArgCount('database.goOnline', 0, 0, arguments.length);
+        return goOnline(this._delegate);
+    }
+}
+Database.ServerValue = {
+    TIMESTAMP: serverTimestamp(),
+    increment: (delta) => increment(delta)
+};
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Used by console to create a database based on the app,
+ * passed database URL and a custom auth implementation.
+ *
+ * @param app - A valid FirebaseApp-like object
+ * @param url - A valid Firebase databaseURL
+ * @param version - custom version e.g. firebase-admin version
+ * @param customAuthImpl - custom auth implementation
+ */
+function initStandalone({ app, url, version, customAuthImpl, namespace, nodeAdmin = false }) {
+    setSDKVersion(version);
+    /**
+     * ComponentContainer('database-standalone') is just a placeholder that doesn't perform
+     * any actual function.
+     */
+    const authProvider = new Provider('auth-internal', new ComponentContainer('database-standalone'));
+    authProvider.setComponent(new Component('auth-internal', () => customAuthImpl, "PRIVATE" /* PRIVATE */));
+    return {
+        instance: new Database(repoManagerDatabaseFromApp(app, authProvider, 
+        /* appCheckProvider= */ undefined, url, nodeAdmin), app),
+        namespace
+    };
+}
+
+var INTERNAL = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  initStandalone: initStandalone
+});
+
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const ServerValue = Database.ServerValue;
+function registerDatabase(instance) {
+    // Register the Database Service with the 'firebase' namespace.
+    instance.INTERNAL.registerComponent(new Component('database-compat', (container, { instanceIdentifier: url }) => {
+        /* Dependencies */
+        // getImmediate for FirebaseApp will always succeed
+        const app = container.getProvider('app-compat').getImmediate();
+        const databaseExp = container
+            .getProvider('database')
+            .getImmediate({ identifier: url });
+        return new Database(databaseExp, app);
+    }, "PUBLIC" /* PUBLIC */)
+        .setServiceProps(
+    // firebase.database namespace properties
+    {
+        Reference,
+        Query,
+        Database,
+        DataSnapshot,
+        enableLogging,
+        INTERNAL,
+        ServerValue
+    })
+        .setMultipleInstances(true));
+    instance.registerVersion(name, version);
+}
+registerDatabase(firebase);
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -13482,7 +19591,7 @@ function PeerBinaryFactory(options) {
 const Peer = simplepeer_min;
 const msgPack = msgpack_min;
 
-let firebase = initFirebase();
+initFirebase(firebase);
 setEncode(msgPack.encode);
 
 const UnChunker = UnChunkerFactory({ decode: msgPack.decode });

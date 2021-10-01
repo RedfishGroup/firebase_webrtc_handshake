@@ -409,22 +409,21 @@ var defaultFBConfig = {
 };
 
 var firebase$1;
-var firebaseGetDatabase;
-function initFirebase(newInitFirebase, newGetDataBase, fbConfig = null) {
+function initFirebase(newFirebase, fbConfig = null) {
     if (fbConfig) defaultFBConfig = fbConfig;
 
     if (!firebase$1) {
-        firebase$1 = newInitFirebase(defaultFBConfig);
-        firebaseGetDatabase = newGetDataBase;
+        firebase$1 = newFirebase;
+        firebase$1.initializeApp(defaultFBConfig);
     }
 
     return { firebase: firebase$1, database: getDatabase() }
 }
 
-var database$1;
+var database;
 
 function getDatabase() {
-    if (database$1) return database$1
+    if (database) return database
 
     if (!firebase$1) {
         throw new Error(
@@ -432,14 +431,8 @@ function getDatabase() {
         )
     }
 
-    if (!firebaseGetDatabase) {
-        throw new Error(
-            `init must be called before accessing database. no firebaseGetDatabase`
-        )
-    }
-
-    database$1 = firebaseGetDatabase(firebase$1).ref('/').child('peers');
-    return database$1
+    database = firebase$1.database().ref('/').child('peers');
+    return database
 }
 
 function getFirebase() {
@@ -1541,10 +1534,10 @@ const wrtc = require('wrtc');
 // import adapter from "webrtc-adapter/src/js/adapter_core.js";
 const { decode, encode } = require('msgpack-lite');
 
-const firebase = require('firebase/app');
-const database = require('firebase/database');
+const firebase = require('firebase/compat/app');
+require('firebase/compat/database');
 
-initFirebase(firebase.initializeApp, database.getDatabase);
+initFirebase(firebase);
 setEncode(encode);
 
 const UnChunker = UnChunkerFactory({ decode });
