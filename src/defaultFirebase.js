@@ -7,21 +7,22 @@ var defaultFBConfig = {
 };
 
 var firebase
-function initFirebase(newFirebase, fbConfig = null) {
-    firebase = newFirebase
+function initFirebase(newInitFirebase, fbConfig = null) {
     if (fbConfig) defaultFBConfig = fbConfig
+    if (!firebase) {
+        firebase = initFirebase(defaultFBConfig)
+    }
+
     return { firebase, database: getDatabase() }
 }
 
-
-var database;
+var database
 
 function getDatabase() {
     if (database) return database
     if (!firebase)
         throw new Error('init must be called before accessing database')
 
-    firebase.initializeApp(defaultFBConfig)
     database = firebase.database().ref('/').child('peers')
     return database
 }

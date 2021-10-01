@@ -401,20 +401,14 @@ class Evented {
   }
 }
 
-var defaultFBConfig = {
-  apiKey: "AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA",
-  authDomain: "https://torrid-torch-716.firebaseio.com/",
-  databaseURL: "https://torrid-torch-716.firebaseio.com/",
-  projectId: "torrid-torch-716"
-};
-
 var firebase$1;
-function initFirebase(newFirebase, fbConfig = null) {
-    firebase$1 = newFirebase;
-    if (fbConfig) defaultFBConfig = fbConfig;
+function initFirebase(newInitFirebase, fbConfig = null) {
+    if (!firebase$1) {
+        firebase$1 = initFirebase();
+    }
+
     return { firebase: firebase$1, database: getDatabase() }
 }
-
 
 var database;
 
@@ -423,7 +417,6 @@ function getDatabase() {
     if (!firebase$1)
         throw new Error('init must be called before accessing database')
 
-    firebase$1.initializeApp(defaultFBConfig);
     database = firebase$1.database().ref('/').child('peers');
     return database
 }
@@ -1530,7 +1523,7 @@ const { decode, encode } = require('msgpack-lite');
 const firebase = require('firebase/app');
 require('firebase/database');
 
-initFirebase(firebase);
+initFirebase();
 setEncode(encode);
 
 const UnChunker = UnChunkerFactory({ decode });
