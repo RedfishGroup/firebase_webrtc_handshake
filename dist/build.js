@@ -368,6 +368,7 @@ var firebase$1;
 var firebaseGetDatabase;
 function initFirebase(newInitFirebase, newGetDataBase, fbConfig = null) {
     if (fbConfig) defaultFBConfig = fbConfig;
+
     if (!firebase$1) {
         firebase$1 = newInitFirebase(defaultFBConfig);
         firebaseGetDatabase = newGetDataBase;
@@ -380,12 +381,16 @@ var database;
 
 function getDatabase() {
     if (database) return database
-    if (!firebase$1 || !firebaseGetDatabase) {
+
+    if (!firebase$1) {
         throw new Error(
-            `init must be called before accessing database.  Got: ${{
-                firebase: firebase$1,
-                firebaseGetDatabase,
-            }}`
+            `init must be called before accessing database.  no firebase`
+        )
+    }
+
+    if (!firebaseGetDatabase) {
+        throw new Error(
+            `init must be called before accessing database. no firebaseGetDatabase`
         )
     }
 
