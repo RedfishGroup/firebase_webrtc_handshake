@@ -1150,13 +1150,13 @@ function P2PClientFactory(options) {
                     let { ackID } = data.data.ack;
                     this.ackCallback(ackID, data);
                 } else {
-                    console.log('~~~ DataBig ~~~~');
-                    console.log(data);
+                    // console.log('~~~ DataBig ~~~~')
+                    // console.log(data)
                     let { requestID } = data || {};
                     if (requestID) {
                         this.requestCallback(requestID, data);
                     }
-                    console.log('~~~~~~~~~~~~~~~~');
+                    // console.log('~~~~~~~~~~~~~~~~')
                     this.fire('dataBig', { peer: this.connection, data: data });
                 }
             });
