@@ -409,24 +409,26 @@ var defaultFBConfig = {
 };
 
 var firebase$1;
-function initFirebase(newInitFirebase, fbConfig = null) {
+var firebaseGetDatabase;
+function initFirebase(newInitFirebase, newGetDataBase, fbConfig = null) {
     if (fbConfig) defaultFBConfig = fbConfig;
     if (!firebase$1) {
         firebase$1 = newInitFirebase(defaultFBConfig);
+        firebaseGetDatbase = newGetDataBase;
     }
 
     return { firebase: firebase$1, database: getDatabase() }
 }
 
-var database;
+var database$1;
 
 function getDatabase() {
-    if (database) return database
-    if (!firebase$1)
+    if (database$1) return database$1
+    if (!firebase$1 || !firebaseGetDatbase)
         throw new Error('init must be called before accessing database')
 
-    database = firebase$1.database().ref('/').child('peers');
-    return database
+    database$1 = firebaseGetDatabase(firebase$1).ref('/').child('peers');
+    return database$1
 }
 
 function getFirebase() {
@@ -1529,9 +1531,9 @@ const wrtc = require('wrtc');
 const { decode, encode } = require('msgpack-lite');
 
 const firebase = require('firebase/app');
-require('firebase/database');
+const database = require('firebase/database');
 
-initFirebase(firebase.initializeApp);
+initFirebase(firebase.initializeApp, database.getDatabase);
 setEncode(encode);
 
 const UnChunker = UnChunkerFactory({ decode });

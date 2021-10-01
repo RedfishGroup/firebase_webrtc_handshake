@@ -365,10 +365,12 @@ var defaultFBConfig = {
 };
 
 var firebase$1;
-function initFirebase(newInitFirebase, fbConfig = null) {
+var firebaseGetDatabase;
+function initFirebase(newInitFirebase, newGetDataBase, fbConfig = null) {
     if (fbConfig) defaultFBConfig = fbConfig;
     if (!firebase$1) {
         firebase$1 = newInitFirebase(defaultFBConfig);
+        firebaseGetDatbase = newGetDataBase;
     }
 
     return { firebase: firebase$1, database: getDatabase() }
@@ -378,10 +380,10 @@ var database;
 
 function getDatabase() {
     if (database) return database
-    if (!firebase$1)
+    if (!firebase$1 || !firebaseGetDatbase)
         throw new Error('init must be called before accessing database')
 
-    database = firebase$1.database().ref('/').child('peers');
+    database = firebaseGetDatabase(firebase$1).ref('/').child('peers');
     return database
 }
 
