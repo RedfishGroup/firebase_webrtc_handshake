@@ -377,8 +377,14 @@ var database;
 
 function getDatabase() {
     if (database) return database
-    if (!firebase$1 || !firebaseGetDatabase)
-        throw new Error('init must be called before accessing database')
+    if (!firebase$1 || !firebaseGetDatabase) {
+        throw new Error(
+            `init must be called before accessing database.  Got: ${{
+                firebase: firebase$1,
+                firebaseGetDatabase,
+            }}`
+        )
+    }
 
     database = firebaseGetDatabase(firebase$1).ref('/').child('peers');
     return database
