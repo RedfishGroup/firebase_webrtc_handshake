@@ -10,7 +10,7 @@ var firebase
 function initFirebase(newInitFirebase, fbConfig = null) {
     if (fbConfig) defaultFBConfig = fbConfig
     if (!firebase) {
-        firebase = initFirebase(defaultFBConfig)
+        firebase = newInitFirebase(defaultFBConfig)
     }
 
     return { firebase, database: getDatabase() }

@@ -401,10 +401,18 @@ class Evented {
   }
 }
 
+var defaultFBConfig = {
+  apiKey: "AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA",
+  authDomain: "https://torrid-torch-716.firebaseio.com/",
+  databaseURL: "https://torrid-torch-716.firebaseio.com/",
+  projectId: "torrid-torch-716"
+};
+
 var firebase$1;
 function initFirebase(newInitFirebase, fbConfig = null) {
+    if (fbConfig) defaultFBConfig = fbConfig;
     if (!firebase$1) {
-        firebase$1 = initFirebase();
+        firebase$1 = newInitFirebase(defaultFBConfig);
     }
 
     return { firebase: firebase$1, database: getDatabase() }
