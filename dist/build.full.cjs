@@ -1523,7 +1523,7 @@ const { decode, encode } = require('msgpack-lite');
 const firebase = require('firebase/app');
 require('firebase/database');
 
-initFirebase();
+initFirebase(firebase.initializeApp);
 setEncode(encode);
 
 const UnChunker = UnChunkerFactory({ decode });

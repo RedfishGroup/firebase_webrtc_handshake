@@ -25,7 +25,7 @@ import { PeerBinaryFactory } from './peerBinary.js'
 const firebase = require('firebase/app')
 require('firebase/database')
 
-initFirebase(firebase)
+initFirebase(firebase.initializeApp)
 setEncode(encode)
 
 const UnChunker = UnChunkerFactory({ decode })
