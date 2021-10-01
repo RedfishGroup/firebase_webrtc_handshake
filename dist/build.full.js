@@ -367,7 +367,7 @@ function initFirebase(newInitFirebase, newGetDataBase, fbConfig = null) {
     if (fbConfig) defaultFBConfig = fbConfig;
     if (!firebase$1) {
         firebase$1 = newInitFirebase(defaultFBConfig);
-        firebaseGetDatbase = newGetDataBase;
+        firebaseGetDatabase = newGetDataBase;
     }
 
     return { firebase: firebase$1, database: getDatabase() }
@@ -377,7 +377,7 @@ var database;
 
 function getDatabase() {
     if (database) return database
-    if (!firebase$1 || !firebaseGetDatbase)
+    if (!firebase$1 || !firebaseGetDatabase)
         throw new Error('init must be called before accessing database')
 
     database = firebaseGetDatabase(firebase$1).ref('/').child('peers');
