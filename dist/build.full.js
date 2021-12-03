@@ -17275,7 +17275,7 @@ function P2PServerFactory(options) {
                     );
                     update(this.userRef, {
                         ...this._peerInfo,
-                        lastUpdate: serverTimestamp,
+                        lastUpdate: serverTimestamp(),
                     });
                 } else if (this._peerInfo) ; else {
                     console.warn(
@@ -17291,7 +17291,7 @@ function P2PServerFactory(options) {
             if (this.initialPeerInfo) update(this.userRef, this.initialPeerInfo);
 
             this.updateRef = child$1(this.userRef, 'lastUpdate');
-            set$1(this.updateRef, serverTimestamp);
+            set$1(this.updateRef, serverTimestamp());
 
             this.channelRef = child$1(this.userRef, 'channels');
             if (this.stream) {
@@ -17312,7 +17312,7 @@ function P2PServerFactory(options) {
 
         _updateOnFireBase() {
             // one may want to overwrite this
-            set$1(this.updateRef, serverTimestamp);
+            set$1(this.updateRef, serverTimestamp());
         }
 
         sendToAll(data) {

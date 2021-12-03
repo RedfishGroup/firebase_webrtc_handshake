@@ -101,7 +101,7 @@ export function P2PServerFactory(options) {
                     )
                     update(this.userRef, {
                         ...this._peerInfo,
-                        lastUpdate: serverTimestamp,
+                        lastUpdate: serverTimestamp(),
                     })
                 } else if (this._peerInfo) {
                     //console.log('no update needed')
@@ -119,7 +119,7 @@ export function P2PServerFactory(options) {
             if (this.initialPeerInfo) update(this.userRef, this.initialPeerInfo)
 
             this.updateRef = child(this.userRef, 'lastUpdate')
-            set(this.updateRef, serverTimestamp)
+            set(this.updateRef, serverTimestamp())
 
             this.channelRef = child(this.userRef, 'channels')
             if (this.stream) {
@@ -140,7 +140,7 @@ export function P2PServerFactory(options) {
 
         _updateOnFireBase() {
             // one may want to overwrite this
-            set(this.updateRef, serverTimestamp)
+            set(this.updateRef, serverTimestamp())
         }
 
         sendToAll(data) {
