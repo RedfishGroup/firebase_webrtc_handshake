@@ -1,6 +1,8 @@
-// Description: class for monitoring firebase references
-// and removing children that have not updated recently
+import { child, get, orderByValue, query, set } from 'firebase/database'
 
+/**  Description: class for monitoring firebase references
+ and removing children that have not updated recently
+*/
 export class firebaseTreeTrimmer {
     constructor(options = null) {
         if (
@@ -74,7 +76,7 @@ export class firebaseTreeTrimmer {
     watchMySuperior(superior) {
         // if superior is either not in /peers/cameras, or their
         // lastUpdate is greater than a minute, remove from treeTrimming list
-        get(child(this.peersRef,superior)).then( (snap) => {
+        get(child(this.peersRef, superior)).then((snap) => {
             // if the peer's lastUpdate is greater than three minutes,
             // or it doesn't exist, remove from treeTrimming list
             if (
@@ -83,7 +85,7 @@ export class firebaseTreeTrimmer {
                 snap.child('lastUpdate').val() < Date.now() - 3 * 60000
             ) {
                 // if not in the peers list or has not been updated for 3 minutes then remove
-                remove(child(this.treeTrimmingRef,superior))
+                remove(child(this.treeTrimmingRef, superior))
             }
         })
     }

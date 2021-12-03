@@ -15218,7 +15218,7 @@ class DataSnapshot$1 {
      */
     child(path) {
         const childPath = new Path(path);
-        const childRef = child$1(this.ref, path);
+        const childRef = child(this.ref, path);
         return new DataSnapshot$1(this._node.getChild(childPath), childRef, PRIORITY_INDEX);
     }
     /**
@@ -15266,7 +15266,7 @@ class DataSnapshot$1 {
         const childrenNode = this._node;
         // Sanitize the return value to a boolean. ChildrenNode.forEachChild has a weird return type...
         return !!childrenNode.forEachChild(this._index, (key, node) => {
-            return action(new DataSnapshot$1(node, child$1(this.ref, key), PRIORITY_INDEX));
+            return action(new DataSnapshot$1(node, child(this.ref, key), PRIORITY_INDEX));
         });
     }
     /**
@@ -15339,7 +15339,7 @@ class DataSnapshot$1 {
 function ref(db, path) {
     db = getModularInstance(db);
     db._checkNotDeleted('ref');
-    return path !== undefined ? child$1(db._root, path) : db._root;
+    return path !== undefined ? child(db._root, path) : db._root;
 }
 /**
  * Returns a `Reference` representing the location in the Database
@@ -15386,7 +15386,7 @@ function refFromURL(db, url) {
  *   location.
  * @returns The specified child location.
  */
-function child$1(parent, path) {
+function child(parent, path) {
     parent = getModularInstance(parent);
     if (pathGetFront(parent._path) === null) {
         validateRootPathString('child', 'path', path, false);
@@ -15442,11 +15442,11 @@ function push$1(parent, value) {
     // then() and catch() methods and is used as the return value of push(). The
     // second remains a regular Reference and is used as the fulfilled value of
     // the first ThennableReference.
-    const thennablePushRef = child$1(parent, name);
-    const pushRef = child$1(parent, name);
+    const thennablePushRef = child(parent, name);
+    const pushRef = child(parent, name);
     let promise;
     if (value != null) {
-        promise = set$1(pushRef, value).then(() => pushRef);
+        promise = set(pushRef, value).then(() => pushRef);
     }
     else {
         promise = Promise.resolve(pushRef);
@@ -15471,7 +15471,7 @@ function push$1(parent, value) {
  */
 function remove$1(ref) {
     validateWritablePath('remove', ref._path);
-    return set$1(ref, null);
+    return set(ref, null);
 }
 /**
  * Writes data to this Database location.
@@ -15502,7 +15502,7 @@ function remove$1(ref) {
  *   array, or null).
  * @returns Resolves when write to server is complete.
  */
-function set$1(ref, value) {
+function set(ref, value) {
     ref = getModularInstance(ref);
     validateWritablePath('set', ref._path);
     validateFirebaseDataArg('set', value, ref._path, false);
@@ -15606,7 +15606,7 @@ function update(ref, values) {
  * available, or rejects if the client is unable to return a value (e.g., if the
  * server is unreachable and there is nothing cached).
  */
-function get$1(query) {
+function get(query) {
     query = getModularInstance(query);
     return repoGetValue(query._repo, query).then(node => {
         return new DataSnapshot$1(node, new ReferenceImpl(query._repo, query._path), query._queryParams.getIndex());
@@ -15682,7 +15682,7 @@ class ChildEventRegistration {
     }
     createEvent(change, query) {
         assert(change.childName != null, 'Child events should have a childName.');
-        const childRef = child$1(new ReferenceImpl(query._repo, query._path), change.childName);
+        const childRef = child(new ReferenceImpl(query._repo, query._path), change.childName);
         const index = query._queryParams.getIndex();
         return new DataEvent(change.type, this, new DataSnapshot$1(change.snapshotNode, childRef, index), change.prevName);
     }
@@ -16145,7 +16145,7 @@ class QueryOrderByValueConstraint extends QueryConstraint {
  * You can read more about `orderByValue()` in
  * {@link https://firebase.google.com/docs/database/web/lists-of-data#sort_data | Sort data}.
  */
-function orderByValue$1() {
+function orderByValue() {
     return new QueryOrderByValueConstraint();
 }
 class QueryEqualToValueConstraint extends QueryConstraint {
@@ -16203,7 +16203,7 @@ function equalTo(value, key) {
  * @throws if any of the provided query constraints cannot be combined with the
  * existing or new constraints.
  */
-function query$1(query, ...queryConstraints) {
+function query(query, ...queryConstraints) {
     let queryImpl = getModularInstance(query);
     for (const constraint of queryConstraints) {
         queryImpl = constraint._apply(queryImpl);
@@ -16974,46 +16974,52 @@ var settings = {
     debug: false,
 };
 
+/**
+ * Evented
+ */
+
 class Evented {
-  constructor() {
-    this.events = {};
-  }
-
-  on(eventName, callback) {
-    if (typeof callback !== "function") return;
-    if (! this.events.hasOwnProperty(eventName)) {
-      this.events[eventName] = [];
+    constructor() {
+        this.events = {};
     }
-    this.events[eventName].push(callback);
-  }
 
-  off(eventName, callback) {
-    if (this.events.hasOwnProperty(eventName)) {
-      if (typeof callback === "function") {
-        //_.without(this.events[eventName], callback);
-        this.events = this.events.filter( function(x){
-            if ( x != this.events[eventName]) { return x }
-        });
-      } else {
-        delete this.events[eventName];
-      }
+    on(eventName, callback) {
+        if (typeof callback !== 'function') return
+        if (!this.events.hasOwnProperty(eventName)) {
+            this.events[eventName] = [];
+        }
+        this.events[eventName].push(callback);
     }
-  }
 
-  fire(eventName, argument) {
-    //_.each(this.events[eventName], (cb) => setTimeout(() => cb(argument)));
-    if (this.events[eventName]) {
-      for (var cb of this.events[eventName]) {
-        setTimeout(() => cb(argument));
-      }
+    off(eventName, callback) {
+        if (this.events.hasOwnProperty(eventName)) {
+            if (typeof callback === 'function') {
+                //_.without(this.events[eventName], callback);
+                this.events = this.events.filter(function (x) {
+                    if (x != this.events[eventName]) {
+                        return x
+                    }
+                });
+            } else {
+                delete this.events[eventName];
+            }
+        }
     }
-  }
 
-  fireAll(argument) {
-    for (var k in this.events) {
-      this.fire(k, argument);
+    fire(eventName, argument) {
+        //_.each(this.events[eventName], (cb) => setTimeout(() => cb(argument)));
+        if (this.events[eventName]) {
+            for (var cb of this.events[eventName]) {
+                setTimeout(() => cb(argument));
+            }
+        }
     }
-  }
+
+    fireAll(argument) {
+        for (var k in this.events) {
+            this.fire(k, argument);
+        }
+    }
 }
 
 var name$3 = "firebase";
@@ -17066,14 +17072,14 @@ function getDatabase() {
         )
     }
 
-    database = child$1(ref(getDatabase$1(firebase$2)), 'peers');
+    database = child(ref(getDatabase$1(firebase$2)), 'peers');
     return database
 }
 
 class Channel {
     constructor(fbref, peer) {
-        this.outRef = child$1(fbref, 'fromServer'); //firebase
-        this.inRef = child$1(fbref, 'fromClient');
+        this.outRef = child(fbref, 'fromServer'); //firebase
+        this.inRef = child(fbref, 'fromClient');
         this.peer = peer; // simple-peer
     }
 
@@ -17101,9 +17107,9 @@ function getPeerList(database, callback) {
         });
 }
 
-// Description: class for monitoring firebase references
-// and removing children that have not updated recently
-
+/**  Description: class for monitoring firebase references
+ and removing children that have not updated recently
+*/
 class firebaseTreeTrimmer {
     constructor(options = null) {
         if (
@@ -17177,7 +17183,7 @@ class firebaseTreeTrimmer {
     watchMySuperior(superior) {
         // if superior is either not in /peers/cameras, or their
         // lastUpdate is greater than a minute, remove from treeTrimming list
-        get(child(this.peersRef,superior)).then( (snap) => {
+        get(child(this.peersRef, superior)).then((snap) => {
             // if the peer's lastUpdate is greater than three minutes,
             // or it doesn't exist, remove from treeTrimming list
             if (
@@ -17186,7 +17192,7 @@ class firebaseTreeTrimmer {
                 snap.child('lastUpdate').val() < Date.now() - 3 * 60000
             ) {
                 // if not in the peers list or has not been updated for 3 minutes then remove
-                remove(child(this.treeTrimmingRef,superior));
+                remove(child(this.treeTrimmingRef, superior));
             }
         });
     }
@@ -17245,11 +17251,11 @@ function P2PServerFactory(options) {
                 peersRef: this.database,
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
-                    child$1(this.database.parent, 'treeTrimming'),
+                    child(this.database.parent, 'treeTrimming'),
                 id: this.id,
             });
 
-            this.userRef = child$1(fbref, this.id);
+            this.userRef = child(fbref, this.id);
 
             onValue(this.userRef, (snapshot) => {
                 // handle being tree trimmed while asleep
@@ -17290,14 +17296,14 @@ function P2PServerFactory(options) {
 
             if (this.initialPeerInfo) update(this.userRef, this.initialPeerInfo);
 
-            this.updateRef = child$1(this.userRef, 'lastUpdate');
-            set$1(this.updateRef, serverTimestamp());
+            this.updateRef = child(this.userRef, 'lastUpdate');
+            set(this.updateRef, serverTimestamp());
 
-            this.channelRef = child$1(this.userRef, 'channels');
+            this.channelRef = child(this.userRef, 'channels');
             if (this.stream) {
-                set$1(child$1(this.userRef, 'isStream'), true);
+                set(child(this.userRef, 'isStream'), true);
             }
-            set$1(this.channelRef, []);
+            set(this.channelRef, []);
 
             this.connections = [];
             this._intervalID = setInterval(() => {
@@ -17312,7 +17318,7 @@ function P2PServerFactory(options) {
 
         _updateOnFireBase() {
             // one may want to overwrite this
-            set$1(this.updateRef, serverTimestamp());
+            set(this.updateRef, serverTimestamp());
         }
 
         sendToAll(data) {
@@ -17367,7 +17373,7 @@ function P2PServerFactory(options) {
                         var mykey = ev.key;
                         var { peerID, myID } = sig;
                         var channel = new Channel(
-                            child$1(this.channelRef, mykey),
+                            child(this.channelRef, mykey),
                             this._makePeer(myID)
                         );
                         this.connections = [...this.connections, channel];
@@ -17670,8 +17676,8 @@ function P2PClientFactory(options) {
                     this._notifyCallbacks('peer not defined');
                 } else {
                     this.id = id;
-                    this.serverRef = child$1(this.database, id);
-                    get$1(this.serverRef).next((ev1) => {
+                    this.serverRef = child(this.database, id);
+                    get(this.serverRef).next((ev1) => {
                         ev1.val();
                         let pOpts = {
                             initiator: true,
@@ -17753,11 +17759,11 @@ function P2PClientFactory(options) {
             offer.myID = this.myID;
             if (this.debug)
                 console.log('Got create channel with offer: ', offer);
-            this.channelRef = push$1(child$1(this.serverRef, 'channels'), {
+            this.channelRef = push$1(child(this.serverRef, 'channels'), {
                 fromClient: [offer],
             });
-            this.outRef = child$1(this.channelRef, 'fromClient');
-            this.inRef = child$1(this.channelRef, 'fromServer');
+            this.outRef = child(this.channelRef, 'fromClient');
+            this.inRef = child(this.channelRef, 'fromServer');
             onChildAdded(this.inRef, (ev) => {
                 var val = ev.val();
                 if (this.debug) console.log(val, 'channel message, client');
@@ -18679,7 +18685,7 @@ class Query {
      * Get the server-value for this query, or return a cached value if not connected.
      */
     get() {
-        return get$1(this._delegate).then(expSnapshot => {
+        return get(this._delegate).then(expSnapshot => {
             return new DataSnapshot(this.database, expSnapshot);
         });
     }
@@ -18744,58 +18750,58 @@ class Query {
      */
     limitToFirst(limit) {
         validateArgCount('Query.limitToFirst', 1, 1, arguments.length);
-        return new Query(this.database, query$1(this._delegate, limitToFirst(limit)));
+        return new Query(this.database, query(this._delegate, limitToFirst(limit)));
     }
     /**
      * Set a limit and anchor it to the end of the window.
      */
     limitToLast(limit) {
         validateArgCount('Query.limitToLast', 1, 1, arguments.length);
-        return new Query(this.database, query$1(this._delegate, limitToLast(limit)));
+        return new Query(this.database, query(this._delegate, limitToLast(limit)));
     }
     /**
      * Given a child path, return a new query ordered by the specified grandchild path.
      */
     orderByChild(path) {
         validateArgCount('Query.orderByChild', 1, 1, arguments.length);
-        return new Query(this.database, query$1(this._delegate, orderByChild(path)));
+        return new Query(this.database, query(this._delegate, orderByChild(path)));
     }
     /**
      * Return a new query ordered by the KeyIndex
      */
     orderByKey() {
         validateArgCount('Query.orderByKey', 0, 0, arguments.length);
-        return new Query(this.database, query$1(this._delegate, orderByKey()));
+        return new Query(this.database, query(this._delegate, orderByKey()));
     }
     /**
      * Return a new query ordered by the PriorityIndex
      */
     orderByPriority() {
         validateArgCount('Query.orderByPriority', 0, 0, arguments.length);
-        return new Query(this.database, query$1(this._delegate, orderByPriority()));
+        return new Query(this.database, query(this._delegate, orderByPriority()));
     }
     /**
      * Return a new query ordered by the ValueIndex
      */
     orderByValue() {
         validateArgCount('Query.orderByValue', 0, 0, arguments.length);
-        return new Query(this.database, query$1(this._delegate, orderByValue$1()));
+        return new Query(this.database, query(this._delegate, orderByValue()));
     }
     startAt(value = null, name) {
         validateArgCount('Query.startAt', 0, 2, arguments.length);
-        return new Query(this.database, query$1(this._delegate, startAt(value, name)));
+        return new Query(this.database, query(this._delegate, startAt(value, name)));
     }
     startAfter(value = null, name) {
         validateArgCount('Query.startAfter', 0, 2, arguments.length);
-        return new Query(this.database, query$1(this._delegate, startAfter(value, name)));
+        return new Query(this.database, query(this._delegate, startAfter(value, name)));
     }
     endAt(value = null, name) {
         validateArgCount('Query.endAt', 0, 2, arguments.length);
-        return new Query(this.database, query$1(this._delegate, endAt(value, name)));
+        return new Query(this.database, query(this._delegate, endAt(value, name)));
     }
     endBefore(value = null, name) {
         validateArgCount('Query.endBefore', 0, 2, arguments.length);
-        return new Query(this.database, query$1(this._delegate, endBefore(value, name)));
+        return new Query(this.database, query(this._delegate, endBefore(value, name)));
     }
     /**
      * Load the selection of children with exactly the specified value, and, optionally,
@@ -18803,7 +18809,7 @@ class Query {
      */
     equalTo(value, name) {
         validateArgCount('Query.equalTo', 1, 2, arguments.length);
-        return new Query(this.database, query$1(this._delegate, equalTo(value, name)));
+        return new Query(this.database, query(this._delegate, equalTo(value, name)));
     }
     /**
      * @returns URL for this location.
@@ -18886,7 +18892,7 @@ class Reference extends Query {
         if (typeof pathString === 'number') {
             pathString = String(pathString);
         }
-        return new Reference(this.database, child$1(this._delegate, pathString));
+        return new Reference(this.database, child(this._delegate, pathString));
     }
     /** @returns {?Reference} */
     getParent() {
@@ -18902,7 +18908,7 @@ class Reference extends Query {
     set(newVal, onComplete) {
         validateArgCount('Reference.set', 1, 2, arguments.length);
         validateCallback('Reference.set', 'onComplete', onComplete, true);
-        const result = set$1(this._delegate, newVal);
+        const result = set(this._delegate, newVal);
         if (onComplete) {
             result.then(() => onComplete(null), error => onComplete(error));
         }

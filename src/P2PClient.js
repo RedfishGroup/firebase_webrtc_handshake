@@ -1,4 +1,4 @@
-import { child, get, off, onChildAdded, onValue, push } from 'firebase/database'
+import { child, get, off, onChildAdded, push } from 'firebase/database'
 
 import { settings } from './settings.js'
 import { Evented } from './Evented.js'

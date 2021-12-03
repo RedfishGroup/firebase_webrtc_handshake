@@ -9149,6 +9149,11 @@ function queryParamsGetNodeFilter(queryParams) {
         return new RangedFilter(queryParams);
     }
 }
+function queryParamsOrderBy(queryParams, index) {
+    const newParams = queryParams.copy();
+    newParams.index_ = index;
+    return newParams;
+}
 /**
  * Returns a set of REST query string parameters representing this query.
  *
@@ -14543,6 +14548,68 @@ class QueryImpl {
     }
 }
 /**
+ * Validates that no other order by call has been made
+ */
+function validateNoPreviousOrderByCall(query, fnName) {
+    if (query._orderByCalled === true) {
+        throw new Error(fnName + ": You can't combine multiple orderBy calls.");
+    }
+}
+/**
+ * Validates start/end values for queries.
+ */
+function validateQueryEndpoints(params) {
+    let startNode = null;
+    let endNode = null;
+    if (params.hasStart()) {
+        startNode = params.getIndexStartValue();
+    }
+    if (params.hasEnd()) {
+        endNode = params.getIndexEndValue();
+    }
+    if (params.getIndex() === KEY_INDEX) {
+        const tooManyArgsError = 'Query: When ordering by key, you may only pass one argument to ' +
+            'startAt(), endAt(), or equalTo().';
+        const wrongArgTypeError = 'Query: When ordering by key, the argument passed to startAt(), startAfter(), ' +
+            'endAt(), endBefore(), or equalTo() must be a string.';
+        if (params.hasStart()) {
+            const startName = params.getIndexStartName();
+            if (startName !== MIN_NAME) {
+                throw new Error(tooManyArgsError);
+            }
+            else if (typeof startNode !== 'string') {
+                throw new Error(wrongArgTypeError);
+            }
+        }
+        if (params.hasEnd()) {
+            const endName = params.getIndexEndName();
+            if (endName !== MAX_NAME) {
+                throw new Error(tooManyArgsError);
+            }
+            else if (typeof endNode !== 'string') {
+                throw new Error(wrongArgTypeError);
+            }
+        }
+    }
+    else if (params.getIndex() === PRIORITY_INDEX) {
+        if ((startNode != null && !isValidPriority(startNode)) ||
+            (endNode != null && !isValidPriority(endNode))) {
+            throw new Error('Query: When ordering by priority, the first argument passed to startAt(), ' +
+                'startAfter() endAt(), endBefore(), or equalTo() must be a valid priority value ' +
+                '(null, a number, or a string).');
+        }
+    }
+    else {
+        assert(params.getIndex() instanceof PathIndex ||
+            params.getIndex() === VALUE_INDEX, 'unknown index type.');
+        if ((startNode != null && typeof startNode === 'object') ||
+            (endNode != null && typeof endNode === 'object')) {
+            throw new Error('Query: First argument passed to startAt(), startAfter(), endAt(), endBefore(), or ' +
+                'equalTo() cannot be an object.');
+        }
+    }
+}
+/**
  * @internal
  */
 class ReferenceImpl extends QueryImpl {
@@ -14636,7 +14703,7 @@ class DataSnapshot {
      */
     child(path) {
         const childPath = new Path(path);
-        const childRef = child$1(this.ref, path);
+        const childRef = child(this.ref, path);
         return new DataSnapshot(this._node.getChild(childPath), childRef, PRIORITY_INDEX);
     }
     /**
@@ -14684,7 +14751,7 @@ class DataSnapshot {
         const childrenNode = this._node;
         // Sanitize the return value to a boolean. ChildrenNode.forEachChild has a weird return type...
         return !!childrenNode.forEachChild(this._index, (key, node) => {
-            return action(new DataSnapshot(node, child$1(this.ref, key), PRIORITY_INDEX));
+            return action(new DataSnapshot(node, child(this.ref, key), PRIORITY_INDEX));
         });
     }
     /**
@@ -14757,7 +14824,7 @@ class DataSnapshot {
 function ref(db, path) {
     db = getModularInstance(db);
     db._checkNotDeleted('ref');
-    return path !== undefined ? child$1(db._root, path) : db._root;
+    return path !== undefined ? child(db._root, path) : db._root;
 }
 /**
  * Gets a `Reference` for the location at the specified relative path.
@@ -14770,7 +14837,7 @@ function ref(db, path) {
  *   location.
  * @returns The specified child location.
  */
-function child$1(parent, path) {
+function child(parent, path) {
     parent = getModularInstance(parent);
     if (pathGetFront(parent._path) === null) {
         validateRootPathString('child', 'path', path, false);
@@ -14826,11 +14893,11 @@ function push$1(parent, value) {
     // then() and catch() methods and is used as the return value of push(). The
     // second remains a regular Reference and is used as the fulfilled value of
     // the first ThennableReference.
-    const thennablePushRef = child$1(parent, name);
-    const pushRef = child$1(parent, name);
+    const thennablePushRef = child(parent, name);
+    const pushRef = child(parent, name);
     let promise;
     if (value != null) {
-        promise = set$1(pushRef, value).then(() => pushRef);
+        promise = set(pushRef, value).then(() => pushRef);
     }
     else {
         promise = Promise.resolve(pushRef);
@@ -14868,7 +14935,7 @@ function push$1(parent, value) {
  *   array, or null).
  * @returns Resolves when write to server is complete.
  */
-function set$1(ref, value) {
+function set(ref, value) {
     ref = getModularInstance(ref);
     validateWritablePath('set', ref._path);
     validateFirebaseDataArg('set', value, ref._path, false);
@@ -14926,7 +14993,7 @@ function update(ref, values) {
  * available, or rejects if the client is unable to return a value (e.g., if the
  * server is unreachable and there is nothing cached).
  */
-function get$1(query) {
+function get(query) {
     query = getModularInstance(query);
     return repoGetValue(query._repo, query).then(node => {
         return new DataSnapshot(node, new ReferenceImpl(query._repo, query._path), query._queryParams.getIndex());
@@ -15002,7 +15069,7 @@ class ChildEventRegistration {
     }
     createEvent(change, query) {
         assert(change.childName != null, 'Child events should have a childName.');
-        const childRef = child$1(new ReferenceImpl(query._repo, query._path), change.childName);
+        const childRef = child(new ReferenceImpl(query._repo, query._path), change.childName);
         const index = query._queryParams.getIndex();
         return new DataEvent(change.type, this, new DataSnapshot(change.snapshotNode, childRef, index), change.prevName);
     }
@@ -15093,6 +15160,55 @@ function off(query, eventType, callback) {
         container = new ChildEventRegistration(eventType, expCallback);
     }
     repoRemoveEventCallbackForQuery(query._repo, query, container);
+}
+/**
+ * A `QueryConstraint` is used to narrow the set of documents returned by a
+ * Database query. `QueryConstraint`s are created by invoking {@link endAt},
+ * {@link endBefore}, {@link startAt}, {@link startAfter}, {@link
+ * limitToFirst}, {@link limitToLast}, {@link orderByChild},
+ * {@link orderByChild}, {@link orderByKey} , {@link orderByPriority} ,
+ * {@link orderByValue}  or {@link equalTo} and
+ * can then be passed to {@link query} to create a new query instance that
+ * also contains this `QueryConstraint`.
+ */
+class QueryConstraint {
+}
+class QueryOrderByValueConstraint extends QueryConstraint {
+    _apply(query) {
+        validateNoPreviousOrderByCall(query, 'orderByValue');
+        const newParams = queryParamsOrderBy(query._queryParams, VALUE_INDEX);
+        validateQueryEndpoints(newParams);
+        return new QueryImpl(query._repo, query._path, newParams, 
+        /*orderByCalled=*/ true);
+    }
+}
+/**
+ * Creates a new `QueryConstraint` that orders by value.
+ *
+ * If the children of a query are all scalar values (string, number, or
+ * boolean), you can order the results by their (ascending) values.
+ *
+ * You can read more about `orderByValue()` in
+ * {@link https://firebase.google.com/docs/database/web/lists-of-data#sort_data | Sort data}.
+ */
+function orderByValue() {
+    return new QueryOrderByValueConstraint();
+}
+/**
+ * Creates a new immutable instance of `Query` that is extended to also include
+ * additional query constraints.
+ *
+ * @param query - The Query instance to use as a base for the new constraints.
+ * @param queryConstraints - The list of `QueryConstraint`s to apply.
+ * @throws if any of the provided query constraints cannot be combined with the
+ * existing or new constraints.
+ */
+function query(query, ...queryConstraints) {
+    let queryImpl = getModularInstance(query);
+    for (const constraint of queryConstraints) {
+        queryImpl = constraint._apply(queryImpl);
+    }
+    return queryImpl;
 }
 /**
  * Define reference constructor in various modules
@@ -15372,14 +15488,14 @@ function getDatabase() {
         )
     }
 
-    database = child$1(ref(getDatabase$1(firebase$1)), 'peers');
+    database = child(ref(getDatabase$1(firebase$1)), 'peers');
     return database
 }
 
 class Channel {
     constructor(fbref, peer) {
-        this.outRef = child$1(fbref, 'fromServer'); //firebase
-        this.inRef = child$1(fbref, 'fromClient');
+        this.outRef = child(fbref, 'fromServer'); //firebase
+        this.inRef = child(fbref, 'fromClient');
         this.peer = peer; // simple-peer
     }
 
@@ -15704,46 +15820,52 @@ var settings = {
     debug: false,
 };
 
+/**
+ * Evented
+ */
+
 class Evented {
-  constructor() {
-    this.events = {};
-  }
-
-  on(eventName, callback) {
-    if (typeof callback !== "function") return;
-    if (! this.events.hasOwnProperty(eventName)) {
-      this.events[eventName] = [];
+    constructor() {
+        this.events = {};
     }
-    this.events[eventName].push(callback);
-  }
 
-  off(eventName, callback) {
-    if (this.events.hasOwnProperty(eventName)) {
-      if (typeof callback === "function") {
-        //_.without(this.events[eventName], callback);
-        this.events = this.events.filter( function(x){
-            if ( x != this.events[eventName]) { return x }
-        });
-      } else {
-        delete this.events[eventName];
-      }
+    on(eventName, callback) {
+        if (typeof callback !== 'function') return
+        if (!this.events.hasOwnProperty(eventName)) {
+            this.events[eventName] = [];
+        }
+        this.events[eventName].push(callback);
     }
-  }
 
-  fire(eventName, argument) {
-    //_.each(this.events[eventName], (cb) => setTimeout(() => cb(argument)));
-    if (this.events[eventName]) {
-      for (var cb of this.events[eventName]) {
-        setTimeout(() => cb(argument));
-      }
+    off(eventName, callback) {
+        if (this.events.hasOwnProperty(eventName)) {
+            if (typeof callback === 'function') {
+                //_.without(this.events[eventName], callback);
+                this.events = this.events.filter(function (x) {
+                    if (x != this.events[eventName]) {
+                        return x
+                    }
+                });
+            } else {
+                delete this.events[eventName];
+            }
+        }
     }
-  }
 
-  fireAll(argument) {
-    for (var k in this.events) {
-      this.fire(k, argument);
+    fire(eventName, argument) {
+        //_.each(this.events[eventName], (cb) => setTimeout(() => cb(argument)));
+        if (this.events[eventName]) {
+            for (var cb of this.events[eventName]) {
+                setTimeout(() => cb(argument));
+            }
+        }
     }
-  }
+
+    fireAll(argument) {
+        for (var k in this.events) {
+            this.fire(k, argument);
+        }
+    }
 }
 
 /**
@@ -15763,9 +15885,9 @@ function getPeerList(database, callback) {
         });
 }
 
-// Description: class for monitoring firebase references
-// and removing children that have not updated recently
-
+/**  Description: class for monitoring firebase references
+ and removing children that have not updated recently
+*/
 class firebaseTreeTrimmer {
     constructor(options = null) {
         if (
@@ -15839,7 +15961,7 @@ class firebaseTreeTrimmer {
     watchMySuperior(superior) {
         // if superior is either not in /peers/cameras, or their
         // lastUpdate is greater than a minute, remove from treeTrimming list
-        get(child(this.peersRef,superior)).then( (snap) => {
+        get(child(this.peersRef, superior)).then((snap) => {
             // if the peer's lastUpdate is greater than three minutes,
             // or it doesn't exist, remove from treeTrimming list
             if (
@@ -15848,7 +15970,7 @@ class firebaseTreeTrimmer {
                 snap.child('lastUpdate').val() < Date.now() - 3 * 60000
             ) {
                 // if not in the peers list or has not been updated for 3 minutes then remove
-                remove(child(this.treeTrimmingRef,superior));
+                remove(child(this.treeTrimmingRef, superior));
             }
         });
     }
@@ -15907,11 +16029,11 @@ function P2PServerFactory(options) {
                 peersRef: this.database,
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
-                    child$1(this.database.parent, 'treeTrimming'),
+                    child(this.database.parent, 'treeTrimming'),
                 id: this.id,
             });
 
-            this.userRef = child$1(fbref, this.id);
+            this.userRef = child(fbref, this.id);
 
             onValue(this.userRef, (snapshot) => {
                 // handle being tree trimmed while asleep
@@ -15952,14 +16074,14 @@ function P2PServerFactory(options) {
 
             if (this.initialPeerInfo) update(this.userRef, this.initialPeerInfo);
 
-            this.updateRef = child$1(this.userRef, 'lastUpdate');
-            set$1(this.updateRef, serverTimestamp());
+            this.updateRef = child(this.userRef, 'lastUpdate');
+            set(this.updateRef, serverTimestamp());
 
-            this.channelRef = child$1(this.userRef, 'channels');
+            this.channelRef = child(this.userRef, 'channels');
             if (this.stream) {
-                set$1(child$1(this.userRef, 'isStream'), true);
+                set(child(this.userRef, 'isStream'), true);
             }
-            set$1(this.channelRef, []);
+            set(this.channelRef, []);
 
             this.connections = [];
             this._intervalID = setInterval(() => {
@@ -15974,7 +16096,7 @@ function P2PServerFactory(options) {
 
         _updateOnFireBase() {
             // one may want to overwrite this
-            set$1(this.updateRef, serverTimestamp());
+            set(this.updateRef, serverTimestamp());
         }
 
         sendToAll(data) {
@@ -16029,7 +16151,7 @@ function P2PServerFactory(options) {
                         var mykey = ev.key;
                         var { peerID, myID } = sig;
                         var channel = new Channel(
-                            child$1(this.channelRef, mykey),
+                            child(this.channelRef, mykey),
                             this._makePeer(myID)
                         );
                         this.connections = [...this.connections, channel];
@@ -16332,8 +16454,8 @@ function P2PClientFactory(options) {
                     this._notifyCallbacks('peer not defined');
                 } else {
                     this.id = id;
-                    this.serverRef = child$1(this.database, id);
-                    get$1(this.serverRef).next((ev1) => {
+                    this.serverRef = child(this.database, id);
+                    get(this.serverRef).next((ev1) => {
                         ev1.val();
                         let pOpts = {
                             initiator: true,
@@ -16415,11 +16537,11 @@ function P2PClientFactory(options) {
             offer.myID = this.myID;
             if (this.debug)
                 console.log('Got create channel with offer: ', offer);
-            this.channelRef = push$1(child$1(this.serverRef, 'channels'), {
+            this.channelRef = push$1(child(this.serverRef, 'channels'), {
                 fromClient: [offer],
             });
-            this.outRef = child$1(this.channelRef, 'fromClient');
-            this.inRef = child$1(this.channelRef, 'fromServer');
+            this.outRef = child(this.channelRef, 'fromClient');
+            this.inRef = child(this.channelRef, 'fromServer');
             onChildAdded(this.inRef, (ev) => {
                 var val = ev.val();
                 if (this.debug) console.log(val, 'channel message, client');
