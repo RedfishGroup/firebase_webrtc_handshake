@@ -28,7 +28,7 @@ export default [
             nodeGlobals(),
             nodeBuiltins(),
             resolve({
-                mainFields: ['main', 'module'],
+                mainFields: ['module', 'main'],
                 preferBuiltins: true,
             }),
             commonjs(),

@@ -19,11 +19,11 @@ export class firebaseTreeTrimmer {
     }
 
     monitor() {
-        this.treeTrimmingRef.orderByValue().once('value', (snapshot) => {
+        get(query(this.treeTrimmingRef, orderByValue())).then((snapshot) => {
             // check if in list
             if (snapshot.child(this.id).val() === null) {
                 // if not add it
-                snapshot.ref.child(this.id).set(Date.now())
+                set(child(snapshot.ref, this.id), Date.now())
             } else {
                 // otherwise calculate hierachy
                 let children = {}
@@ -60,12 +60,12 @@ export class firebaseTreeTrimmer {
 
     treeTrimmer(treeTrimmers) {
         // remove all references to peers not in treeTrimming list
-        this.peersRef.once('value', (snap) => {
+        get(this.peersRef).then((snap) => {
             snap.forEach(function (child) {
                 // if the peer is not in the treeTrimming list,
                 // remove it from peersRef
                 if (treeTrimmers[child.key] === undefined) {
-                    child.ref.remove()
+                    remove(child.ref)
                 }
             })
         })
@@ -74,7 +74,7 @@ export class firebaseTreeTrimmer {
     watchMySuperior(superior) {
         // if superior is either not in /peers/cameras, or their
         // lastUpdate is greater than a minute, remove from treeTrimming list
-        this.peersRef.child(superior).once('value', (snap) => {
+        get(child(this.peersRef,superior)).then( (snap) => {
             // if the peer's lastUpdate is greater than three minutes,
             // or it doesn't exist, remove from treeTrimming list
             if (
@@ -83,7 +83,7 @@ export class firebaseTreeTrimmer {
                 snap.child('lastUpdate').val() < Date.now() - 3 * 60000
             ) {
                 // if not in the peers list or has not been updated for 3 minutes then remove
-                this.treeTrimmingRef.child(superior).remove()
+                remove(child(this.treeTrimmingRef,superior))
             }
         })
     }

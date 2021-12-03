@@ -1,13 +1,15 @@
+import { child, off } from './defaultFirebase.js'
+
 export class Channel {
     constructor(fbref, peer) {
-        this.outRef = fbref.child('fromServer') //firebase
-        this.inRef = fbref.child('fromClient')
+        this.outRef = child(fbref, 'fromServer') //firebase
+        this.inRef = child(fbref, 'fromClient')
         this.peer = peer // simple-peer
     }
 
     destroy() {
-        this.outRef.off()
-        this.inRef.off()
+        off(this.outRef)
+        off(this.inRef)
         this.peer.destroy()
     }
 }

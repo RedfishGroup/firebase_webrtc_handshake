@@ -1,1195 +1,231 @@
 import * as Peer2 from 'simple-peer/simplepeer.min.js';
 import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js';
 
-var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
-var keys = Object.keys;
-/**
- * are the values passed strictly equal or both NaN
- *
- * @param a the value to compare against
- * @param b the value to test
- * @returns are the values equal by the SameValueZero principle
- */
-function sameValueZeroEqual(a, b) {
-    return a === b || (a !== a && b !== b);
-}
-/**
- * is the value a plain object
- *
- * @param value the value to test
- * @returns is the value a plain object
- */
-function isPlainObject(value) {
-    return value.constructor === Object || value.constructor == null;
-}
-/**
- * is the value promise-like (meaning it is thenable)
- *
- * @param value the value to test
- * @returns is the value promise-like
- */
-function isPromiseLike(value) {
-    return !!value && typeof value.then === 'function';
-}
-/**
- * is the value passed a react element
- *
- * @param value the value to test
- * @returns is the value a react element
- */
-function isReactElement(value) {
-    return !!(value && value.$$typeof);
-}
-/**
- * in cases where WeakSet is not supported, creates a new custom
- * object that mimics the necessary API aspects for cache purposes
- *
- * @returns the new cache object
- */
-function getNewCacheFallback() {
-    var values = [];
-    return {
-        add: function (value) {
-            values.push(value);
-        },
-        has: function (value) {
-            return values.indexOf(value) !== -1;
-        },
-    };
-}
-/**
- * get a new cache object to prevent circular references
- *
- * @returns the new cache object
- */
-var getNewCache = (function (canUseWeakMap) {
-    if (canUseWeakMap) {
-        return function _getNewCache() {
-            return new WeakSet();
-        };
-    }
-    return getNewCacheFallback;
-})(HAS_WEAKSET_SUPPORT);
-/**
- * create a custom isEqual handler specific to circular objects
- *
- * @param [isEqual] the isEqual comparator to use instead of isDeepEqual
- * @returns the method to create the `isEqual` function
- */
-function createCircularEqualCreator(isEqual) {
-    return function createCircularEqual(comparator) {
-        var _comparator = isEqual || comparator;
-        return function circularEqual(a, b, cache) {
-            if (cache === void 0) { cache = getNewCache(); }
-            var isCacheableA = !!a && typeof a === 'object';
-            var isCacheableB = !!b && typeof b === 'object';
-            if (isCacheableA || isCacheableB) {
-                var hasA = isCacheableA && cache.has(a);
-                var hasB = isCacheableB && cache.has(b);
-                if (hasA || hasB) {
-                    return hasA && hasB;
-                }
-                if (isCacheableA) {
-                    cache.add(a);
-                }
-                if (isCacheableB) {
-                    cache.add(b);
-                }
-            }
-            return _comparator(a, b, cache);
-        };
-    };
-}
-/**
- * are the arrays equal in value
- *
- * @param a the array to test
- * @param b the array to test against
- * @param isEqual the comparator to determine equality
- * @param meta the meta object to pass through
- * @returns are the arrays equal
- */
-function areArraysEqual(a, b, isEqual, meta) {
-    var index = a.length;
-    if (b.length !== index) {
-        return false;
-    }
-    while (index-- > 0) {
-        if (!isEqual(a[index], b[index], meta)) {
-            return false;
-        }
-    }
-    return true;
-}
-/**
- * are the maps equal in value
- *
- * @param a the map to test
- * @param b the map to test against
- * @param isEqual the comparator to determine equality
- * @param meta the meta map to pass through
- * @returns are the maps equal
- */
-function areMapsEqual(a, b, isEqual, meta) {
-    var isValueEqual = a.size === b.size;
-    if (isValueEqual && a.size) {
-        a.forEach(function (aValue, aKey) {
-            if (isValueEqual) {
-                isValueEqual = false;
-                b.forEach(function (bValue, bKey) {
-                    if (!isValueEqual && isEqual(aKey, bKey, meta)) {
-                        isValueEqual = isEqual(aValue, bValue, meta);
-                    }
-                });
-            }
-        });
-    }
-    return isValueEqual;
-}
-var OWNER = '_owner';
-var hasOwnProperty = Function.prototype.bind.call(Function.prototype.call, Object.prototype.hasOwnProperty);
-/**
- * are the objects equal in value
- *
- * @param a the object to test
- * @param b the object to test against
- * @param isEqual the comparator to determine equality
- * @param meta the meta object to pass through
- * @returns are the objects equal
- */
-function areObjectsEqual(a, b, isEqual, meta) {
-    var keysA = keys(a);
-    var index = keysA.length;
-    if (keys(b).length !== index) {
-        return false;
-    }
-    if (index) {
-        var key = void 0;
-        while (index-- > 0) {
-            key = keysA[index];
-            if (key === OWNER) {
-                var reactElementA = isReactElement(a);
-                var reactElementB = isReactElement(b);
-                if ((reactElementA || reactElementB) &&
-                    reactElementA !== reactElementB) {
-                    return false;
-                }
-            }
-            if (!hasOwnProperty(b, key) || !isEqual(a[key], b[key], meta)) {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-/**
- * are the regExps equal in value
- *
- * @param a the regExp to test
- * @param b the regExp to test agains
- * @returns are the regExps equal
- */
-function areRegExpsEqual(a, b) {
-    return (a.source === b.source &&
-        a.global === b.global &&
-        a.ignoreCase === b.ignoreCase &&
-        a.multiline === b.multiline &&
-        a.unicode === b.unicode &&
-        a.sticky === b.sticky &&
-        a.lastIndex === b.lastIndex);
-}
-/**
- * are the sets equal in value
- *
- * @param a the set to test
- * @param b the set to test against
- * @param isEqual the comparator to determine equality
- * @param meta the meta set to pass through
- * @returns are the sets equal
- */
-function areSetsEqual(a, b, isEqual, meta) {
-    var isValueEqual = a.size === b.size;
-    if (isValueEqual && a.size) {
-        a.forEach(function (aValue) {
-            if (isValueEqual) {
-                isValueEqual = false;
-                b.forEach(function (bValue) {
-                    if (!isValueEqual) {
-                        isValueEqual = isEqual(aValue, bValue, meta);
-                    }
-                });
-            }
-        });
-    }
-    return isValueEqual;
-}
-
-var HAS_MAP_SUPPORT = typeof Map === 'function';
-var HAS_SET_SUPPORT = typeof Set === 'function';
-function createComparator(createIsEqual) {
-    var isEqual = 
-    /* eslint-disable no-use-before-define */
-    typeof createIsEqual === 'function'
-        ? createIsEqual(comparator)
-        : comparator;
-    /* eslint-enable */
-    /**
-     * compare the value of the two objects and return true if they are equivalent in values
-     *
-     * @param a the value to test against
-     * @param b the value to test
-     * @param [meta] an optional meta object that is passed through to all equality test calls
-     * @returns are a and b equivalent in value
-     */
-    function comparator(a, b, meta) {
-        if (a === b) {
-            return true;
-        }
-        if (a && b && typeof a === 'object' && typeof b === 'object') {
-            if (isPlainObject(a) && isPlainObject(b)) {
-                return areObjectsEqual(a, b, isEqual, meta);
-            }
-            var aShape = Array.isArray(a);
-            var bShape = Array.isArray(b);
-            if (aShape || bShape) {
-                return aShape === bShape && areArraysEqual(a, b, isEqual, meta);
-            }
-            aShape = a instanceof Date;
-            bShape = b instanceof Date;
-            if (aShape || bShape) {
-                return (aShape === bShape && sameValueZeroEqual(a.getTime(), b.getTime()));
-            }
-            aShape = a instanceof RegExp;
-            bShape = b instanceof RegExp;
-            if (aShape || bShape) {
-                return aShape === bShape && areRegExpsEqual(a, b);
-            }
-            if (isPromiseLike(a) || isPromiseLike(b)) {
-                return a === b;
-            }
-            if (HAS_MAP_SUPPORT) {
-                aShape = a instanceof Map;
-                bShape = b instanceof Map;
-                if (aShape || bShape) {
-                    return aShape === bShape && areMapsEqual(a, b, isEqual, meta);
-                }
-            }
-            if (HAS_SET_SUPPORT) {
-                aShape = a instanceof Set;
-                bShape = b instanceof Set;
-                if (aShape || bShape) {
-                    return aShape === bShape && areSetsEqual(a, b, isEqual, meta);
-                }
-            }
-            return areObjectsEqual(a, b, isEqual, meta);
-        }
-        return a !== a && b !== b;
-    }
-    return comparator;
-}
-
-var deepEqual$1 = createComparator();
-createComparator(function () { return sameValueZeroEqual; });
-createComparator(createCircularEqualCreator());
-createComparator(createCircularEqualCreator(sameValueZeroEqual));
-
-var settings = {
-    // Get a reference to the database service
-
-    // Was having a bug where the WIFI router would crash if the chunk size was bigger than 2^10
-    CHUNK_SIZE: Math.pow(2, 14), // size in bytes of the chunks. 2^14 is just under the limit in chrome.
-    ICE_SERVERS: [
-        {
-            url: 'stun:23.21.150.121',
-            urls: 'stun:23.21.150.121',
-        },
-        {
-            url: 'turn:global.turn.twilio.com:3478?transport=udp',
-            username:
-                '508d1e639868dc17f5da97a75b1d3b43bf2fc6d11e4e863678501db568b5665c',
-            credential: 'W5GTdhQQ6DqOD7k6bS8+xZVNQXm+fgLXSEQpN8bTe70=',
-            urls: 'turn:global.turn.twilio.com:3478?transport=udp',
-        },
-    ],
-    POLLING_FREQUENCY: 15000,
-    debug: false,
-};
-
-class Evented {
-  constructor() {
-    this.events = {};
-  }
-
-  on(eventName, callback) {
-    if (typeof callback !== "function") return;
-    if (! this.events.hasOwnProperty(eventName)) {
-      this.events[eventName] = [];
-    }
-    this.events[eventName].push(callback);
-  }
-
-  off(eventName, callback) {
-    if (this.events.hasOwnProperty(eventName)) {
-      if (typeof callback === "function") {
-        //_.without(this.events[eventName], callback);
-        this.events = this.events.filter( function(x){
-            if ( x != this.events[eventName]) { return x }
-        });
-      } else {
-        delete this.events[eventName];
-      }
-    }
-  }
-
-  fire(eventName, argument) {
-    //_.each(this.events[eventName], (cb) => setTimeout(() => cb(argument)));
-    if (this.events[eventName]) {
-      for (var cb of this.events[eventName]) {
-        setTimeout(() => cb(argument));
-      }
-    }
-  }
-
-  fireAll(argument) {
-    for (var k in this.events) {
-      this.fire(k, argument);
-    }
-  }
-}
-
-var defaultFBConfig = {
-  apiKey: "AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA",
-  authDomain: "https://torrid-torch-716.firebaseio.com/",
-  databaseURL: "https://torrid-torch-716.firebaseio.com/",
-  projectId: "torrid-torch-716"
-};
-
-var firebase$2;
-function initFirebase(newFirebase, fbConfig = null) {
-    if (fbConfig) defaultFBConfig = fbConfig;
-
-    if (!firebase$2) {
-        firebase$2 = newFirebase;
-        firebase$2.initializeApp(defaultFBConfig);
-    }
-
-    return { firebase: firebase$2, database: getDatabase() }
-}
-
-var database;
-
-function getDatabase() {
-    if (database) return database
-
-    if (!firebase$2) {
-        throw new Error(
-            `init must be called before accessing database.  no firebase`
-        )
-    }
-
-    database = firebase$2.database().ref('/').child('peers');
-    return database
-}
-
-function getFirebase() {
-    return firebase$2
-}
-
-class Channel {
-    constructor(fbref, peer) {
-        this.outRef = fbref.child('fromServer'); //firebase
-        this.inRef = fbref.child('fromClient');
-        this.peer = peer; // simple-peer
-    }
-
-    destroy() {
-        this.outRef.off();
-        this.inRef.off();
-        this.peer.destroy();
-    }
-}
-
-/**
- *
- * @param {*} database
- * @param {*} callback
- */
-function getPeerList(database, callback) {
-    database
-        .once('value')
-        .then((ev) => {
-                var val = ev.val();
-                callback(null, val);
-            })
-        .catch((err) => {
-            callback(err);        
-        });
-}
-
-// Description: class for monitoring firebase references
-// and removing children that have not updated recently
-
-class firebaseTreeTrimmer {
-    constructor(options = null) {
-        if (
-            options === null ||
-            !options.treeTrimmingRef ||
-            !options.peersRef ||
-            !options.id
-        )
-            throw new Error(
-                'requires an options object with an id, treeTrimmingRef and peersRef'
-            )
-        Object.assign(this, options);
-
-        this.monitorReference = this.monitor.bind(this);
-        this.monitor();
-    }
-
-    monitor() {
-        this.treeTrimmingRef.orderByValue().once('value', (snapshot) => {
-            // check if in list
-            if (snapshot.child(this.id).val() === null) {
-                // if not add it
-                snapshot.ref.child(this.id).set(Date.now());
-            } else {
-                // otherwise calculate hierachy
-                let children = {};
-                let rank = 0,
-                    superior;
-                snapshot.forEach(function (child) {
-                    children[child.key] = { rank, superior };
-                    superior = child.key;
-                    rank++;
-                });
-
-                let me = children[this.id];
-                this.rank = me.rank;
-                this.superior = me.superior;
-
-                console.log(
-                    'Treetrimmer rank: ',
-                    me.rank,
-                    ' superior id: ',
-                    me.superior
-                );
-
-                if (me.rank === 0) {
-                    this.treeTrimmer(children);
-                } else {
-                    this.watchMySuperior(me.superior);
-                }
-            }
-
-            // continuously check for treeTrimming, every minute
-            setTimeout(this.monitorReference, 60000);
-        });
-    }
-
-    treeTrimmer(treeTrimmers) {
-        // remove all references to peers not in treeTrimming list
-        this.peersRef.once('value', (snap) => {
-            snap.forEach(function (child) {
-                // if the peer is not in the treeTrimming list,
-                // remove it from peersRef
-                if (treeTrimmers[child.key] === undefined) {
-                    child.ref.remove();
-                }
-            });
-        });
-    }
-
-    watchMySuperior(superior) {
-        // if superior is either not in /peers/cameras, or their
-        // lastUpdate is greater than a minute, remove from treeTrimming list
-        this.peersRef.child(superior).once('value', (snap) => {
-            // if the peer's lastUpdate is greater than three minutes,
-            // or it doesn't exist, remove from treeTrimming list
-            if (
-                snap.val() === null ||
-                snap.child('lastUpdate').val() === null ||
-                snap.child('lastUpdate').val() < Date.now() - 3 * 60000
-            ) {
-                // if not in the peers list or has not been updated for 3 minutes then remove
-                this.treeTrimmingRef.child(superior).remove();
-            }
-        });
-    }
-}
-
-function P2PServerFactory(options) {
-    const { PeerBinary, debug } = options;
-
-    return class P2PServer extends Evented {
-        constructor(options = {}, initialPeerInfo = {}) {
-            super(); //no idea what this does
-            console.assert(
-                options.iceServers,
-                'Server: no ice servers yet. Using defaults'
-            );
-            this.MAX_CONNECTIONS = 50;
-            this.isListening = false;
-
-            this.id = 'server_' + Math.floor(Math.random() * 100000);
-            this.myID = this.id;
-            this.peerID = this.id;
-
-            this.stream = undefined;
-            this.iceServers =
-                options.iceServers ||
-                options.ICE_SERVERS ||
-                settings.ICE_SERVERS;
-            this.POLLING_FREQUENCY =
-                options.POLLING_FREQUENCY || settings.POLLING_FREQUENCY;
-
-            Object.assign(this, options);
-
-            if (options.database) {
-                this.database = options.database;
-            } else {
-                this.database = getDatabase();
-            }
-
-            this.debug = !!debug || !!options.debug;
-            this.initialPeerInfo = initialPeerInfo;
-            this.initialPeerInfo.id = this.id;
-
-            if (this.debug) console.log(this.id);
-            if (!options.dontCallInitYet) {
-                this.init();
-            }
-
-            this._peerInfo = null;
-        }
-
-        init() {
-            var fbref = this.database;
-
-            // the below assumes that tree trimming would happen at the same lavel as the peers ref or would be passed explicitly
-            this.treeTrimmer = new firebaseTreeTrimmer({
-                peersRef: this.database,
-                treeTrimmingRef:
-                    this.treeTrimmingRef ||
-                    this.database.parent.child('treeTrimming'),
-                id: this.id,
-            });
-
-            this.userRef = fbref.child(this.id);
-
-            this.userRef.on('value', (snapshot) => {
-                // handle being tree trimmed while asleep
-                let newPeerInfo = snapshot.val();
-                if (
-                    newPeerInfo &&
-                    newPeerInfo.id &&
-                    !deepEqual$1(
-                        { ...this._peerInfo, lastUpdate: null },
-                        { ...newPeerInfo, lastUpdate: null }
-                    )
-                ) {
-                    this._peerInfo = newPeerInfo;
-                } else if (
-                    this._peerInfo &&
-                    this._peerInfo.id &&
-                    !(newPeerInfo && newPeerInfo.id)
-                ) {
-                    console.log(
-                        'peerInfo lost, updating with saved version: ',
-                        this._peerInfo,
-                        newPeerInfo
-                    );
-                    this.userRef.update({
-                        ...this._peerInfo,
-                        lastUpdate:
-                            getFirebase().database.ServerValue.TIMESTAMP,
-                    });
-                } else if (this._peerInfo) ; else {
-                    console.warn(
-                        'Appears we have not yet set peerInfo: ',
-                        this._peerInfo,
-                        newPeerInfo
-                    );
-                }
-            });
-
-            this.userRef.onDisconnect().remove();
-
-            if (this.initialPeerInfo) this.userRef.update(this.initialPeerInfo);
-
-            this.updateRef = this.userRef.child('lastUpdate');
-            this.updateRef.set(getFirebase().database.ServerValue.TIMESTAMP);
-
-            this.channelRef = this.userRef.child('channels');
-            if (this.stream) {
-                this.userRef.child('isStream').set(true);
-            }
-            this.channelRef.set([]);
-
-            this.connections = [];
-            this._intervalID = setInterval(() => {
-                this.fire('updateTimeStamp', undefined);
-                this._updateOnFireBase();
-            }, this.POLLING_FREQUENCY);
-
-            this.listenToChannels();
-            this.isListening = true;
-            this.fire('init', undefined);
-        }
-
-        _updateOnFireBase() {
-            // one may want to overwrite this
-            this.updateRef.set(getFirebase().database.ServerValue.TIMESTAMP);
-        }
-
-        sendToAll(data) {
-            for (var conx of this.connections) {
-                if (conx && conx.peer) {
-                    try {
-                        conx.peer.send.bind(conx.peer)(data);
-                    } catch (err) {
-                        console.error(
-                            err,
-                            'Got an error, interrupted connection? '
-                        );
-                    }
-                }
-            }
-        }
-
-        sendToAllBig(data) {
-            for (var conx of this.connections) {
-                if (conx && conx.peer) {
-                    try {
-                        conx.peer.sendBig.bind(conx.peer)(data);
-                    } catch (err) {
-                        console.error(
-                            err,
-
-                            'Got an error, interrupted connection? '
-                        );
-                    }
-                }
-            }
-        }
-
-        listenToChannels() {
-            // disabling no-loop-func because these loops are correct usage
-            // https://eslint.org/docs/rules/no-loop-func
-            // when a new channel is added, listen to it.
-            this.channelRef.on('child_added', (ev) => {
-                if (this.connections.length > this.MAX_CONNECTIONS) {
-                    console.error(
-                        'Too many connections. TODO:close/remove old stale connections'
-                    );
-                    return
-                }
-                var val = ev.val();
-                if (this.debug) {
-                    console.log(val, 'new child');
-                }
-                for (var i in val.fromClient) {
-                    var sig = val.fromClient[i];
-                    if (this.debug) console.log({ sig });
-                    if (sig.type === 'offer') {
-                        var mykey = ev.key;
-                        var { peerID, myID } = sig;
-                        var channel = new Channel(
-                            this.channelRef.child(mykey),
-                            this._makePeer(myID)
-                        );
-                        this.connections = [...this.connections, channel];
-                        this.fire('addConnection', channel);
-
-                        // on message through webRTC (simple-peer)
-                        //eslint-disable-next-line no-loop-func
-                        var answerSentYet = false;
-                        channel.peer.on('signal', (data) => {
-                            if (data.type === 'answer') {
-                                if (answerSentYet) {
-                                    console.warn(
-                                        'Why am i trying to send multiple answers'
-                                    );
-                                }
-                                channel.outRef.push(data);
-                                answerSentYet = true;
-                            } else if (data.candidate) {
-                                channel.outRef.push(data);
-                            } else {
-                                console.warn(
-                                    data,
-
-                                    'unexpected message from WebRTC'
-                                );
-                            }
-                        });
-
-                        // on message through firebase
-                        //eslint-disable-next-line no-loop-func
-                        channel.inRef.on('child_added', (ev2) => {
-                            var val2 = ev2.val();
-                            if (this.debug) {
-                                console.log(val2, 'child_added -- firebase');
-                            }
-                            if (val2.candidate) {
-                                if (this.debug) {
-                                    console.log(
-                                        val2,
-                                        'server got candidate from firebase'
-                                    );
-                                }
-                                channel.peer.signal(val2);
-                            } else if (val2.type === 'offer') {
-                                channel.peer.signal(val2);
-                            } else if (val2.type === 'answer') ; else {
-                                console.warn(
-                                    val2,
-                                    'unexpected message from Firebase'
-                                );
-                            }
-                        });
-                    }
-                }
-            });
-        }
-
-        _makePeer(peerID) {
-            if (this.debug)
-                console.log('_makePeer called with peerID: ', peerID);
-            this.fire('makePeer', undefined);
-            var myoptions = {
-                initiator: false,
-                trickle: true,
-                config: {
-                    iceServers: this.iceServers,
-                },
-                peerID,
-            };
-            if (this.stream) myoptions.stream = this.stream;
-            var p = new PeerBinary(myoptions);
-
-            // fire events
-            p.on('error', (err) => {
-                console.error('server: error', err);
-                this.fire('error', { peer: p, err: err });
-            });
-            p.on('connect', () => {
-                if (this.debug) console.log('server: client connected');
-                this.fire('connect', { peer: p });
-            });
-            p.on('data', (data) => {
-                if (this.debug)
-                    console.log('server: server recieved some data: ', data);
-                this.fire('data', { peer: p, data: data });
-            });
-            p.on('close', () => {
-                if (this.debug) console.log('server: connection closed', p);
-                this._removeConnection(p);
-                this.fire('close', { peer: p });
-            });
-            p.on('dataBig', (data) => {
-                if (data && data.type === 'ack') {
-                    p.sendBig({
-                        type: 'ackack',
-                        data: {
-                            ack: { ...data.data },
-                            ackack: {
-                                id: this.id,
-                                numConnections: this.connections.length,
-                                treeTrimmer: {
-                                    rank: this.treeTrimmer.rank,
-                                    superior: this.treeTrimmer.superior,
-                                },
-                                peerID,
-                                date: new Date().getTime(),
-                            },
-                        },
-                    });
-                } 
-                this.fire('dataBig', { peer: p, data: data });
-            });
-
-            p.on('stream', (stream) => {
-                if (this.debug)
-                    console.log('Server: connected to stream', stream);
-                this.fire('stream', { peer: p, stream: stream });
-            });
-            p.on('signal', (data) => {
-                if (this.debug) console.log('Server: received signal', data);
-                this.fire('signal', data);
-            });
-
-            //TODO make it so server can register events that will get called on each individual connection
-            return p
-        }
-
-        getPeerList(callback) {
-            return getPeerList(this.database, callback)
-        }
-
-        destroy() {
-            this.channelRef.remove();
-            this.updateRef.remove();
-            this.channelRef.off();
-            this.updateRef.off();
-            this.userRef.off();
-            this.isListening = false;
-            for (var x of this.connections) {
-                x.destroy();
-            }
-            this.fire('destroyed', {});
-            this.connections = [];
-            clearInterval(this._intervalID);
-        }
-
-        _removeConnection(peer) {
-            var index = -1;
-            for (var i = 0; i < this.connections.length; i++) {
-                var conn = this.connections[i];
-                if (conn.peer == peer) {
-                    if (this.debug) console.log('found my connection', i, conn);
-                    index = i;
-                }
-            }
-            if (index >= 0) {
-                var conn = this.connections[index];
-                conn.destroy();
-                this.connections.splice(index, 1);
-                this.connections = [...this.connections];
-                this.fire('removeConnection', conn);
-                if (this.debug) console.log(this.connections);
-            }
-        }
-    }
-}
-
-function P2PClientFactory(options) {
-    const { PeerBinary, debug } = options;
-
-    return class P2PClient extends Evented {
-        constructor(options = {}) {
-            super();
-
-            this.id = 'client_' + Math.floor(Math.random() * 100000);
-            this.myID = this.id;
-            this.peerID = this.id;
-
-            this.ackID = 0;
-            this.ackCallbacks = {};
-
-            this.requestID = 0;
-            this.requestCallbacks = {};
-
-            Object.assign(this, settings);
-            Object.assign(this, options);
-
-            this.iceServers =
-                options.iceServers ||
-                options.ICE_SERVERS ||
-                settings.ICE_SERVERS;
-
-            if (options.database) {
-                this.database = options.database;
-            } else {
-                this.database = getDatabase();
-            }
-
-            this.connection = null;
-            this.channelRef = null;
-            this.stream = undefined;
-            this.isStream =
-                typeof options.isStream === 'boolean' ? options.isStream : true;
-            this.connectionCallbacks = [];
-            this.lastNegotiationState = undefined;
-            this.debug = !!debug || !!options.debug;
-        }
-
-        getPeerList(callback) {
-            return getPeerList(this.database, callback)
-        }
-
-        ackCallback(ackID, data) {
-            console.log('ackCallback: ', { ackID, data });
-            let { callback, timeoutID } = this.ackCallbacks[ackID] || {};
-            if (callback) {
-                clearTimeout(timeoutID);
-                callback(data);
-                delete this.ackCallbacks[ackID];
-            } else {
-                console.warn('Got ackID without a callback registered.', data);
-            }
-        }
-
-        sendAck(message, callback = () => {}, timeout = 30000) {
-            if (!this.connection) {
-                console.warn('no connection');
-                return
-            }
-
-            this.ackID += 1;
-            let ackID = this.ackID;
-
-            let timeoutID = setTimeout(() => {
-                this.ackCallback(ackID, { error: 'timeout' });
-            }, timeout);
-
-            this.ackCallbacks[ackID] = { callback, timeoutID };
-
-            return this.connection.sendBig({
-                type: 'ack',
-                data: {
-                    ackID: this.ackID,
-                    peerID: this.serverID,
-                    startDate: new Date().getTime(),
-                    message,
-                },
-            })
-        }
-
-        requestCallback(requestID, data) {
-            console.log('requestCallback: ', { requestID, data });
-            let { callback, timeoutID } = this.requestCallbacks[requestID] || {};
-
-            if (callback) {
-                clearTimeout(timeoutID);
-                callback(data);
-                delete this.requestCallbacks[requestID];
-            } else {
-                console.warn(
-                    'Got requestID without a callback registered.',
-                    data
-                );
-            }
-        }
-
-        sendRequest(request, callback = () => {}, timeout = 30000) {
-            if (!this.connection) {
-                console.warn('no connection');
-                return
-            }
-
-            this.requestID += 1;
-            let requestID = this.requestID;
-
-            let timeoutID = setTimeout(() => {
-                this.requestCallback(requestID, { error: 'timeout' });
-            }, timeout);
-
-            this.requestCallbacks[requestID] = { callback, timeoutID };
-
-            request.requestID = requestID;
-            console.log('sending request: ', request);
-
-            return this.connection.sendBig(request)
-        }
-
-        connectToPeerID(id, callback = () => {}) {
-            this.connectionCallbacks.push(callback);
-            this.serverID = id;
-            this.getPeerList((err, peerList) => {
-                if (err) {
-                    console.error(err);
-                    return
-                }
-                var peer = peerList[id];
-                if (!peer) {
-                    console.error('peer not defined. id:', id);
-                    this._notifyCallbacks('peer not defined');
-                } else {
-                    this.id = id;
-                    this.serverRef = this.database.child(id);
-                    this.serverRef.once('value', (ev1) => {
-                        ev1.val();
-                        let pOpts = {
-                            initiator: true,
-                            trickle: true,
-                            config: {
-                                iceServers: this.iceServers,
-                            },
-                            peerID: id,
-                        };
-
-                        if (this.isStream) {
-                            pOpts.stream = this.getMyStream();
-                        }
-
-                        var p = new PeerBinary(pOpts);
-                        this.connection = p;
-                        this._registerEvents();
-                        p.on('signal', (data) => {
-                            if (data.type == 'offer') {
-                                this._createChannel(data);
-                            } else if (data.candidate) {
-                                if (this.debug) {
-                                    console.log(
-                                        'client recieved candidate from webrtc',
-                                        data
-                                    );
-                                }
-                                this.outRef.push(data);
-                            } else {
-                                console.warn(
-                                    'Client recieved unexpected signal through WebRTC:',
-                                    data
-                                );
-                            }
-                        });
-                    });
-                }
-            });
-        }
-
-        getMyStream() {
-            if (this.stream) return this.stream
-
-            // create fake stream if no stream specified, and the server is in streaming mode.
-            //    because, at the moment, simple-peer must have a stream from the initiator.
-            let fakeCanvas = document.createElement('canvas');
-            fakeCanvas.width = fakeCanvas.height = 1;
-            var fakeStream = fakeCanvas.captureStream();
-            return fakeStream
-        }
-
-        disconnect(callback) {
-            callback =
-                callback ||
-                function () {
-                    console.log('client disconnected from server', arguments);
-                };
-
-            if (this.serverRef) {
-                this.serverRef.off();
-            }
-            if (this.outRef) {
-                this.outRef.off();
-            }
-            if (this.inRef) {
-                this.inRef.off();
-            }
-            if (this.connection) {
-                this.connection.destroy(callback);
-            } else {
-                callback();
-            }
-            // QUESTION: should I also disconnect from the listeners to the events emitted by this class?
-            //     it would be this.off()
-        }
-
-        _createChannel(offer) {
-            //this.channelRef = this.serverRef.child('channels').push({offer:offer})
-            offer.peerID = this.peerID;
-            offer.myID = this.myID;
-            if (this.debug)
-                console.log('Got create channel with offer: ', offer);
-            this.channelRef = this.serverRef.child('channels').push({
-                fromClient: [offer],
-            });
-            this.outRef = this.channelRef.child('fromClient');
-            this.inRef = this.channelRef.child('fromServer');
-            this.inRef.on('child_added', (ev) => {
-                if (this.debug) console.log(ev.val(), 'channel message, client');
-                var val = ev.val();
-                if (val.type === 'answer') {
-                    setTimeout(() => {
-                        let state =
-                            this.connection &&
-                            this.connection._pc &&
-                            this.connection._pc.signalingState;
-                        if (state == this.lastNegotiationState) {
-                            if (this.debug)
-                                console.log(
-                                    'signalstate. skip nested negotiations'
-                                );
-                            return
-                        }
-                        if (this.debug) console.log('signal start negotiation');
-                        this.lastNegotiationState = state;
-                        if (this.debug) console.log('answer', this);
-                        if (!this.connection.destroyed)
-                            this.connection.signal(val);
-                    }, 50); // a slight delay helps establish connection, I think.
-                } else if (val.candidate) {
-                    if (this.debug)
-                        console.log('client recieved candidate from firebase');
-                    setTimeout(() => {
-                        if (!this.connection.destroyed)
-                            this.connection.signal(val);
-                    }, 50);
-                } else {
-                    console.warn(
-                        val,
-                        'Client recieved unexpected signal through Firebase'
-                    );
-                }
-            });
-        }
-
-        _notifyCallbacks(err, connection) {
-            try {
-                for (var callback of this.connectionCallbacks) {
-                    callback(err, connection);
-                }
-                this.connectionCallbacks = [];
-            } catch (err) {
-                console.warn(err);
-            }
-        }
-
-        _registerEvents() {
-            // fire events
-            this.connection.on('error', (err) => {
-                console.error('client: error', err);
-                this.fire('error', { peer: this.connection, err: err });
-            });
-            this.connection.on('connect', () => {
-                if (this.debug) console.log('client: client connected');
-                this._notifyCallbacks(null, this.connection);
-                this.fire('connect', { peer: this.connection });
-            });
-            this.connection.on('data', (data) => {
-                if (this.debug)
-                    console.log('client: recieved some data: ', data);
-                this.fire('data', { peer: this.connection, data: data });
-            });
-            this.connection.on('close', (data) => {
-                if (this.debug)
-                    console.log('connection closed', this.connection);
-                this.fire('close', { peer: this.connection });
-            });
-            this.connection.on('dataBig', (data) => {
-                if (data && data.type === 'ackack') {
-                    let { ackID } = data.data.ack;
-                    this.ackCallback(ackID, data);
-                } else {
-                    // console.log('~~~ DataBig ~~~~')
-                    // console.log(data)
-                    let { requestID } = data || {};
-                    if (requestID) {
-                        this.requestCallback(requestID, data);
-                    }
-                    // console.log('~~~~~~~~~~~~~~~~')
-                    this.fire('dataBig', { peer: this.connection, data: data });
-                }
-            });
-            this.connection.on('stream', (stream) => {
-                if (this.debug)
-                    console.log('Client: connected to stream', stream);
-                this.fire('stream', { peer: this.connection, stream: stream });
-            });
-            this.connection._pc.addEventListener('signalingstatechange', () => {
-                console.log(
-                    'signalState',
-                    this.connection &&
-                        this.connection._pc &&
-                        this.connection._pc.signalingState
-                );
-            });
-        }
-    }
-}
-
 var global$1 = (typeof global !== "undefined" ? global :
             typeof self !== "undefined" ? self :
             typeof window !== "undefined" ? window : {});
+
+// shim for using process in browser
+// based off https://github.com/defunctzombie/node-process/blob/master/browser.js
+
+function defaultSetTimout() {
+    throw new Error('setTimeout has not been defined');
+}
+function defaultClearTimeout () {
+    throw new Error('clearTimeout has not been defined');
+}
+var cachedSetTimeout = defaultSetTimout;
+var cachedClearTimeout = defaultClearTimeout;
+if (typeof global$1.setTimeout === 'function') {
+    cachedSetTimeout = setTimeout;
+}
+if (typeof global$1.clearTimeout === 'function') {
+    cachedClearTimeout = clearTimeout;
+}
+
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) {
+        //normal enviroments in sane situations
+        return setTimeout(fun, 0);
+    }
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch(e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch(e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+
+
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) {
+        //normal enviroments in sane situations
+        return clearTimeout(marker);
+    }
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+
+
+
+}
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = runTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    runClearTimeout(timeout);
+}
+function nextTick(fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        runTimeout(drainQueue);
+    }
+}
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+var title = 'browser';
+var platform = 'browser';
+var browser = true;
+var env = {};
+var argv = [];
+var version$6 = ''; // empty string to avoid regexp issues
+var versions = {};
+var release = {};
+var config = {};
+
+function noop$1() {}
+
+var on = noop$1;
+var addListener = noop$1;
+var once = noop$1;
+var off$1 = noop$1;
+var removeListener = noop$1;
+var removeAllListeners = noop$1;
+var emit = noop$1;
+
+function binding(name) {
+    throw new Error('process.binding is not supported');
+}
+
+function cwd () { return '/' }
+function chdir (dir) {
+    throw new Error('process.chdir is not supported');
+}function umask() { return 0; }
+
+// from https://github.com/kumavis/browser-process-hrtime/blob/master/index.js
+var performance = global$1.performance || {};
+var performanceNow =
+  performance.now        ||
+  performance.mozNow     ||
+  performance.msNow      ||
+  performance.oNow       ||
+  performance.webkitNow  ||
+  function(){ return (new Date()).getTime() };
+
+// generate timestamp or delta
+// see http://nodejs.org/api/process.html#process_process_hrtime
+function hrtime(previousTimestamp){
+  var clocktime = performanceNow.call(performance)*1e-3;
+  var seconds = Math.floor(clocktime);
+  var nanoseconds = Math.floor((clocktime%1)*1e9);
+  if (previousTimestamp) {
+    seconds = seconds - previousTimestamp[0];
+    nanoseconds = nanoseconds - previousTimestamp[1];
+    if (nanoseconds<0) {
+      seconds--;
+      nanoseconds += 1e9;
+    }
+  }
+  return [seconds,nanoseconds]
+}
+
+var startTime = new Date();
+function uptime() {
+  var currentTime = new Date();
+  var dif = currentTime - startTime;
+  return dif / 1000;
+}
+
+var process = {
+  nextTick: nextTick,
+  title: title,
+  browser: browser,
+  env: env,
+  argv: argv,
+  version: version$6,
+  versions: versions,
+  on: on,
+  addListener: addListener,
+  once: once,
+  off: off$1,
+  removeListener: removeListener,
+  removeAllListeners: removeAllListeners,
+  emit: emit,
+  binding: binding,
+  cwd: cwd,
+  chdir: chdir,
+  umask: umask,
+  hrtime: hrtime,
+  platform: platform,
+  release: release,
+  config: config,
+  uptime: uptime
+};
 
 /**
  * @license
@@ -2052,7 +1088,7 @@ function map(obj, fn, contextObj) {
 /**
  * Deep equal two objects. Support Arrays and Objects.
  */
-function deepEqual(a, b) {
+function deepEqual$1(a, b) {
     if (a === b) {
         return true;
     }
@@ -2065,7 +1101,7 @@ function deepEqual(a, b) {
         const aProp = a[k];
         const bProp = b[k];
         if (isObject(aProp) && isObject(bProp)) {
-            if (!deepEqual(aProp, bProp)) {
+            if (!deepEqual$1(aProp, bProp)) {
                 return false;
             }
         }
@@ -2463,13 +1499,13 @@ class ObserverProxy {
             };
         }
         if (observer.next === undefined) {
-            observer.next = noop$1;
+            observer.next = noop;
         }
         if (observer.error === undefined) {
-            observer.error = noop$1;
+            observer.error = noop;
         }
         if (observer.complete === undefined) {
-            observer.complete = noop$1;
+            observer.complete = noop;
         }
         const unsub = this.unsubscribeOne.bind(this, this.observers.length);
         // Attempt to subscribe to a terminated Observable - we
@@ -2570,7 +1606,7 @@ function implementsAnyMethods(obj, methods) {
     }
     return false;
 }
-function noop$1() {
+function noop() {
     // do nothing
 }
 
@@ -2762,105 +1798,17 @@ function getModularInstance(service) {
     }
 }
 
-/*! *****************************************************************************
-Copyright (c) Microsoft Corporation.
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-PERFORMANCE OF THIS SOFTWARE.
-***************************************************************************** */
-
-function __awaiter(thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-}
-
-function __generator(thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
-            }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-    }
-}
-
-function __values(o) {
-    var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
-    if (m) return m.call(o);
-    if (o && typeof o.length === "number") return {
-        next: function () {
-            if (o && i >= o.length) o = void 0;
-            return { value: o && o[i++], done: !o };
-        }
-    };
-    throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
-}
-
-function __read(o, n) {
-    var m = typeof Symbol === "function" && o[Symbol.iterator];
-    if (!m) return o;
-    var i = m.call(o), r, ar = [], e;
-    try {
-        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
-    }
-    catch (error) { e = { error: error }; }
-    finally {
-        try {
-            if (r && !r.done && (m = i["return"])) m.call(i);
-        }
-        finally { if (e) throw e.error; }
-    }
-    return ar;
-}
-
-function __spreadArray(to, from) {
-    for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
-        to[j] = from[i];
-    return to;
-}
-
 /**
  * Component for service name T, e.g. `auth`, `auth-internal`
  */
-var Component = /** @class */ (function () {
+class Component {
     /**
      *
      * @param name The public service name, e.g. app, auth, firestore, database
      * @param instanceFactory Service factory responsible for creating the public interface
      * @param type whether the service provided by the component is public or private
      */
-    function Component(name, instanceFactory, type) {
+    constructor(name, instanceFactory, type) {
         this.name = name;
         this.instanceFactory = instanceFactory;
         this.type = type;
@@ -2872,24 +1820,23 @@ var Component = /** @class */ (function () {
         this.instantiationMode = "LAZY" /* LAZY */;
         this.onInstanceCreated = null;
     }
-    Component.prototype.setInstantiationMode = function (mode) {
+    setInstantiationMode(mode) {
         this.instantiationMode = mode;
         return this;
-    };
-    Component.prototype.setMultipleInstances = function (multipleInstances) {
+    }
+    setMultipleInstances(multipleInstances) {
         this.multipleInstances = multipleInstances;
         return this;
-    };
-    Component.prototype.setServiceProps = function (props) {
+    }
+    setServiceProps(props) {
         this.serviceProps = props;
         return this;
-    };
-    Component.prototype.setInstanceCreatedCallback = function (callback) {
+    }
+    setInstanceCreatedCallback(callback) {
         this.onInstanceCreated = callback;
         return this;
-    };
-    return Component;
-}());
+    }
+}
 
 /**
  * @license
@@ -2907,7 +1854,7 @@ var Component = /** @class */ (function () {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var DEFAULT_ENTRY_NAME$1 = '[DEFAULT]';
+const DEFAULT_ENTRY_NAME$1 = '[DEFAULT]';
 
 /**
  * @license
@@ -2929,8 +1876,8 @@ var DEFAULT_ENTRY_NAME$1 = '[DEFAULT]';
  * Provider for instance for service name T, e.g. 'auth', 'auth-internal'
  * NameServiceMapping[T] is an alias for the type of the instance
  */
-var Provider = /** @class */ (function () {
-    function Provider(name, container) {
+class Provider {
+    constructor(name, container) {
         this.name = name;
         this.container = container;
         this.component = null;
@@ -2943,17 +1890,17 @@ var Provider = /** @class */ (function () {
      * @param identifier A provider can provide mulitple instances of a service
      * if this.component.multipleInstances is true.
      */
-    Provider.prototype.get = function (identifier) {
+    get(identifier) {
         // if multipleInstances is not supported, use the default name
-        var normalizedIdentifier = this.normalizeInstanceIdentifier(identifier);
+        const normalizedIdentifier = this.normalizeInstanceIdentifier(identifier);
         if (!this.instancesDeferred.has(normalizedIdentifier)) {
-            var deferred = new Deferred();
+            const deferred = new Deferred();
             this.instancesDeferred.set(normalizedIdentifier, deferred);
             if (this.isInitialized(normalizedIdentifier) ||
                 this.shouldAutoInitialize()) {
                 // initialize the service if it can be auto-initialized
                 try {
-                    var instance = this.getOrInitializeService({
+                    const instance = this.getOrInitializeService({
                         instanceIdentifier: normalizedIdentifier
                     });
                     if (instance) {
@@ -2967,12 +1914,12 @@ var Provider = /** @class */ (function () {
             }
         }
         return this.instancesDeferred.get(normalizedIdentifier).promise;
-    };
-    Provider.prototype.getImmediate = function (options) {
+    }
+    getImmediate(options) {
         var _a;
         // if multipleInstances is not supported, use the default name
-        var normalizedIdentifier = this.normalizeInstanceIdentifier(options === null || options === void 0 ? void 0 : options.identifier);
-        var optional = (_a = options === null || options === void 0 ? void 0 : options.optional) !== null && _a !== void 0 ? _a : false;
+        const normalizedIdentifier = this.normalizeInstanceIdentifier(options === null || options === void 0 ? void 0 : options.identifier);
+        const optional = (_a = options === null || options === void 0 ? void 0 : options.optional) !== null && _a !== void 0 ? _a : false;
         if (this.isInitialized(normalizedIdentifier) ||
             this.shouldAutoInitialize()) {
             try {
@@ -2995,20 +1942,19 @@ var Provider = /** @class */ (function () {
                 return null;
             }
             else {
-                throw Error("Service " + this.name + " is not available");
+                throw Error(`Service ${this.name} is not available`);
             }
         }
-    };
-    Provider.prototype.getComponent = function () {
+    }
+    getComponent() {
         return this.component;
-    };
-    Provider.prototype.setComponent = function (component) {
-        var e_1, _a;
+    }
+    setComponent(component) {
         if (component.name !== this.name) {
-            throw Error("Mismatching Component " + component.name + " for Provider " + this.name + ".");
+            throw Error(`Mismatching Component ${component.name} for Provider ${this.name}.`);
         }
         if (this.component) {
-            throw Error("Component for " + this.name + " has already been provided");
+            throw Error(`Component for ${this.name} has already been provided`);
         }
         this.component = component;
         // return early without attempting to initialize the component if the component requires explicit initialization (calling `Provider.initialize()`)
@@ -3027,108 +1973,75 @@ var Provider = /** @class */ (function () {
                 // a fatal error in this case?
             }
         }
-        try {
-            // Create service instances for the pending promises and resolve them
-            // NOTE: if this.multipleInstances is false, only the default instance will be created
-            // and all promises with resolve with it regardless of the identifier.
-            for (var _b = __values(this.instancesDeferred.entries()), _c = _b.next(); !_c.done; _c = _b.next()) {
-                var _d = __read(_c.value, 2), instanceIdentifier = _d[0], instanceDeferred = _d[1];
-                var normalizedIdentifier = this.normalizeInstanceIdentifier(instanceIdentifier);
-                try {
-                    // `getOrInitializeService()` should always return a valid instance since a component is guaranteed. use ! to make typescript happy.
-                    var instance = this.getOrInitializeService({
-                        instanceIdentifier: normalizedIdentifier
-                    });
-                    instanceDeferred.resolve(instance);
-                }
-                catch (e) {
-                    // when the instance factory throws an exception, it should not cause
-                    // a fatal error. We just leave the promise unresolved.
-                }
-            }
-        }
-        catch (e_1_1) { e_1 = { error: e_1_1 }; }
-        finally {
+        // Create service instances for the pending promises and resolve them
+        // NOTE: if this.multipleInstances is false, only the default instance will be created
+        // and all promises with resolve with it regardless of the identifier.
+        for (const [instanceIdentifier, instanceDeferred] of this.instancesDeferred.entries()) {
+            const normalizedIdentifier = this.normalizeInstanceIdentifier(instanceIdentifier);
             try {
-                if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                // `getOrInitializeService()` should always return a valid instance since a component is guaranteed. use ! to make typescript happy.
+                const instance = this.getOrInitializeService({
+                    instanceIdentifier: normalizedIdentifier
+                });
+                instanceDeferred.resolve(instance);
             }
-            finally { if (e_1) throw e_1.error; }
+            catch (e) {
+                // when the instance factory throws an exception, it should not cause
+                // a fatal error. We just leave the promise unresolved.
+            }
         }
-    };
-    Provider.prototype.clearInstance = function (identifier) {
-        if (identifier === void 0) { identifier = DEFAULT_ENTRY_NAME$1; }
+    }
+    clearInstance(identifier = DEFAULT_ENTRY_NAME$1) {
         this.instancesDeferred.delete(identifier);
         this.instancesOptions.delete(identifier);
         this.instances.delete(identifier);
-    };
+    }
     // app.delete() will call this method on every provider to delete the services
     // TODO: should we mark the provider as deleted?
-    Provider.prototype.delete = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var services;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        services = Array.from(this.instances.values());
-                        return [4 /*yield*/, Promise.all(__spreadArray(__spreadArray([], __read(services
-                                .filter(function (service) { return 'INTERNAL' in service; }) // legacy services
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                .map(function (service) { return service.INTERNAL.delete(); }))), __read(services
-                                .filter(function (service) { return '_delete' in service; }) // modularized services
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                .map(function (service) { return service._delete(); }))))];
-                    case 1:
-                        _a.sent();
-                        return [2 /*return*/];
-                }
-            });
-        });
-    };
-    Provider.prototype.isComponentSet = function () {
+    async delete() {
+        const services = Array.from(this.instances.values());
+        await Promise.all([
+            ...services
+                .filter(service => 'INTERNAL' in service) // legacy services
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .map(service => service.INTERNAL.delete()),
+            ...services
+                .filter(service => '_delete' in service) // modularized services
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .map(service => service._delete())
+        ]);
+    }
+    isComponentSet() {
         return this.component != null;
-    };
-    Provider.prototype.isInitialized = function (identifier) {
-        if (identifier === void 0) { identifier = DEFAULT_ENTRY_NAME$1; }
+    }
+    isInitialized(identifier = DEFAULT_ENTRY_NAME$1) {
         return this.instances.has(identifier);
-    };
-    Provider.prototype.getOptions = function (identifier) {
-        if (identifier === void 0) { identifier = DEFAULT_ENTRY_NAME$1; }
+    }
+    getOptions(identifier = DEFAULT_ENTRY_NAME$1) {
         return this.instancesOptions.get(identifier) || {};
-    };
-    Provider.prototype.initialize = function (opts) {
-        var e_2, _a;
-        if (opts === void 0) { opts = {}; }
-        var _b = opts.options, options = _b === void 0 ? {} : _b;
-        var normalizedIdentifier = this.normalizeInstanceIdentifier(opts.instanceIdentifier);
+    }
+    initialize(opts = {}) {
+        const { options = {} } = opts;
+        const normalizedIdentifier = this.normalizeInstanceIdentifier(opts.instanceIdentifier);
         if (this.isInitialized(normalizedIdentifier)) {
-            throw Error(this.name + "(" + normalizedIdentifier + ") has already been initialized");
+            throw Error(`${this.name}(${normalizedIdentifier}) has already been initialized`);
         }
         if (!this.isComponentSet()) {
-            throw Error("Component " + this.name + " has not been registered yet");
+            throw Error(`Component ${this.name} has not been registered yet`);
         }
-        var instance = this.getOrInitializeService({
+        const instance = this.getOrInitializeService({
             instanceIdentifier: normalizedIdentifier,
-            options: options
+            options
         });
-        try {
-            // resolve any pending promise waiting for the service instance
-            for (var _c = __values(this.instancesDeferred.entries()), _d = _c.next(); !_d.done; _d = _c.next()) {
-                var _e = __read(_d.value, 2), instanceIdentifier = _e[0], instanceDeferred = _e[1];
-                var normalizedDeferredIdentifier = this.normalizeInstanceIdentifier(instanceIdentifier);
-                if (normalizedIdentifier === normalizedDeferredIdentifier) {
-                    instanceDeferred.resolve(instance);
-                }
+        // resolve any pending promise waiting for the service instance
+        for (const [instanceIdentifier, instanceDeferred] of this.instancesDeferred.entries()) {
+            const normalizedDeferredIdentifier = this.normalizeInstanceIdentifier(instanceIdentifier);
+            if (normalizedIdentifier === normalizedDeferredIdentifier) {
+                instanceDeferred.resolve(instance);
             }
-        }
-        catch (e_2_1) { e_2 = { error: e_2_1 }; }
-        finally {
-            try {
-                if (_d && !_d.done && (_a = _c.return)) _a.call(_c);
-            }
-            finally { if (e_2) throw e_2.error; }
         }
         return instance;
-    };
+    }
     /**
      *
      * @param callback - a function that will be invoked  after the provider has been initialized by calling provider.initialize().
@@ -3137,56 +2050,44 @@ var Provider = /** @class */ (function () {
      * @param identifier An optional instance identifier
      * @returns a function to unregister the callback
      */
-    Provider.prototype.onInit = function (callback, identifier) {
+    onInit(callback, identifier) {
         var _a;
-        var normalizedIdentifier = this.normalizeInstanceIdentifier(identifier);
-        var existingCallbacks = (_a = this.onInitCallbacks.get(normalizedIdentifier)) !== null && _a !== void 0 ? _a : new Set();
+        const normalizedIdentifier = this.normalizeInstanceIdentifier(identifier);
+        const existingCallbacks = (_a = this.onInitCallbacks.get(normalizedIdentifier)) !== null && _a !== void 0 ? _a : new Set();
         existingCallbacks.add(callback);
         this.onInitCallbacks.set(normalizedIdentifier, existingCallbacks);
-        var existingInstance = this.instances.get(normalizedIdentifier);
+        const existingInstance = this.instances.get(normalizedIdentifier);
         if (existingInstance) {
             callback(existingInstance, normalizedIdentifier);
         }
-        return function () {
+        return () => {
             existingCallbacks.delete(callback);
         };
-    };
+    }
     /**
      * Invoke onInit callbacks synchronously
      * @param instance the service instance`
      */
-    Provider.prototype.invokeOnInitCallbacks = function (instance, identifier) {
-        var e_3, _a;
-        var callbacks = this.onInitCallbacks.get(identifier);
+    invokeOnInitCallbacks(instance, identifier) {
+        const callbacks = this.onInitCallbacks.get(identifier);
         if (!callbacks) {
             return;
         }
-        try {
-            for (var callbacks_1 = __values(callbacks), callbacks_1_1 = callbacks_1.next(); !callbacks_1_1.done; callbacks_1_1 = callbacks_1.next()) {
-                var callback = callbacks_1_1.value;
-                try {
-                    callback(instance, identifier);
-                }
-                catch (_b) {
-                    // ignore errors in the onInit callback
-                }
-            }
-        }
-        catch (e_3_1) { e_3 = { error: e_3_1 }; }
-        finally {
+        for (const callback of callbacks) {
             try {
-                if (callbacks_1_1 && !callbacks_1_1.done && (_a = callbacks_1.return)) _a.call(callbacks_1);
+                callback(instance, identifier);
             }
-            finally { if (e_3) throw e_3.error; }
+            catch (_a) {
+                // ignore errors in the onInit callback
+            }
         }
-    };
-    Provider.prototype.getOrInitializeService = function (_a) {
-        var instanceIdentifier = _a.instanceIdentifier, _b = _a.options, options = _b === void 0 ? {} : _b;
-        var instance = this.instances.get(instanceIdentifier);
+    }
+    getOrInitializeService({ instanceIdentifier, options = {} }) {
+        let instance = this.instances.get(instanceIdentifier);
         if (!instance && this.component) {
             instance = this.component.instanceFactory(this.container, {
                 instanceIdentifier: normalizeIdentifierForFactory(instanceIdentifier),
-                options: options
+                options
             });
             this.instances.set(instanceIdentifier, instance);
             this.instancesOptions.set(instanceIdentifier, options);
@@ -3205,28 +2106,26 @@ var Provider = /** @class */ (function () {
                 try {
                     this.component.onInstanceCreated(this.container, instanceIdentifier, instance);
                 }
-                catch (_c) {
+                catch (_a) {
                     // ignore errors in the onInstanceCreatedCallback
                 }
             }
         }
         return instance || null;
-    };
-    Provider.prototype.normalizeInstanceIdentifier = function (identifier) {
-        if (identifier === void 0) { identifier = DEFAULT_ENTRY_NAME$1; }
+    }
+    normalizeInstanceIdentifier(identifier = DEFAULT_ENTRY_NAME$1) {
         if (this.component) {
             return this.component.multipleInstances ? identifier : DEFAULT_ENTRY_NAME$1;
         }
         else {
             return identifier; // assume multiple instances are supported before the component is provided.
         }
-    };
-    Provider.prototype.shouldAutoInitialize = function () {
+    }
+    shouldAutoInitialize() {
         return (!!this.component &&
             this.component.instantiationMode !== "EXPLICIT" /* EXPLICIT */);
-    };
-    return Provider;
-}());
+    }
+}
 // undefined should be passed to the service factory for the default instance
 function normalizeIdentifierForFactory(identifier) {
     return identifier === DEFAULT_ENTRY_NAME$1 ? undefined : identifier;
@@ -3254,8 +2153,8 @@ function isComponentEager(component) {
 /**
  * ComponentContainer that provides Providers for service name T, e.g. `auth`, `auth-internal`
  */
-var ComponentContainer = /** @class */ (function () {
-    function ComponentContainer(name) {
+class ComponentContainer {
+    constructor(name) {
         this.name = name;
         this.providers = new Map();
     }
@@ -3268,21 +2167,21 @@ var ComponentContainer = /** @class */ (function () {
      * for different tests.
      * if overwrite is false: throw an exception
      */
-    ComponentContainer.prototype.addComponent = function (component) {
-        var provider = this.getProvider(component.name);
+    addComponent(component) {
+        const provider = this.getProvider(component.name);
         if (provider.isComponentSet()) {
-            throw new Error("Component " + component.name + " has already been registered with " + this.name);
+            throw new Error(`Component ${component.name} has already been registered with ${this.name}`);
         }
         provider.setComponent(component);
-    };
-    ComponentContainer.prototype.addOrOverwriteComponent = function (component) {
-        var provider = this.getProvider(component.name);
+    }
+    addOrOverwriteComponent(component) {
+        const provider = this.getProvider(component.name);
         if (provider.isComponentSet()) {
             // delete the existing provider from the container, so we can register the new component
             this.providers.delete(component.name);
         }
         this.addComponent(component);
-    };
+    }
     /**
      * getProvider provides a type safe interface where it can only be called with a field name
      * present in NameServiceMapping interface.
@@ -3290,20 +2189,19 @@ var ComponentContainer = /** @class */ (function () {
      * Firebase SDKs providing services should extend NameServiceMapping interface to register
      * themselves.
      */
-    ComponentContainer.prototype.getProvider = function (name) {
+    getProvider(name) {
         if (this.providers.has(name)) {
             return this.providers.get(name);
         }
         // create a Provider for a service that hasn't registered with Firebase
-        var provider = new Provider(name, this);
+        const provider = new Provider(name, this);
         this.providers.set(name, provider);
         return provider;
-    };
-    ComponentContainer.prototype.getProviders = function () {
+    }
+    getProviders() {
         return Array.from(this.providers.values());
-    };
-    return ComponentContainer;
-}());
+    }
+}
 
 /**
  * @license
@@ -3576,7 +2474,7 @@ function isVersionServiceProvider(provider) {
 }
 
 const name$o = "@firebase/app";
-const version$1$1 = "0.7.2";
+const version$1$1 = "0.7.9";
 
 /**
  * @license
@@ -3634,7 +2532,7 @@ const name$6 = "@firebase/remote-config";
 
 const name$5 = "@firebase/remote-config-compat";
 
-const name$4 = "@firebase/storage";
+const name$4$1 = "@firebase/storage";
 
 const name$3$1 = "@firebase/storage-compat";
 
@@ -3643,7 +2541,7 @@ const name$2$1 = "@firebase/firestore";
 const name$1$1 = "@firebase/firestore-compat";
 
 const name$p = "firebase";
-const version$5 = "9.1.1";
+const version$5 = "9.5.0";
 
 /**
  * @license
@@ -3688,7 +2586,7 @@ const PLATFORM_LOG_STRING = {
     [name$7]: 'fire-perf-compat',
     [name$6]: 'fire-rc',
     [name$5]: 'fire-rc-compat',
-    [name$4]: 'fire-gcs',
+    [name$4$1]: 'fire-gcs',
     [name$3$1]: 'fire-gcs-compat',
     [name$2$1]: 'fire-fst',
     [name$1$1]: 'fire-fst-compat',
@@ -3927,8 +2825,8 @@ function initializeApp(options, rawConfig = {}) {
     const existingApp = _apps.get(name);
     if (existingApp) {
         // return the existing app if options and config deep equal the ones in the existing app.
-        if (deepEqual(options, existingApp.options) &&
-            deepEqual(config, existingApp.config)) {
+        if (deepEqual$1(options, existingApp.options) &&
+            deepEqual$1(config, existingApp.config)) {
             return existingApp;
         }
         else {
@@ -4095,6 +2993,8 @@ function registerCoreComponents$1(variant) {
     _registerComponent(new Component('platform-logger', container => new PlatformLoggerServiceImpl(container), "PRIVATE" /* PRIVATE */));
     // Register `app` package.
     registerVersion(name$o, version$1$1, variant);
+    // BUILD_TARGET will be replaced by values like esm5, esm2017, cjs5, etc during the compilation
+    registerVersion(name$o, version$1$1, 'esm2017');
     // Register platform SDK identifier (no version).
     registerVersion('fire-js', '');
 }
@@ -4105,698 +3005,32 @@ function registerCoreComponents$1(variant) {
  * @remarks This package coordinates the communication between the different Firebase components
  * @packageDocumentation
  */
-registerCoreComponents$1();
+registerCoreComponents$1('');
 
 var modularAPIs = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    SDK_VERSION: SDK_VERSION$1,
-    _DEFAULT_ENTRY_NAME: DEFAULT_ENTRY_NAME,
-    _addComponent: _addComponent,
-    _addOrOverwriteComponent: _addOrOverwriteComponent,
-    _apps: _apps,
-    _clearComponents: _clearComponents,
-    _components: _components,
-    _getProvider: _getProvider,
-    _registerComponent: _registerComponent,
-    _removeServiceInstance: _removeServiceInstance,
-    deleteApp: deleteApp,
-    getApp: getApp,
-    getApps: getApps,
-    initializeApp: initializeApp,
-    onLog: onLog,
-    registerVersion: registerVersion,
-    setLogLevel: setLogLevel,
-    FirebaseError: FirebaseError
+            __proto__: null,
+            SDK_VERSION: SDK_VERSION$1,
+            _DEFAULT_ENTRY_NAME: DEFAULT_ENTRY_NAME,
+            _addComponent: _addComponent,
+            _addOrOverwriteComponent: _addOrOverwriteComponent,
+            _apps: _apps,
+            _clearComponents: _clearComponents,
+            _components: _components,
+            _getProvider: _getProvider,
+            _registerComponent: _registerComponent,
+            _removeServiceInstance: _removeServiceInstance,
+            deleteApp: deleteApp,
+            getApp: getApp,
+            getApps: getApps,
+            initializeApp: initializeApp,
+            onLog: onLog,
+            registerVersion: registerVersion,
+            setLogLevel: setLogLevel,
+            FirebaseError: FirebaseError
 });
 
-/**
- * @license
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * Global context object for a collection of services using
- * a shared authentication state.
- *
- * marked as internal because it references internal types exported from @firebase/app
- * @internal
- */
-class FirebaseAppImpl {
-    constructor(_delegate, firebase) {
-        this._delegate = _delegate;
-        this.firebase = firebase;
-        // add itself to container
-        _addComponent(_delegate, new Component('app-compat', () => this, "PUBLIC" /* PUBLIC */));
-        this.container = _delegate.container;
-    }
-    get automaticDataCollectionEnabled() {
-        return this._delegate.automaticDataCollectionEnabled;
-    }
-    set automaticDataCollectionEnabled(val) {
-        this._delegate.automaticDataCollectionEnabled = val;
-    }
-    get name() {
-        return this._delegate.name;
-    }
-    get options() {
-        return this._delegate.options;
-    }
-    delete() {
-        return new Promise(resolve => {
-            this._delegate.checkDestroyed();
-            resolve();
-        }).then(() => {
-            this.firebase.INTERNAL.removeApp(this.name);
-            return deleteApp(this._delegate);
-        });
-    }
-    /**
-     * Return a service instance associated with this app (creating it
-     * on demand), identified by the passed instanceIdentifier.
-     *
-     * NOTE: Currently storage and functions are the only ones that are leveraging this
-     * functionality. They invoke it by calling:
-     *
-     * ```javascript
-     * firebase.app().storage('STORAGE BUCKET ID')
-     * ```
-     *
-     * The service name is passed to this already
-     * @internal
-     */
-    _getService(name, instanceIdentifier = DEFAULT_ENTRY_NAME) {
-        var _a;
-        this._delegate.checkDestroyed();
-        // Initialize instance if InstatiationMode is `EXPLICIT`.
-        const provider = this._delegate.container.getProvider(name);
-        if (!provider.isInitialized() &&
-            ((_a = provider.getComponent()) === null || _a === void 0 ? void 0 : _a.instantiationMode) === "EXPLICIT" /* EXPLICIT */) {
-            provider.initialize();
-        }
-        // getImmediate will always succeed because _getService is only called for registered components.
-        return provider.getImmediate({
-            identifier: instanceIdentifier
-        });
-    }
-    /**
-     * Remove a service instance from the cache, so we will create a new instance for this service
-     * when people try to get it again.
-     *
-     * NOTE: currently only firestore uses this functionality to support firestore shutdown.
-     *
-     * @param name The service name
-     * @param instanceIdentifier instance identifier in case multiple instances are allowed
-     * @internal
-     */
-    _removeServiceInstance(name, instanceIdentifier = DEFAULT_ENTRY_NAME) {
-        this._delegate.container
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .getProvider(name)
-            .clearInstance(instanceIdentifier);
-    }
-    /**
-     * @param component the component being added to this app's container
-     * @internal
-     */
-    _addComponent(component) {
-        _addComponent(this._delegate, component);
-    }
-    _addOrOverwriteComponent(component) {
-        _addOrOverwriteComponent(this._delegate, component);
-    }
-    toJSON() {
-        return {
-            name: this.name,
-            automaticDataCollectionEnabled: this.automaticDataCollectionEnabled,
-            options: this.options
-        };
-    }
-}
-// TODO: investigate why the following needs to be commented out
-// Prevent dead-code elimination of these methods w/o invalid property
-// copying.
-// (FirebaseAppImpl.prototype.name && FirebaseAppImpl.prototype.options) ||
-//   FirebaseAppImpl.prototype.delete ||
-//   console.log('dc');
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-const ERRORS = {
-    ["no-app" /* NO_APP */]: "No Firebase App '{$appName}' has been created - " +
-        'call Firebase App.initializeApp()',
-    ["invalid-app-argument" /* INVALID_APP_ARGUMENT */]: 'firebase.{$appName}() takes either no argument or a ' +
-        'Firebase App instance.'
-};
-const ERROR_FACTORY = new ErrorFactory('app-compat', 'Firebase', ERRORS);
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * Because auth can't share code with other components, we attach the utility functions
- * in an internal namespace to share code.
- * This function return a firebase namespace object without
- * any utility functions, so it can be shared between the regular firebaseNamespace and
- * the lite version.
- */
-function createFirebaseNamespaceCore(firebaseAppImpl) {
-    const apps = {};
-    // // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    // const components = new Map<string, Component<any>>();
-    // A namespace is a plain JavaScript Object.
-    const namespace = {
-        // Hack to prevent Babel from modifying the object returned
-        // as the firebase namespace.
-        // @ts-ignore
-        __esModule: true,
-        initializeApp: initializeAppCompat,
-        // @ts-ignore
-        app,
-        registerVersion: registerVersion,
-        setLogLevel: setLogLevel,
-        onLog: onLog,
-        // @ts-ignore
-        apps: null,
-        SDK_VERSION: SDK_VERSION$1,
-        INTERNAL: {
-            registerComponent: registerComponentCompat,
-            removeApp,
-            useAsService,
-            modularAPIs
-        }
-    };
-    // Inject a circular default export to allow Babel users who were previously
-    // using:
-    //
-    //   import firebase from 'firebase';
-    //   which becomes: var firebase = require('firebase').default;
-    //
-    // instead of
-    //
-    //   import * as firebase from 'firebase';
-    //   which becomes: var firebase = require('firebase');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    namespace['default'] = namespace;
-    // firebase.apps is a read-only getter.
-    Object.defineProperty(namespace, 'apps', {
-        get: getApps
-    });
-    /**
-     * Called by App.delete() - but before any services associated with the App
-     * are deleted.
-     */
-    function removeApp(name) {
-        delete apps[name];
-    }
-    /**
-     * Get the App object for a given name (or DEFAULT).
-     */
-    function app(name) {
-        name = name || DEFAULT_ENTRY_NAME;
-        if (!contains(apps, name)) {
-            throw ERROR_FACTORY.create("no-app" /* NO_APP */, { appName: name });
-        }
-        return apps[name];
-    }
-    // @ts-ignore
-    app['App'] = firebaseAppImpl;
-    /**
-     * Create a new App instance (name must be unique).
-     *
-     * This function is idempotent. It can be called more than once and return the same instance using the same options and config.
-     */
-    function initializeAppCompat(options, rawConfig = {}) {
-        const app = initializeApp(options, rawConfig);
-        if (contains(apps, app.name)) {
-            return apps[app.name];
-        }
-        const appCompat = new firebaseAppImpl(app, namespace);
-        apps[app.name] = appCompat;
-        return appCompat;
-    }
-    /*
-     * Return an array of all the non-deleted FirebaseApps.
-     */
-    function getApps() {
-        // Make a copy so caller cannot mutate the apps list.
-        return Object.keys(apps).map(name => apps[name]);
-    }
-    function registerComponentCompat(component) {
-        const componentName = component.name;
-        const componentNameWithoutCompat = componentName.replace('-compat', '');
-        if (_registerComponent(component) &&
-            component.type === "PUBLIC" /* PUBLIC */) {
-            // create service namespace for public components
-            // The Service namespace is an accessor function ...
-            const serviceNamespace = (appArg = app()) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if (typeof appArg[componentNameWithoutCompat] !== 'function') {
-                    // Invalid argument.
-                    // This happens in the following case: firebase.storage('gs:/')
-                    throw ERROR_FACTORY.create("invalid-app-argument" /* INVALID_APP_ARGUMENT */, {
-                        appName: componentName
-                    });
-                }
-                // Forward service instance lookup to the FirebaseApp.
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return appArg[componentNameWithoutCompat]();
-            };
-            // ... and a container for service-level properties.
-            if (component.serviceProps !== undefined) {
-                deepExtend(serviceNamespace, component.serviceProps);
-            }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            namespace[componentNameWithoutCompat] = serviceNamespace;
-            // Patch the FirebaseAppImpl prototype
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            firebaseAppImpl.prototype[componentNameWithoutCompat] =
-                // TODO: The eslint disable can be removed and the 'ignoreRestArgs'
-                // option added to the no-explicit-any rule when ESlint releases it.
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                function (...args) {
-                    const serviceFxn = this._getService.bind(this, componentName);
-                    return serviceFxn.apply(this, component.multipleInstances ? args : []);
-                };
-        }
-        return component.type === "PUBLIC" /* PUBLIC */
-            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                namespace[componentNameWithoutCompat]
-            : null;
-    }
-    // Map the requested service to a registered service name
-    // (used to map auth to serverAuth service when needed).
-    function useAsService(app, name) {
-        if (name === 'serverAuth') {
-            return null;
-        }
-        const useService = name;
-        return useService;
-    }
-    return namespace;
-}
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * Return a firebase namespace object.
- *
- * In production, this will be called exactly once and the result
- * assigned to the 'firebase' global.  It may be called multiple times
- * in unit tests.
- */
-function createFirebaseNamespace() {
-    const namespace = createFirebaseNamespaceCore(FirebaseAppImpl);
-    namespace.INTERNAL = Object.assign(Object.assign({}, namespace.INTERNAL), { createFirebaseNamespace,
-        extendNamespace,
-        createSubscribe,
-        ErrorFactory,
-        deepExtend });
-    /**
-     * Patch the top-level firebase namespace with additional properties.
-     *
-     * firebase.INTERNAL.extendNamespace()
-     */
-    function extendNamespace(props) {
-        deepExtend(namespace, props);
-    }
-    return namespace;
-}
-const firebase$1 = createFirebaseNamespace();
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-const logger$1 = new Logger('@firebase/app-compat');
-
-const name$3 = "@firebase/app-compat";
-const version$4 = "0.1.3";
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-function registerCoreComponents(variant) {
-    // Register `app` package.
-    registerVersion(name$3, version$4, variant);
-}
-
-/**
- * @license
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-// Firebase Lite detection
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-if (isBrowser() && self.firebase !== undefined) {
-    logger$1.warn(`
-    Warning: Firebase is already defined in the global scope. Please make sure
-    Firebase library is only loaded once.
-  `);
-    // eslint-disable-next-line
-    const sdkVersion = self.firebase.SDK_VERSION;
-    if (sdkVersion && sdkVersion.indexOf('LITE') >= 0) {
-        logger$1.warn(`
-    Warning: You are trying to load Firebase while using Firebase Performance standalone script.
-    You should load Firebase Performance with this instance of Firebase to avoid loading duplicate code.
-    `);
-    }
-}
-const firebase = firebase$1;
-registerCoreComponents();
-
-var name$2 = "firebase";
-var version$3 = "9.1.1";
-
-/**
- * @license
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-firebase.registerVersion(name$2, version$3, 'app-compat');
-
-// shim for using process in browser
-// based off https://github.com/defunctzombie/node-process/blob/master/browser.js
-
-function defaultSetTimout() {
-    throw new Error('setTimeout has not been defined');
-}
-function defaultClearTimeout () {
-    throw new Error('clearTimeout has not been defined');
-}
-var cachedSetTimeout = defaultSetTimout;
-var cachedClearTimeout = defaultClearTimeout;
-if (typeof global$1.setTimeout === 'function') {
-    cachedSetTimeout = setTimeout;
-}
-if (typeof global$1.clearTimeout === 'function') {
-    cachedClearTimeout = clearTimeout;
-}
-
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
-        cachedSetTimeout = setTimeout;
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    // if clearTimeout wasn't available but was latter defined
-    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
-        cachedClearTimeout = clearTimeout;
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-function nextTick(fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-}
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-var title = 'browser';
-var platform = 'browser';
-var browser = true;
-var env = {};
-var argv = [];
-var version$2 = ''; // empty string to avoid regexp issues
-var versions = {};
-var release = {};
-var config = {};
-
-function noop() {}
-
-var on = noop;
-var addListener = noop;
-var once = noop;
-var off$1 = noop;
-var removeListener = noop;
-var removeAllListeners = noop;
-var emit = noop;
-
-function binding(name) {
-    throw new Error('process.binding is not supported');
-}
-
-function cwd () { return '/' }
-function chdir (dir) {
-    throw new Error('process.chdir is not supported');
-}function umask() { return 0; }
-
-// from https://github.com/kumavis/browser-process-hrtime/blob/master/index.js
-var performance = global$1.performance || {};
-var performanceNow =
-  performance.now        ||
-  performance.mozNow     ||
-  performance.msNow      ||
-  performance.oNow       ||
-  performance.webkitNow  ||
-  function(){ return (new Date()).getTime() };
-
-// generate timestamp or delta
-// see http://nodejs.org/api/process.html#process_process_hrtime
-function hrtime(previousTimestamp){
-  var clocktime = performanceNow.call(performance)*1e-3;
-  var seconds = Math.floor(clocktime);
-  var nanoseconds = Math.floor((clocktime%1)*1e9);
-  if (previousTimestamp) {
-    seconds = seconds - previousTimestamp[0];
-    nanoseconds = nanoseconds - previousTimestamp[1];
-    if (nanoseconds<0) {
-      seconds--;
-      nanoseconds += 1e9;
-    }
-  }
-  return [seconds,nanoseconds]
-}
-
-var startTime = new Date();
-function uptime() {
-  var currentTime = new Date();
-  var dif = currentTime - startTime;
-  return dif / 1000;
-}
-
-var process = {
-  nextTick: nextTick,
-  title: title,
-  browser: browser,
-  env: env,
-  argv: argv,
-  version: version$2,
-  versions: versions,
-  on: on,
-  addListener: addListener,
-  once: once,
-  off: off$1,
-  removeListener: removeListener,
-  removeAllListeners: removeAllListeners,
-  emit: emit,
-  binding: binding,
-  cwd: cwd,
-  chdir: chdir,
-  umask: umask,
-  hrtime: hrtime,
-  platform: platform,
-  release: release,
-  config: config,
-  uptime: uptime
-};
-
-const name$1 = "@firebase/database";
-const version$1 = "0.12.1";
+const name$4 = "@firebase/database";
+const version$4 = "0.12.4";
 
 /**
  * @license
@@ -5047,7 +3281,7 @@ const buildLogMessage_ = function (...varArgs) {
 /**
  * Use this for all debug messages in Firebase.
  */
-let logger = null;
+let logger$1 = null;
 /**
  * Flag to check for log availability on first log message
  */
@@ -5061,29 +3295,29 @@ const enableLogging$1 = function (logger_, persistent) {
     assert(!persistent || logger_ === true || logger_ === false, "Can't turn on custom loggers persistently.");
     if (logger_ === true) {
         logClient$1.logLevel = LogLevel.VERBOSE;
-        logger = logClient$1.log.bind(logClient$1);
+        logger$1 = logClient$1.log.bind(logClient$1);
         if (persistent) {
             SessionStorage.set('logging_enabled', true);
         }
     }
     else if (typeof logger_ === 'function') {
-        logger = logger_;
+        logger$1 = logger_;
     }
     else {
-        logger = null;
+        logger$1 = null;
         SessionStorage.remove('logging_enabled');
     }
 };
 const log = function (...varArgs) {
     if (firstLog_ === true) {
         firstLog_ = false;
-        if (logger === null && SessionStorage.get('logging_enabled') === true) {
+        if (logger$1 === null && SessionStorage.get('logging_enabled') === true) {
             enableLogging$1(true);
         }
     }
-    if (logger) {
+    if (logger$1) {
         const message = buildLogMessage_.apply(null, varArgs);
-        logger(message);
+        logger$1(message);
     }
 };
 const logWrapper = function (prefix) {
@@ -15688,7 +13922,7 @@ function eventListRaise(eventList) {
         if (eventData !== null) {
             eventList.events[i] = null;
             const eventFn = eventData.getEventRunner();
-            if (logger) {
+            if (logger$1) {
                 log('event: ' + eventData.toString());
             }
             exceptionGuard(eventFn);
@@ -17213,7 +15447,7 @@ class DataSnapshot$1 {
      */
     child(path) {
         const childPath = new Path(path);
-        const childRef = child(this.ref, path);
+        const childRef = child$1(this.ref, path);
         return new DataSnapshot$1(this._node.getChild(childPath), childRef, PRIORITY_INDEX);
     }
     /**
@@ -17261,7 +15495,7 @@ class DataSnapshot$1 {
         const childrenNode = this._node;
         // Sanitize the return value to a boolean. ChildrenNode.forEachChild has a weird return type...
         return !!childrenNode.forEachChild(this._index, (key, node) => {
-            return action(new DataSnapshot$1(node, child(this.ref, key), PRIORITY_INDEX));
+            return action(new DataSnapshot$1(node, child$1(this.ref, key), PRIORITY_INDEX));
         });
     }
     /**
@@ -17334,7 +15568,7 @@ class DataSnapshot$1 {
 function ref(db, path) {
     db = getModularInstance(db);
     db._checkNotDeleted('ref');
-    return path !== undefined ? child(db._root, path) : db._root;
+    return path !== undefined ? child$1(db._root, path) : db._root;
 }
 /**
  * Returns a `Reference` representing the location in the Database
@@ -17381,7 +15615,7 @@ function refFromURL(db, url) {
  *   location.
  * @returns The specified child location.
  */
-function child(parent, path) {
+function child$1(parent, path) {
     parent = getModularInstance(parent);
     if (pathGetFront(parent._path) === null) {
         validateRootPathString('child', 'path', path, false);
@@ -17390,6 +15624,17 @@ function child(parent, path) {
         validatePathString('child', 'path', path, false);
     }
     return new ReferenceImpl(parent._repo, pathChild(parent._path, path));
+}
+/**
+ * Returns an `OnDisconnect` object - see
+ * {@link https://firebase.google.com/docs/database/web/offline-capabilities | Enabling Offline Capabilities in JavaScript}
+ * for more information on how to use it.
+ *
+ * @param ref - The reference to add OnDisconnect triggers for.
+ */
+function onDisconnect(ref) {
+    ref = getModularInstance(ref);
+    return new OnDisconnect$1(ref._repo, ref._path);
 }
 /**
  * Generates a new child location using a unique key and returns its
@@ -17414,7 +15659,7 @@ function child(parent, path) {
  * @returns Combined `Promise` and `Reference`; resolves when write is complete,
  * but can be used immediately as the `Reference` to the child location.
  */
-function push(parent, value) {
+function push$1(parent, value) {
     parent = getModularInstance(parent);
     validateWritablePath('push', parent._path);
     validateFirebaseDataArg('push', value, parent._path, true);
@@ -17426,11 +15671,11 @@ function push(parent, value) {
     // then() and catch() methods and is used as the return value of push(). The
     // second remains a regular Reference and is used as the fulfilled value of
     // the first ThennableReference.
-    const thennablePushRef = child(parent, name);
-    const pushRef = child(parent, name);
+    const thennablePushRef = child$1(parent, name);
+    const pushRef = child$1(parent, name);
     let promise;
     if (value != null) {
-        promise = set(pushRef, value).then(() => pushRef);
+        promise = set$1(pushRef, value).then(() => pushRef);
     }
     else {
         promise = Promise.resolve(pushRef);
@@ -17453,9 +15698,9 @@ function push(parent, value) {
  * @param ref - The location to remove.
  * @returns Resolves when remove on server is complete.
  */
-function remove(ref) {
+function remove$1(ref) {
     validateWritablePath('remove', ref._path);
-    return set(ref, null);
+    return set$1(ref, null);
 }
 /**
  * Writes data to this Database location.
@@ -17486,7 +15731,7 @@ function remove(ref) {
  *   array, or null).
  * @returns Resolves when write to server is complete.
  */
-function set(ref, value) {
+function set$1(ref, value) {
     ref = getModularInstance(ref);
     validateWritablePath('set', ref._path);
     validateFirebaseDataArg('set', value, ref._path, false);
@@ -17590,7 +15835,7 @@ function update(ref, values) {
  * available, or rejects if the client is unable to return a value (e.g., if the
  * server is unreachable and there is nothing cached).
  */
-function get(query) {
+function get$1(query) {
     query = getModularInstance(query);
     return repoGetValue(query._repo, query).then(node => {
         return new DataSnapshot$1(node, new ReferenceImpl(query._repo, query._path), query._queryParams.getIndex());
@@ -17666,7 +15911,7 @@ class ChildEventRegistration {
     }
     createEvent(change, query) {
         assert(change.childName != null, 'Child events should have a childName.');
-        const childRef = child(new ReferenceImpl(query._repo, query._path), change.childName);
+        const childRef = child$1(new ReferenceImpl(query._repo, query._path), change.childName);
         const index = query._queryParams.getIndex();
         return new DataEvent(change.type, this, new DataSnapshot$1(change.snapshotNode, childRef, index), change.prevName);
     }
@@ -18129,7 +16374,7 @@ class QueryOrderByValueConstraint extends QueryConstraint {
  * You can read more about `orderByValue()` in
  * {@link https://firebase.google.com/docs/database/web/lists-of-data#sort_data | Sort data}.
  */
-function orderByValue() {
+function orderByValue$1() {
     return new QueryOrderByValueConstraint();
 }
 class QueryEqualToValueConstraint extends QueryConstraint {
@@ -18187,7 +16432,7 @@ function equalTo(value, key) {
  * @throws if any of the provided query constraints cannot be combined with the
  * existing or new constraints.
  */
-function query(query, ...queryConstraints) {
+function query$1(query, ...queryConstraints) {
     let queryImpl = getModularInstance(query);
     for (const constraint of queryConstraints) {
         queryImpl = constraint._apply(queryImpl);
@@ -18364,6 +16609,23 @@ class Database$1 {
     }
 }
 /**
+ * Returns the instance of the Realtime Database SDK that is associated
+ * with the provided {@link @firebase/app#FirebaseApp}. Initializes a new instance with
+ * with default settings if no instance exists or if the existing instance uses
+ * a custom database URL.
+ *
+ * @param app - The {@link @firebase/app#FirebaseApp} instance that the returned Realtime
+ * Database instance is associated with.
+ * @param url - The URL of the Realtime Database instance to connect to. If not
+ * provided, the SDK connects to the default instance of the Firebase App.
+ * @returns The `Database` instance of the provided app.
+ */
+function getDatabase$1(app = getApp(), url) {
+    return _getProvider(app, 'database').getImmediate({
+        identifier: url
+    });
+}
+/**
  * Modify the provided instance to communicate with the Realtime Database
  * emulator.
  *
@@ -18467,7 +16729,9 @@ function registerDatabase$1(variant) {
         const appCheckProvider = container.getProvider('app-check-internal');
         return repoManagerDatabaseFromApp(app, authProvider, appCheckProvider, url);
     }, "PUBLIC" /* PUBLIC */).setMultipleInstances(true));
-    registerVersion(name$1, version$1, variant);
+    registerVersion(name$4, version$4, variant);
+    // BUILD_TARGET will be replaced by values like esm5, esm2017, cjs5, etc during the compilation
+    registerVersion(name$4, version$4, 'esm2017');
 }
 
 /**
@@ -18625,8 +16889,1652 @@ PersistentConnection.prototype.echo = function (data, onEcho) {
  */
 registerDatabase$1();
 
+var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
+var keys = Object.keys;
+/**
+ * are the values passed strictly equal or both NaN
+ *
+ * @param a the value to compare against
+ * @param b the value to test
+ * @returns are the values equal by the SameValueZero principle
+ */
+function sameValueZeroEqual(a, b) {
+    return a === b || (a !== a && b !== b);
+}
+/**
+ * is the value a plain object
+ *
+ * @param value the value to test
+ * @returns is the value a plain object
+ */
+function isPlainObject(value) {
+    return value.constructor === Object || value.constructor == null;
+}
+/**
+ * is the value promise-like (meaning it is thenable)
+ *
+ * @param value the value to test
+ * @returns is the value promise-like
+ */
+function isPromiseLike(value) {
+    return !!value && typeof value.then === 'function';
+}
+/**
+ * is the value passed a react element
+ *
+ * @param value the value to test
+ * @returns is the value a react element
+ */
+function isReactElement(value) {
+    return !!(value && value.$$typeof);
+}
+/**
+ * in cases where WeakSet is not supported, creates a new custom
+ * object that mimics the necessary API aspects for cache purposes
+ *
+ * @returns the new cache object
+ */
+function getNewCacheFallback() {
+    var values = [];
+    return {
+        add: function (value) {
+            values.push(value);
+        },
+        has: function (value) {
+            return values.indexOf(value) !== -1;
+        },
+    };
+}
+/**
+ * get a new cache object to prevent circular references
+ *
+ * @returns the new cache object
+ */
+var getNewCache = (function (canUseWeakMap) {
+    if (canUseWeakMap) {
+        return function _getNewCache() {
+            return new WeakSet();
+        };
+    }
+    return getNewCacheFallback;
+})(HAS_WEAKSET_SUPPORT);
+/**
+ * create a custom isEqual handler specific to circular objects
+ *
+ * @param [isEqual] the isEqual comparator to use instead of isDeepEqual
+ * @returns the method to create the `isEqual` function
+ */
+function createCircularEqualCreator(isEqual) {
+    return function createCircularEqual(comparator) {
+        var _comparator = isEqual || comparator;
+        return function circularEqual(a, b, cache) {
+            if (cache === void 0) { cache = getNewCache(); }
+            var isCacheableA = !!a && typeof a === 'object';
+            var isCacheableB = !!b && typeof b === 'object';
+            if (isCacheableA || isCacheableB) {
+                var hasA = isCacheableA && cache.has(a);
+                var hasB = isCacheableB && cache.has(b);
+                if (hasA || hasB) {
+                    return hasA && hasB;
+                }
+                if (isCacheableA) {
+                    cache.add(a);
+                }
+                if (isCacheableB) {
+                    cache.add(b);
+                }
+            }
+            return _comparator(a, b, cache);
+        };
+    };
+}
+/**
+ * are the arrays equal in value
+ *
+ * @param a the array to test
+ * @param b the array to test against
+ * @param isEqual the comparator to determine equality
+ * @param meta the meta object to pass through
+ * @returns are the arrays equal
+ */
+function areArraysEqual(a, b, isEqual, meta) {
+    var index = a.length;
+    if (b.length !== index) {
+        return false;
+    }
+    while (index-- > 0) {
+        if (!isEqual(a[index], b[index], meta)) {
+            return false;
+        }
+    }
+    return true;
+}
+/**
+ * are the maps equal in value
+ *
+ * @param a the map to test
+ * @param b the map to test against
+ * @param isEqual the comparator to determine equality
+ * @param meta the meta map to pass through
+ * @returns are the maps equal
+ */
+function areMapsEqual(a, b, isEqual, meta) {
+    var isValueEqual = a.size === b.size;
+    if (isValueEqual && a.size) {
+        a.forEach(function (aValue, aKey) {
+            if (isValueEqual) {
+                isValueEqual = false;
+                b.forEach(function (bValue, bKey) {
+                    if (!isValueEqual && isEqual(aKey, bKey, meta)) {
+                        isValueEqual = isEqual(aValue, bValue, meta);
+                    }
+                });
+            }
+        });
+    }
+    return isValueEqual;
+}
+var OWNER = '_owner';
+var hasOwnProperty = Function.prototype.bind.call(Function.prototype.call, Object.prototype.hasOwnProperty);
+/**
+ * are the objects equal in value
+ *
+ * @param a the object to test
+ * @param b the object to test against
+ * @param isEqual the comparator to determine equality
+ * @param meta the meta object to pass through
+ * @returns are the objects equal
+ */
+function areObjectsEqual(a, b, isEqual, meta) {
+    var keysA = keys(a);
+    var index = keysA.length;
+    if (keys(b).length !== index) {
+        return false;
+    }
+    if (index) {
+        var key = void 0;
+        while (index-- > 0) {
+            key = keysA[index];
+            if (key === OWNER) {
+                var reactElementA = isReactElement(a);
+                var reactElementB = isReactElement(b);
+                if ((reactElementA || reactElementB) &&
+                    reactElementA !== reactElementB) {
+                    return false;
+                }
+            }
+            if (!hasOwnProperty(b, key) || !isEqual(a[key], b[key], meta)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+/**
+ * are the regExps equal in value
+ *
+ * @param a the regExp to test
+ * @param b the regExp to test agains
+ * @returns are the regExps equal
+ */
+function areRegExpsEqual(a, b) {
+    return (a.source === b.source &&
+        a.global === b.global &&
+        a.ignoreCase === b.ignoreCase &&
+        a.multiline === b.multiline &&
+        a.unicode === b.unicode &&
+        a.sticky === b.sticky &&
+        a.lastIndex === b.lastIndex);
+}
+/**
+ * are the sets equal in value
+ *
+ * @param a the set to test
+ * @param b the set to test against
+ * @param isEqual the comparator to determine equality
+ * @param meta the meta set to pass through
+ * @returns are the sets equal
+ */
+function areSetsEqual(a, b, isEqual, meta) {
+    var isValueEqual = a.size === b.size;
+    if (isValueEqual && a.size) {
+        a.forEach(function (aValue) {
+            if (isValueEqual) {
+                isValueEqual = false;
+                b.forEach(function (bValue) {
+                    if (!isValueEqual) {
+                        isValueEqual = isEqual(aValue, bValue, meta);
+                    }
+                });
+            }
+        });
+    }
+    return isValueEqual;
+}
+
+var HAS_MAP_SUPPORT = typeof Map === 'function';
+var HAS_SET_SUPPORT = typeof Set === 'function';
+function createComparator(createIsEqual) {
+    var isEqual = 
+    /* eslint-disable no-use-before-define */
+    typeof createIsEqual === 'function'
+        ? createIsEqual(comparator)
+        : comparator;
+    /* eslint-enable */
+    /**
+     * compare the value of the two objects and return true if they are equivalent in values
+     *
+     * @param a the value to test against
+     * @param b the value to test
+     * @param [meta] an optional meta object that is passed through to all equality test calls
+     * @returns are a and b equivalent in value
+     */
+    function comparator(a, b, meta) {
+        if (a === b) {
+            return true;
+        }
+        if (a && b && typeof a === 'object' && typeof b === 'object') {
+            if (isPlainObject(a) && isPlainObject(b)) {
+                return areObjectsEqual(a, b, isEqual, meta);
+            }
+            var aShape = Array.isArray(a);
+            var bShape = Array.isArray(b);
+            if (aShape || bShape) {
+                return aShape === bShape && areArraysEqual(a, b, isEqual, meta);
+            }
+            aShape = a instanceof Date;
+            bShape = b instanceof Date;
+            if (aShape || bShape) {
+                return (aShape === bShape && sameValueZeroEqual(a.getTime(), b.getTime()));
+            }
+            aShape = a instanceof RegExp;
+            bShape = b instanceof RegExp;
+            if (aShape || bShape) {
+                return aShape === bShape && areRegExpsEqual(a, b);
+            }
+            if (isPromiseLike(a) || isPromiseLike(b)) {
+                return a === b;
+            }
+            if (HAS_MAP_SUPPORT) {
+                aShape = a instanceof Map;
+                bShape = b instanceof Map;
+                if (aShape || bShape) {
+                    return aShape === bShape && areMapsEqual(a, b, isEqual, meta);
+                }
+            }
+            if (HAS_SET_SUPPORT) {
+                aShape = a instanceof Set;
+                bShape = b instanceof Set;
+                if (aShape || bShape) {
+                    return aShape === bShape && areSetsEqual(a, b, isEqual, meta);
+                }
+            }
+            return areObjectsEqual(a, b, isEqual, meta);
+        }
+        return a !== a && b !== b;
+    }
+    return comparator;
+}
+
+var deepEqual = createComparator();
+createComparator(function () { return sameValueZeroEqual; });
+createComparator(createCircularEqualCreator());
+createComparator(createCircularEqualCreator(sameValueZeroEqual));
+
+var settings = {
+    // Get a reference to the database service
+
+    // Was having a bug where the WIFI router would crash if the chunk size was bigger than 2^10
+    CHUNK_SIZE: Math.pow(2, 14), // size in bytes of the chunks. 2^14 is just under the limit in chrome.
+    ICE_SERVERS: [
+        {
+            url: 'stun:23.21.150.121',
+            urls: 'stun:23.21.150.121',
+        },
+        {
+            url: 'turn:global.turn.twilio.com:3478?transport=udp',
+            username:
+                '508d1e639868dc17f5da97a75b1d3b43bf2fc6d11e4e863678501db568b5665c',
+            credential: 'W5GTdhQQ6DqOD7k6bS8+xZVNQXm+fgLXSEQpN8bTe70=',
+            urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+        },
+    ],
+    POLLING_FREQUENCY: 15000,
+    debug: false,
+};
+
+class Evented {
+  constructor() {
+    this.events = {};
+  }
+
+  on(eventName, callback) {
+    if (typeof callback !== "function") return;
+    if (! this.events.hasOwnProperty(eventName)) {
+      this.events[eventName] = [];
+    }
+    this.events[eventName].push(callback);
+  }
+
+  off(eventName, callback) {
+    if (this.events.hasOwnProperty(eventName)) {
+      if (typeof callback === "function") {
+        //_.without(this.events[eventName], callback);
+        this.events = this.events.filter( function(x){
+            if ( x != this.events[eventName]) { return x }
+        });
+      } else {
+        delete this.events[eventName];
+      }
+    }
+  }
+
+  fire(eventName, argument) {
+    //_.each(this.events[eventName], (cb) => setTimeout(() => cb(argument)));
+    if (this.events[eventName]) {
+      for (var cb of this.events[eventName]) {
+        setTimeout(() => cb(argument));
+      }
+    }
+  }
+
+  fireAll(argument) {
+    for (var k in this.events) {
+      this.fire(k, argument);
+    }
+  }
+}
+
+var name$3 = "firebase";
+var version$3 = "9.5.0";
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+registerVersion(name$3, version$3, 'app');
+
+var defaultFBConfig = {
+    apiKey: 'AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA',
+    authDomain: 'https://torrid-torch-716.firebaseio.com/',
+    databaseURL: 'https://torrid-torch-716.firebaseio.com/',
+    projectId: 'torrid-torch-716',
+};
+
+var firebase$2;
+function initFirebase(newFirebase, fbConfig = null) {
+    if (fbConfig) defaultFBConfig = fbConfig;
+
+    if (!firebase$2) {
+        firebase$2 = initializeApp(defaultFBConfig);
+    }
+
+    return { firebase: firebase$2, database: getDatabase() }
+}
+
+var database;
+
+function getDatabase() {
+    if (database) return database
+
+    if (!firebase$2) {
+        throw new Error(
+            `init must be called before accessing database.  no firebase`
+        )
+    }
+
+    database = child$1(ref(getDatabase$1(firebase$2)), 'peers');
+    return database
+}
+
+class Channel {
+    constructor(fbref, peer) {
+        this.outRef = child$1(fbref, 'fromServer'); //firebase
+        this.inRef = child$1(fbref, 'fromClient');
+        this.peer = peer; // simple-peer
+    }
+
+    destroy() {
+        off(this.outRef);
+        off(this.inRef);
+        this.peer.destroy();
+    }
+}
+
+/**
+ *
+ * @param {*} database
+ * @param {*} callback
+ */
+function getPeerList(database, callback) {
+    database
+        .once('value')
+        .then((ev) => {
+                var val = ev.val();
+                callback(null, val);
+            })
+        .catch((err) => {
+            callback(err);        
+        });
+}
+
+// Description: class for monitoring firebase references
+// and removing children that have not updated recently
+
+class firebaseTreeTrimmer {
+    constructor(options = null) {
+        if (
+            options === null ||
+            !options.treeTrimmingRef ||
+            !options.peersRef ||
+            !options.id
+        )
+            throw new Error(
+                'requires an options object with an id, treeTrimmingRef and peersRef'
+            )
+        Object.assign(this, options);
+
+        this.monitorReference = this.monitor.bind(this);
+        this.monitor();
+    }
+
+    monitor() {
+        get(query(this.treeTrimmingRef, orderByValue())).then((snapshot) => {
+            // check if in list
+            if (snapshot.child(this.id).val() === null) {
+                // if not add it
+                set(child(snapshot.ref, this.id), Date.now());
+            } else {
+                // otherwise calculate hierachy
+                let children = {};
+                let rank = 0,
+                    superior;
+                snapshot.forEach(function (child) {
+                    children[child.key] = { rank, superior };
+                    superior = child.key;
+                    rank++;
+                });
+
+                let me = children[this.id];
+                this.rank = me.rank;
+                this.superior = me.superior;
+
+                console.log(
+                    'Treetrimmer rank: ',
+                    me.rank,
+                    ' superior id: ',
+                    me.superior
+                );
+
+                if (me.rank === 0) {
+                    this.treeTrimmer(children);
+                } else {
+                    this.watchMySuperior(me.superior);
+                }
+            }
+
+            // continuously check for treeTrimming, every minute
+            setTimeout(this.monitorReference, 60000);
+        });
+    }
+
+    treeTrimmer(treeTrimmers) {
+        // remove all references to peers not in treeTrimming list
+        get(this.peersRef).then((snap) => {
+            snap.forEach(function (child) {
+                // if the peer is not in the treeTrimming list,
+                // remove it from peersRef
+                if (treeTrimmers[child.key] === undefined) {
+                    remove(child.ref);
+                }
+            });
+        });
+    }
+
+    watchMySuperior(superior) {
+        // if superior is either not in /peers/cameras, or their
+        // lastUpdate is greater than a minute, remove from treeTrimming list
+        get(child(this.peersRef,superior)).then( (snap) => {
+            // if the peer's lastUpdate is greater than three minutes,
+            // or it doesn't exist, remove from treeTrimming list
+            if (
+                snap.val() === null ||
+                snap.child('lastUpdate').val() === null ||
+                snap.child('lastUpdate').val() < Date.now() - 3 * 60000
+            ) {
+                // if not in the peers list or has not been updated for 3 minutes then remove
+                remove(child(this.treeTrimmingRef,superior));
+            }
+        });
+    }
+}
+
+function P2PServerFactory(options) {
+    const { PeerBinary, debug } = options;
+
+    return class P2PServer extends Evented {
+        constructor(options = {}, initialPeerInfo = {}) {
+            super(); //no idea what this does
+            console.assert(
+                options.iceServers,
+                'Server: no ice servers yet. Using defaults'
+            );
+            this.MAX_CONNECTIONS = 50;
+            this.isListening = false;
+
+            this.id = 'server_' + Math.floor(Math.random() * 100000);
+            this.myID = this.id;
+            this.peerID = this.id;
+
+            this.stream = undefined;
+            this.iceServers =
+                options.iceServers ||
+                options.ICE_SERVERS ||
+                settings.ICE_SERVERS;
+            this.POLLING_FREQUENCY =
+                options.POLLING_FREQUENCY || settings.POLLING_FREQUENCY;
+
+            Object.assign(this, options);
+
+            if (options.database) {
+                this.database = options.database;
+            } else {
+                this.database = getDatabase();
+            }
+
+            this.debug = !!debug || !!options.debug;
+            this.initialPeerInfo = initialPeerInfo;
+            this.initialPeerInfo.id = this.id;
+
+            if (this.debug) console.log(this.id);
+            if (!options.dontCallInitYet) {
+                this.init();
+            }
+
+            this._peerInfo = null;
+        }
+
+        init() {
+            var fbref = this.database;
+
+            // the below assumes that tree trimming would happen at the same lavel as the peers ref or would be passed explicitly
+            this.treeTrimmer = new firebaseTreeTrimmer({
+                peersRef: this.database,
+                treeTrimmingRef:
+                    this.treeTrimmingRef ||
+                    child$1(this.database.parent, 'treeTrimming'),
+                id: this.id,
+            });
+
+            this.userRef = child$1(fbref, this.id);
+
+            onValue(this.userRef, (snapshot) => {
+                // handle being tree trimmed while asleep
+                let newPeerInfo = snapshot.val();
+                if (
+                    newPeerInfo &&
+                    newPeerInfo.id &&
+                    !deepEqual(
+                        { ...this._peerInfo, lastUpdate: null },
+                        { ...newPeerInfo, lastUpdate: null }
+                    )
+                ) {
+                    this._peerInfo = newPeerInfo;
+                } else if (
+                    this._peerInfo &&
+                    this._peerInfo.id &&
+                    !(newPeerInfo && newPeerInfo.id)
+                ) {
+                    console.log(
+                        'peerInfo lost, updating with saved version: ',
+                        this._peerInfo,
+                        newPeerInfo
+                    );
+                    update(this.userRef, {
+                        ...this._peerInfo,
+                        lastUpdate: serverTimestamp,
+                    });
+                } else if (this._peerInfo) ; else {
+                    console.warn(
+                        'Appears we have not yet set peerInfo: ',
+                        this._peerInfo,
+                        newPeerInfo
+                    );
+                }
+            });
+
+            onDisconnect(this.userRef).remove();
+
+            if (this.initialPeerInfo) update(this.userRef, this.initialPeerInfo);
+
+            this.updateRef = child$1(this.userRef, 'lastUpdate');
+            set$1(this.updateRef, serverTimestamp);
+
+            this.channelRef = child$1(this.userRef, 'channels');
+            if (this.stream) {
+                set$1(child$1(this.userRef, 'isStream'), true);
+            }
+            set$1(this.channelRef, []);
+
+            this.connections = [];
+            this._intervalID = setInterval(() => {
+                this.fire('updateTimeStamp', undefined);
+                this._updateOnFireBase();
+            }, this.POLLING_FREQUENCY);
+
+            this.listenToChannels();
+            this.isListening = true;
+            this.fire('init', undefined);
+        }
+
+        _updateOnFireBase() {
+            // one may want to overwrite this
+            set$1(this.updateRef, serverTimestamp);
+        }
+
+        sendToAll(data) {
+            for (var conx of this.connections) {
+                if (conx && conx.peer) {
+                    try {
+                        conx.peer.send.bind(conx.peer)(data);
+                    } catch (err) {
+                        console.error(
+                            err,
+                            'Got an error, interrupted connection? '
+                        );
+                    }
+                }
+            }
+        }
+
+        sendToAllBig(data) {
+            for (var conx of this.connections) {
+                if (conx && conx.peer) {
+                    try {
+                        conx.peer.sendBig.bind(conx.peer)(data);
+                    } catch (err) {
+                        console.error(
+                            err,
+                            'Got an error, interrupted connection? '
+                        );
+                    }
+                }
+            }
+        }
+
+        listenToChannels() {
+            // disabling no-loop-func because these loops are correct usage
+            // https://eslint.org/docs/rules/no-loop-func
+            // when a new channel is added, listen to it.
+            onChildAdded(this.channelRef, (ev) => {
+                if (this.connections.length > this.MAX_CONNECTIONS) {
+                    console.error(
+                        'Too many connections. TODO:close/remove old stale connections'
+                    );
+                    return
+                }
+                var val = ev.val();
+                if (this.debug) {
+                    console.log(val, 'new child');
+                }
+                for (var i in val.fromClient) {
+                    var sig = val.fromClient[i];
+                    if (this.debug) console.log({ sig });
+                    if (sig.type === 'offer') {
+                        var mykey = ev.key;
+                        var { peerID, myID } = sig;
+                        var channel = new Channel(
+                            child$1(this.channelRef, mykey),
+                            this._makePeer(myID)
+                        );
+                        this.connections = [...this.connections, channel];
+                        this.fire('addConnection', channel);
+
+                        // on message through webRTC (simple-peer)
+                        //eslint-disable-next-line no-loop-func
+                        var answerSentYet = false;
+                        channel.peer.on('signal', (data) => {
+                            if (data.type === 'answer') {
+                                if (answerSentYet) {
+                                    console.warn(
+                                        'Why am i trying to send multiple answers'
+                                    );
+                                }
+                                push(channel.outRef, data);
+                                answerSentYet = true;
+                            } else if (data.candidate) {
+                                push(channel.outRef, data);
+                            } else {
+                                console.warn(
+                                    data,
+                                    'unexpected message from WebRTC'
+                                );
+                            }
+                        });
+
+                        // on message through firebase
+                        //eslint-disable-next-line no-loop-func
+                        onChildAdded(channel.inRef, (ev2) => {
+                            var val2 = ev2.val();
+                            if (this.debug) {
+                                console.log(val2, 'child_added -- firebase');
+                            }
+                            if (val2.candidate) {
+                                if (this.debug) {
+                                    console.log(
+                                        val2,
+                                        'server got candidate from firebase'
+                                    );
+                                }
+                                channel.peer.signal(val2);
+                            } else if (val2.type === 'offer') {
+                                channel.peer.signal(val2);
+                            } else if (val2.type === 'answer') ; else {
+                                console.warn(
+                                    val2,
+                                    'unexpected message from Firebase'
+                                );
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        _makePeer(peerID) {
+            if (this.debug)
+                console.log('_makePeer called with peerID: ', peerID);
+            this.fire('makePeer', undefined);
+            var myoptions = {
+                initiator: false,
+                trickle: true,
+                config: {
+                    iceServers: this.iceServers,
+                },
+                peerID,
+            };
+            if (this.stream) myoptions.stream = this.stream;
+            var p = new PeerBinary(myoptions);
+
+            // fire events
+            p.on('error', (err) => {
+                console.error('server: error', err);
+                this.fire('error', { peer: p, err: err });
+            });
+            p.on('connect', () => {
+                if (this.debug) console.log('server: client connected');
+                this.fire('connect', { peer: p });
+            });
+            p.on('data', (data) => {
+                if (this.debug)
+                    console.log('server: server recieved some data: ', data);
+                this.fire('data', { peer: p, data: data });
+            });
+            p.on('close', () => {
+                if (this.debug) console.log('server: connection closed', p);
+                this._removeConnection(p);
+                this.fire('close', { peer: p });
+            });
+            p.on('dataBig', (data) => {
+                if (data && data.type === 'ack') {
+                    p.sendBig({
+                        type: 'ackack',
+                        data: {
+                            ack: { ...data.data },
+                            ackack: {
+                                id: this.id,
+                                numConnections: this.connections.length,
+                                treeTrimmer: {
+                                    rank: this.treeTrimmer.rank,
+                                    superior: this.treeTrimmer.superior,
+                                },
+                                peerID,
+                                date: new Date().getTime(),
+                            },
+                        },
+                    });
+                }
+                this.fire('dataBig', { peer: p, data: data });
+            });
+
+            p.on('stream', (stream) => {
+                if (this.debug)
+                    console.log('Server: connected to stream', stream);
+                this.fire('stream', { peer: p, stream: stream });
+            });
+
+            p.on('signal', (data) => {
+                if (this.debug) console.log('Server: received signal', data);
+                this.fire('signal', data);
+            });
+
+            //TODO make it so server can register events that will get called on each individual connection
+            return p
+        }
+
+        getPeerList(callback) {
+            return getPeerList(this.database, callback)
+        }
+
+        destroy() {
+            remove(this.channelRef);
+            remove(this.updateRef);
+            off(this.channelRef);
+            off(this.updateRef);
+            off(this.userRef);
+
+            this.isListening = false;
+            for (var x of this.connections) {
+                x.destroy();
+            }
+            this.fire('destroyed', {});
+            this.connections = [];
+            clearInterval(this._intervalID);
+        }
+
+        _removeConnection(peer) {
+            var index = -1;
+            for (var i = 0; i < this.connections.length; i++) {
+                var conn = this.connections[i];
+                if (conn.peer == peer) {
+                    if (this.debug) console.log('found my connection', i, conn);
+                    index = i;
+                }
+            }
+            if (index >= 0) {
+                var conn = this.connections[index];
+                conn.destroy();
+                this.connections.splice(index, 1);
+                this.connections = [...this.connections];
+                this.fire('removeConnection', conn);
+                if (this.debug) console.log(this.connections);
+            }
+        }
+    }
+}
+
+function P2PClientFactory(options) {
+    const { PeerBinary, debug } = options;
+
+    return class P2PClient extends Evented {
+        constructor(options = {}) {
+            super();
+
+            this.id = 'client_' + Math.floor(Math.random() * 100000);
+            this.myID = this.id;
+            this.peerID = this.id;
+
+            this.ackID = 0;
+            this.ackCallbacks = {};
+
+            this.requestID = 0;
+            this.requestCallbacks = {};
+
+            Object.assign(this, settings);
+            Object.assign(this, options);
+
+            this.iceServers =
+                options.iceServers ||
+                options.ICE_SERVERS ||
+                settings.ICE_SERVERS;
+
+            if (options.database) {
+                this.database = options.database;
+            } else {
+                this.database = getDatabase();
+            }
+
+            this.connection = null;
+            this.channelRef = null;
+            this.stream = undefined;
+            this.isStream =
+                typeof options.isStream === 'boolean' ? options.isStream : true;
+            this.connectionCallbacks = [];
+            this.lastNegotiationState = undefined;
+            this.debug = !!debug || !!options.debug;
+        }
+
+        getPeerList(callback) {
+            return getPeerList(this.database, callback)
+        }
+
+        ackCallback(ackID, data) {
+            console.log('ackCallback: ', { ackID, data });
+            let { callback, timeoutID } = this.ackCallbacks[ackID] || {};
+            if (callback) {
+                clearTimeout(timeoutID);
+                callback(data);
+                delete this.ackCallbacks[ackID];
+            } else {
+                console.warn('Got ackID without a callback registered.', data);
+            }
+        }
+
+        sendAck(message, callback = () => {}, timeout = 30000) {
+            if (!this.connection) {
+                console.warn('no connection');
+                return
+            }
+
+            this.ackID += 1;
+            let ackID = this.ackID;
+
+            let timeoutID = setTimeout(() => {
+                this.ackCallback(ackID, { error: 'timeout' });
+            }, timeout);
+
+            this.ackCallbacks[ackID] = { callback, timeoutID };
+
+            return this.connection.sendBig({
+                type: 'ack',
+                data: {
+                    ackID: this.ackID,
+                    peerID: this.serverID,
+                    startDate: new Date().getTime(),
+                    message,
+                },
+            })
+        }
+
+        requestCallback(requestID, data) {
+            console.log('requestCallback: ', { requestID, data });
+            let { callback, timeoutID } = this.requestCallbacks[requestID] || {};
+
+            if (callback) {
+                clearTimeout(timeoutID);
+                callback(data);
+                delete this.requestCallbacks[requestID];
+            } else {
+                console.warn(
+                    'Got requestID without a callback registered.',
+                    data
+                );
+            }
+        }
+
+        sendRequest(request, callback = () => {}, timeout = 30000) {
+            if (!this.connection) {
+                console.warn('no connection');
+                return
+            }
+
+            this.requestID += 1;
+            let requestID = this.requestID;
+
+            let timeoutID = setTimeout(() => {
+                this.requestCallback(requestID, { error: 'timeout' });
+            }, timeout);
+
+            this.requestCallbacks[requestID] = { callback, timeoutID };
+
+            request.requestID = requestID;
+            console.log('sending request: ', request);
+
+            return this.connection.sendBig(request)
+        }
+
+        connectToPeerID(id, callback = () => {}) {
+            this.connectionCallbacks.push(callback);
+            this.serverID = id;
+            this.getPeerList((err, peerList) => {
+                if (err) {
+                    console.error(err);
+                    return
+                }
+                var peer = peerList[id];
+                if (!peer) {
+                    console.error('peer not defined. id:', id);
+                    this._notifyCallbacks('peer not defined');
+                } else {
+                    this.id = id;
+                    this.serverRef = child$1(this.database, id);
+                    get$1(this.serverRef).next((ev1) => {
+                        ev1.val();
+                        let pOpts = {
+                            initiator: true,
+                            trickle: true,
+                            config: {
+                                iceServers: this.iceServers,
+                            },
+                            peerID: id,
+                        };
+
+                        if (this.isStream) {
+                            pOpts.stream = this.getMyStream();
+                        }
+
+                        var p = new PeerBinary(pOpts);
+                        this.connection = p;
+                        this._registerEvents();
+                        p.on('signal', (data) => {
+                            if (data.type == 'offer') {
+                                this._createChannel(data);
+                            } else if (data.candidate) {
+                                if (this.debug) {
+                                    console.log(
+                                        'client recieved candidate from webrtc',
+                                        data
+                                    );
+                                }
+                                push$1(this.outRef, data);
+                            } else {
+                                console.warn(
+                                    'Client recieved unexpected signal through WebRTC:',
+                                    data
+                                );
+                            }
+                        });
+                    });
+                }
+            });
+        }
+
+        getMyStream() {
+            if (this.stream) return this.stream
+
+            // create fake stream if no stream specified, and the server is in streaming mode.
+            //    because, at the moment, simple-peer must have a stream from the initiator.
+            let fakeCanvas = document.createElement('canvas');
+            fakeCanvas.width = fakeCanvas.height = 1;
+            var fakeStream = fakeCanvas.captureStream();
+            return fakeStream
+        }
+
+        disconnect(callback) {
+            callback =
+                callback ||
+                function () {
+                    console.log('client disconnected from server', arguments);
+                };
+
+            if (this.serverRef) {
+                off(this.serverRef);
+            }
+            if (this.outRef) {
+                off(this.outRef);
+            }
+            if (this.inRef) {
+                off(this.inRef);
+            }
+            if (this.connection) {
+                this.connection.destroy(callback);
+            } else {
+                callback();
+            }
+            // QUESTION: should I also disconnect from the listeners to the events emitted by this class?
+            //     it would be this.off()
+        }
+
+        _createChannel(offer) {
+            offer.peerID = this.peerID;
+            offer.myID = this.myID;
+            if (this.debug)
+                console.log('Got create channel with offer: ', offer);
+            this.channelRef = push$1(child$1(this.serverRef, 'channels'), {
+                fromClient: [offer],
+            });
+            this.outRef = child$1(this.channelRef, 'fromClient');
+            this.inRef = child$1(this.channelRef, 'fromServer');
+            onChildAdded(this.inRef, (ev) => {
+                var val = ev.val();
+                if (this.debug) console.log(val, 'channel message, client');
+                if (val.type === 'answer') {
+                    setTimeout(() => {
+                        let state =
+                            this.connection &&
+                            this.connection._pc &&
+                            this.connection._pc.signalingState;
+                        if (state == this.lastNegotiationState) {
+                            if (this.debug)
+                                console.log(
+                                    'signalstate. skip nested negotiations'
+                                );
+                            return
+                        }
+                        if (this.debug) console.log('signal start negotiation');
+                        this.lastNegotiationState = state;
+                        if (this.debug) console.log('answer', this);
+                        if (!this.connection.destroyed)
+                            this.connection.signal(val);
+                    }, 50); // a slight delay helps establish connection, I think.
+                } else if (val.candidate) {
+                    if (this.debug)
+                        console.log('client recieved candidate from firebase');
+                    setTimeout(() => {
+                        if (!this.connection.destroyed)
+                            this.connection.signal(val);
+                    }, 50);
+                } else {
+                    console.warn(
+                        val,
+                        'Client recieved unexpected signal through Firebase'
+                    );
+                }
+            });
+        }
+
+        _notifyCallbacks(err, connection) {
+            try {
+                for (var callback of this.connectionCallbacks) {
+                    callback(err, connection);
+                }
+                this.connectionCallbacks = [];
+            } catch (err) {
+                console.warn(err);
+            }
+        }
+
+        _registerEvents() {
+            // fire events
+            this.connection.on('error', (err) => {
+                console.error('client: error', err);
+                this.fire('error', { peer: this.connection, err: err });
+            });
+            this.connection.on('connect', () => {
+                if (this.debug) console.log('client: client connected');
+                this._notifyCallbacks(null, this.connection);
+                this.fire('connect', { peer: this.connection });
+            });
+            this.connection.on('data', (data) => {
+                if (this.debug)
+                    console.log('client: recieved some data: ', data);
+                this.fire('data', { peer: this.connection, data: data });
+            });
+            this.connection.on('close', (data) => {
+                if (this.debug)
+                    console.log('connection closed', this.connection);
+                this.fire('close', { peer: this.connection });
+            });
+            this.connection.on('dataBig', (data) => {
+                if (data && data.type === 'ackack') {
+                    let { ackID } = data.data.ack;
+                    this.ackCallback(ackID, data);
+                } else {
+                    // console.log('~~~ DataBig ~~~~')
+                    // console.log(data)
+                    let { requestID } = data || {};
+                    if (requestID) {
+                        this.requestCallback(requestID, data);
+                    }
+                    // console.log('~~~~~~~~~~~~~~~~')
+                    this.fire('dataBig', { peer: this.connection, data: data });
+                }
+            });
+            this.connection.on('stream', (stream) => {
+                if (this.debug)
+                    console.log('Client: connected to stream', stream);
+                this.fire('stream', { peer: this.connection, stream: stream });
+            });
+            this.connection._pc.addEventListener('signalingstatechange', () => {
+                console.log(
+                    'signalState',
+                    this.connection &&
+                        this.connection._pc &&
+                        this.connection._pc.signalingState
+                );
+            });
+        }
+    }
+}
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Global context object for a collection of services using
+ * a shared authentication state.
+ *
+ * marked as internal because it references internal types exported from @firebase/app
+ * @internal
+ */
+class FirebaseAppImpl {
+    constructor(_delegate, firebase) {
+        this._delegate = _delegate;
+        this.firebase = firebase;
+        // add itself to container
+        _addComponent(_delegate, new Component('app-compat', () => this, "PUBLIC" /* PUBLIC */));
+        this.container = _delegate.container;
+    }
+    get automaticDataCollectionEnabled() {
+        return this._delegate.automaticDataCollectionEnabled;
+    }
+    set automaticDataCollectionEnabled(val) {
+        this._delegate.automaticDataCollectionEnabled = val;
+    }
+    get name() {
+        return this._delegate.name;
+    }
+    get options() {
+        return this._delegate.options;
+    }
+    delete() {
+        return new Promise(resolve => {
+            this._delegate.checkDestroyed();
+            resolve();
+        }).then(() => {
+            this.firebase.INTERNAL.removeApp(this.name);
+            return deleteApp(this._delegate);
+        });
+    }
+    /**
+     * Return a service instance associated with this app (creating it
+     * on demand), identified by the passed instanceIdentifier.
+     *
+     * NOTE: Currently storage and functions are the only ones that are leveraging this
+     * functionality. They invoke it by calling:
+     *
+     * ```javascript
+     * firebase.app().storage('STORAGE BUCKET ID')
+     * ```
+     *
+     * The service name is passed to this already
+     * @internal
+     */
+    _getService(name, instanceIdentifier = DEFAULT_ENTRY_NAME) {
+        var _a;
+        this._delegate.checkDestroyed();
+        // Initialize instance if InstatiationMode is `EXPLICIT`.
+        const provider = this._delegate.container.getProvider(name);
+        if (!provider.isInitialized() &&
+            ((_a = provider.getComponent()) === null || _a === void 0 ? void 0 : _a.instantiationMode) === "EXPLICIT" /* EXPLICIT */) {
+            provider.initialize();
+        }
+        // getImmediate will always succeed because _getService is only called for registered components.
+        return provider.getImmediate({
+            identifier: instanceIdentifier
+        });
+    }
+    /**
+     * Remove a service instance from the cache, so we will create a new instance for this service
+     * when people try to get it again.
+     *
+     * NOTE: currently only firestore uses this functionality to support firestore shutdown.
+     *
+     * @param name The service name
+     * @param instanceIdentifier instance identifier in case multiple instances are allowed
+     * @internal
+     */
+    _removeServiceInstance(name, instanceIdentifier = DEFAULT_ENTRY_NAME) {
+        this._delegate.container
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .getProvider(name)
+            .clearInstance(instanceIdentifier);
+    }
+    /**
+     * @param component the component being added to this app's container
+     * @internal
+     */
+    _addComponent(component) {
+        _addComponent(this._delegate, component);
+    }
+    _addOrOverwriteComponent(component) {
+        _addOrOverwriteComponent(this._delegate, component);
+    }
+    toJSON() {
+        return {
+            name: this.name,
+            automaticDataCollectionEnabled: this.automaticDataCollectionEnabled,
+            options: this.options
+        };
+    }
+}
+// TODO: investigate why the following needs to be commented out
+// Prevent dead-code elimination of these methods w/o invalid property
+// copying.
+// (FirebaseAppImpl.prototype.name && FirebaseAppImpl.prototype.options) ||
+//   FirebaseAppImpl.prototype.delete ||
+//   console.log('dc');
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const ERRORS = {
+    ["no-app" /* NO_APP */]: "No Firebase App '{$appName}' has been created - " +
+        'call Firebase App.initializeApp()',
+    ["invalid-app-argument" /* INVALID_APP_ARGUMENT */]: 'firebase.{$appName}() takes either no argument or a ' +
+        'Firebase App instance.'
+};
+const ERROR_FACTORY = new ErrorFactory('app-compat', 'Firebase', ERRORS);
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Because auth can't share code with other components, we attach the utility functions
+ * in an internal namespace to share code.
+ * This function return a firebase namespace object without
+ * any utility functions, so it can be shared between the regular firebaseNamespace and
+ * the lite version.
+ */
+function createFirebaseNamespaceCore(firebaseAppImpl) {
+    const apps = {};
+    // // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // const components = new Map<string, Component<any>>();
+    // A namespace is a plain JavaScript Object.
+    const namespace = {
+        // Hack to prevent Babel from modifying the object returned
+        // as the firebase namespace.
+        // @ts-ignore
+        __esModule: true,
+        initializeApp: initializeAppCompat,
+        // @ts-ignore
+        app,
+        registerVersion: registerVersion,
+        setLogLevel: setLogLevel,
+        onLog: onLog,
+        // @ts-ignore
+        apps: null,
+        SDK_VERSION: SDK_VERSION$1,
+        INTERNAL: {
+            registerComponent: registerComponentCompat,
+            removeApp,
+            useAsService,
+            modularAPIs
+        }
+    };
+    // Inject a circular default export to allow Babel users who were previously
+    // using:
+    //
+    //   import firebase from 'firebase';
+    //   which becomes: var firebase = require('firebase').default;
+    //
+    // instead of
+    //
+    //   import * as firebase from 'firebase';
+    //   which becomes: var firebase = require('firebase');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    namespace['default'] = namespace;
+    // firebase.apps is a read-only getter.
+    Object.defineProperty(namespace, 'apps', {
+        get: getApps
+    });
+    /**
+     * Called by App.delete() - but before any services associated with the App
+     * are deleted.
+     */
+    function removeApp(name) {
+        delete apps[name];
+    }
+    /**
+     * Get the App object for a given name (or DEFAULT).
+     */
+    function app(name) {
+        name = name || DEFAULT_ENTRY_NAME;
+        if (!contains(apps, name)) {
+            throw ERROR_FACTORY.create("no-app" /* NO_APP */, { appName: name });
+        }
+        return apps[name];
+    }
+    // @ts-ignore
+    app['App'] = firebaseAppImpl;
+    /**
+     * Create a new App instance (name must be unique).
+     *
+     * This function is idempotent. It can be called more than once and return the same instance using the same options and config.
+     */
+    function initializeAppCompat(options, rawConfig = {}) {
+        const app = initializeApp(options, rawConfig);
+        if (contains(apps, app.name)) {
+            return apps[app.name];
+        }
+        const appCompat = new firebaseAppImpl(app, namespace);
+        apps[app.name] = appCompat;
+        return appCompat;
+    }
+    /*
+     * Return an array of all the non-deleted FirebaseApps.
+     */
+    function getApps() {
+        // Make a copy so caller cannot mutate the apps list.
+        return Object.keys(apps).map(name => apps[name]);
+    }
+    function registerComponentCompat(component) {
+        const componentName = component.name;
+        const componentNameWithoutCompat = componentName.replace('-compat', '');
+        if (_registerComponent(component) &&
+            component.type === "PUBLIC" /* PUBLIC */) {
+            // create service namespace for public components
+            // The Service namespace is an accessor function ...
+            const serviceNamespace = (appArg = app()) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if (typeof appArg[componentNameWithoutCompat] !== 'function') {
+                    // Invalid argument.
+                    // This happens in the following case: firebase.storage('gs:/')
+                    throw ERROR_FACTORY.create("invalid-app-argument" /* INVALID_APP_ARGUMENT */, {
+                        appName: componentName
+                    });
+                }
+                // Forward service instance lookup to the FirebaseApp.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return appArg[componentNameWithoutCompat]();
+            };
+            // ... and a container for service-level properties.
+            if (component.serviceProps !== undefined) {
+                deepExtend(serviceNamespace, component.serviceProps);
+            }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            namespace[componentNameWithoutCompat] = serviceNamespace;
+            // Patch the FirebaseAppImpl prototype
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            firebaseAppImpl.prototype[componentNameWithoutCompat] =
+                // TODO: The eslint disable can be removed and the 'ignoreRestArgs'
+                // option added to the no-explicit-any rule when ESlint releases it.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                function (...args) {
+                    const serviceFxn = this._getService.bind(this, componentName);
+                    return serviceFxn.apply(this, component.multipleInstances ? args : []);
+                };
+        }
+        return component.type === "PUBLIC" /* PUBLIC */
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                namespace[componentNameWithoutCompat]
+            : null;
+    }
+    // Map the requested service to a registered service name
+    // (used to map auth to serverAuth service when needed).
+    function useAsService(app, name) {
+        if (name === 'serverAuth') {
+            return null;
+        }
+        const useService = name;
+        return useService;
+    }
+    return namespace;
+}
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Return a firebase namespace object.
+ *
+ * In production, this will be called exactly once and the result
+ * assigned to the 'firebase' global.  It may be called multiple times
+ * in unit tests.
+ */
+function createFirebaseNamespace() {
+    const namespace = createFirebaseNamespaceCore(FirebaseAppImpl);
+    namespace.INTERNAL = Object.assign(Object.assign({}, namespace.INTERNAL), { createFirebaseNamespace,
+        extendNamespace,
+        createSubscribe,
+        ErrorFactory,
+        deepExtend });
+    /**
+     * Patch the top-level firebase namespace with additional properties.
+     *
+     * firebase.INTERNAL.extendNamespace()
+     */
+    function extendNamespace(props) {
+        deepExtend(namespace, props);
+    }
+    return namespace;
+}
+const firebase$1 = createFirebaseNamespace();
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const logger = new Logger('@firebase/app-compat');
+
+const name$2 = "@firebase/app-compat";
+const version$2 = "0.1.10";
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+function registerCoreComponents(variant) {
+    // Register `app` package.
+    registerVersion(name$2, version$2, variant);
+}
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+// Firebase Lite detection
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (isBrowser() && self.firebase !== undefined) {
+    logger.warn(`
+    Warning: Firebase is already defined in the global scope. Please make sure
+    Firebase library is only loaded once.
+  `);
+    // eslint-disable-next-line
+    const sdkVersion = self.firebase.SDK_VERSION;
+    if (sdkVersion && sdkVersion.indexOf('LITE') >= 0) {
+        logger.warn(`
+    Warning: You are trying to load Firebase while using Firebase Performance standalone script.
+    You should load Firebase Performance with this instance of Firebase to avoid loading duplicate code.
+    `);
+    }
+}
+const firebase = firebase$1;
+registerCoreComponents();
+
+var name$1 = "firebase";
+var version$1 = "9.5.0";
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+firebase.registerVersion(name$1, version$1, 'app-compat');
+
 const name = "@firebase/database-compat";
-const version = "0.1.1";
+const version = "0.1.4";
 
 /**
  * @license
@@ -19000,7 +18908,7 @@ class Query {
      * Get the server-value for this query, or return a cached value if not connected.
      */
     get() {
-        return get(this._delegate).then(expSnapshot => {
+        return get$1(this._delegate).then(expSnapshot => {
             return new DataSnapshot(this.database, expSnapshot);
         });
     }
@@ -19065,58 +18973,58 @@ class Query {
      */
     limitToFirst(limit) {
         validateArgCount('Query.limitToFirst', 1, 1, arguments.length);
-        return new Query(this.database, query(this._delegate, limitToFirst(limit)));
+        return new Query(this.database, query$1(this._delegate, limitToFirst(limit)));
     }
     /**
      * Set a limit and anchor it to the end of the window.
      */
     limitToLast(limit) {
         validateArgCount('Query.limitToLast', 1, 1, arguments.length);
-        return new Query(this.database, query(this._delegate, limitToLast(limit)));
+        return new Query(this.database, query$1(this._delegate, limitToLast(limit)));
     }
     /**
      * Given a child path, return a new query ordered by the specified grandchild path.
      */
     orderByChild(path) {
         validateArgCount('Query.orderByChild', 1, 1, arguments.length);
-        return new Query(this.database, query(this._delegate, orderByChild(path)));
+        return new Query(this.database, query$1(this._delegate, orderByChild(path)));
     }
     /**
      * Return a new query ordered by the KeyIndex
      */
     orderByKey() {
         validateArgCount('Query.orderByKey', 0, 0, arguments.length);
-        return new Query(this.database, query(this._delegate, orderByKey()));
+        return new Query(this.database, query$1(this._delegate, orderByKey()));
     }
     /**
      * Return a new query ordered by the PriorityIndex
      */
     orderByPriority() {
         validateArgCount('Query.orderByPriority', 0, 0, arguments.length);
-        return new Query(this.database, query(this._delegate, orderByPriority()));
+        return new Query(this.database, query$1(this._delegate, orderByPriority()));
     }
     /**
      * Return a new query ordered by the ValueIndex
      */
     orderByValue() {
         validateArgCount('Query.orderByValue', 0, 0, arguments.length);
-        return new Query(this.database, query(this._delegate, orderByValue()));
+        return new Query(this.database, query$1(this._delegate, orderByValue$1()));
     }
     startAt(value = null, name) {
         validateArgCount('Query.startAt', 0, 2, arguments.length);
-        return new Query(this.database, query(this._delegate, startAt(value, name)));
+        return new Query(this.database, query$1(this._delegate, startAt(value, name)));
     }
     startAfter(value = null, name) {
         validateArgCount('Query.startAfter', 0, 2, arguments.length);
-        return new Query(this.database, query(this._delegate, startAfter(value, name)));
+        return new Query(this.database, query$1(this._delegate, startAfter(value, name)));
     }
     endAt(value = null, name) {
         validateArgCount('Query.endAt', 0, 2, arguments.length);
-        return new Query(this.database, query(this._delegate, endAt(value, name)));
+        return new Query(this.database, query$1(this._delegate, endAt(value, name)));
     }
     endBefore(value = null, name) {
         validateArgCount('Query.endBefore', 0, 2, arguments.length);
-        return new Query(this.database, query(this._delegate, endBefore(value, name)));
+        return new Query(this.database, query$1(this._delegate, endBefore(value, name)));
     }
     /**
      * Load the selection of children with exactly the specified value, and, optionally,
@@ -19124,7 +19032,7 @@ class Query {
      */
     equalTo(value, name) {
         validateArgCount('Query.equalTo', 1, 2, arguments.length);
-        return new Query(this.database, query(this._delegate, equalTo(value, name)));
+        return new Query(this.database, query$1(this._delegate, equalTo(value, name)));
     }
     /**
      * @returns URL for this location.
@@ -19207,7 +19115,7 @@ class Reference extends Query {
         if (typeof pathString === 'number') {
             pathString = String(pathString);
         }
-        return new Reference(this.database, child(this._delegate, pathString));
+        return new Reference(this.database, child$1(this._delegate, pathString));
     }
     /** @returns {?Reference} */
     getParent() {
@@ -19223,7 +19131,7 @@ class Reference extends Query {
     set(newVal, onComplete) {
         validateArgCount('Reference.set', 1, 2, arguments.length);
         validateCallback('Reference.set', 'onComplete', onComplete, true);
-        const result = set(this._delegate, newVal);
+        const result = set$1(this._delegate, newVal);
         if (onComplete) {
             result.then(() => onComplete(null), error => onComplete(error));
         }
@@ -19262,7 +19170,7 @@ class Reference extends Query {
     remove(onComplete) {
         validateArgCount('Reference.remove', 0, 1, arguments.length);
         validateCallback('Reference.remove', 'onComplete', onComplete, true);
-        const result = remove(this._delegate);
+        const result = remove$1(this._delegate);
         if (onComplete) {
             result.then(() => onComplete(null), error => onComplete(error));
         }
@@ -19293,7 +19201,7 @@ class Reference extends Query {
     push(value, onComplete) {
         validateArgCount('Reference.push', 0, 2, arguments.length);
         validateCallback('Reference.push', 'onComplete', onComplete, true);
-        const expPromise = push(this._delegate, value);
+        const expPromise = push$1(this._delegate, value);
         const promise = expPromise.then(expRef => new Reference(this.database, expRef));
         if (onComplete) {
             promise.then(() => onComplete(null), error => onComplete(error));
@@ -19801,7 +19709,7 @@ function PeerBinaryFactory(options) {
 const Peer = Peer2.default;
 const msgPack = msgpacklite.default;
 
-initFirebase(firebase);
+initFirebase();
 setEncode(msgPack.encode);
 
 const UnChunker = UnChunkerFactory({ decode: msgPack.decode });

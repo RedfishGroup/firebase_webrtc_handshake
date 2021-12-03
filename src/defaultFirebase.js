@@ -1,18 +1,28 @@
+import { initializeApp } from 'firebase/app'
+
+import {
+    child,
+    get,
+    getDatabase as _getDatabase,
+    ref,
+    off,
+    orderByValue,
+    query,
+} from 'firebase/database'
 
 var defaultFBConfig = {
-  apiKey: "AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA",
-  authDomain: "https://torrid-torch-716.firebaseio.com/",
-  databaseURL: "https://torrid-torch-716.firebaseio.com/",
-  projectId: "torrid-torch-716"
-};
+    apiKey: 'AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA',
+    authDomain: 'https://torrid-torch-716.firebaseio.com/',
+    databaseURL: 'https://torrid-torch-716.firebaseio.com/',
+    projectId: 'torrid-torch-716',
+}
 
 var firebase
 function initFirebase(newFirebase, fbConfig = null) {
     if (fbConfig) defaultFBConfig = fbConfig
 
     if (!firebase) {
-        firebase = newFirebase
-        firebase.initializeApp(defaultFBConfig)
+        firebase = initializeApp(defaultFBConfig)
     }
 
     return { firebase, database: getDatabase() }
@@ -29,7 +39,7 @@ function getDatabase() {
         )
     }
 
-    database = firebase.database().ref('/').child('peers')
+    database = child(ref(_getDatabase(firebase)), 'peers')
     return database
 }
 
@@ -37,4 +47,13 @@ function getFirebase() {
     return firebase
 }
 
-export { getFirebase, getDatabase, initFirebase }
+export {
+    getFirebase,
+    getDatabase,
+    initFirebase,
+    child,
+    get,
+    off,
+    orderByValue,
+    query,
+}

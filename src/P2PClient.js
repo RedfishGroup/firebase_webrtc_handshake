@@ -1,3 +1,5 @@
+import { child, get, off, onChildAdded, onValue, push } from 'firebase/database'
+
 import { settings } from './settings.js'
 import { Evented } from './Evented.js'
 import { getDatabase } from './defaultFirebase.js'
@@ -137,8 +139,8 @@ export function P2PClientFactory(options) {
                     this._notifyCallbacks('peer not defined')
                 } else {
                     this.id = id
-                    this.serverRef = this.database.child(id)
-                    this.serverRef.once('value', (ev1) => {
+                    this.serverRef = child(this.database, id)
+                    get(this.serverRef).next((ev1) => {
                         var sval = ev1.val()
                         let pOpts = {
                             initiator: true,
@@ -166,7 +168,7 @@ export function P2PClientFactory(options) {
                                         data
                                     )
                                 }
-                                this.outRef.push(data)
+                                push(this.outRef, data)
                             } else {
                                 console.warn(
                                     'Client recieved unexpected signal through WebRTC:',
@@ -198,13 +200,13 @@ export function P2PClientFactory(options) {
                 }
 
             if (this.serverRef) {
-                this.serverRef.off()
+                off(this.serverRef)
             }
             if (this.outRef) {
-                this.outRef.off()
+                off(this.outRef)
             }
             if (this.inRef) {
-                this.inRef.off()
+                off(this.inRef)
             }
             if (this.connection) {
                 this.connection.destroy(callback)
@@ -216,19 +218,18 @@ export function P2PClientFactory(options) {
         }
 
         _createChannel(offer) {
-            //this.channelRef = this.serverRef.child('channels').push({offer:offer})
             offer.peerID = this.peerID
             offer.myID = this.myID
             if (this.debug)
                 console.log('Got create channel with offer: ', offer)
-            this.channelRef = this.serverRef.child('channels').push({
+            this.channelRef = push(child(this.serverRef, 'channels'), {
                 fromClient: [offer],
             })
-            this.outRef = this.channelRef.child('fromClient')
-            this.inRef = this.channelRef.child('fromServer')
-            this.inRef.on('child_added', (ev) => {
-                if (this.debug) console.log(ev.val(), 'channel message, client')
+            this.outRef = child(this.channelRef, 'fromClient')
+            this.inRef = child(this.channelRef, 'fromServer')
+            onChildAdded(this.inRef, (ev) => {
                 var val = ev.val()
+                if (this.debug) console.log(val, 'channel message, client')
                 if (val.type === 'answer') {
                     setTimeout(() => {
                         let state =
