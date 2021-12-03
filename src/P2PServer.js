@@ -12,7 +12,7 @@ import {
 import { deepEqual } from 'fast-equals'
 import { settings } from './settings.js'
 import { Evented } from './Evented.js'
-import { getFirebase, getDatabase } from './defaultFirebase.js'
+import { getDatabase } from './defaultFirebase.js'
 import { Channel } from './Channel.js'
 
 import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
@@ -76,6 +76,8 @@ export function P2PServerFactory(options) {
             })
 
             this.userRef = child(fbref, this.id)
+
+            console.log('userRef: ', this.userRef)
 
             onValue(this.userRef, (snapshot) => {
                 // handle being tree trimmed while asleep
