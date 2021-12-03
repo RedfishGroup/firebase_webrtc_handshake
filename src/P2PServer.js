@@ -77,7 +77,7 @@ export function P2PServerFactory(options) {
 
             this.userRef = child(fbref, this.id)
 
-            console.log('userRef: ', this.userRef)
+            console.log('userRef: ', this.userRef, this.initialPeerInfo)
 
             onValue(this.userRef, (snapshot) => {
                 // handle being tree trimmed while asleep
@@ -118,7 +118,9 @@ export function P2PServerFactory(options) {
 
             onDisconnect(this.userRef).remove()
 
-            if (this.initialPeerInfo) update(this.userRef, this.initialPeerInfo)
+            if (this.initialPeerInfo) {
+                update(this.userRef, this.initialPeerInfo)
+            }
 
             this.updateRef = child(this.userRef, 'lastUpdate')
             set(this.updateRef, serverTimestamp())
