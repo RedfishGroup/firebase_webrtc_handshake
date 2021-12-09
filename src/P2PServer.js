@@ -45,11 +45,7 @@ export function P2PServerFactory(options) {
 
             Object.assign(this, options)
 
-            if (options.database) {
-                this.database = options.database
-            } else {
-                this.database = getDatabase()
-            }
+            this.database = options.database || getDatabase()
 
             this.debug = !!debug || !!options.debug
             this.initialPeerInfo = initialPeerInfo

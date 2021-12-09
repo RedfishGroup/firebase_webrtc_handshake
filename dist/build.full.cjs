@@ -16003,11 +16003,7 @@ function P2PServerFactory(options) {
 
             Object.assign(this, options);
 
-            if (options.database) {
-                this.database = options.database;
-            } else {
-                this.database = getDatabase();
-            }
+            this.database = options.database || getDatabase();
 
             this.debug = !!debug || !!options.debug;
             this.initialPeerInfo = initialPeerInfo;
@@ -16035,7 +16031,7 @@ function P2PServerFactory(options) {
 
             this.userRef = child(fbref, this.id);
 
-            console.log('userRef: ', this.userRef);
+            console.log('userRef: ', this.userRef, this.initialPeerInfo);
 
             onValue(this.userRef, (snapshot) => {
                 // handle being tree trimmed while asleep
@@ -16074,7 +16070,9 @@ function P2PServerFactory(options) {
 
             onDisconnect(this.userRef).remove();
 
-            if (this.initialPeerInfo) update(this.userRef, this.initialPeerInfo);
+            if (this.initialPeerInfo) {
+                update(this.userRef, this.initialPeerInfo);
+            }
 
             this.updateRef = child(this.userRef, 'lastUpdate');
             set(this.updateRef, serverTimestamp());

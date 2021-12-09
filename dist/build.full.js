@@ -349,14 +349,6 @@ const base64Encode = function (str) {
     return base64.encodeByteArray(utf8Bytes, true);
 };
 /**
- * URL-safe base64 encoding (without "." padding in the end).
- * e.g. Used in JSON Web Token (JWT) parts.
- */
-const base64urlEncodeWithoutPadding = function (str) {
-    // Use base64url encoding and remove padding in the end (dot characters).
-    return base64Encode(str).replace(/\./g, '');
-};
-/**
  * URL-safe base64 decoding
  *
  * NOTE: DO NOT use the global atob() function - it does NOT support the
@@ -504,52 +496,6 @@ class Deferred {
 
 /**
  * @license
- * Copyright 2021 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-function createMockUserToken(token, projectId) {
-    if (token.uid) {
-        throw new Error('The "uid" field is no longer supported by mockUserToken. Please use "sub" instead for Firebase Auth User ID.');
-    }
-    // Unsecured JWTs use "none" as the algorithm.
-    const header = {
-        alg: 'none',
-        type: 'JWT'
-    };
-    const project = projectId || 'demo-project';
-    const iat = token.iat || 0;
-    const sub = token.sub || token.user_id;
-    if (!sub) {
-        throw new Error("mockUserToken must contain 'sub' or 'user_id' field!");
-    }
-    const payload = Object.assign({ 
-        // Set all required fields to decent defaults
-        iss: `https://securetoken.google.com/${project}`, aud: project, iat, exp: iat + 3600, auth_time: iat, sub, user_id: sub, firebase: {
-            sign_in_provider: 'custom',
-            identities: {}
-        } }, token);
-    // Unsecured JWTs use the empty string as a signature.
-    const signature = '';
-    return [
-        base64urlEncodeWithoutPadding(JSON.stringify(header)),
-        base64urlEncodeWithoutPadding(JSON.stringify(payload)),
-        signature
-    ].join('.');
-}
-
-/**
- * @license
  * Copyright 2017 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -592,12 +538,6 @@ function isMobileCordova() {
         /ios|iphone|ipod|ipad|android|blackberry|iemobile/i.test(getUA()));
 }
 /**
- * Detect Browser Environment
- */
-function isBrowser() {
-    return typeof self === 'object' && self.self === self;
-}
-/**
  * Detect React Native.
  *
  * @return true if ReactNative environment is detected.
@@ -613,106 +553,6 @@ function isReactNative() {
 function isNodeSdk() {
     return CONSTANTS.NODE_ADMIN === true;
 }
-
-/**
- * @license
- * Copyright 2017 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * @fileoverview Standardized Firebase Error.
- *
- * Usage:
- *
- *   // Typescript string literals for type-safe codes
- *   type Err =
- *     'unknown' |
- *     'object-not-found'
- *     ;
- *
- *   // Closure enum for type-safe error codes
- *   // at-enum {string}
- *   var Err = {
- *     UNKNOWN: 'unknown',
- *     OBJECT_NOT_FOUND: 'object-not-found',
- *   }
- *
- *   let errors: Map<Err, string> = {
- *     'generic-error': "Unknown error",
- *     'file-not-found': "Could not find file: {$file}",
- *   };
- *
- *   // Type-safe function - must pass a valid error code as param.
- *   let error = new ErrorFactory<Err>('service', 'Service', errors);
- *
- *   ...
- *   throw error.create(Err.GENERIC);
- *   ...
- *   throw error.create(Err.FILE_NOT_FOUND, {'file': fileName});
- *   ...
- *   // Service: Could not file file: foo.txt (service/file-not-found).
- *
- *   catch (e) {
- *     assert(e.message === "Could not find file: foo.txt.");
- *     if (e.code === 'service/file-not-found') {
- *       console.log("Could not read file: " + e['file']);
- *     }
- *   }
- */
-const ERROR_NAME = 'FirebaseError';
-// Based on code from:
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error#Custom_Error_Types
-class FirebaseError extends Error {
-    constructor(code, message, customData) {
-        super(message);
-        this.code = code;
-        this.customData = customData;
-        this.name = ERROR_NAME;
-        // Fix For ES5
-        // https://github.com/Microsoft/TypeScript-wiki/blob/master/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
-        Object.setPrototypeOf(this, FirebaseError.prototype);
-        // Maintains proper stack trace for where our error was thrown.
-        // Only available on V8.
-        if (Error.captureStackTrace) {
-            Error.captureStackTrace(this, ErrorFactory.prototype.create);
-        }
-    }
-}
-class ErrorFactory {
-    constructor(service, serviceName, errors) {
-        this.service = service;
-        this.serviceName = serviceName;
-        this.errors = errors;
-    }
-    create(code, ...data) {
-        const customData = data[0] || {};
-        const fullCode = `${this.service}/${code}`;
-        const template = this.errors[code];
-        const message = template ? replaceTemplate(template, customData) : 'Error';
-        // Service Name: Error message (service/code).
-        const fullMessage = `${this.serviceName}: ${message} (${fullCode}).`;
-        const error = new FirebaseError(fullCode, fullMessage, customData);
-        return error;
-    }
-}
-function replaceTemplate(template, data) {
-    return template.replace(PATTERN, (_, key) => {
-        const value = data[key];
-        return value != null ? String(value) : `<${key}?>`;
-    });
-}
-const PATTERN = /\{\$([^}]+)}/g;
 
 /**
  * @license
@@ -855,40 +695,6 @@ function map(obj, fn, contextObj) {
         }
     }
     return res;
-}
-/**
- * Deep equal two objects. Support Arrays and Objects.
- */
-function deepEqual$1(a, b) {
-    if (a === b) {
-        return true;
-    }
-    const aKeys = Object.keys(a);
-    const bKeys = Object.keys(b);
-    for (const k of aKeys) {
-        if (!bKeys.includes(k)) {
-            return false;
-        }
-        const aProp = a[k];
-        const bProp = b[k];
-        if (isObject(aProp) && isObject(bProp)) {
-            if (!deepEqual$1(aProp, bProp)) {
-                return false;
-            }
-        }
-        else if (aProp !== bProp) {
-            return false;
-        }
-    }
-    for (const k of bKeys) {
-        if (!aKeys.includes(k)) {
-            return false;
-        }
-    }
-    return true;
-}
-function isObject(thing) {
-    return thing !== null && typeof thing === 'object';
 }
 
 /**
@@ -1182,249 +988,6 @@ class Sha1 {
         return digest;
     }
 }
-
-/**
- * Helper to make a Subscribe function (just like Promise helps make a
- * Thenable).
- *
- * @param executor Function which can make calls to a single Observer
- *     as a proxy.
- * @param onNoObservers Callback when count of Observers goes to zero.
- */
-function createSubscribe(executor, onNoObservers) {
-    const proxy = new ObserverProxy(executor, onNoObservers);
-    return proxy.subscribe.bind(proxy);
-}
-/**
- * Implement fan-out for any number of Observers attached via a subscribe
- * function.
- */
-class ObserverProxy {
-    /**
-     * @param executor Function which can make calls to a single Observer
-     *     as a proxy.
-     * @param onNoObservers Callback when count of Observers goes to zero.
-     */
-    constructor(executor, onNoObservers) {
-        this.observers = [];
-        this.unsubscribes = [];
-        this.observerCount = 0;
-        // Micro-task scheduling by calling task.then().
-        this.task = Promise.resolve();
-        this.finalized = false;
-        this.onNoObservers = onNoObservers;
-        // Call the executor asynchronously so subscribers that are called
-        // synchronously after the creation of the subscribe function
-        // can still receive the very first value generated in the executor.
-        this.task
-            .then(() => {
-            executor(this);
-        })
-            .catch(e => {
-            this.error(e);
-        });
-    }
-    next(value) {
-        this.forEachObserver((observer) => {
-            observer.next(value);
-        });
-    }
-    error(error) {
-        this.forEachObserver((observer) => {
-            observer.error(error);
-        });
-        this.close(error);
-    }
-    complete() {
-        this.forEachObserver((observer) => {
-            observer.complete();
-        });
-        this.close();
-    }
-    /**
-     * Subscribe function that can be used to add an Observer to the fan-out list.
-     *
-     * - We require that no event is sent to a subscriber sychronously to their
-     *   call to subscribe().
-     */
-    subscribe(nextOrObserver, error, complete) {
-        let observer;
-        if (nextOrObserver === undefined &&
-            error === undefined &&
-            complete === undefined) {
-            throw new Error('Missing Observer.');
-        }
-        // Assemble an Observer object when passed as callback functions.
-        if (implementsAnyMethods(nextOrObserver, [
-            'next',
-            'error',
-            'complete'
-        ])) {
-            observer = nextOrObserver;
-        }
-        else {
-            observer = {
-                next: nextOrObserver,
-                error,
-                complete
-            };
-        }
-        if (observer.next === undefined) {
-            observer.next = noop;
-        }
-        if (observer.error === undefined) {
-            observer.error = noop;
-        }
-        if (observer.complete === undefined) {
-            observer.complete = noop;
-        }
-        const unsub = this.unsubscribeOne.bind(this, this.observers.length);
-        // Attempt to subscribe to a terminated Observable - we
-        // just respond to the Observer with the final error or complete
-        // event.
-        if (this.finalized) {
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            this.task.then(() => {
-                try {
-                    if (this.finalError) {
-                        observer.error(this.finalError);
-                    }
-                    else {
-                        observer.complete();
-                    }
-                }
-                catch (e) {
-                    // nothing
-                }
-                return;
-            });
-        }
-        this.observers.push(observer);
-        return unsub;
-    }
-    // Unsubscribe is synchronous - we guarantee that no events are sent to
-    // any unsubscribed Observer.
-    unsubscribeOne(i) {
-        if (this.observers === undefined || this.observers[i] === undefined) {
-            return;
-        }
-        delete this.observers[i];
-        this.observerCount -= 1;
-        if (this.observerCount === 0 && this.onNoObservers !== undefined) {
-            this.onNoObservers(this);
-        }
-    }
-    forEachObserver(fn) {
-        if (this.finalized) {
-            // Already closed by previous event....just eat the additional values.
-            return;
-        }
-        // Since sendOne calls asynchronously - there is no chance that
-        // this.observers will become undefined.
-        for (let i = 0; i < this.observers.length; i++) {
-            this.sendOne(i, fn);
-        }
-    }
-    // Call the Observer via one of it's callback function. We are careful to
-    // confirm that the observe has not been unsubscribed since this asynchronous
-    // function had been queued.
-    sendOne(i, fn) {
-        // Execute the callback asynchronously
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        this.task.then(() => {
-            if (this.observers !== undefined && this.observers[i] !== undefined) {
-                try {
-                    fn(this.observers[i]);
-                }
-                catch (e) {
-                    // Ignore exceptions raised in Observers or missing methods of an
-                    // Observer.
-                    // Log error to console. b/31404806
-                    if (typeof console !== 'undefined' && console.error) {
-                        console.error(e);
-                    }
-                }
-            }
-        });
-    }
-    close(err) {
-        if (this.finalized) {
-            return;
-        }
-        this.finalized = true;
-        if (err !== undefined) {
-            this.finalError = err;
-        }
-        // Proxy is no longer needed - garbage collect references
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        this.task.then(() => {
-            this.observers = undefined;
-            this.onNoObservers = undefined;
-        });
-    }
-}
-/**
- * Return true if the object passed in implements any of the named methods.
- */
-function implementsAnyMethods(obj, methods) {
-    if (typeof obj !== 'object' || obj === null) {
-        return false;
-    }
-    for (const method of methods) {
-        if (method in obj && typeof obj[method] === 'function') {
-            return true;
-        }
-    }
-    return false;
-}
-function noop() {
-    // do nothing
-}
-
-/**
- * @license
- * Copyright 2017 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * Check to make sure the appropriate number of arguments are provided for a public function.
- * Throws an error if it fails.
- *
- * @param fnName The function name
- * @param minCount The minimum number of arguments to allow for the function call
- * @param maxCount The maximum number of argument to allow for the function call
- * @param argCount The actual number of arguments provided.
- */
-const validateArgCount = function (fnName, minCount, maxCount, argCount) {
-    let argError;
-    if (argCount < minCount) {
-        argError = 'at least ' + minCount;
-    }
-    else if (argCount > maxCount) {
-        argError = maxCount === 0 ? 'none' : 'no more than ' + maxCount;
-    }
-    if (argError) {
-        const error = fnName +
-            ' failed: Was called with ' +
-            argCount +
-            (argCount === 1 ? ' argument.' : ' arguments.') +
-            ' Expects ' +
-            argError +
-            '.';
-        throw new Error(error);
-    }
-};
 /**
  * Generates a string to prefix an error message about failed argument validation
  *
@@ -1434,24 +997,6 @@ const validateArgCount = function (fnName, minCount, maxCount, argCount) {
  */
 function errorPrefix(fnName, argName) {
     return `${fnName} failed: ${argName} argument `;
-}
-function validateCallback(fnName, argumentName, 
-// eslint-disable-next-line @typescript-eslint/ban-types
-callback, optional) {
-    if (optional && !callback) {
-        return;
-    }
-    if (typeof callback !== 'function') {
-        throw new Error(errorPrefix(fnName, argumentName) + 'must be a valid function.');
-    }
-}
-function validateContextObject(fnName, argumentName, context, optional) {
-    if (optional && !context) {
-        return;
-    }
-    if (typeof context !== 'object' || context === null) {
-        throw new Error(errorPrefix(fnName, argumentName) + 'must be a valid context object.');
-    }
 }
 
 /**
@@ -1611,371 +1156,6 @@ class Component {
 
 /**
  * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-const DEFAULT_ENTRY_NAME$1 = '[DEFAULT]';
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * Provider for instance for service name T, e.g. 'auth', 'auth-internal'
- * NameServiceMapping[T] is an alias for the type of the instance
- */
-class Provider {
-    constructor(name, container) {
-        this.name = name;
-        this.container = container;
-        this.component = null;
-        this.instances = new Map();
-        this.instancesDeferred = new Map();
-        this.instancesOptions = new Map();
-        this.onInitCallbacks = new Map();
-    }
-    /**
-     * @param identifier A provider can provide mulitple instances of a service
-     * if this.component.multipleInstances is true.
-     */
-    get(identifier) {
-        // if multipleInstances is not supported, use the default name
-        const normalizedIdentifier = this.normalizeInstanceIdentifier(identifier);
-        if (!this.instancesDeferred.has(normalizedIdentifier)) {
-            const deferred = new Deferred();
-            this.instancesDeferred.set(normalizedIdentifier, deferred);
-            if (this.isInitialized(normalizedIdentifier) ||
-                this.shouldAutoInitialize()) {
-                // initialize the service if it can be auto-initialized
-                try {
-                    const instance = this.getOrInitializeService({
-                        instanceIdentifier: normalizedIdentifier
-                    });
-                    if (instance) {
-                        deferred.resolve(instance);
-                    }
-                }
-                catch (e) {
-                    // when the instance factory throws an exception during get(), it should not cause
-                    // a fatal error. We just return the unresolved promise in this case.
-                }
-            }
-        }
-        return this.instancesDeferred.get(normalizedIdentifier).promise;
-    }
-    getImmediate(options) {
-        var _a;
-        // if multipleInstances is not supported, use the default name
-        const normalizedIdentifier = this.normalizeInstanceIdentifier(options === null || options === void 0 ? void 0 : options.identifier);
-        const optional = (_a = options === null || options === void 0 ? void 0 : options.optional) !== null && _a !== void 0 ? _a : false;
-        if (this.isInitialized(normalizedIdentifier) ||
-            this.shouldAutoInitialize()) {
-            try {
-                return this.getOrInitializeService({
-                    instanceIdentifier: normalizedIdentifier
-                });
-            }
-            catch (e) {
-                if (optional) {
-                    return null;
-                }
-                else {
-                    throw e;
-                }
-            }
-        }
-        else {
-            // In case a component is not initialized and should/can not be auto-initialized at the moment, return null if the optional flag is set, or throw
-            if (optional) {
-                return null;
-            }
-            else {
-                throw Error(`Service ${this.name} is not available`);
-            }
-        }
-    }
-    getComponent() {
-        return this.component;
-    }
-    setComponent(component) {
-        if (component.name !== this.name) {
-            throw Error(`Mismatching Component ${component.name} for Provider ${this.name}.`);
-        }
-        if (this.component) {
-            throw Error(`Component for ${this.name} has already been provided`);
-        }
-        this.component = component;
-        // return early without attempting to initialize the component if the component requires explicit initialization (calling `Provider.initialize()`)
-        if (!this.shouldAutoInitialize()) {
-            return;
-        }
-        // if the service is eager, initialize the default instance
-        if (isComponentEager(component)) {
-            try {
-                this.getOrInitializeService({ instanceIdentifier: DEFAULT_ENTRY_NAME$1 });
-            }
-            catch (e) {
-                // when the instance factory for an eager Component throws an exception during the eager
-                // initialization, it should not cause a fatal error.
-                // TODO: Investigate if we need to make it configurable, because some component may want to cause
-                // a fatal error in this case?
-            }
-        }
-        // Create service instances for the pending promises and resolve them
-        // NOTE: if this.multipleInstances is false, only the default instance will be created
-        // and all promises with resolve with it regardless of the identifier.
-        for (const [instanceIdentifier, instanceDeferred] of this.instancesDeferred.entries()) {
-            const normalizedIdentifier = this.normalizeInstanceIdentifier(instanceIdentifier);
-            try {
-                // `getOrInitializeService()` should always return a valid instance since a component is guaranteed. use ! to make typescript happy.
-                const instance = this.getOrInitializeService({
-                    instanceIdentifier: normalizedIdentifier
-                });
-                instanceDeferred.resolve(instance);
-            }
-            catch (e) {
-                // when the instance factory throws an exception, it should not cause
-                // a fatal error. We just leave the promise unresolved.
-            }
-        }
-    }
-    clearInstance(identifier = DEFAULT_ENTRY_NAME$1) {
-        this.instancesDeferred.delete(identifier);
-        this.instancesOptions.delete(identifier);
-        this.instances.delete(identifier);
-    }
-    // app.delete() will call this method on every provider to delete the services
-    // TODO: should we mark the provider as deleted?
-    async delete() {
-        const services = Array.from(this.instances.values());
-        await Promise.all([
-            ...services
-                .filter(service => 'INTERNAL' in service) // legacy services
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .map(service => service.INTERNAL.delete()),
-            ...services
-                .filter(service => '_delete' in service) // modularized services
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .map(service => service._delete())
-        ]);
-    }
-    isComponentSet() {
-        return this.component != null;
-    }
-    isInitialized(identifier = DEFAULT_ENTRY_NAME$1) {
-        return this.instances.has(identifier);
-    }
-    getOptions(identifier = DEFAULT_ENTRY_NAME$1) {
-        return this.instancesOptions.get(identifier) || {};
-    }
-    initialize(opts = {}) {
-        const { options = {} } = opts;
-        const normalizedIdentifier = this.normalizeInstanceIdentifier(opts.instanceIdentifier);
-        if (this.isInitialized(normalizedIdentifier)) {
-            throw Error(`${this.name}(${normalizedIdentifier}) has already been initialized`);
-        }
-        if (!this.isComponentSet()) {
-            throw Error(`Component ${this.name} has not been registered yet`);
-        }
-        const instance = this.getOrInitializeService({
-            instanceIdentifier: normalizedIdentifier,
-            options
-        });
-        // resolve any pending promise waiting for the service instance
-        for (const [instanceIdentifier, instanceDeferred] of this.instancesDeferred.entries()) {
-            const normalizedDeferredIdentifier = this.normalizeInstanceIdentifier(instanceIdentifier);
-            if (normalizedIdentifier === normalizedDeferredIdentifier) {
-                instanceDeferred.resolve(instance);
-            }
-        }
-        return instance;
-    }
-    /**
-     *
-     * @param callback - a function that will be invoked  after the provider has been initialized by calling provider.initialize().
-     * The function is invoked SYNCHRONOUSLY, so it should not execute any longrunning tasks in order to not block the program.
-     *
-     * @param identifier An optional instance identifier
-     * @returns a function to unregister the callback
-     */
-    onInit(callback, identifier) {
-        var _a;
-        const normalizedIdentifier = this.normalizeInstanceIdentifier(identifier);
-        const existingCallbacks = (_a = this.onInitCallbacks.get(normalizedIdentifier)) !== null && _a !== void 0 ? _a : new Set();
-        existingCallbacks.add(callback);
-        this.onInitCallbacks.set(normalizedIdentifier, existingCallbacks);
-        const existingInstance = this.instances.get(normalizedIdentifier);
-        if (existingInstance) {
-            callback(existingInstance, normalizedIdentifier);
-        }
-        return () => {
-            existingCallbacks.delete(callback);
-        };
-    }
-    /**
-     * Invoke onInit callbacks synchronously
-     * @param instance the service instance`
-     */
-    invokeOnInitCallbacks(instance, identifier) {
-        const callbacks = this.onInitCallbacks.get(identifier);
-        if (!callbacks) {
-            return;
-        }
-        for (const callback of callbacks) {
-            try {
-                callback(instance, identifier);
-            }
-            catch (_a) {
-                // ignore errors in the onInit callback
-            }
-        }
-    }
-    getOrInitializeService({ instanceIdentifier, options = {} }) {
-        let instance = this.instances.get(instanceIdentifier);
-        if (!instance && this.component) {
-            instance = this.component.instanceFactory(this.container, {
-                instanceIdentifier: normalizeIdentifierForFactory(instanceIdentifier),
-                options
-            });
-            this.instances.set(instanceIdentifier, instance);
-            this.instancesOptions.set(instanceIdentifier, options);
-            /**
-             * Invoke onInit listeners.
-             * Note this.component.onInstanceCreated is different, which is used by the component creator,
-             * while onInit listeners are registered by consumers of the provider.
-             */
-            this.invokeOnInitCallbacks(instance, instanceIdentifier);
-            /**
-             * Order is important
-             * onInstanceCreated() should be called after this.instances.set(instanceIdentifier, instance); which
-             * makes `isInitialized()` return true.
-             */
-            if (this.component.onInstanceCreated) {
-                try {
-                    this.component.onInstanceCreated(this.container, instanceIdentifier, instance);
-                }
-                catch (_a) {
-                    // ignore errors in the onInstanceCreatedCallback
-                }
-            }
-        }
-        return instance || null;
-    }
-    normalizeInstanceIdentifier(identifier = DEFAULT_ENTRY_NAME$1) {
-        if (this.component) {
-            return this.component.multipleInstances ? identifier : DEFAULT_ENTRY_NAME$1;
-        }
-        else {
-            return identifier; // assume multiple instances are supported before the component is provided.
-        }
-    }
-    shouldAutoInitialize() {
-        return (!!this.component &&
-            this.component.instantiationMode !== "EXPLICIT" /* EXPLICIT */);
-    }
-}
-// undefined should be passed to the service factory for the default instance
-function normalizeIdentifierForFactory(identifier) {
-    return identifier === DEFAULT_ENTRY_NAME$1 ? undefined : identifier;
-}
-function isComponentEager(component) {
-    return component.instantiationMode === "EAGER" /* EAGER */;
-}
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * ComponentContainer that provides Providers for service name T, e.g. `auth`, `auth-internal`
- */
-class ComponentContainer {
-    constructor(name) {
-        this.name = name;
-        this.providers = new Map();
-    }
-    /**
-     *
-     * @param component Component being added
-     * @param overwrite When a component with the same name has already been registered,
-     * if overwrite is true: overwrite the existing component with the new component and create a new
-     * provider with the new component. It can be useful in tests where you want to use different mocks
-     * for different tests.
-     * if overwrite is false: throw an exception
-     */
-    addComponent(component) {
-        const provider = this.getProvider(component.name);
-        if (provider.isComponentSet()) {
-            throw new Error(`Component ${component.name} has already been registered with ${this.name}`);
-        }
-        provider.setComponent(component);
-    }
-    addOrOverwriteComponent(component) {
-        const provider = this.getProvider(component.name);
-        if (provider.isComponentSet()) {
-            // delete the existing provider from the container, so we can register the new component
-            this.providers.delete(component.name);
-        }
-        this.addComponent(component);
-    }
-    /**
-     * getProvider provides a type safe interface where it can only be called with a field name
-     * present in NameServiceMapping interface.
-     *
-     * Firebase SDKs providing services should extend NameServiceMapping interface to register
-     * themselves.
-     */
-    getProvider(name) {
-        if (this.providers.has(name)) {
-            return this.providers.get(name);
-        }
-        // create a Provider for a service that hasn't registered with Firebase
-        const provider = new Provider(name, this);
-        this.providers.set(name, provider);
-        return provider;
-    }
-    getProviders() {
-        return Array.from(this.providers.values());
-    }
-}
-
-/**
- * @license
  * Copyright 2017 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -1990,10 +1170,6 @@ class ComponentContainer {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * A container for all of the Logger instances
- */
-const instances = [];
 /**
  * The JS SDK supports 5 log levels and also allows a user the ability to
  * silence the logs altogether.
@@ -2079,10 +1255,6 @@ class Logger {
          * The optional, additional, user-defined log handler for the Logger instance.
          */
         this._userLogHandler = null;
-        /**
-         * Capture the current instance for later use
-         */
-        instances.push(this);
     }
     get logLevel() {
         return this._logLevel;
@@ -2135,59 +1307,6 @@ class Logger {
     error(...args) {
         this._userLogHandler && this._userLogHandler(this, LogLevel.ERROR, ...args);
         this._logHandler(this, LogLevel.ERROR, ...args);
-    }
-}
-function setLogLevel$1(level) {
-    instances.forEach(inst => {
-        inst.setLogLevel(level);
-    });
-}
-function setUserLogHandler(logCallback, options) {
-    for (const instance of instances) {
-        let customLogLevel = null;
-        if (options && options.level) {
-            customLogLevel = levelStringToEnum[options.level];
-        }
-        if (logCallback === null) {
-            instance.userLogHandler = null;
-        }
-        else {
-            instance.userLogHandler = (instance, level, ...args) => {
-                const message = args
-                    .map(arg => {
-                    if (arg == null) {
-                        return null;
-                    }
-                    else if (typeof arg === 'string') {
-                        return arg;
-                    }
-                    else if (typeof arg === 'number' || typeof arg === 'boolean') {
-                        return arg.toString();
-                    }
-                    else if (arg instanceof Error) {
-                        return arg.message;
-                    }
-                    else {
-                        try {
-                            return JSON.stringify(arg);
-                        }
-                        catch (ignored) {
-                            return null;
-                        }
-                    }
-                })
-                    .filter(arg => arg)
-                    .join(' ');
-                if (level >= (customLogLevel !== null && customLogLevel !== void 0 ? customLogLevel : instance.logLevel)) {
-                    logCallback({
-                        level: LogLevel[level].toLowerCase(),
-                        message,
-                        args,
-                        type: instance.name
-                    });
-                }
-            };
-        }
     }
 }
 
@@ -2263,7 +1382,7 @@ const version$1$1 = "0.7.9";
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const logger$2 = new Logger('@firebase/app');
+const logger$1 = new Logger('@firebase/app');
 
 const name$n = "@firebase/app-compat";
 
@@ -2303,39 +1422,16 @@ const name$6 = "@firebase/remote-config";
 
 const name$5 = "@firebase/remote-config-compat";
 
-const name$4$1 = "@firebase/storage";
+const name$4 = "@firebase/storage";
 
-const name$3$1 = "@firebase/storage-compat";
+const name$3 = "@firebase/storage-compat";
 
-const name$2$1 = "@firebase/firestore";
+const name$2 = "@firebase/firestore";
 
 const name$1$1 = "@firebase/firestore-compat";
 
 const name$p = "firebase";
-const version$5 = "9.5.0";
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * The default app name
- *
- * @internal
- */
-const DEFAULT_ENTRY_NAME = '[DEFAULT]';
+const version$2 = "9.5.0";
 const PLATFORM_LOG_STRING = {
     [name$o]: 'fire-core',
     [name$n]: 'fire-core-compat',
@@ -2357,9 +1453,9 @@ const PLATFORM_LOG_STRING = {
     [name$7]: 'fire-perf-compat',
     [name$6]: 'fire-rc',
     [name$5]: 'fire-rc-compat',
-    [name$4$1]: 'fire-gcs',
-    [name$3$1]: 'fire-gcs-compat',
-    [name$2$1]: 'fire-fst',
+    [name$4]: 'fire-gcs',
+    [name$3]: 'fire-gcs-compat',
+    [name$2]: 'fire-fst',
     [name$1$1]: 'fire-fst-compat',
     'fire-js': 'fire-js',
     [name$p]: 'fire-js-all'
@@ -2402,15 +1498,8 @@ function _addComponent(app, component) {
         app.container.addComponent(component);
     }
     catch (e) {
-        logger$2.debug(`Component ${component.name} failed to register with FirebaseApp ${app.name}`, e);
+        logger$1.debug(`Component ${component.name} failed to register with FirebaseApp ${app.name}`, e);
     }
-}
-/**
- *
- * @internal
- */
-function _addOrOverwriteComponent(app, component) {
-    app.container.addOrOverwriteComponent(component);
 }
 /**
  *
@@ -2422,7 +1511,7 @@ function _addOrOverwriteComponent(app, component) {
 function _registerComponent(component) {
     const componentName = component.name;
     if (_components.has(componentName)) {
-        logger$2.debug(`There were multiple attempts to register component ${componentName}.`);
+        logger$1.debug(`There were multiple attempts to register component ${componentName}.`);
         return false;
     }
     _components.set(componentName, component);
@@ -2431,132 +1520,6 @@ function _registerComponent(component) {
         _addComponent(app, component);
     }
     return true;
-}
-/**
- *
- * @param app - FirebaseApp instance
- * @param name - service name
- *
- * @returns the provider for the service with the matching name
- *
- * @internal
- */
-function _getProvider(app, name) {
-    return app.container.getProvider(name);
-}
-/**
- *
- * @param app - FirebaseApp instance
- * @param name - service name
- * @param instanceIdentifier - service instance identifier in case the service supports multiple instances
- *
- * @internal
- */
-function _removeServiceInstance(app, name, instanceIdentifier = DEFAULT_ENTRY_NAME) {
-    _getProvider(app, name).clearInstance(instanceIdentifier);
-}
-/**
- * Test only
- *
- * @internal
- */
-function _clearComponents() {
-    _components.clear();
-}
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-const ERRORS$1 = {
-    ["no-app" /* NO_APP */]: "No Firebase App '{$appName}' has been created - " +
-        'call Firebase App.initializeApp()',
-    ["bad-app-name" /* BAD_APP_NAME */]: "Illegal App name: '{$appName}",
-    ["duplicate-app" /* DUPLICATE_APP */]: "Firebase App named '{$appName}' already exists with different options or config",
-    ["app-deleted" /* APP_DELETED */]: "Firebase App named '{$appName}' already deleted",
-    ["invalid-app-argument" /* INVALID_APP_ARGUMENT */]: 'firebase.{$appName}() takes either no argument or a ' +
-        'Firebase App instance.',
-    ["invalid-log-argument" /* INVALID_LOG_ARGUMENT */]: 'First argument to `onLog` must be null or a function.'
-};
-const ERROR_FACTORY$1 = new ErrorFactory('app', 'Firebase', ERRORS$1);
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-class FirebaseAppImpl$1 {
-    constructor(options, config, container) {
-        this._isDeleted = false;
-        this._options = Object.assign({}, options);
-        this._config = Object.assign({}, config);
-        this._name = config.name;
-        this._automaticDataCollectionEnabled =
-            config.automaticDataCollectionEnabled;
-        this._container = container;
-        this.container.addComponent(new Component('app', () => this, "PUBLIC" /* PUBLIC */));
-    }
-    get automaticDataCollectionEnabled() {
-        this.checkDestroyed();
-        return this._automaticDataCollectionEnabled;
-    }
-    set automaticDataCollectionEnabled(val) {
-        this.checkDestroyed();
-        this._automaticDataCollectionEnabled = val;
-    }
-    get name() {
-        this.checkDestroyed();
-        return this._name;
-    }
-    get options() {
-        this.checkDestroyed();
-        return this._options;
-    }
-    get config() {
-        this.checkDestroyed();
-        return this._config;
-    }
-    get container() {
-        return this._container;
-    }
-    get isDeleted() {
-        return this._isDeleted;
-    }
-    set isDeleted(val) {
-        this._isDeleted = val;
-    }
-    /**
-     * This function will throw an Error if the App has already been deleted -
-     * use before performing API actions on the App.
-     */
-    checkDestroyed() {
-        if (this.isDeleted) {
-            throw ERROR_FACTORY$1.create("app-deleted" /* APP_DELETED */, { appName: this._name });
-        }
-    }
 }
 
 /**
@@ -2580,108 +1543,7 @@ class FirebaseAppImpl$1 {
  *
  * @public
  */
-const SDK_VERSION$1 = version$5;
-function initializeApp(options, rawConfig = {}) {
-    if (typeof rawConfig !== 'object') {
-        const name = rawConfig;
-        rawConfig = { name };
-    }
-    const config = Object.assign({ name: DEFAULT_ENTRY_NAME, automaticDataCollectionEnabled: false }, rawConfig);
-    const name = config.name;
-    if (typeof name !== 'string' || !name) {
-        throw ERROR_FACTORY$1.create("bad-app-name" /* BAD_APP_NAME */, {
-            appName: String(name)
-        });
-    }
-    const existingApp = _apps.get(name);
-    if (existingApp) {
-        // return the existing app if options and config deep equal the ones in the existing app.
-        if (deepEqual$1(options, existingApp.options) &&
-            deepEqual$1(config, existingApp.config)) {
-            return existingApp;
-        }
-        else {
-            throw ERROR_FACTORY$1.create("duplicate-app" /* DUPLICATE_APP */, { appName: name });
-        }
-    }
-    const container = new ComponentContainer(name);
-    for (const component of _components.values()) {
-        container.addComponent(component);
-    }
-    const newApp = new FirebaseAppImpl$1(options, config, container);
-    _apps.set(name, newApp);
-    return newApp;
-}
-/**
- * Retrieves a {@link @firebase/app#FirebaseApp} instance.
- *
- * When called with no arguments, the default app is returned. When an app name
- * is provided, the app corresponding to that name is returned.
- *
- * An exception is thrown if the app being retrieved has not yet been
- * initialized.
- *
- * @example
- * ```javascript
- * // Return the default app
- * const app = getApp();
- * ```
- *
- * @example
- * ```javascript
- * // Return a named app
- * const otherApp = getApp("otherApp");
- * ```
- *
- * @param name - Optional name of the app to return. If no name is
- *   provided, the default is `"[DEFAULT]"`.
- *
- * @returns The app corresponding to the provided app name.
- *   If no app name is provided, the default app is returned.
- *
- * @public
- */
-function getApp(name = DEFAULT_ENTRY_NAME) {
-    const app = _apps.get(name);
-    if (!app) {
-        throw ERROR_FACTORY$1.create("no-app" /* NO_APP */, { appName: name });
-    }
-    return app;
-}
-/**
- * A (read-only) array of all initialized apps.
- * @public
- */
-function getApps() {
-    return Array.from(_apps.values());
-}
-/**
- * Renders this app unusable and frees the resources of all associated
- * services.
- *
- * @example
- * ```javascript
- * deleteApp(app)
- *   .then(function() {
- *     console.log("App deleted successfully");
- *   })
- *   .catch(function(error) {
- *     console.log("Error deleting app:", error);
- *   });
- * ```
- *
- * @public
- */
-async function deleteApp(app) {
-    const name = app.name;
-    if (_apps.has(name)) {
-        _apps.delete(name);
-        await Promise.all(app.container
-            .getProviders()
-            .map(provider => provider.delete()));
-        app.isDeleted = true;
-    }
-}
+const SDK_VERSION$1 = version$2;
 /**
  * Registers a library's name and version for platform logging purposes.
  * @param library - Name of 1p or 3p library (e.g. firestore, angularfire)
@@ -2713,35 +1575,10 @@ function registerVersion(libraryKeyOrName, version, variant) {
         if (versionMismatch) {
             warning.push(`version name "${version}" contains illegal characters (whitespace or "/")`);
         }
-        logger$2.warn(warning.join(' '));
+        logger$1.warn(warning.join(' '));
         return;
     }
     _registerComponent(new Component(`${library}-version`, () => ({ library, version }), "VERSION" /* VERSION */));
-}
-/**
- * Sets log handler for all Firebase SDKs.
- * @param logCallback - An optional custom log handler that executes user code whenever
- * the Firebase SDK makes a logging call.
- *
- * @public
- */
-function onLog(logCallback, options) {
-    if (logCallback !== null && typeof logCallback !== 'function') {
-        throw ERROR_FACTORY$1.create("invalid-log-argument" /* INVALID_LOG_ARGUMENT */);
-    }
-    setUserLogHandler(logCallback, options);
-}
-/**
- * Sets log level for all Firebase SDKs.
- *
- * All of the log types above the current log level are captured (i.e. if
- * you set the log level to `info`, errors are logged, but `debug` and
- * `verbose` logs are not).
- *
- * @public
- */
-function setLogLevel(logLevel) {
-    setLogLevel$1(logLevel);
 }
 
 /**
@@ -2760,7 +1597,7 @@ function setLogLevel(logLevel) {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-function registerCoreComponents$1(variant) {
+function registerCoreComponents(variant) {
     _registerComponent(new Component('platform-logger', container => new PlatformLoggerServiceImpl(container), "PRIVATE" /* PRIVATE */));
     // Register `app` package.
     registerVersion(name$o, version$1$1, variant);
@@ -2776,32 +1613,10 @@ function registerCoreComponents$1(variant) {
  * @remarks This package coordinates the communication between the different Firebase components
  * @packageDocumentation
  */
-registerCoreComponents$1('');
+registerCoreComponents('');
 
-var modularAPIs = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    SDK_VERSION: SDK_VERSION$1,
-    _DEFAULT_ENTRY_NAME: DEFAULT_ENTRY_NAME,
-    _addComponent: _addComponent,
-    _addOrOverwriteComponent: _addOrOverwriteComponent,
-    _apps: _apps,
-    _clearComponents: _clearComponents,
-    _components: _components,
-    _getProvider: _getProvider,
-    _registerComponent: _registerComponent,
-    _removeServiceInstance: _removeServiceInstance,
-    deleteApp: deleteApp,
-    getApp: getApp,
-    getApps: getApps,
-    initializeApp: initializeApp,
-    onLog: onLog,
-    registerVersion: registerVersion,
-    setLogLevel: setLogLevel,
-    FirebaseError: FirebaseError
-});
-
-const name$4 = "@firebase/database";
-const version$4 = "0.12.4";
+const name$1 = "@firebase/database";
+const version$1 = "0.12.4";
 
 /**
  * @license
@@ -3006,7 +1821,7 @@ const SessionStorage = createStoragefor('sessionStorage');
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const logClient$1 = new Logger('@firebase/database');
+const logClient = new Logger('@firebase/database');
 /**
  * Returns a locally-unique ID (generated by just incrementing up from 0 each time its called).
  */
@@ -3052,7 +1867,7 @@ const buildLogMessage_ = function (...varArgs) {
 /**
  * Use this for all debug messages in Firebase.
  */
-let logger$1 = null;
+let logger = null;
 /**
  * Flag to check for log availability on first log message
  */
@@ -3065,30 +1880,30 @@ let firstLog_ = true;
 const enableLogging$1 = function (logger_, persistent) {
     assert(!persistent || logger_ === true || logger_ === false, "Can't turn on custom loggers persistently.");
     if (logger_ === true) {
-        logClient$1.logLevel = LogLevel.VERBOSE;
-        logger$1 = logClient$1.log.bind(logClient$1);
+        logClient.logLevel = LogLevel.VERBOSE;
+        logger = logClient.log.bind(logClient);
         if (persistent) {
             SessionStorage.set('logging_enabled', true);
         }
     }
     else if (typeof logger_ === 'function') {
-        logger$1 = logger_;
+        logger = logger_;
     }
     else {
-        logger$1 = null;
+        logger = null;
         SessionStorage.remove('logging_enabled');
     }
 };
 const log = function (...varArgs) {
     if (firstLog_ === true) {
         firstLog_ = false;
-        if (logger$1 === null && SessionStorage.get('logging_enabled') === true) {
+        if (logger === null && SessionStorage.get('logging_enabled') === true) {
             enableLogging$1(true);
         }
     }
-    if (logger$1) {
+    if (logger) {
         const message = buildLogMessage_.apply(null, varArgs);
-        logger$1(message);
+        logger(message);
     }
 };
 const logWrapper = function (prefix) {
@@ -3098,16 +1913,16 @@ const logWrapper = function (prefix) {
 };
 const error = function (...varArgs) {
     const message = 'FIREBASE INTERNAL ERROR: ' + buildLogMessage_(...varArgs);
-    logClient$1.error(message);
+    logClient.error(message);
 };
 const fatal = function (...varArgs) {
     const message = `FIREBASE FATAL ERROR: ${buildLogMessage_(...varArgs)}`;
-    logClient$1.error(message);
+    logClient.error(message);
     throw new Error(message);
 };
-const warn$1 = function (...varArgs) {
+const warn = function (...varArgs) {
     const message = 'FIREBASE WARNING: ' + buildLogMessage_(...varArgs);
-    logClient$1.warn(message);
+    logClient.warn(message);
 };
 /**
  * Logs a warning if the containing page uses https. Called when a call to new Firebase
@@ -3119,7 +1934,7 @@ const warnIfPageIsSecure = function () {
         window.location &&
         window.location.protocol &&
         window.location.protocol.indexOf('https:') !== -1) {
-        warn$1('Insecure Firebase access from a secure page. ' +
+        warn('Insecure Firebase access from a secure page. ' +
             'Please use https in calls to new Firebase().');
     }
 };
@@ -3441,7 +2256,7 @@ const exceptionGuard = function (fn) {
             // file/line number where we re-throw it, which is useless. So we log
             // e.stack explicitly.
             const stack = e.stack || '';
-            warn$1('Exception was thrown by user callback.', stack);
+            warn('Exception was thrown by user callback.', stack);
             throw e;
         }, Math.floor(0));
     }
@@ -3531,7 +2346,7 @@ class AppCheckTokenProvider {
         (_a = this.appCheckProvider) === null || _a === void 0 ? void 0 : _a.get().then(appCheck => appCheck.addTokenListener(listener));
     }
     notifyForInvalidToken() {
-        warn$1(`Provided AppCheck credentials for the app named "${this.appName_}" ` +
+        warn(`Provided AppCheck credentials for the app named "${this.appName_}" ` +
             'are invalid. This usually indicates your app was not initialized correctly.');
     }
 }
@@ -3635,7 +2450,7 @@ class FirebaseAuthTokenProvider {
                     'initializeApp() match the values provided for your app at ' +
                     'https://console.firebase.google.com/.';
         }
-        warn$1(errorMessage);
+        warn(errorMessage);
     }
 }
 /* AuthTokenProvider that supplies a constant token. Used by Admin SDK or mockUserToken with emulators. */
@@ -4895,7 +3710,7 @@ class TransportManager {
         let isSkipPollConnection = isWebSocketsAvailable && !WebSocketConnection.previouslyFailed();
         if (repoInfo.webSocketOnly) {
             if (!isWebSocketsAvailable) {
-                warn$1("wss:// URL used, but browser isn't known to support websockets.  Trying anyway.");
+                warn("wss:// URL used, but browser isn't known to support websockets.  Trying anyway.");
             }
             isSkipPollConnection = true;
         }
@@ -5251,7 +4066,7 @@ class Connection {
             this.conn_.start();
             this.onConnectionEstablished_(this.conn_, timestamp);
             if (PROTOCOL_VERSION !== version) {
-                warn$1('Protocol version mismatch detected');
+                warn('Protocol version mismatch detected');
             }
             // TODO: do we want to upgrade? when? maybe a delay?
             this.tryStartUpgrade_();
@@ -6123,7 +4938,7 @@ class PersistentConnection extends ServerActions {
             if (Array.isArray(warnings) && ~warnings.indexOf('no_index')) {
                 const indexSpec = '".indexOn": "' + query._queryParams.getIndex().toString() + '"';
                 const indexPath = query._path.toString();
-                warn$1(`Using an unspecified index. Your data will be downloaded and ` +
+                warn(`Using an unspecified index. Your data will be downloaded and ` +
                     `filtered on the client. Consider adding ${indexSpec} at ` +
                     `${indexPath} to your security rules for better performance.`);
             }
@@ -6538,7 +5353,7 @@ class PersistentConnection extends ServerActions {
                     this.appCheckToken_ = appCheckToken && appCheckToken.token;
                     connection = new Connection(connId, this.repoInfo_, this.applicationId_, this.appCheckToken_, this.authToken_, onDataMessage, onReady, onDisconnect, 
                     /* onKill= */ reason => {
-                        warn$1(reason + ' (' + this.repoInfo_.toString() + ')');
+                        warn(reason + ' (' + this.repoInfo_.toString() + ')');
                         this.interrupt(SERVER_KILL_INTERRUPT_REASON);
                     }, lastSessionId);
                 }
@@ -6553,7 +5368,7 @@ class PersistentConnection extends ServerActions {
                         // This may be a critical error for the Admin Node.js SDK, so log a warning.
                         // But getToken() may also just have temporarily failed, so we still want to
                         // continue retrying.
-                        warn$1(error);
+                        warn(error);
                     }
                     closeFn();
                 }
@@ -8719,9 +7534,6 @@ const VALUE_INDEX = new ValueIndex();
  */
 // Modeled after base64 web-safe chars, but ordered by ASCII.
 const PUSH_CHARS = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
-const MIN_PUSH_CHAR = '-';
-const MAX_PUSH_CHAR = 'z';
-const MAX_KEY_LEN = 786;
 /**
  * Fancy ID generator that creates 20-character string identifiers with the
  * following properties:
@@ -8778,75 +7590,6 @@ const nextPushId = (function () {
         return id;
     };
 })();
-const successor = function (key) {
-    if (key === '' + INTEGER_32_MAX) {
-        // See https://firebase.google.com/docs/database/web/lists-of-data#data-order
-        return MIN_PUSH_CHAR;
-    }
-    const keyAsInt = tryParseInt(key);
-    if (keyAsInt != null) {
-        return '' + (keyAsInt + 1);
-    }
-    const next = new Array(key.length);
-    for (let i = 0; i < next.length; i++) {
-        next[i] = key.charAt(i);
-    }
-    if (next.length < MAX_KEY_LEN) {
-        next.push(MIN_PUSH_CHAR);
-        return next.join('');
-    }
-    let i = next.length - 1;
-    while (i >= 0 && next[i] === MAX_PUSH_CHAR) {
-        i--;
-    }
-    // `successor` was called on the largest possible key, so return the
-    // MAX_NAME, which sorts larger than all keys.
-    if (i === -1) {
-        return MAX_NAME;
-    }
-    const source = next[i];
-    const sourcePlusOne = PUSH_CHARS.charAt(PUSH_CHARS.indexOf(source) + 1);
-    next[i] = sourcePlusOne;
-    return next.slice(0, i + 1).join('');
-};
-// `key` is assumed to be non-empty.
-const predecessor = function (key) {
-    if (key === '' + INTEGER_32_MIN) {
-        return MIN_NAME;
-    }
-    const keyAsInt = tryParseInt(key);
-    if (keyAsInt != null) {
-        return '' + (keyAsInt - 1);
-    }
-    const next = new Array(key.length);
-    for (let i = 0; i < next.length; i++) {
-        next[i] = key.charAt(i);
-    }
-    // If `key` ends in `MIN_PUSH_CHAR`, the largest key lexicographically
-    // smaller than `key`, is `key[0:key.length - 1]`. The next key smaller
-    // than that, `predecessor(predecessor(key))`, is
-    //
-    // `key[0:key.length - 2] + (key[key.length - 1] - 1) + \
-    //   { MAX_PUSH_CHAR repeated MAX_KEY_LEN - (key.length - 1) times }
-    //
-    // analogous to increment/decrement for base-10 integers.
-    //
-    // This works because lexigographic comparison works character-by-character,
-    // using length as a tie-breaker if one key is a prefix of the other.
-    if (next[next.length - 1] === MIN_PUSH_CHAR) {
-        if (next.length === 1) {
-            // See https://firebase.google.com/docs/database/web/lists-of-data#orderbykey
-            return '' + INTEGER_32_MAX;
-        }
-        delete next[next.length - 1];
-        return next.join('');
-    }
-    // Replace the last character with it's immediate predecessor, and
-    // fill the suffix of the key with MAX_PUSH_CHAR. This is the
-    // lexicographically largest possible key smaller than `key`.
-    next[next.length - 1] = PUSH_CHARS.charAt(PUSH_CHARS.indexOf(next[next.length - 1]) - 1);
-    return next.join('') + MAX_PUSH_CHAR.repeat(MAX_KEY_LEN - next.length);
-};
 
 /**
  * @license
@@ -9459,96 +8202,6 @@ function queryParamsGetNodeFilter(queryParams) {
         return new RangedFilter(queryParams);
     }
 }
-function queryParamsLimitToFirst(queryParams, newLimit) {
-    const newParams = queryParams.copy();
-    newParams.limitSet_ = true;
-    newParams.limit_ = newLimit;
-    newParams.viewFrom_ = "l" /* VIEW_FROM_LEFT */;
-    return newParams;
-}
-function queryParamsLimitToLast(queryParams, newLimit) {
-    const newParams = queryParams.copy();
-    newParams.limitSet_ = true;
-    newParams.limit_ = newLimit;
-    newParams.viewFrom_ = "r" /* VIEW_FROM_RIGHT */;
-    return newParams;
-}
-function queryParamsStartAt(queryParams, indexValue, key) {
-    const newParams = queryParams.copy();
-    newParams.startSet_ = true;
-    if (indexValue === undefined) {
-        indexValue = null;
-    }
-    newParams.indexStartValue_ = indexValue;
-    if (key != null) {
-        newParams.startNameSet_ = true;
-        newParams.indexStartName_ = key;
-    }
-    else {
-        newParams.startNameSet_ = false;
-        newParams.indexStartName_ = '';
-    }
-    return newParams;
-}
-function queryParamsStartAfter(queryParams, indexValue, key) {
-    let params;
-    if (queryParams.index_ === KEY_INDEX) {
-        if (typeof indexValue === 'string') {
-            indexValue = successor(indexValue);
-        }
-        params = queryParamsStartAt(queryParams, indexValue, key);
-    }
-    else {
-        let childKey;
-        if (key == null) {
-            childKey = MAX_NAME;
-        }
-        else {
-            childKey = successor(key);
-        }
-        params = queryParamsStartAt(queryParams, indexValue, childKey);
-    }
-    params.startAfterSet_ = true;
-    return params;
-}
-function queryParamsEndAt(queryParams, indexValue, key) {
-    const newParams = queryParams.copy();
-    newParams.endSet_ = true;
-    if (indexValue === undefined) {
-        indexValue = null;
-    }
-    newParams.indexEndValue_ = indexValue;
-    if (key !== undefined) {
-        newParams.endNameSet_ = true;
-        newParams.indexEndName_ = key;
-    }
-    else {
-        newParams.endNameSet_ = false;
-        newParams.indexEndName_ = '';
-    }
-    return newParams;
-}
-function queryParamsEndBefore(queryParams, indexValue, key) {
-    let childKey;
-    let params;
-    if (queryParams.index_ === KEY_INDEX) {
-        if (typeof indexValue === 'string') {
-            indexValue = predecessor(indexValue);
-        }
-        params = queryParamsEndAt(queryParams, indexValue, key);
-    }
-    else {
-        if (key == null) {
-            childKey = MIN_NAME;
-        }
-        else {
-            childKey = predecessor(key);
-        }
-        params = queryParamsEndAt(queryParams, indexValue, childKey);
-    }
-    params.endBeforeSet_ = true;
-    return params;
-}
 function queryParamsOrderBy(queryParams, index) {
     const newParams = queryParams.copy();
     newParams.index_ = index;
@@ -9789,7 +8442,7 @@ class ReadonlyRestClient extends ServerActions {
                             res = jsonEval(xhr.responseText);
                         }
                         catch (e) {
-                            warn$1('Failed to parse JSON response for ' +
+                            warn('Failed to parse JSON response for ' +
                                 url +
                                 ': ' +
                                 xhr.responseText);
@@ -9799,7 +8452,7 @@ class ReadonlyRestClient extends ServerActions {
                     else {
                         // 401 and 404 are expected.
                         if (xhr.status !== 401 && xhr.status !== 404) {
-                            warn$1('Got unsuccessful REST response for ' +
+                            warn('Got unsuccessful REST response for ' +
                                 url +
                                 ' Status: ' +
                                 xhr.status);
@@ -13520,18 +12173,6 @@ const validatePriority = function (fnName, priority, optional) {
             '(a string, finite number, server value, or null).');
     }
 };
-const validateKey = function (fnName, argumentName, key, optional) {
-    if (optional && key === undefined) {
-        return;
-    }
-    if (!isValidKey(key)) {
-        throw new Error(errorPrefix(fnName, argumentName) +
-            'was an invalid key = "' +
-            key +
-            '".  Firebase keys must be non-empty strings and ' +
-            'can\'t contain ".", "#", "$", "/", "[", or "]").');
-    }
-};
 /**
  * @internal
  */
@@ -13693,7 +12334,7 @@ function eventListRaise(eventList) {
         if (eventData !== null) {
             eventList.events[i] = null;
             const eventFn = eventData.getEventRunner();
-            if (logger$1) {
+            if (logger) {
                 log('event: ' + eventData.toString());
             }
             exceptionGuard(eventFn);
@@ -13950,7 +12591,7 @@ function repoSetWithPriority(repo, path, newVal, newPriority, onComplete) {
     repo.server_.put(path.toString(), newNodeUnresolved.val(/*export=*/ true), (status, errorReason) => {
         const success = status === 'ok';
         if (!success) {
-            warn$1('set at ' + path + ' failed: ' + status);
+            warn('set at ' + path + ' failed: ' + status);
         }
         const clearEvents = syncTreeAckUserWrite(repo.serverSyncTree_, writeId, !success);
         eventQueueRaiseEventsForChangedPath(repo.eventQueue_, path, clearEvents);
@@ -13978,7 +12619,7 @@ function repoUpdate(repo, path, childrenToMerge, onComplete) {
         repo.server_.merge(path.toString(), childrenToMerge, (status, errorReason) => {
             const success = status === 'ok';
             if (!success) {
-                warn$1('update at ' + path + ' failed: ' + status);
+                warn('update at ' + path + ' failed: ' + status);
             }
             const clearEvents = syncTreeAckUserWrite(repo.serverSyncTree_, writeId, !success);
             const affectedPath = clearEvents.length > 0 ? repoRerunTransactions(repo, path) : path;
@@ -14086,11 +12727,6 @@ function repoInterrupt(repo) {
         repo.persistentConnection_.interrupt(INTERRUPT_REASON);
     }
 }
-function repoResume(repo) {
-    if (repo.persistentConnection_) {
-        repo.persistentConnection_.resume(INTERRUPT_REASON);
-    }
-}
 function repoLog(repo, ...varArgs) {
     let prefix = '';
     if (repo.persistentConnection_) {
@@ -14116,92 +12752,6 @@ function repoCallOnCompleteCallback(repo, callback, status, errorReason) {
                 callback(error);
             }
         });
-    }
-}
-/**
- * Creates a new transaction, adds it to the transactions we're tracking, and
- * sends it to the server if possible.
- *
- * @param path - Path at which to do transaction.
- * @param transactionUpdate - Update callback.
- * @param onComplete - Completion callback.
- * @param unwatcher - Function that will be called when the transaction no longer
- * need data updates for `path`.
- * @param applyLocally - Whether or not to make intermediate results visible
- */
-function repoStartTransaction(repo, path, transactionUpdate, onComplete, unwatcher, applyLocally) {
-    repoLog(repo, 'transaction on ' + path);
-    // Initialize transaction.
-    const transaction = {
-        path,
-        update: transactionUpdate,
-        onComplete,
-        // One of TransactionStatus enums.
-        status: null,
-        // Used when combining transactions at different locations to figure out
-        // which one goes first.
-        order: LUIDGenerator(),
-        // Whether to raise local events for this transaction.
-        applyLocally,
-        // Count of how many times we've retried the transaction.
-        retryCount: 0,
-        // Function to call to clean up our .on() listener.
-        unwatcher,
-        // Stores why a transaction was aborted.
-        abortReason: null,
-        currentWriteId: null,
-        currentInputSnapshot: null,
-        currentOutputSnapshotRaw: null,
-        currentOutputSnapshotResolved: null
-    };
-    // Run transaction initially.
-    const currentState = repoGetLatestState(repo, path, undefined);
-    transaction.currentInputSnapshot = currentState;
-    const newVal = transaction.update(currentState.val());
-    if (newVal === undefined) {
-        // Abort transaction.
-        transaction.unwatcher();
-        transaction.currentOutputSnapshotRaw = null;
-        transaction.currentOutputSnapshotResolved = null;
-        if (transaction.onComplete) {
-            transaction.onComplete(null, false, transaction.currentInputSnapshot);
-        }
-    }
-    else {
-        validateFirebaseData('transaction failed: Data returned ', newVal, transaction.path);
-        // Mark as run and add to our queue.
-        transaction.status = 0 /* RUN */;
-        const queueNode = treeSubTree(repo.transactionQueueTree_, path);
-        const nodeQueue = treeGetValue(queueNode) || [];
-        nodeQueue.push(transaction);
-        treeSetValue(queueNode, nodeQueue);
-        // Update visibleData and raise events
-        // Note: We intentionally raise events after updating all of our
-        // transaction state, since the user could start new transactions from the
-        // event callbacks.
-        let priorityForNode;
-        if (typeof newVal === 'object' &&
-            newVal !== null &&
-            contains(newVal, '.priority')) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            priorityForNode = safeGet(newVal, '.priority');
-            assert(isValidPriority(priorityForNode), 'Invalid priority returned by transaction. ' +
-                'Priority must be a valid string, finite number, server value, or null.');
-        }
-        else {
-            const currentNode = syncTreeCalcCompleteEventCache(repo.serverSyncTree_, path) ||
-                ChildrenNode.EMPTY_NODE;
-            priorityForNode = currentNode.getPriority().val();
-        }
-        const serverValues = repoGenerateServerValues(repo);
-        const newNodeUnresolved = nodeFromJSON(newVal, priorityForNode);
-        const newNode = resolveDeferredValueSnapshot(newNodeUnresolved, currentState, serverValues);
-        transaction.currentOutputSnapshotRaw = newNodeUnresolved;
-        transaction.currentOutputSnapshotResolved = newNode;
-        transaction.currentWriteId = repoGetNextWriteId(repo);
-        const events = syncTreeApplyUserOverwrite(repo.serverSyncTree_, path, newNode, transaction.currentWriteId, transaction.applyLocally);
-        eventQueueRaiseEventsForChangedPath(repo.eventQueue_, path, events);
-        repoSendReadyTransactions(repo, repo.transactionQueueTree_);
     }
 }
 /**
@@ -14311,7 +12861,7 @@ function repoSendTransactionQueue(repo, path, queue) {
                 }
             }
             else {
-                warn$1('transaction at ' + pathToSend.toString() + ' failed: ' + status);
+                warn('transaction at ' + pathToSend.toString() + ' failed: ' + status);
                 for (let i = 0; i < queue.length; i++) {
                     queue[i].status = 4 /* NEEDS_ABORT */;
                     queue[i].abortReason = status;
@@ -14626,7 +13176,7 @@ function decodeQuery(queryString) {
             results[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]);
         }
         else {
-            warn$1(`Invalid query segment '${segment}' in query '${queryString}'`);
+            warn(`Invalid query segment '${segment}' in query '${queryString}'`);
         }
     }
     return results;
@@ -14880,7 +13430,7 @@ class CallbackContext {
  * operation to occur each time a disconnect occurs, you'll need to re-establish
  * the `onDisconnect` operations each time you reconnect.
  */
-class OnDisconnect$1 {
+class OnDisconnect {
     /** @hideconstructor */
     constructor(_repo, _path) {
         this._repo = _repo;
@@ -15113,18 +13663,6 @@ function validateQueryEndpoints(params) {
     }
 }
 /**
- * Validates that limit* has been called with the correct combination of parameters
- */
-function validateLimit(params) {
-    if (params.hasStart() &&
-        params.hasEnd() &&
-        params.hasLimit() &&
-        !params.hasAnchoredLimit()) {
-        throw new Error("Query: Can't combine startAt(), startAfter(), endAt(), endBefore(), and limit(). Use " +
-            'limitToFirst() or limitToLast() instead.');
-    }
-}
-/**
  * @internal
  */
 class ReferenceImpl extends QueryImpl {
@@ -15160,7 +13698,7 @@ class ReferenceImpl extends QueryImpl {
  * a Database location. It cannot be modified and will never change (to modify
  * data, you always call the `set()` method on a `Reference` directly).
  */
-class DataSnapshot$1 {
+class DataSnapshot {
     /**
      * @param _node - A SnapshotNode to wrap.
      * @param ref - The location this snapshot came from.
@@ -15219,7 +13757,7 @@ class DataSnapshot$1 {
     child(path) {
         const childPath = new Path(path);
         const childRef = child(this.ref, path);
-        return new DataSnapshot$1(this._node.getChild(childPath), childRef, PRIORITY_INDEX);
+        return new DataSnapshot(this._node.getChild(childPath), childRef, PRIORITY_INDEX);
     }
     /**
      * Returns true if this `DataSnapshot` contains any data. It is slightly more
@@ -15266,7 +13804,7 @@ class DataSnapshot$1 {
         const childrenNode = this._node;
         // Sanitize the return value to a boolean. ChildrenNode.forEachChild has a weird return type...
         return !!childrenNode.forEachChild(this._index, (key, node) => {
-            return action(new DataSnapshot$1(node, child(this.ref, key), PRIORITY_INDEX));
+            return action(new DataSnapshot(node, child(this.ref, key), PRIORITY_INDEX));
         });
     }
     /**
@@ -15323,59 +13861,6 @@ class DataSnapshot$1 {
     }
 }
 /**
- *
- * Returns a `Reference` representing the location in the Database
- * corresponding to the provided path. If no path is provided, the `Reference`
- * will point to the root of the Database.
- *
- * @param db - The database instance to obtain a reference for.
- * @param path - Optional path representing the location the returned
- *   `Reference` will point. If not provided, the returned `Reference` will
- *   point to the root of the Database.
- * @returns If a path is provided, a `Reference`
- *   pointing to the provided path. Otherwise, a `Reference` pointing to the
- *   root of the Database.
- */
-function ref(db, path) {
-    db = getModularInstance(db);
-    db._checkNotDeleted('ref');
-    return path !== undefined ? child(db._root, path) : db._root;
-}
-/**
- * Returns a `Reference` representing the location in the Database
- * corresponding to the provided Firebase URL.
- *
- * An exception is thrown if the URL is not a valid Firebase Database URL or it
- * has a different domain than the current `Database` instance.
- *
- * Note that all query parameters (`orderBy`, `limitToLast`, etc.) are ignored
- * and are not applied to the returned `Reference`.
- *
- * @param db - The database instance to obtain a reference for.
- * @param url - The Firebase URL at which the returned `Reference` will
- *   point.
- * @returns A `Reference` pointing to the provided
- *   Firebase URL.
- */
-function refFromURL(db, url) {
-    db = getModularInstance(db);
-    db._checkNotDeleted('refFromURL');
-    const parsedURL = parseRepoInfo(url, db._repo.repoInfo_.nodeAdmin);
-    validateUrl('refFromURL', parsedURL);
-    const repoInfo = parsedURL.repoInfo;
-    if (!db._repo.repoInfo_.isCustomHost() &&
-        repoInfo.host !== db._repo.repoInfo_.host) {
-        fatal('refFromURL' +
-            ': Host name does not match the current database: ' +
-            '(found ' +
-            repoInfo.host +
-            ' but expected ' +
-            db._repo.repoInfo_.host +
-            ')');
-    }
-    return ref(db, parsedURL.path.toString());
-}
-/**
  * Gets a `Reference` for the location at the specified relative path.
  *
  * The relative path can either be a simple child name (for example, "ada") or
@@ -15405,7 +13890,7 @@ function child(parent, path) {
  */
 function onDisconnect(ref) {
     ref = getModularInstance(ref);
-    return new OnDisconnect$1(ref._repo, ref._path);
+    return new OnDisconnect(ref._repo, ref._path);
 }
 /**
  * Generates a new child location using a unique key and returns its
@@ -15456,24 +13941,6 @@ function push$1(parent, value) {
     return thennablePushRef;
 }
 /**
- * Removes the data at this Database location.
- *
- * Any data at child locations will also be deleted.
- *
- * The effect of the remove will be visible immediately and the corresponding
- * event 'value' will be triggered. Synchronization of the remove to the
- * Firebase servers will also be started, and the returned Promise will resolve
- * when complete. If provided, the onComplete callback will be called
- * asynchronously after synchronization has finished.
- *
- * @param ref - The location to remove.
- * @returns Resolves when remove on server is complete.
- */
-function remove$1(ref) {
-    validateWritablePath('remove', ref._path);
-    return set(ref, null);
-}
-/**
  * Writes data to this Database location.
  *
  * This will overwrite any data at this location and all child locations.
@@ -15509,52 +13976,6 @@ function set(ref, value) {
     const deferred = new Deferred();
     repoSetWithPriority(ref._repo, ref._path, value, 
     /*priority=*/ null, deferred.wrapCallback(() => { }));
-    return deferred.promise;
-}
-/**
- * Sets a priority for the data at this Database location.
- *
- * Applications need not use priority but can order collections by
- * ordinary properties (see
- * {@link https://firebase.google.com/docs/database/web/lists-of-data#sorting_and_filtering_data | Sorting and filtering data}
- * ).
- *
- * @param ref - The location to write to.
- * @param priority - The priority to be written (string, number, or null).
- * @returns Resolves when write to server is complete.
- */
-function setPriority(ref, priority) {
-    ref = getModularInstance(ref);
-    validateWritablePath('setPriority', ref._path);
-    validatePriority('setPriority', priority, false);
-    const deferred = new Deferred();
-    repoSetWithPriority(ref._repo, pathChild(ref._path, '.priority'), priority, null, deferred.wrapCallback(() => { }));
-    return deferred.promise;
-}
-/**
- * Writes data the Database location. Like `set()` but also specifies the
- * priority for that data.
- *
- * Applications need not use priority but can order collections by
- * ordinary properties (see
- * {@link https://firebase.google.com/docs/database/web/lists-of-data#sorting_and_filtering_data | Sorting and filtering data}
- * ).
- *
- * @param ref - The location to write to.
- * @param value - The value to be written (string, number, boolean, object,
- *   array, or null).
- * @param priority - The priority to be written (string, number, or null).
- * @returns Resolves when write to server is complete.
- */
-function setWithPriority(ref, value, priority) {
-    validateWritablePath('setWithPriority', ref._path);
-    validateFirebaseDataArg('setWithPriority', value, ref._path, false);
-    validatePriority('setWithPriority', priority, false);
-    if (ref.key === '.length' || ref.key === '.keys') {
-        throw 'setWithPriority failed: ' + ref.key + ' is a read-only object.';
-    }
-    const deferred = new Deferred();
-    repoSetWithPriority(ref._repo, ref._path, value, priority, deferred.wrapCallback(() => { }));
     return deferred.promise;
 }
 /**
@@ -15609,7 +14030,7 @@ function update(ref, values) {
 function get(query) {
     query = getModularInstance(query);
     return repoGetValue(query._repo, query).then(node => {
-        return new DataSnapshot$1(node, new ReferenceImpl(query._repo, query._path), query._queryParams.getIndex());
+        return new DataSnapshot(node, new ReferenceImpl(query._repo, query._path), query._queryParams.getIndex());
     });
 }
 /**
@@ -15624,7 +14045,7 @@ class ValueEventRegistration {
     }
     createEvent(change, query) {
         const index = query._queryParams.getIndex();
-        return new DataEvent('value', this, new DataSnapshot$1(change.snapshotNode, new ReferenceImpl(query._repo, query._path), index));
+        return new DataEvent('value', this, new DataSnapshot(change.snapshotNode, new ReferenceImpl(query._repo, query._path), index));
     }
     getEventRunner(eventData) {
         if (eventData.getEventType() === 'cancel') {
@@ -15684,7 +14105,7 @@ class ChildEventRegistration {
         assert(change.childName != null, 'Child events should have a childName.');
         const childRef = child(new ReferenceImpl(query._repo, query._path), change.childName);
         const index = query._queryParams.getIndex();
-        return new DataEvent(change.type, this, new DataSnapshot$1(change.snapshotNode, childRef, index), change.prevName);
+        return new DataEvent(change.type, this, new DataSnapshot(change.snapshotNode, childRef, index), change.prevName);
     }
     getEventRunner(eventData) {
         if (eventData.getEventType() === 'cancel') {
@@ -15739,15 +14160,6 @@ function onValue(query, callback, cancelCallbackOrListenOptions, options) {
 function onChildAdded(query, callback, cancelCallbackOrListenOptions, options) {
     return addEventListener(query, 'child_added', callback, cancelCallbackOrListenOptions, options);
 }
-function onChildChanged(query, callback, cancelCallbackOrListenOptions, options) {
-    return addEventListener(query, 'child_changed', callback, cancelCallbackOrListenOptions, options);
-}
-function onChildMoved(query, callback, cancelCallbackOrListenOptions, options) {
-    return addEventListener(query, 'child_moved', callback, cancelCallbackOrListenOptions, options);
-}
-function onChildRemoved(query, callback, cancelCallbackOrListenOptions, options) {
-    return addEventListener(query, 'child_removed', callback, cancelCallbackOrListenOptions, options);
-}
 /**
  * Detaches a callback previously attached with `on()`.
  *
@@ -15795,338 +14207,6 @@ function off(query, eventType, callback) {
  */
 class QueryConstraint {
 }
-class QueryEndAtConstraint extends QueryConstraint {
-    constructor(_value, _key) {
-        super();
-        this._value = _value;
-        this._key = _key;
-    }
-    _apply(query) {
-        validateFirebaseDataArg('endAt', this._value, query._path, true);
-        const newParams = queryParamsEndAt(query._queryParams, this._value, this._key);
-        validateLimit(newParams);
-        validateQueryEndpoints(newParams);
-        if (query._queryParams.hasEnd()) {
-            throw new Error('endAt: Starting point was already set (by another call to endAt, ' +
-                'endBefore or equalTo).');
-        }
-        return new QueryImpl(query._repo, query._path, newParams, query._orderByCalled);
-    }
-}
-/**
- * Creates a `QueryConstraint` with the specified ending point.
- *
- * Using `startAt()`, `startAfter()`, `endBefore()`, `endAt()` and `equalTo()`
- * allows you to choose arbitrary starting and ending points for your queries.
- *
- * The ending point is inclusive, so children with exactly the specified value
- * will be included in the query. The optional key argument can be used to
- * further limit the range of the query. If it is specified, then children that
- * have exactly the specified value must also have a key name less than or equal
- * to the specified key.
- *
- * You can read more about `endAt()` in
- * {@link https://firebase.google.com/docs/database/web/lists-of-data#filtering_data | Filtering data}.
- *
- * @param value - The value to end at. The argument type depends on which
- * `orderBy*()` function was used in this query. Specify a value that matches
- * the `orderBy*()` type. When used in combination with `orderByKey()`, the
- * value must be a string.
- * @param key - The child key to end at, among the children with the previously
- * specified priority. This argument is only allowed if ordering by child,
- * value, or priority.
- */
-function endAt(value, key) {
-    validateKey('endAt', 'key', key, true);
-    return new QueryEndAtConstraint(value, key);
-}
-class QueryEndBeforeConstraint extends QueryConstraint {
-    constructor(_value, _key) {
-        super();
-        this._value = _value;
-        this._key = _key;
-    }
-    _apply(query) {
-        validateFirebaseDataArg('endBefore', this._value, query._path, false);
-        const newParams = queryParamsEndBefore(query._queryParams, this._value, this._key);
-        validateLimit(newParams);
-        validateQueryEndpoints(newParams);
-        if (query._queryParams.hasEnd()) {
-            throw new Error('endBefore: Starting point was already set (by another call to endAt, ' +
-                'endBefore or equalTo).');
-        }
-        return new QueryImpl(query._repo, query._path, newParams, query._orderByCalled);
-    }
-}
-/**
- * Creates a `QueryConstraint` with the specified ending point (exclusive).
- *
- * Using `startAt()`, `startAfter()`, `endBefore()`, `endAt()` and `equalTo()`
- * allows you to choose arbitrary starting and ending points for your queries.
- *
- * The ending point is exclusive. If only a value is provided, children
- * with a value less than the specified value will be included in the query.
- * If a key is specified, then children must have a value lesss than or equal
- * to the specified value and a a key name less than the specified key.
- *
- * @param value - The value to end before. The argument type depends on which
- * `orderBy*()` function was used in this query. Specify a value that matches
- * the `orderBy*()` type. When used in combination with `orderByKey()`, the
- * value must be a string.
- * @param key - The child key to end before, among the children with the
- * previously specified priority. This argument is only allowed if ordering by
- * child, value, or priority.
- */
-function endBefore(value, key) {
-    validateKey('endBefore', 'key', key, true);
-    return new QueryEndBeforeConstraint(value, key);
-}
-class QueryStartAtConstraint extends QueryConstraint {
-    constructor(_value, _key) {
-        super();
-        this._value = _value;
-        this._key = _key;
-    }
-    _apply(query) {
-        validateFirebaseDataArg('startAt', this._value, query._path, true);
-        const newParams = queryParamsStartAt(query._queryParams, this._value, this._key);
-        validateLimit(newParams);
-        validateQueryEndpoints(newParams);
-        if (query._queryParams.hasStart()) {
-            throw new Error('startAt: Starting point was already set (by another call to startAt, ' +
-                'startBefore or equalTo).');
-        }
-        return new QueryImpl(query._repo, query._path, newParams, query._orderByCalled);
-    }
-}
-/**
- * Creates a `QueryConstraint` with the specified starting point.
- *
- * Using `startAt()`, `startAfter()`, `endBefore()`, `endAt()` and `equalTo()`
- * allows you to choose arbitrary starting and ending points for your queries.
- *
- * The starting point is inclusive, so children with exactly the specified value
- * will be included in the query. The optional key argument can be used to
- * further limit the range of the query. If it is specified, then children that
- * have exactly the specified value must also have a key name greater than or
- * equal to the specified key.
- *
- * You can read more about `startAt()` in
- * {@link https://firebase.google.com/docs/database/web/lists-of-data#filtering_data | Filtering data}.
- *
- * @param value - The value to start at. The argument type depends on which
- * `orderBy*()` function was used in this query. Specify a value that matches
- * the `orderBy*()` type. When used in combination with `orderByKey()`, the
- * value must be a string.
- * @param key - The child key to start at. This argument is only allowed if
- * ordering by child, value, or priority.
- */
-function startAt(value = null, key) {
-    validateKey('startAt', 'key', key, true);
-    return new QueryStartAtConstraint(value, key);
-}
-class QueryStartAfterConstraint extends QueryConstraint {
-    constructor(_value, _key) {
-        super();
-        this._value = _value;
-        this._key = _key;
-    }
-    _apply(query) {
-        validateFirebaseDataArg('startAfter', this._value, query._path, false);
-        const newParams = queryParamsStartAfter(query._queryParams, this._value, this._key);
-        validateLimit(newParams);
-        validateQueryEndpoints(newParams);
-        if (query._queryParams.hasStart()) {
-            throw new Error('startAfter: Starting point was already set (by another call to startAt, ' +
-                'startAfter, or equalTo).');
-        }
-        return new QueryImpl(query._repo, query._path, newParams, query._orderByCalled);
-    }
-}
-/**
- * Creates a `QueryConstraint` with the specified starting point (exclusive).
- *
- * Using `startAt()`, `startAfter()`, `endBefore()`, `endAt()` and `equalTo()`
- * allows you to choose arbitrary starting and ending points for your queries.
- *
- * The starting point is exclusive. If only a value is provided, children
- * with a value greater than the specified value will be included in the query.
- * If a key is specified, then children must have a value greater than or equal
- * to the specified value and a a key name greater than the specified key.
- *
- * @param value - The value to start after. The argument type depends on which
- * `orderBy*()` function was used in this query. Specify a value that matches
- * the `orderBy*()` type. When used in combination with `orderByKey()`, the
- * value must be a string.
- * @param key - The child key to start after. This argument is only allowed if
- * ordering by child, value, or priority.
- */
-function startAfter(value, key) {
-    validateKey('startAfter', 'key', key, true);
-    return new QueryStartAfterConstraint(value, key);
-}
-class QueryLimitToFirstConstraint extends QueryConstraint {
-    constructor(_limit) {
-        super();
-        this._limit = _limit;
-    }
-    _apply(query) {
-        if (query._queryParams.hasLimit()) {
-            throw new Error('limitToFirst: Limit was already set (by another call to limitToFirst ' +
-                'or limitToLast).');
-        }
-        return new QueryImpl(query._repo, query._path, queryParamsLimitToFirst(query._queryParams, this._limit), query._orderByCalled);
-    }
-}
-/**
- * Creates a new `QueryConstraint` that if limited to the first specific number
- * of children.
- *
- * The `limitToFirst()` method is used to set a maximum number of children to be
- * synced for a given callback. If we set a limit of 100, we will initially only
- * receive up to 100 `child_added` events. If we have fewer than 100 messages
- * stored in our Database, a `child_added` event will fire for each message.
- * However, if we have over 100 messages, we will only receive a `child_added`
- * event for the first 100 ordered messages. As items change, we will receive
- * `child_removed` events for each item that drops out of the active list so
- * that the total number stays at 100.
- *
- * You can read more about `limitToFirst()` in
- * {@link https://firebase.google.com/docs/database/web/lists-of-data#filtering_data | Filtering data}.
- *
- * @param limit - The maximum number of nodes to include in this query.
- */
-function limitToFirst(limit) {
-    if (typeof limit !== 'number' || Math.floor(limit) !== limit || limit <= 0) {
-        throw new Error('limitToFirst: First argument must be a positive integer.');
-    }
-    return new QueryLimitToFirstConstraint(limit);
-}
-class QueryLimitToLastConstraint extends QueryConstraint {
-    constructor(_limit) {
-        super();
-        this._limit = _limit;
-    }
-    _apply(query) {
-        if (query._queryParams.hasLimit()) {
-            throw new Error('limitToLast: Limit was already set (by another call to limitToFirst ' +
-                'or limitToLast).');
-        }
-        return new QueryImpl(query._repo, query._path, queryParamsLimitToLast(query._queryParams, this._limit), query._orderByCalled);
-    }
-}
-/**
- * Creates a new `QueryConstraint` that is limited to return only the last
- * specified number of children.
- *
- * The `limitToLast()` method is used to set a maximum number of children to be
- * synced for a given callback. If we set a limit of 100, we will initially only
- * receive up to 100 `child_added` events. If we have fewer than 100 messages
- * stored in our Database, a `child_added` event will fire for each message.
- * However, if we have over 100 messages, we will only receive a `child_added`
- * event for the last 100 ordered messages. As items change, we will receive
- * `child_removed` events for each item that drops out of the active list so
- * that the total number stays at 100.
- *
- * You can read more about `limitToLast()` in
- * {@link https://firebase.google.com/docs/database/web/lists-of-data#filtering_data | Filtering data}.
- *
- * @param limit - The maximum number of nodes to include in this query.
- */
-function limitToLast(limit) {
-    if (typeof limit !== 'number' || Math.floor(limit) !== limit || limit <= 0) {
-        throw new Error('limitToLast: First argument must be a positive integer.');
-    }
-    return new QueryLimitToLastConstraint(limit);
-}
-class QueryOrderByChildConstraint extends QueryConstraint {
-    constructor(_path) {
-        super();
-        this._path = _path;
-    }
-    _apply(query) {
-        validateNoPreviousOrderByCall(query, 'orderByChild');
-        const parsedPath = new Path(this._path);
-        if (pathIsEmpty(parsedPath)) {
-            throw new Error('orderByChild: cannot pass in empty path. Use orderByValue() instead.');
-        }
-        const index = new PathIndex(parsedPath);
-        const newParams = queryParamsOrderBy(query._queryParams, index);
-        validateQueryEndpoints(newParams);
-        return new QueryImpl(query._repo, query._path, newParams, 
-        /*orderByCalled=*/ true);
-    }
-}
-/**
- * Creates a new `QueryConstraint` that orders by the specified child key.
- *
- * Queries can only order by one key at a time. Calling `orderByChild()`
- * multiple times on the same query is an error.
- *
- * Firebase queries allow you to order your data by any child key on the fly.
- * However, if you know in advance what your indexes will be, you can define
- * them via the .indexOn rule in your Security Rules for better performance. See
- * the{@link https://firebase.google.com/docs/database/security/indexing-data}
- * rule for more information.
- *
- * You can read more about `orderByChild()` in
- * {@link https://firebase.google.com/docs/database/web/lists-of-data#sort_data | Sort data}.
- *
- * @param path - The path to order by.
- */
-function orderByChild(path) {
-    if (path === '$key') {
-        throw new Error('orderByChild: "$key" is invalid.  Use orderByKey() instead.');
-    }
-    else if (path === '$priority') {
-        throw new Error('orderByChild: "$priority" is invalid.  Use orderByPriority() instead.');
-    }
-    else if (path === '$value') {
-        throw new Error('orderByChild: "$value" is invalid.  Use orderByValue() instead.');
-    }
-    validatePathString('orderByChild', 'path', path, false);
-    return new QueryOrderByChildConstraint(path);
-}
-class QueryOrderByKeyConstraint extends QueryConstraint {
-    _apply(query) {
-        validateNoPreviousOrderByCall(query, 'orderByKey');
-        const newParams = queryParamsOrderBy(query._queryParams, KEY_INDEX);
-        validateQueryEndpoints(newParams);
-        return new QueryImpl(query._repo, query._path, newParams, 
-        /*orderByCalled=*/ true);
-    }
-}
-/**
- * Creates a new `QueryConstraint` that orders by the key.
- *
- * Sorts the results of a query by their (ascending) key values.
- *
- * You can read more about `orderByKey()` in
- * {@link https://firebase.google.com/docs/database/web/lists-of-data#sort_data | Sort data}.
- */
-function orderByKey() {
-    return new QueryOrderByKeyConstraint();
-}
-class QueryOrderByPriorityConstraint extends QueryConstraint {
-    _apply(query) {
-        validateNoPreviousOrderByCall(query, 'orderByPriority');
-        const newParams = queryParamsOrderBy(query._queryParams, PRIORITY_INDEX);
-        validateQueryEndpoints(newParams);
-        return new QueryImpl(query._repo, query._path, newParams, 
-        /*orderByCalled=*/ true);
-    }
-}
-/**
- * Creates a new `QueryConstraint` that orders by priority.
- *
- * Applications need not use priority but can order collections by
- * ordinary properties (see
- * {@link https://firebase.google.com/docs/database/web/lists-of-data#sort_data | Sort data}
- * for alternatives to priority.
- */
-function orderByPriority() {
-    return new QueryOrderByPriorityConstraint();
-}
 class QueryOrderByValueConstraint extends QueryConstraint {
     _apply(query) {
         validateNoPreviousOrderByCall(query, 'orderByValue');
@@ -16147,52 +14227,6 @@ class QueryOrderByValueConstraint extends QueryConstraint {
  */
 function orderByValue() {
     return new QueryOrderByValueConstraint();
-}
-class QueryEqualToValueConstraint extends QueryConstraint {
-    constructor(_value, _key) {
-        super();
-        this._value = _value;
-        this._key = _key;
-    }
-    _apply(query) {
-        validateFirebaseDataArg('equalTo', this._value, query._path, false);
-        if (query._queryParams.hasStart()) {
-            throw new Error('equalTo: Starting point was already set (by another call to startAt/startAfter or ' +
-                'equalTo).');
-        }
-        if (query._queryParams.hasEnd()) {
-            throw new Error('equalTo: Ending point was already set (by another call to endAt/endBefore or ' +
-                'equalTo).');
-        }
-        return new QueryEndAtConstraint(this._value, this._key)._apply(new QueryStartAtConstraint(this._value, this._key)._apply(query));
-    }
-}
-/**
- * Creates a `QueryConstraint` that includes children that match the specified
- * value.
- *
- * Using `startAt()`, `startAfter()`, `endBefore()`, `endAt()` and `equalTo()`
- * allows you to choose arbitrary starting and ending points for your queries.
- *
- * The optional key argument can be used to further limit the range of the
- * query. If it is specified, then children that have exactly the specified
- * value must also have exactly the specified key as their key name. This can be
- * used to filter result sets with many matches for the same value.
- *
- * You can read more about `equalTo()` in
- * {@link https://firebase.google.com/docs/database/web/lists-of-data#filtering_data | Filtering data}.
- *
- * @param value - The value to match for. The argument type depends on which
- * `orderBy*()` function was used in this query. Specify a value that matches
- * the `orderBy*()` type. When used in combination with `orderByKey()`, the
- * value must be a string.
- * @param key - The child key to start at, among the children with the
- * previously specified priority. This argument is only allowed if ordering by
- * child, value, or priority.
- */
-function equalTo(value, key) {
-    validateKey('equalTo', 'key', key, true);
-    return new QueryEqualToValueConstraint(value, key);
 }
 /**
  * Creates a new immutable instance of `Query` that is extended to also include
@@ -16253,16 +14287,6 @@ const repos = {};
  */
 let useRestClient = false;
 /**
- * Update an existing `Repo` in place to point to a new host/port.
- */
-function repoManagerApplyEmulatorSettings(repo, host, port, tokenProvider) {
-    repo.repoInfo_ = new RepoInfo(`${host}:${port}`, 
-    /* secure= */ false, repo.repoInfo_.namespace, repo.repoInfo_.webSocketOnly, repo.repoInfo_.nodeAdmin, repo.repoInfo_.persistenceKey, repo.repoInfo_.includeNamespaceInQueryParams);
-    if (tokenProvider) {
-        repo.authTokenProvider_ = tokenProvider;
-    }
-}
-/**
  * This function should only ever be called to CREATE a new database instance.
  * @internal
  */
@@ -16301,7 +14325,7 @@ function repoManagerDatabaseFromApp(app, authProvider, appCheckProvider, url, no
             '(not including a child path).');
     }
     const repo = repoManagerCreateRepo(repoInfo, app, authTokenProvider, new AppCheckTokenProvider(app.name, appCheckProvider));
-    return new Database$1(repo, app);
+    return new Database(repo, app);
 }
 /**
  * Remove the repo and make sure it is disconnected.
@@ -16340,7 +14364,7 @@ function repoManagerCreateRepo(repoInfo, app, authTokenProvider, appCheckProvide
 /**
  * Class representing a Firebase Realtime Database.
  */
-class Database$1 {
+class Database {
     /** @hideconstructor */
     constructor(_repoInternal, 
     /** The {@link @firebase/app#FirebaseApp} associated with this Realtime Database instance. */
@@ -16379,102 +14403,6 @@ class Database$1 {
         }
     }
 }
-/**
- * Returns the instance of the Realtime Database SDK that is associated
- * with the provided {@link @firebase/app#FirebaseApp}. Initializes a new instance with
- * with default settings if no instance exists or if the existing instance uses
- * a custom database URL.
- *
- * @param app - The {@link @firebase/app#FirebaseApp} instance that the returned Realtime
- * Database instance is associated with.
- * @param url - The URL of the Realtime Database instance to connect to. If not
- * provided, the SDK connects to the default instance of the Firebase App.
- * @returns The `Database` instance of the provided app.
- */
-function getDatabase$1(app = getApp(), url) {
-    return _getProvider(app, 'database').getImmediate({
-        identifier: url
-    });
-}
-/**
- * Modify the provided instance to communicate with the Realtime Database
- * emulator.
- *
- * <p>Note: This method must be called before performing any other operation.
- *
- * @param db - The instance to modify.
- * @param host - The emulator host (ex: localhost)
- * @param port - The emulator port (ex: 8080)
- * @param options.mockUserToken - the mock auth token to use for unit testing Security Rules
- */
-function connectDatabaseEmulator(db, host, port, options = {}) {
-    db = getModularInstance(db);
-    db._checkNotDeleted('useEmulator');
-    if (db._instanceStarted) {
-        fatal('Cannot call useEmulator() after instance has already been initialized.');
-    }
-    const repo = db._repoInternal;
-    let tokenProvider = undefined;
-    if (repo.repoInfo_.nodeAdmin) {
-        if (options.mockUserToken) {
-            fatal('mockUserToken is not supported by the Admin SDK. For client access with mock users, please use the "firebase" package instead of "firebase-admin".');
-        }
-        tokenProvider = new EmulatorTokenProvider(EmulatorTokenProvider.OWNER);
-    }
-    else if (options.mockUserToken) {
-        const token = typeof options.mockUserToken === 'string'
-            ? options.mockUserToken
-            : createMockUserToken(options.mockUserToken, db.app.options.projectId);
-        tokenProvider = new EmulatorTokenProvider(token);
-    }
-    // Modify the repo to apply emulator settings
-    repoManagerApplyEmulatorSettings(repo, host, port, tokenProvider);
-}
-/**
- * Disconnects from the server (all Database operations will be completed
- * offline).
- *
- * The client automatically maintains a persistent connection to the Database
- * server, which will remain active indefinitely and reconnect when
- * disconnected. However, the `goOffline()` and `goOnline()` methods may be used
- * to control the client connection in cases where a persistent connection is
- * undesirable.
- *
- * While offline, the client will no longer receive data updates from the
- * Database. However, all Database operations performed locally will continue to
- * immediately fire events, allowing your application to continue behaving
- * normally. Additionally, each operation performed locally will automatically
- * be queued and retried upon reconnection to the Database server.
- *
- * To reconnect to the Database and begin receiving remote events, see
- * `goOnline()`.
- *
- * @param db - The instance to disconnect.
- */
-function goOffline(db) {
-    db = getModularInstance(db);
-    db._checkNotDeleted('goOffline');
-    repoInterrupt(db._repo);
-}
-/**
- * Reconnects to the server and synchronizes the offline Database state
- * with the server state.
- *
- * This method should be used after disabling the active connection with
- * `goOffline()`. Once reconnected, the client will transmit the proper data
- * and fire the appropriate events so that your client "catches up"
- * automatically.
- *
- * @param db - The instance to reconnect.
- */
-function goOnline(db) {
-    db = getModularInstance(db);
-    db._checkNotDeleted('goOnline');
-    repoResume(db._repo);
-}
-function enableLogging(logger, persistent) {
-    enableLogging$1(logger, persistent);
-}
 
 /**
  * @license
@@ -16492,7 +14420,7 @@ function enableLogging(logger, persistent) {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-function registerDatabase$1(variant) {
+function registerDatabase(variant) {
     setSDKVersion(SDK_VERSION$1);
     _registerComponent(new Component('database', (container, { instanceIdentifier: url }) => {
         const app = container.getProvider('app').getImmediate();
@@ -16500,9 +14428,9 @@ function registerDatabase$1(variant) {
         const appCheckProvider = container.getProvider('app-check-internal');
         return repoManagerDatabaseFromApp(app, authProvider, appCheckProvider, url);
     }, "PUBLIC" /* PUBLIC */).setMultipleInstances(true));
-    registerVersion(name$4, version$4, variant);
+    registerVersion(name$1, version$1, variant);
     // BUILD_TARGET will be replaced by values like esm5, esm2017, cjs5, etc during the compilation
-    registerVersion(name$4, version$4, 'esm2017');
+    registerVersion(name$1, version$1, 'esm2017');
 }
 
 /**
@@ -16532,118 +14460,6 @@ const SERVER_TIMESTAMP = {
 function serverTimestamp() {
     return SERVER_TIMESTAMP;
 }
-/**
- * Returns a placeholder value that can be used to atomically increment the
- * current database value by the provided delta.
- *
- * @param delta - the amount to modify the current value atomically.
- * @returns A placeholder value for modifying data atomically server-side.
- */
-function increment(delta) {
-    return {
-        '.sv': {
-            'increment': delta
-        }
-    };
-}
-
-/**
- * @license
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * A type for the resolve value of {@link runTransaction}.
- */
-class TransactionResult$1 {
-    /** @hideconstructor */
-    constructor(
-    /** Whether the transaction was successfully committed. */
-    committed, 
-    /** The resulting data snapshot. */
-    snapshot) {
-        this.committed = committed;
-        this.snapshot = snapshot;
-    }
-    /** Returns a JSON-serializable representation of this object. */
-    toJSON() {
-        return { committed: this.committed, snapshot: this.snapshot.toJSON() };
-    }
-}
-/**
- * Atomically modifies the data at this location.
- *
- * Atomically modify the data at this location. Unlike a normal `set()`, which
- * just overwrites the data regardless of its previous value, `runTransaction()` is
- * used to modify the existing value to a new value, ensuring there are no
- * conflicts with other clients writing to the same location at the same time.
- *
- * To accomplish this, you pass `runTransaction()` an update function which is
- * used to transform the current value into a new value. If another client
- * writes to the location before your new value is successfully written, your
- * update function will be called again with the new current value, and the
- * write will be retried. This will happen repeatedly until your write succeeds
- * without conflict or you abort the transaction by not returning a value from
- * your update function.
- *
- * Note: Modifying data with `set()` will cancel any pending transactions at
- * that location, so extreme care should be taken if mixing `set()` and
- * `runTransaction()` to update the same data.
- *
- * Note: When using transactions with Security and Firebase Rules in place, be
- * aware that a client needs `.read` access in addition to `.write` access in
- * order to perform a transaction. This is because the client-side nature of
- * transactions requires the client to read the data in order to transactionally
- * update it.
- *
- * @param ref - The location to atomically modify.
- * @param transactionUpdate - A developer-supplied function which will be passed
- * the current data stored at this location (as a JavaScript object). The
- * function should return the new value it would like written (as a JavaScript
- * object). If `undefined` is returned (i.e. you return with no arguments) the
- * transaction will be aborted and the data at this location will not be
- * modified.
- * @param options - An options object to configure transactions.
- * @returns A `Promise` that can optionally be used instead of the `onComplete`
- * callback to handle success and failure.
- */
-function runTransaction(ref, 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-transactionUpdate, options) {
-    var _a;
-    ref = getModularInstance(ref);
-    validateWritablePath('Reference.transaction', ref._path);
-    if (ref.key === '.length' || ref.key === '.keys') {
-        throw ('Reference.transaction failed: ' + ref.key + ' is a read-only object.');
-    }
-    const applyLocally = (_a = options === null || options === void 0 ? void 0 : options.applyLocally) !== null && _a !== void 0 ? _a : true;
-    const deferred = new Deferred();
-    const promiseComplete = (error, committed, node) => {
-        let dataSnapshot = null;
-        if (error) {
-            deferred.reject(error);
-        }
-        else {
-            dataSnapshot = new DataSnapshot$1(node, new ReferenceImpl(ref._repo, ref._path), PRIORITY_INDEX);
-            deferred.resolve(new TransactionResult$1(committed, dataSnapshot));
-        }
-    };
-    // Add a watch to make sure we get server updates.
-    const unwatcher = onValue(ref, () => { });
-    repoStartTransaction(ref._repo, ref._path, transactionUpdate, promiseComplete, unwatcher, applyLocally);
-    return deferred.promise;
-}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 PersistentConnection.prototype.simpleListen = function (pathString, onComplete) {
     this.sendRequest('q', { p: pathString }, onComplete);
@@ -16658,7 +14474,7 @@ PersistentConnection.prototype.echo = function (data, onEcho) {
  *
  * @packageDocumentation
  */
-registerDatabase$1();
+registerDatabase();
 
 var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
 var keys = Object.keys;
@@ -17022,8 +14838,8 @@ class Evented {
     }
 }
 
-var name$3 = "firebase";
-var version$3 = "9.5.0";
+var name = "firebase";
+var version = "9.5.0";
 
 /**
  * @license
@@ -17041,39 +14857,15 @@ var version$3 = "9.5.0";
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-registerVersion(name$3, version$3, 'app');
-
-var defaultFBConfig = {
-    apiKey: 'AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA',
-    authDomain: 'https://torrid-torch-716.firebaseio.com/',
-    databaseURL: 'https://torrid-torch-716.firebaseio.com/',
-    projectId: 'torrid-torch-716',
-};
-
-var firebase$2;
-function initFirebase(newFirebase, fbConfig = null) {
-    if (fbConfig) defaultFBConfig = fbConfig;
-
-    if (!firebase$2) {
-        firebase$2 = initializeApp(defaultFBConfig);
-    }
-
-    return { firebase: firebase$2, database: getDatabase() }
-}
-
-var database;
+registerVersion(name, version, 'app');
 
 function getDatabase() {
-    if (database) return database
 
-    if (!firebase$2) {
+    {
         throw new Error(
             `init must be called before accessing database.  no firebase`
         )
     }
-
-    database = child(ref(getDatabase$1(firebase$2)), 'peers');
-    return database
 }
 
 class Channel {
@@ -17225,11 +15017,7 @@ function P2PServerFactory(options) {
 
             Object.assign(this, options);
 
-            if (options.database) {
-                this.database = options.database;
-            } else {
-                this.database = getDatabase();
-            }
+            this.database = options.database || getDatabase();
 
             this.debug = !!debug || !!options.debug;
             this.initialPeerInfo = initialPeerInfo;
@@ -17257,7 +15045,7 @@ function P2PServerFactory(options) {
 
             this.userRef = child(fbref, this.id);
 
-            console.log('userRef: ', this.userRef);
+            console.log('userRef: ', this.userRef, this.initialPeerInfo);
 
             onValue(this.userRef, (snapshot) => {
                 // handle being tree trimmed while asleep
@@ -17296,7 +15084,9 @@ function P2PServerFactory(options) {
 
             onDisconnect(this.userRef).remove();
 
-            if (this.initialPeerInfo) update(this.userRef, this.initialPeerInfo);
+            if (this.initialPeerInfo) {
+                update(this.userRef, this.initialPeerInfo);
+            }
 
             this.updateRef = child(this.userRef, 'lastUpdate');
             set(this.updateRef, serverTimestamp());
@@ -17868,1312 +15658,6 @@ function P2PClientFactory(options) {
     }
 }
 
-/**
- * @license
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * Global context object for a collection of services using
- * a shared authentication state.
- *
- * marked as internal because it references internal types exported from @firebase/app
- * @internal
- */
-class FirebaseAppImpl {
-    constructor(_delegate, firebase) {
-        this._delegate = _delegate;
-        this.firebase = firebase;
-        // add itself to container
-        _addComponent(_delegate, new Component('app-compat', () => this, "PUBLIC" /* PUBLIC */));
-        this.container = _delegate.container;
-    }
-    get automaticDataCollectionEnabled() {
-        return this._delegate.automaticDataCollectionEnabled;
-    }
-    set automaticDataCollectionEnabled(val) {
-        this._delegate.automaticDataCollectionEnabled = val;
-    }
-    get name() {
-        return this._delegate.name;
-    }
-    get options() {
-        return this._delegate.options;
-    }
-    delete() {
-        return new Promise(resolve => {
-            this._delegate.checkDestroyed();
-            resolve();
-        }).then(() => {
-            this.firebase.INTERNAL.removeApp(this.name);
-            return deleteApp(this._delegate);
-        });
-    }
-    /**
-     * Return a service instance associated with this app (creating it
-     * on demand), identified by the passed instanceIdentifier.
-     *
-     * NOTE: Currently storage and functions are the only ones that are leveraging this
-     * functionality. They invoke it by calling:
-     *
-     * ```javascript
-     * firebase.app().storage('STORAGE BUCKET ID')
-     * ```
-     *
-     * The service name is passed to this already
-     * @internal
-     */
-    _getService(name, instanceIdentifier = DEFAULT_ENTRY_NAME) {
-        var _a;
-        this._delegate.checkDestroyed();
-        // Initialize instance if InstatiationMode is `EXPLICIT`.
-        const provider = this._delegate.container.getProvider(name);
-        if (!provider.isInitialized() &&
-            ((_a = provider.getComponent()) === null || _a === void 0 ? void 0 : _a.instantiationMode) === "EXPLICIT" /* EXPLICIT */) {
-            provider.initialize();
-        }
-        // getImmediate will always succeed because _getService is only called for registered components.
-        return provider.getImmediate({
-            identifier: instanceIdentifier
-        });
-    }
-    /**
-     * Remove a service instance from the cache, so we will create a new instance for this service
-     * when people try to get it again.
-     *
-     * NOTE: currently only firestore uses this functionality to support firestore shutdown.
-     *
-     * @param name The service name
-     * @param instanceIdentifier instance identifier in case multiple instances are allowed
-     * @internal
-     */
-    _removeServiceInstance(name, instanceIdentifier = DEFAULT_ENTRY_NAME) {
-        this._delegate.container
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .getProvider(name)
-            .clearInstance(instanceIdentifier);
-    }
-    /**
-     * @param component the component being added to this app's container
-     * @internal
-     */
-    _addComponent(component) {
-        _addComponent(this._delegate, component);
-    }
-    _addOrOverwriteComponent(component) {
-        _addOrOverwriteComponent(this._delegate, component);
-    }
-    toJSON() {
-        return {
-            name: this.name,
-            automaticDataCollectionEnabled: this.automaticDataCollectionEnabled,
-            options: this.options
-        };
-    }
-}
-// TODO: investigate why the following needs to be commented out
-// Prevent dead-code elimination of these methods w/o invalid property
-// copying.
-// (FirebaseAppImpl.prototype.name && FirebaseAppImpl.prototype.options) ||
-//   FirebaseAppImpl.prototype.delete ||
-//   console.log('dc');
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-const ERRORS = {
-    ["no-app" /* NO_APP */]: "No Firebase App '{$appName}' has been created - " +
-        'call Firebase App.initializeApp()',
-    ["invalid-app-argument" /* INVALID_APP_ARGUMENT */]: 'firebase.{$appName}() takes either no argument or a ' +
-        'Firebase App instance.'
-};
-const ERROR_FACTORY = new ErrorFactory('app-compat', 'Firebase', ERRORS);
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * Because auth can't share code with other components, we attach the utility functions
- * in an internal namespace to share code.
- * This function return a firebase namespace object without
- * any utility functions, so it can be shared between the regular firebaseNamespace and
- * the lite version.
- */
-function createFirebaseNamespaceCore(firebaseAppImpl) {
-    const apps = {};
-    // // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    // const components = new Map<string, Component<any>>();
-    // A namespace is a plain JavaScript Object.
-    const namespace = {
-        // Hack to prevent Babel from modifying the object returned
-        // as the firebase namespace.
-        // @ts-ignore
-        __esModule: true,
-        initializeApp: initializeAppCompat,
-        // @ts-ignore
-        app,
-        registerVersion: registerVersion,
-        setLogLevel: setLogLevel,
-        onLog: onLog,
-        // @ts-ignore
-        apps: null,
-        SDK_VERSION: SDK_VERSION$1,
-        INTERNAL: {
-            registerComponent: registerComponentCompat,
-            removeApp,
-            useAsService,
-            modularAPIs
-        }
-    };
-    // Inject a circular default export to allow Babel users who were previously
-    // using:
-    //
-    //   import firebase from 'firebase';
-    //   which becomes: var firebase = require('firebase').default;
-    //
-    // instead of
-    //
-    //   import * as firebase from 'firebase';
-    //   which becomes: var firebase = require('firebase');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    namespace['default'] = namespace;
-    // firebase.apps is a read-only getter.
-    Object.defineProperty(namespace, 'apps', {
-        get: getApps
-    });
-    /**
-     * Called by App.delete() - but before any services associated with the App
-     * are deleted.
-     */
-    function removeApp(name) {
-        delete apps[name];
-    }
-    /**
-     * Get the App object for a given name (or DEFAULT).
-     */
-    function app(name) {
-        name = name || DEFAULT_ENTRY_NAME;
-        if (!contains(apps, name)) {
-            throw ERROR_FACTORY.create("no-app" /* NO_APP */, { appName: name });
-        }
-        return apps[name];
-    }
-    // @ts-ignore
-    app['App'] = firebaseAppImpl;
-    /**
-     * Create a new App instance (name must be unique).
-     *
-     * This function is idempotent. It can be called more than once and return the same instance using the same options and config.
-     */
-    function initializeAppCompat(options, rawConfig = {}) {
-        const app = initializeApp(options, rawConfig);
-        if (contains(apps, app.name)) {
-            return apps[app.name];
-        }
-        const appCompat = new firebaseAppImpl(app, namespace);
-        apps[app.name] = appCompat;
-        return appCompat;
-    }
-    /*
-     * Return an array of all the non-deleted FirebaseApps.
-     */
-    function getApps() {
-        // Make a copy so caller cannot mutate the apps list.
-        return Object.keys(apps).map(name => apps[name]);
-    }
-    function registerComponentCompat(component) {
-        const componentName = component.name;
-        const componentNameWithoutCompat = componentName.replace('-compat', '');
-        if (_registerComponent(component) &&
-            component.type === "PUBLIC" /* PUBLIC */) {
-            // create service namespace for public components
-            // The Service namespace is an accessor function ...
-            const serviceNamespace = (appArg = app()) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if (typeof appArg[componentNameWithoutCompat] !== 'function') {
-                    // Invalid argument.
-                    // This happens in the following case: firebase.storage('gs:/')
-                    throw ERROR_FACTORY.create("invalid-app-argument" /* INVALID_APP_ARGUMENT */, {
-                        appName: componentName
-                    });
-                }
-                // Forward service instance lookup to the FirebaseApp.
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return appArg[componentNameWithoutCompat]();
-            };
-            // ... and a container for service-level properties.
-            if (component.serviceProps !== undefined) {
-                deepExtend(serviceNamespace, component.serviceProps);
-            }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            namespace[componentNameWithoutCompat] = serviceNamespace;
-            // Patch the FirebaseAppImpl prototype
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            firebaseAppImpl.prototype[componentNameWithoutCompat] =
-                // TODO: The eslint disable can be removed and the 'ignoreRestArgs'
-                // option added to the no-explicit-any rule when ESlint releases it.
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                function (...args) {
-                    const serviceFxn = this._getService.bind(this, componentName);
-                    return serviceFxn.apply(this, component.multipleInstances ? args : []);
-                };
-        }
-        return component.type === "PUBLIC" /* PUBLIC */
-            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                namespace[componentNameWithoutCompat]
-            : null;
-    }
-    // Map the requested service to a registered service name
-    // (used to map auth to serverAuth service when needed).
-    function useAsService(app, name) {
-        if (name === 'serverAuth') {
-            return null;
-        }
-        const useService = name;
-        return useService;
-    }
-    return namespace;
-}
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * Return a firebase namespace object.
- *
- * In production, this will be called exactly once and the result
- * assigned to the 'firebase' global.  It may be called multiple times
- * in unit tests.
- */
-function createFirebaseNamespace() {
-    const namespace = createFirebaseNamespaceCore(FirebaseAppImpl);
-    namespace.INTERNAL = Object.assign(Object.assign({}, namespace.INTERNAL), { createFirebaseNamespace,
-        extendNamespace,
-        createSubscribe,
-        ErrorFactory,
-        deepExtend });
-    /**
-     * Patch the top-level firebase namespace with additional properties.
-     *
-     * firebase.INTERNAL.extendNamespace()
-     */
-    function extendNamespace(props) {
-        deepExtend(namespace, props);
-    }
-    return namespace;
-}
-const firebase$1 = createFirebaseNamespace();
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-const logger = new Logger('@firebase/app-compat');
-
-const name$2 = "@firebase/app-compat";
-const version$2 = "0.1.10";
-
-/**
- * @license
- * Copyright 2019 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-function registerCoreComponents(variant) {
-    // Register `app` package.
-    registerVersion(name$2, version$2, variant);
-}
-
-/**
- * @license
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-// Firebase Lite detection
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-if (isBrowser() && self.firebase !== undefined) {
-    logger.warn(`
-    Warning: Firebase is already defined in the global scope. Please make sure
-    Firebase library is only loaded once.
-  `);
-    // eslint-disable-next-line
-    const sdkVersion = self.firebase.SDK_VERSION;
-    if (sdkVersion && sdkVersion.indexOf('LITE') >= 0) {
-        logger.warn(`
-    Warning: You are trying to load Firebase while using Firebase Performance standalone script.
-    You should load Firebase Performance with this instance of Firebase to avoid loading duplicate code.
-    `);
-    }
-}
-const firebase = firebase$1;
-registerCoreComponents();
-
-var name$1 = "firebase";
-var version$1 = "9.5.0";
-
-/**
- * @license
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-firebase.registerVersion(name$1, version$1, 'app-compat');
-
-const name = "@firebase/database-compat";
-const version = "0.1.4";
-
-/**
- * @license
- * Copyright 2021 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-const logClient = new Logger('@firebase/database-compat');
-const warn = function (msg) {
-    const message = 'FIREBASE WARNING: ' + msg;
-    logClient.warn(message);
-};
-
-/**
- * @license
- * Copyright 2021 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-const validateBoolean = function (fnName, argumentName, bool, optional) {
-    if (optional && bool === undefined) {
-        return;
-    }
-    if (typeof bool !== 'boolean') {
-        throw new Error(errorPrefix(fnName, argumentName) + 'must be a boolean.');
-    }
-};
-const validateEventType = function (fnName, eventType, optional) {
-    if (optional && eventType === undefined) {
-        return;
-    }
-    switch (eventType) {
-        case 'value':
-        case 'child_added':
-        case 'child_removed':
-        case 'child_changed':
-        case 'child_moved':
-            break;
-        default:
-            throw new Error(errorPrefix(fnName, 'eventType') +
-                'must be a valid event type = "value", "child_added", "child_removed", ' +
-                '"child_changed", or "child_moved".');
-    }
-};
-
-/**
- * @license
- * Copyright 2017 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-class OnDisconnect {
-    constructor(_delegate) {
-        this._delegate = _delegate;
-    }
-    cancel(onComplete) {
-        validateArgCount('OnDisconnect.cancel', 0, 1, arguments.length);
-        validateCallback('OnDisconnect.cancel', 'onComplete', onComplete, true);
-        const result = this._delegate.cancel();
-        if (onComplete) {
-            result.then(() => onComplete(null), error => onComplete(error));
-        }
-        return result;
-    }
-    remove(onComplete) {
-        validateArgCount('OnDisconnect.remove', 0, 1, arguments.length);
-        validateCallback('OnDisconnect.remove', 'onComplete', onComplete, true);
-        const result = this._delegate.remove();
-        if (onComplete) {
-            result.then(() => onComplete(null), error => onComplete(error));
-        }
-        return result;
-    }
-    set(value, onComplete) {
-        validateArgCount('OnDisconnect.set', 1, 2, arguments.length);
-        validateCallback('OnDisconnect.set', 'onComplete', onComplete, true);
-        const result = this._delegate.set(value);
-        if (onComplete) {
-            result.then(() => onComplete(null), error => onComplete(error));
-        }
-        return result;
-    }
-    setWithPriority(value, priority, onComplete) {
-        validateArgCount('OnDisconnect.setWithPriority', 2, 3, arguments.length);
-        validateCallback('OnDisconnect.setWithPriority', 'onComplete', onComplete, true);
-        const result = this._delegate.setWithPriority(value, priority);
-        if (onComplete) {
-            result.then(() => onComplete(null), error => onComplete(error));
-        }
-        return result;
-    }
-    update(objectToMerge, onComplete) {
-        validateArgCount('OnDisconnect.update', 1, 2, arguments.length);
-        if (Array.isArray(objectToMerge)) {
-            const newObjectToMerge = {};
-            for (let i = 0; i < objectToMerge.length; ++i) {
-                newObjectToMerge['' + i] = objectToMerge[i];
-            }
-            objectToMerge = newObjectToMerge;
-            warn('Passing an Array to firebase.database.onDisconnect().update() is deprecated. Use set() if you want to overwrite the ' +
-                'existing data, or an Object with integer keys if you really do want to only update some of the children.');
-        }
-        validateCallback('OnDisconnect.update', 'onComplete', onComplete, true);
-        const result = this._delegate.update(objectToMerge);
-        if (onComplete) {
-            result.then(() => onComplete(null), error => onComplete(error));
-        }
-        return result;
-    }
-}
-
-/**
- * @license
- * Copyright 2017 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-class TransactionResult {
-    /**
-     * A type for the resolve value of Firebase.transaction.
-     */
-    constructor(committed, snapshot) {
-        this.committed = committed;
-        this.snapshot = snapshot;
-    }
-    // Do not create public documentation. This is intended to make JSON serialization work but is otherwise unnecessary
-    // for end-users
-    toJSON() {
-        validateArgCount('TransactionResult.toJSON', 0, 1, arguments.length);
-        return { committed: this.committed, snapshot: this.snapshot.toJSON() };
-    }
-}
-
-/**
- * @license
- * Copyright 2017 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * Class representing a firebase data snapshot.  It wraps a SnapshotNode and
- * surfaces the public methods (val, forEach, etc.) we want to expose.
- */
-class DataSnapshot {
-    constructor(_database, _delegate) {
-        this._database = _database;
-        this._delegate = _delegate;
-    }
-    /**
-     * Retrieves the snapshot contents as JSON.  Returns null if the snapshot is
-     * empty.
-     *
-     * @returns JSON representation of the DataSnapshot contents, or null if empty.
-     */
-    val() {
-        validateArgCount('DataSnapshot.val', 0, 0, arguments.length);
-        return this._delegate.val();
-    }
-    /**
-     * Returns the snapshot contents as JSON, including priorities of node.  Suitable for exporting
-     * the entire node contents.
-     * @returns JSON representation of the DataSnapshot contents, or null if empty.
-     */
-    exportVal() {
-        validateArgCount('DataSnapshot.exportVal', 0, 0, arguments.length);
-        return this._delegate.exportVal();
-    }
-    // Do not create public documentation. This is intended to make JSON serialization work but is otherwise unnecessary
-    // for end-users
-    toJSON() {
-        // Optional spacer argument is unnecessary because we're depending on recursion rather than stringifying the content
-        validateArgCount('DataSnapshot.toJSON', 0, 1, arguments.length);
-        return this._delegate.toJSON();
-    }
-    /**
-     * Returns whether the snapshot contains a non-null value.
-     *
-     * @returns Whether the snapshot contains a non-null value, or is empty.
-     */
-    exists() {
-        validateArgCount('DataSnapshot.exists', 0, 0, arguments.length);
-        return this._delegate.exists();
-    }
-    /**
-     * Returns a DataSnapshot of the specified child node's contents.
-     *
-     * @param path - Path to a child.
-     * @returns DataSnapshot for child node.
-     */
-    child(path) {
-        validateArgCount('DataSnapshot.child', 0, 1, arguments.length);
-        // Ensure the childPath is a string (can be a number)
-        path = String(path);
-        validatePathString('DataSnapshot.child', 'path', path, false);
-        return new DataSnapshot(this._database, this._delegate.child(path));
-    }
-    /**
-     * Returns whether the snapshot contains a child at the specified path.
-     *
-     * @param path - Path to a child.
-     * @returns Whether the child exists.
-     */
-    hasChild(path) {
-        validateArgCount('DataSnapshot.hasChild', 1, 1, arguments.length);
-        validatePathString('DataSnapshot.hasChild', 'path', path, false);
-        return this._delegate.hasChild(path);
-    }
-    /**
-     * Returns the priority of the object, or null if no priority was set.
-     *
-     * @returns The priority.
-     */
-    getPriority() {
-        validateArgCount('DataSnapshot.getPriority', 0, 0, arguments.length);
-        return this._delegate.priority;
-    }
-    /**
-     * Iterates through child nodes and calls the specified action for each one.
-     *
-     * @param action - Callback function to be called
-     * for each child.
-     * @returns True if forEach was canceled by action returning true for
-     * one of the child nodes.
-     */
-    forEach(action) {
-        validateArgCount('DataSnapshot.forEach', 1, 1, arguments.length);
-        validateCallback('DataSnapshot.forEach', 'action', action, false);
-        return this._delegate.forEach(expDataSnapshot => action(new DataSnapshot(this._database, expDataSnapshot)));
-    }
-    /**
-     * Returns whether this DataSnapshot has children.
-     * @returns True if the DataSnapshot contains 1 or more child nodes.
-     */
-    hasChildren() {
-        validateArgCount('DataSnapshot.hasChildren', 0, 0, arguments.length);
-        return this._delegate.hasChildren();
-    }
-    get key() {
-        return this._delegate.key;
-    }
-    /**
-     * Returns the number of children for this DataSnapshot.
-     * @returns The number of children that this DataSnapshot contains.
-     */
-    numChildren() {
-        validateArgCount('DataSnapshot.numChildren', 0, 0, arguments.length);
-        return this._delegate.size;
-    }
-    /**
-     * @returns The Firebase reference for the location this snapshot's data came
-     * from.
-     */
-    getRef() {
-        validateArgCount('DataSnapshot.ref', 0, 0, arguments.length);
-        return new Reference(this._database, this._delegate.ref);
-    }
-    get ref() {
-        return this.getRef();
-    }
-}
-/**
- * A Query represents a filter to be applied to a firebase location.  This object purely represents the
- * query expression (and exposes our public API to build the query).  The actual query logic is in ViewBase.js.
- *
- * Since every Firebase reference is a query, Firebase inherits from this object.
- */
-class Query {
-    constructor(database, _delegate) {
-        this.database = database;
-        this._delegate = _delegate;
-    }
-    on(eventType, callback, cancelCallbackOrContext, context) {
-        var _a;
-        validateArgCount('Query.on', 2, 4, arguments.length);
-        validateCallback('Query.on', 'callback', callback, false);
-        const ret = Query.getCancelAndContextArgs_('Query.on', cancelCallbackOrContext, context);
-        const valueCallback = (expSnapshot, previousChildName) => {
-            callback.call(ret.context, new DataSnapshot(this.database, expSnapshot), previousChildName);
-        };
-        valueCallback.userCallback = callback;
-        valueCallback.context = ret.context;
-        const cancelCallback = (_a = ret.cancel) === null || _a === void 0 ? void 0 : _a.bind(ret.context);
-        switch (eventType) {
-            case 'value':
-                onValue(this._delegate, valueCallback, cancelCallback);
-                return callback;
-            case 'child_added':
-                onChildAdded(this._delegate, valueCallback, cancelCallback);
-                return callback;
-            case 'child_removed':
-                onChildRemoved(this._delegate, valueCallback, cancelCallback);
-                return callback;
-            case 'child_changed':
-                onChildChanged(this._delegate, valueCallback, cancelCallback);
-                return callback;
-            case 'child_moved':
-                onChildMoved(this._delegate, valueCallback, cancelCallback);
-                return callback;
-            default:
-                throw new Error(errorPrefix('Query.on', 'eventType') +
-                    'must be a valid event type = "value", "child_added", "child_removed", ' +
-                    '"child_changed", or "child_moved".');
-        }
-    }
-    off(eventType, callback, context) {
-        validateArgCount('Query.off', 0, 3, arguments.length);
-        validateEventType('Query.off', eventType, true);
-        validateCallback('Query.off', 'callback', callback, true);
-        validateContextObject('Query.off', 'context', context, true);
-        if (callback) {
-            const valueCallback = () => { };
-            valueCallback.userCallback = callback;
-            valueCallback.context = context;
-            off(this._delegate, eventType, valueCallback);
-        }
-        else {
-            off(this._delegate, eventType);
-        }
-    }
-    /**
-     * Get the server-value for this query, or return a cached value if not connected.
-     */
-    get() {
-        return get(this._delegate).then(expSnapshot => {
-            return new DataSnapshot(this.database, expSnapshot);
-        });
-    }
-    /**
-     * Attaches a listener, waits for the first event, and then removes the listener
-     */
-    once(eventType, callback, failureCallbackOrContext, context) {
-        validateArgCount('Query.once', 1, 4, arguments.length);
-        validateCallback('Query.once', 'callback', callback, true);
-        const ret = Query.getCancelAndContextArgs_('Query.once', failureCallbackOrContext, context);
-        const deferred = new Deferred();
-        const valueCallback = (expSnapshot, previousChildName) => {
-            const result = new DataSnapshot(this.database, expSnapshot);
-            if (callback) {
-                callback.call(ret.context, result, previousChildName);
-            }
-            deferred.resolve(result);
-        };
-        valueCallback.userCallback = callback;
-        valueCallback.context = ret.context;
-        const cancelCallback = (error) => {
-            if (ret.cancel) {
-                ret.cancel.call(ret.context, error);
-            }
-            deferred.reject(error);
-        };
-        switch (eventType) {
-            case 'value':
-                onValue(this._delegate, valueCallback, cancelCallback, {
-                    onlyOnce: true
-                });
-                break;
-            case 'child_added':
-                onChildAdded(this._delegate, valueCallback, cancelCallback, {
-                    onlyOnce: true
-                });
-                break;
-            case 'child_removed':
-                onChildRemoved(this._delegate, valueCallback, cancelCallback, {
-                    onlyOnce: true
-                });
-                break;
-            case 'child_changed':
-                onChildChanged(this._delegate, valueCallback, cancelCallback, {
-                    onlyOnce: true
-                });
-                break;
-            case 'child_moved':
-                onChildMoved(this._delegate, valueCallback, cancelCallback, {
-                    onlyOnce: true
-                });
-                break;
-            default:
-                throw new Error(errorPrefix('Query.once', 'eventType') +
-                    'must be a valid event type = "value", "child_added", "child_removed", ' +
-                    '"child_changed", or "child_moved".');
-        }
-        return deferred.promise;
-    }
-    /**
-     * Set a limit and anchor it to the start of the window.
-     */
-    limitToFirst(limit) {
-        validateArgCount('Query.limitToFirst', 1, 1, arguments.length);
-        return new Query(this.database, query(this._delegate, limitToFirst(limit)));
-    }
-    /**
-     * Set a limit and anchor it to the end of the window.
-     */
-    limitToLast(limit) {
-        validateArgCount('Query.limitToLast', 1, 1, arguments.length);
-        return new Query(this.database, query(this._delegate, limitToLast(limit)));
-    }
-    /**
-     * Given a child path, return a new query ordered by the specified grandchild path.
-     */
-    orderByChild(path) {
-        validateArgCount('Query.orderByChild', 1, 1, arguments.length);
-        return new Query(this.database, query(this._delegate, orderByChild(path)));
-    }
-    /**
-     * Return a new query ordered by the KeyIndex
-     */
-    orderByKey() {
-        validateArgCount('Query.orderByKey', 0, 0, arguments.length);
-        return new Query(this.database, query(this._delegate, orderByKey()));
-    }
-    /**
-     * Return a new query ordered by the PriorityIndex
-     */
-    orderByPriority() {
-        validateArgCount('Query.orderByPriority', 0, 0, arguments.length);
-        return new Query(this.database, query(this._delegate, orderByPriority()));
-    }
-    /**
-     * Return a new query ordered by the ValueIndex
-     */
-    orderByValue() {
-        validateArgCount('Query.orderByValue', 0, 0, arguments.length);
-        return new Query(this.database, query(this._delegate, orderByValue()));
-    }
-    startAt(value = null, name) {
-        validateArgCount('Query.startAt', 0, 2, arguments.length);
-        return new Query(this.database, query(this._delegate, startAt(value, name)));
-    }
-    startAfter(value = null, name) {
-        validateArgCount('Query.startAfter', 0, 2, arguments.length);
-        return new Query(this.database, query(this._delegate, startAfter(value, name)));
-    }
-    endAt(value = null, name) {
-        validateArgCount('Query.endAt', 0, 2, arguments.length);
-        return new Query(this.database, query(this._delegate, endAt(value, name)));
-    }
-    endBefore(value = null, name) {
-        validateArgCount('Query.endBefore', 0, 2, arguments.length);
-        return new Query(this.database, query(this._delegate, endBefore(value, name)));
-    }
-    /**
-     * Load the selection of children with exactly the specified value, and, optionally,
-     * the specified name.
-     */
-    equalTo(value, name) {
-        validateArgCount('Query.equalTo', 1, 2, arguments.length);
-        return new Query(this.database, query(this._delegate, equalTo(value, name)));
-    }
-    /**
-     * @returns URL for this location.
-     */
-    toString() {
-        validateArgCount('Query.toString', 0, 0, arguments.length);
-        return this._delegate.toString();
-    }
-    // Do not create public documentation. This is intended to make JSON serialization work but is otherwise unnecessary
-    // for end-users.
-    toJSON() {
-        // An optional spacer argument is unnecessary for a string.
-        validateArgCount('Query.toJSON', 0, 1, arguments.length);
-        return this._delegate.toJSON();
-    }
-    /**
-     * Return true if this query and the provided query are equivalent; otherwise, return false.
-     */
-    isEqual(other) {
-        validateArgCount('Query.isEqual', 1, 1, arguments.length);
-        if (!(other instanceof Query)) {
-            const error = 'Query.isEqual failed: First argument must be an instance of firebase.database.Query.';
-            throw new Error(error);
-        }
-        return this._delegate.isEqual(other._delegate);
-    }
-    /**
-     * Helper used by .on and .once to extract the context and or cancel arguments.
-     * @param fnName - The function name (on or once)
-     *
-     */
-    static getCancelAndContextArgs_(fnName, cancelOrContext, context) {
-        const ret = { cancel: undefined, context: undefined };
-        if (cancelOrContext && context) {
-            ret.cancel = cancelOrContext;
-            validateCallback(fnName, 'cancel', ret.cancel, true);
-            ret.context = context;
-            validateContextObject(fnName, 'context', ret.context, true);
-        }
-        else if (cancelOrContext) {
-            // we have either a cancel callback or a context.
-            if (typeof cancelOrContext === 'object' && cancelOrContext !== null) {
-                // it's a context!
-                ret.context = cancelOrContext;
-            }
-            else if (typeof cancelOrContext === 'function') {
-                ret.cancel = cancelOrContext;
-            }
-            else {
-                throw new Error(errorPrefix(fnName, 'cancelOrContext') +
-                    ' must either be a cancel callback or a context object.');
-            }
-        }
-        return ret;
-    }
-    get ref() {
-        return new Reference(this.database, new ReferenceImpl(this._delegate._repo, this._delegate._path));
-    }
-}
-class Reference extends Query {
-    /**
-     * Call options:
-     *   new Reference(Repo, Path) or
-     *   new Reference(url: string, string|RepoManager)
-     *
-     * Externally - this is the firebase.database.Reference type.
-     */
-    constructor(database, _delegate) {
-        super(database, new QueryImpl(_delegate._repo, _delegate._path, new QueryParams(), false));
-        this.database = database;
-        this._delegate = _delegate;
-    }
-    /** @returns {?string} */
-    getKey() {
-        validateArgCount('Reference.key', 0, 0, arguments.length);
-        return this._delegate.key;
-    }
-    child(pathString) {
-        validateArgCount('Reference.child', 1, 1, arguments.length);
-        if (typeof pathString === 'number') {
-            pathString = String(pathString);
-        }
-        return new Reference(this.database, child(this._delegate, pathString));
-    }
-    /** @returns {?Reference} */
-    getParent() {
-        validateArgCount('Reference.parent', 0, 0, arguments.length);
-        const parent = this._delegate.parent;
-        return parent ? new Reference(this.database, parent) : null;
-    }
-    /** @returns {!Reference} */
-    getRoot() {
-        validateArgCount('Reference.root', 0, 0, arguments.length);
-        return new Reference(this.database, this._delegate.root);
-    }
-    set(newVal, onComplete) {
-        validateArgCount('Reference.set', 1, 2, arguments.length);
-        validateCallback('Reference.set', 'onComplete', onComplete, true);
-        const result = set(this._delegate, newVal);
-        if (onComplete) {
-            result.then(() => onComplete(null), error => onComplete(error));
-        }
-        return result;
-    }
-    update(values, onComplete) {
-        validateArgCount('Reference.update', 1, 2, arguments.length);
-        if (Array.isArray(values)) {
-            const newObjectToMerge = {};
-            for (let i = 0; i < values.length; ++i) {
-                newObjectToMerge['' + i] = values[i];
-            }
-            values = newObjectToMerge;
-            warn('Passing an Array to Firebase.update() is deprecated. ' +
-                'Use set() if you want to overwrite the existing data, or ' +
-                'an Object with integer keys if you really do want to ' +
-                'only update some of the children.');
-        }
-        validateWritablePath('Reference.update', this._delegate._path);
-        validateCallback('Reference.update', 'onComplete', onComplete, true);
-        const result = update(this._delegate, values);
-        if (onComplete) {
-            result.then(() => onComplete(null), error => onComplete(error));
-        }
-        return result;
-    }
-    setWithPriority(newVal, newPriority, onComplete) {
-        validateArgCount('Reference.setWithPriority', 2, 3, arguments.length);
-        validateCallback('Reference.setWithPriority', 'onComplete', onComplete, true);
-        const result = setWithPriority(this._delegate, newVal, newPriority);
-        if (onComplete) {
-            result.then(() => onComplete(null), error => onComplete(error));
-        }
-        return result;
-    }
-    remove(onComplete) {
-        validateArgCount('Reference.remove', 0, 1, arguments.length);
-        validateCallback('Reference.remove', 'onComplete', onComplete, true);
-        const result = remove$1(this._delegate);
-        if (onComplete) {
-            result.then(() => onComplete(null), error => onComplete(error));
-        }
-        return result;
-    }
-    transaction(transactionUpdate, onComplete, applyLocally) {
-        validateArgCount('Reference.transaction', 1, 3, arguments.length);
-        validateCallback('Reference.transaction', 'transactionUpdate', transactionUpdate, false);
-        validateCallback('Reference.transaction', 'onComplete', onComplete, true);
-        validateBoolean('Reference.transaction', 'applyLocally', applyLocally, true);
-        const result = runTransaction(this._delegate, transactionUpdate, {
-            applyLocally
-        }).then(transactionResult => new TransactionResult(transactionResult.committed, new DataSnapshot(this.database, transactionResult.snapshot)));
-        if (onComplete) {
-            result.then(transactionResult => onComplete(null, transactionResult.committed, transactionResult.snapshot), error => onComplete(error, false, null));
-        }
-        return result;
-    }
-    setPriority(priority, onComplete) {
-        validateArgCount('Reference.setPriority', 1, 2, arguments.length);
-        validateCallback('Reference.setPriority', 'onComplete', onComplete, true);
-        const result = setPriority(this._delegate, priority);
-        if (onComplete) {
-            result.then(() => onComplete(null), error => onComplete(error));
-        }
-        return result;
-    }
-    push(value, onComplete) {
-        validateArgCount('Reference.push', 0, 2, arguments.length);
-        validateCallback('Reference.push', 'onComplete', onComplete, true);
-        const expPromise = push$1(this._delegate, value);
-        const promise = expPromise.then(expRef => new Reference(this.database, expRef));
-        if (onComplete) {
-            promise.then(() => onComplete(null), error => onComplete(error));
-        }
-        const result = new Reference(this.database, expPromise);
-        result.then = promise.then.bind(promise);
-        result.catch = promise.catch.bind(promise, undefined);
-        return result;
-    }
-    onDisconnect() {
-        validateWritablePath('Reference.onDisconnect', this._delegate._path);
-        return new OnDisconnect(new OnDisconnect$1(this._delegate._repo, this._delegate._path));
-    }
-    get key() {
-        return this.getKey();
-    }
-    get parent() {
-        return this.getParent();
-    }
-    get root() {
-        return this.getRoot();
-    }
-}
-
-/**
- * @license
- * Copyright 2017 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * Class representing a firebase database.
- */
-class Database {
-    /**
-     * The constructor should not be called by users of our public API.
-     */
-    constructor(_delegate, app) {
-        this._delegate = _delegate;
-        this.app = app;
-        this.INTERNAL = {
-            delete: () => this._delegate._delete()
-        };
-    }
-    /**
-     * Modify this instance to communicate with the Realtime Database emulator.
-     *
-     * <p>Note: This method must be called before performing any other operation.
-     *
-     * @param host - the emulator host (ex: localhost)
-     * @param port - the emulator port (ex: 8080)
-     * @param options.mockUserToken - the mock auth token to use for unit testing Security Rules
-     */
-    useEmulator(host, port, options = {}) {
-        connectDatabaseEmulator(this._delegate, host, port, options);
-    }
-    ref(path) {
-        validateArgCount('database.ref', 0, 1, arguments.length);
-        if (path instanceof Reference) {
-            const childRef = refFromURL(this._delegate, path.toString());
-            return new Reference(this, childRef);
-        }
-        else {
-            const childRef = ref(this._delegate, path);
-            return new Reference(this, childRef);
-        }
-    }
-    /**
-     * Returns a reference to the root or the path specified in url.
-     * We throw a exception if the url is not in the same domain as the
-     * current repo.
-     * @returns Firebase reference.
-     */
-    refFromURL(url) {
-        const apiName = 'database.refFromURL';
-        validateArgCount(apiName, 1, 1, arguments.length);
-        const childRef = refFromURL(this._delegate, url);
-        return new Reference(this, childRef);
-    }
-    // Make individual repo go offline.
-    goOffline() {
-        validateArgCount('database.goOffline', 0, 0, arguments.length);
-        return goOffline(this._delegate);
-    }
-    goOnline() {
-        validateArgCount('database.goOnline', 0, 0, arguments.length);
-        return goOnline(this._delegate);
-    }
-}
-Database.ServerValue = {
-    TIMESTAMP: serverTimestamp(),
-    increment: (delta) => increment(delta)
-};
-
-/**
- * @license
- * Copyright 2017 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * Used by console to create a database based on the app,
- * passed database URL and a custom auth implementation.
- *
- * @param app - A valid FirebaseApp-like object
- * @param url - A valid Firebase databaseURL
- * @param version - custom version e.g. firebase-admin version
- * @param customAuthImpl - custom auth implementation
- */
-function initStandalone({ app, url, version, customAuthImpl, namespace, nodeAdmin = false }) {
-    setSDKVersion(version);
-    /**
-     * ComponentContainer('database-standalone') is just a placeholder that doesn't perform
-     * any actual function.
-     */
-    const authProvider = new Provider('auth-internal', new ComponentContainer('database-standalone'));
-    authProvider.setComponent(new Component('auth-internal', () => customAuthImpl, "PRIVATE" /* PRIVATE */));
-    return {
-        instance: new Database(repoManagerDatabaseFromApp(app, authProvider, 
-        /* appCheckProvider= */ undefined, url, nodeAdmin), app),
-        namespace
-    };
-}
-
-var INTERNAL = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  initStandalone: initStandalone
-});
-
-/**
- * @license
- * Copyright 2021 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-const ServerValue = Database.ServerValue;
-function registerDatabase(instance) {
-    // Register the Database Service with the 'firebase' namespace.
-    instance.INTERNAL.registerComponent(new Component('database-compat', (container, { instanceIdentifier: url }) => {
-        /* Dependencies */
-        // getImmediate for FirebaseApp will always succeed
-        const app = container.getProvider('app-compat').getImmediate();
-        const databaseExp = container
-            .getProvider('database')
-            .getImmediate({ identifier: url });
-        return new Database(databaseExp, app);
-    }, "PUBLIC" /* PUBLIC */)
-        .setServiceProps(
-    // firebase.database namespace properties
-    {
-        Reference,
-        Query,
-        Database,
-        DataSnapshot,
-        enableLogging,
-        INTERNAL,
-        ServerValue
-    })
-        .setMultipleInstances(true));
-    instance.registerVersion(name, version);
-}
-registerDatabase(firebase);
-
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 function commonjsRequire () {
@@ -19507,7 +15991,6 @@ function PeerBinaryFactory(options) {
 const Peer = simplepeer_min;
 const msgPack = msgpack_min;
 
-initFirebase();
 setEncode(msgPack.encode);
 
 const UnChunker = UnChunkerFactory({ decode: msgPack.decode });
@@ -19515,5 +15998,5 @@ const PeerBinary = PeerBinaryFactory({ UnChunker, Peer });
 const P2PServer = P2PServerFactory({ PeerBinary });
 const P2PClient = P2PClientFactory({ PeerBinary });
 
-export { Channel, P2PClient, P2PServer, PeerBinary, UnChunker, arrayBufferToChunks, firebase, generateWebRTCpayload, imageToBlob, recursivelyDecodeBlobs, recursivelyEncodeBlobs };
+export { Channel, P2PClient, P2PServer, PeerBinary, UnChunker, arrayBufferToChunks, generateWebRTCpayload, imageToBlob, recursivelyDecodeBlobs, recursivelyEncodeBlobs };
 //# sourceMappingURL=build.full.js.map

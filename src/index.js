@@ -2,10 +2,6 @@ import { P2PServerFactory } from './P2PServer.js'
 import { Channel } from './Channel.js'
 import { P2PClientFactory } from './P2PClient.js'
 
-import firebase from 'firebase/compat/app'
-import 'firebase/compat/database'
-
-import { initFirebase } from './defaultFirebase.js'
 
 import * as Peer2 from 'simple-peer/simplepeer.min.js'
 const Peer = Peer2.default
@@ -26,7 +22,6 @@ import {
 
 import { PeerBinaryFactory } from './peerBinary.js'
 
-initFirebase(firebase)
 setEncode(msgPack.encode)
 
 const UnChunker = UnChunkerFactory({ decode: msgPack.decode })
@@ -45,5 +40,4 @@ export {
     Channel,
     recursivelyEncodeBlobs,
     recursivelyDecodeBlobs,
-    firebase,
 }
