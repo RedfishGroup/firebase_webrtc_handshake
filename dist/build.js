@@ -15314,7 +15314,7 @@ function P2PServerFactory(options) {
             onDisconnect(this.userRef).remove();
 
             if (this.initialPeerInfo) {
-                console.log('UserRef: ', this.userRef, this.userRef.path);
+                console.log('UserRef: ', this.userRef, this.initialPeerInfo);
                 update(this.userRef, this.initialPeerInfo);
             }
 
