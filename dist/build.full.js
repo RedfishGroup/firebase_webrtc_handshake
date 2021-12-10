@@ -15017,6 +15017,7 @@ function P2PServerFactory(options) {
             Object.assign(this, options);
 
             this.database = options.database || getDatabase();
+            console.log('Database: ', this.database);
 
             this.debug = !!debug || !!options.debug;
             this.initialPeerInfo = initialPeerInfo;
