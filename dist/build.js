@@ -15274,7 +15274,7 @@ function P2PServerFactory(options) {
 
             this.userRef = child(fbref, this.id);
 
-            console.log('userRef: ', this.userRef, this.initialPeerInfo);
+            console.log('userRef: ' + this.userRef, this.initialPeerInfo);
 
             onValue(this.userRef, (snapshot) => {
                 // handle being tree trimmed while asleep
