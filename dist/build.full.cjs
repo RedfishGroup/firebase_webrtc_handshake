@@ -16072,9 +16072,10 @@ function P2PServerFactory(options) {
 
             if (this.initialPeerInfo) {
                 console.log('UserRef: ' + this.userRef, this.initialPeerInfo);
+                console.log('Got Here 1');
                 update(this.userRef, this.initialPeerInfo);
             }
-            console.log('Got Here');
+            console.log('Got Here 2');
 
             this.updateRef = child(this.userRef, 'lastUpdate');
             set(this.updateRef, serverTimestamp());
