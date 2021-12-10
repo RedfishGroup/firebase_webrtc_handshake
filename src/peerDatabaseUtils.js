@@ -1,16 +1,17 @@
+import { get } from 'firebase/database'
+
 /**
  *
  * @param {*} database
  * @param {*} callback
  */
 export function getPeerList(database, callback) {
-    database
-        .once('value')
+    get(database)
         .then((ev) => {
-                var val = ev.val()
-                callback(null, val)
-            })
+            var val = ev.val()
+            callback(null, val)
+        })
         .catch((err) => {
-            callback(err)        
+            callback(err)
         })
 }
