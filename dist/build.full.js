@@ -1,4 +1,4 @@
-import { child, off, get as get$1, onValue, query, orderByValue, set, update, serverTimestamp, onDisconnect, onChildAdded, push as push$1 } from 'firebase/database';
+import { child, off, get, onValue, query, orderByValue, set, update, serverTimestamp, onDisconnect, onChildAdded, push as push$1 } from 'firebase/database';
 import 'firebase/app';
 
 var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
@@ -392,7 +392,7 @@ class Channel {
  * @param {*} callback
  */
 function getPeerList(database, callback) {
-    get$1(database)
+    get(database)
         .then((ev) => {
             var val = ev.val();
             callback(null, val);
@@ -468,7 +468,8 @@ class firebaseTreeTrimmer {
 
     treeTrimmer(treeTrimmers) {
         // remove all references to peers not in treeTrimming list
-        get(this.peersRef).then((snap) => {
+        let unsub = onValue(this.peersRef, (snap) => {
+            unsub();
             snap.forEach(function (child) {
                 // if the peer is not in the treeTrimming list,
                 // remove it from peersRef
@@ -482,7 +483,8 @@ class firebaseTreeTrimmer {
     watchMySuperior(superior) {
         // if superior is either not in /peers/cameras, or their
         // lastUpdate is greater than a minute, remove from treeTrimming list
-        get(child(this.peersRef, superior)).then((snap) => {
+        let unsub = onValue(child(this.peersRef, superior),(snap) => {
+            unsub();
             // if the peer's lastUpdate is greater than three minutes,
             // or it doesn't exist, remove from treeTrimming list
             if (
@@ -984,7 +986,7 @@ function P2PClientFactory(options) {
                 } else {
                     this.id = id;
                     this.serverRef = child(this.database, id);
-                    get$1(this.serverRef).next((ev1) => {
+                    get(this.serverRef).next((ev1) => {
                         ev1.val();
                         let pOpts = {
                             initiator: true,

@@ -14993,7 +14993,7 @@ function update(ref, values) {
  * available, or rejects if the client is unable to return a value (e.g., if the
  * server is unreachable and there is nothing cached).
  */
-function get$1(query) {
+function get(query) {
     query = getModularInstance(query);
     return repoGetValue(query._repo, query).then(node => {
         return new DataSnapshot(node, new ReferenceImpl(query._repo, query._path), query._queryParams.getIndex());
@@ -15874,7 +15874,7 @@ class Evented {
  * @param {*} callback
  */
 function getPeerList(database, callback) {
-    get$1(database)
+    get(database)
         .then((ev) => {
             var val = ev.val();
             callback(null, val);
@@ -15950,7 +15950,8 @@ class firebaseTreeTrimmer {
 
     treeTrimmer(treeTrimmers) {
         // remove all references to peers not in treeTrimming list
-        get(this.peersRef).then((snap) => {
+        let unsub = onValue(this.peersRef, (snap) => {
+            unsub();
             snap.forEach(function (child) {
                 // if the peer is not in the treeTrimming list,
                 // remove it from peersRef
@@ -15964,7 +15965,8 @@ class firebaseTreeTrimmer {
     watchMySuperior(superior) {
         // if superior is either not in /peers/cameras, or their
         // lastUpdate is greater than a minute, remove from treeTrimming list
-        get(child(this.peersRef, superior)).then((snap) => {
+        let unsub = onValue(child(this.peersRef, superior),(snap) => {
+            unsub();
             // if the peer's lastUpdate is greater than three minutes,
             // or it doesn't exist, remove from treeTrimming list
             if (
@@ -16466,7 +16468,7 @@ function P2PClientFactory(options) {
                 } else {
                     this.id = id;
                     this.serverRef = child(this.database, id);
-                    get$1(this.serverRef).next((ev1) => {
+                    get(this.serverRef).next((ev1) => {
                         ev1.val();
                         let pOpts = {
                             initiator: true,

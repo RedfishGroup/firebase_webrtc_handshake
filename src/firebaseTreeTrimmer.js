@@ -66,7 +66,8 @@ export class firebaseTreeTrimmer {
 
     treeTrimmer(treeTrimmers) {
         // remove all references to peers not in treeTrimming list
-        get(this.peersRef).then((snap) => {
+        let unsub = onValue(this.peersRef, (snap) => {
+            unsub()
             snap.forEach(function (child) {
                 // if the peer is not in the treeTrimming list,
                 // remove it from peersRef
@@ -80,7 +81,8 @@ export class firebaseTreeTrimmer {
     watchMySuperior(superior) {
         // if superior is either not in /peers/cameras, or their
         // lastUpdate is greater than a minute, remove from treeTrimming list
-        get(child(this.peersRef, superior)).then((snap) => {
+        let unsub = onValue(child(this.peersRef, superior),(snap) => {
+            unsub()
             // if the peer's lastUpdate is greater than three minutes,
             // or it doesn't exist, remove from treeTrimming list
             if (
