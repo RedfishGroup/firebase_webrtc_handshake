@@ -118,11 +118,11 @@ export function P2PServerFactory(options) {
             if (this.initialPeerInfo) {
                 console.log('UserRef: ' + this.userRef, this.initialPeerInfo)
                 console.log('Got Here 1')
-                // update(this.userRef, this.initialPeerInfo)
-                //     .then((v) => console.log('success: ', v.val()))
-                //     .catch((e) => {
-                //         console.log('problem: ', e)
-                //     })
+                update(this.userRef, this.initialPeerInfo)
+                    .then((v) => console.log('success: ', v.val()))
+                    .catch((e) => {
+                        console.log('problem: ', e)
+                    })
             }
             console.log('Got Here 2')
 

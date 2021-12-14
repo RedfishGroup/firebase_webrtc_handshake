@@ -1,4 +1,4 @@
-import { child, get, orderByValue, query, set } from 'firebase/database'
+import { child, onValue, orderByValue, query, set } from 'firebase/database'
 
 /**  Description: class for monitoring firebase references
  and removing children that have not updated recently
@@ -21,43 +21,47 @@ export class firebaseTreeTrimmer {
     }
 
     monitor() {
-        get(query(this.treeTrimmingRef, orderByValue())).then((snapshot) => {
-            // check if in list
-            if (snapshot.child(this.id).val() === null) {
-                // if not add it
-                set(child(snapshot.ref, this.id), Date.now())
-            } else {
-                // otherwise calculate hierachy
-                let children = {}
-                let rank = 0,
-                    superior
-                snapshot.forEach(function (child) {
-                    children[child.key] = { rank, superior }
-                    superior = child.key
-                    rank++
-                })
-
-                let me = children[this.id]
-                this.rank = me.rank
-                this.superior = me.superior
-
-                console.log(
-                    'Treetrimmer rank: ',
-                    me.rank,
-                    ' superior id: ',
-                    me.superior
-                )
-
-                if (me.rank === 0) {
-                    this.treeTrimmer(children)
+        let unsub = onValue(
+            query(this.treeTrimmingRef, orderByValue()),
+            (snapshot) => {
+                unsub()
+                // check if in list
+                if (snapshot.child(this.id).val() === null) {
+                    // if not add it
+                    set(child(snapshot.ref, this.id), Date.now())
                 } else {
-                    this.watchMySuperior(me.superior)
-                }
-            }
+                    // otherwise calculate hierachy
+                    let children = {}
+                    let rank = 0,
+                        superior
+                    snapshot.forEach(function (child) {
+                        children[child.key] = { rank, superior }
+                        superior = child.key
+                        rank++
+                    })
 
-            // continuously check for treeTrimming, every minute
-            setTimeout(this.monitorReference, 60000)
-        })
+                    let me = children[this.id]
+                    this.rank = me.rank
+                    this.superior = me.superior
+
+                    console.log(
+                        'Treetrimmer rank: ',
+                        me.rank,
+                        ' superior id: ',
+                        me.superior
+                    )
+
+                    if (me.rank === 0) {
+                        this.treeTrimmer(children)
+                    } else {
+                        this.watchMySuperior(me.superior)
+                    }
+                }
+
+                // continuously check for treeTrimming, every minute
+                setTimeout(this.monitorReference, 60000)
+            }
+        )
     }
 
     treeTrimmer(treeTrimmers) {

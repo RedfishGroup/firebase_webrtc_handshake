@@ -1,4 +1,4 @@
-import { child, off, get, query, orderByValue, set, onValue, update, serverTimestamp, onDisconnect, onChildAdded, push as push$1 } from 'firebase/database';
+import { child, off, get as get$1, onValue, query, orderByValue, set, update, serverTimestamp, onDisconnect, onChildAdded, push as push$1 } from 'firebase/database';
 import 'firebase/app';
 
 var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
@@ -392,7 +392,7 @@ class Channel {
  * @param {*} callback
  */
 function getPeerList(database, callback) {
-    get(database)
+    get$1(database)
         .then((ev) => {
             var val = ev.val();
             callback(null, val);
@@ -423,43 +423,47 @@ class firebaseTreeTrimmer {
     }
 
     monitor() {
-        get(query(this.treeTrimmingRef, orderByValue())).then((snapshot) => {
-            // check if in list
-            if (snapshot.child(this.id).val() === null) {
-                // if not add it
-                set(child(snapshot.ref, this.id), Date.now());
-            } else {
-                // otherwise calculate hierachy
-                let children = {};
-                let rank = 0,
-                    superior;
-                snapshot.forEach(function (child) {
-                    children[child.key] = { rank, superior };
-                    superior = child.key;
-                    rank++;
-                });
-
-                let me = children[this.id];
-                this.rank = me.rank;
-                this.superior = me.superior;
-
-                console.log(
-                    'Treetrimmer rank: ',
-                    me.rank,
-                    ' superior id: ',
-                    me.superior
-                );
-
-                if (me.rank === 0) {
-                    this.treeTrimmer(children);
+        let unsub = onValue(
+            query(this.treeTrimmingRef, orderByValue()),
+            (snapshot) => {
+                unsub();
+                // check if in list
+                if (snapshot.child(this.id).val() === null) {
+                    // if not add it
+                    set(child(snapshot.ref, this.id), Date.now());
                 } else {
-                    this.watchMySuperior(me.superior);
-                }
-            }
+                    // otherwise calculate hierachy
+                    let children = {};
+                    let rank = 0,
+                        superior;
+                    snapshot.forEach(function (child) {
+                        children[child.key] = { rank, superior };
+                        superior = child.key;
+                        rank++;
+                    });
 
-            // continuously check for treeTrimming, every minute
-            setTimeout(this.monitorReference, 60000);
-        });
+                    let me = children[this.id];
+                    this.rank = me.rank;
+                    this.superior = me.superior;
+
+                    console.log(
+                        'Treetrimmer rank: ',
+                        me.rank,
+                        ' superior id: ',
+                        me.superior
+                    );
+
+                    if (me.rank === 0) {
+                        this.treeTrimmer(children);
+                    } else {
+                        this.watchMySuperior(me.superior);
+                    }
+                }
+
+                // continuously check for treeTrimming, every minute
+                setTimeout(this.monitorReference, 60000);
+            }
+        );
     }
 
     treeTrimmer(treeTrimmers) {
@@ -591,11 +595,11 @@ function P2PServerFactory(options) {
             if (this.initialPeerInfo) {
                 console.log('UserRef: ' + this.userRef, this.initialPeerInfo);
                 console.log('Got Here 1');
-                // update(this.userRef, this.initialPeerInfo)
-                //     .then((v) => console.log('success: ', v.val()))
-                //     .catch((e) => {
-                //         console.log('problem: ', e)
-                //     })
+                update(this.userRef, this.initialPeerInfo)
+                    .then((v) => console.log('success: ', v.val()))
+                    .catch((e) => {
+                        console.log('problem: ', e);
+                    });
             }
             console.log('Got Here 2');
 
@@ -980,7 +984,7 @@ function P2PClientFactory(options) {
                 } else {
                     this.id = id;
                     this.serverRef = child(this.database, id);
-                    get(this.serverRef).next((ev1) => {
+                    get$1(this.serverRef).next((ev1) => {
                         ev1.val();
                         let pOpts = {
                             initiator: true,
