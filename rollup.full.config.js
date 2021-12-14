@@ -1,13 +1,13 @@
 // Rollup plugins.
 import resolve from 'rollup-plugin-node-resolve';
-import commonjs from 'rollup-plugin-commonjs';
+import commonjs from 'rollup-plugin-commonjs'
 import nodeGlobals from 'rollup-plugin-node-globals'
 import nodeBuiltins from 'rollup-plugin-node-builtins'
-
 
 export default [
     {
         input: 'src/index.js',
+        external: ['firebase'],
         plugins: [
             resolve({
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],

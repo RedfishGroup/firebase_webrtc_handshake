@@ -12,9 +12,9 @@ export default [
         input: 'src/index.js',
         external: [
             'simple-peer/simplepeer.min.js',
-            'firebase/dist/index.esm',
             'msgpack-lite/dist/msgpack.min.js',
             'webrtc-adapter/src/js/adapter_core.js',
+            'firebase',
         ],
         plugins: [
             globals(),
@@ -30,9 +30,9 @@ export default [
                 sourcemap: true,
                 globals: {
                     'simple-peer': 'simple-peer',
-                    // firebase: 'firebase',
                     'msgpack-lite': 'msgpack-lite',
                     'webrtc-adapter': 'webrtc-adapter',
+                    firebase: 'firebase',
                 },
             },
         ],
