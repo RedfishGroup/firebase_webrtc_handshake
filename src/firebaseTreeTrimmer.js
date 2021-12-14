@@ -21,10 +21,9 @@ export class firebaseTreeTrimmer {
     }
 
     monitor() {
-        let unsub = onValue(
+        onValue(
             query(this.treeTrimmingRef, orderByValue()),
             (snapshot) => {
-                unsub()
                 // check if in list
                 if (snapshot.child(this.id).val() === null) {
                     // if not add it
@@ -60,39 +59,52 @@ export class firebaseTreeTrimmer {
 
                 // continuously check for treeTrimming, every minute
                 setTimeout(this.monitorReference, 60000)
+            },
+            {
+                onlyOnce: true,
             }
         )
     }
 
     treeTrimmer(treeTrimmers) {
         // remove all references to peers not in treeTrimming list
-        let unsub = onValue(this.peersRef, (snap) => {
-            unsub()
-            snap.forEach(function (child) {
-                // if the peer is not in the treeTrimming list,
-                // remove it from peersRef
-                if (treeTrimmers[child.key] === undefined) {
-                    remove(child.ref)
-                }
-            })
-        })
+        onValue(
+            this.peersRef,
+            (snap) => {
+                snap.forEach(function (child) {
+                    // if the peer is not in the treeTrimming list,
+                    // remove it from peersRef
+                    if (treeTrimmers[child.key] === undefined) {
+                        remove(child.ref)
+                    }
+                })
+            },
+            {
+                onlyOnce: true,
+            }
+        )
     }
 
     watchMySuperior(superior) {
         // if superior is either not in /peers/cameras, or their
         // lastUpdate is greater than a minute, remove from treeTrimming list
-        let unsub = onValue(child(this.peersRef, superior),(snap) => {
-            unsub()
-            // if the peer's lastUpdate is greater than three minutes,
-            // or it doesn't exist, remove from treeTrimming list
-            if (
-                snap.val() === null ||
-                snap.child('lastUpdate').val() === null ||
-                snap.child('lastUpdate').val() < Date.now() - 3 * 60000
-            ) {
-                // if not in the peers list or has not been updated for 3 minutes then remove
-                remove(child(this.treeTrimmingRef, superior))
+        onValue(
+            child(this.peersRef, superior),
+            (snap) => {
+                // if the peer's lastUpdate is greater than three minutes,
+                // or it doesn't exist, remove from treeTrimming list
+                if (
+                    snap.val() === null ||
+                    snap.child('lastUpdate').val() === null ||
+                    snap.child('lastUpdate').val() < Date.now() - 3 * 60000
+                ) {
+                    // if not in the peers list or has not been updated for 3 minutes then remove
+                    remove(child(this.treeTrimmingRef, superior))
+                }
+            },
+            {
+                onlyOnce: true,
             }
-        })
+        )
     }
 }
