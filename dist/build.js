@@ -14170,6 +14170,24 @@ function push$1(parent, value) {
     return thennablePushRef;
 }
 /**
+ * Removes the data at this Database location.
+ *
+ * Any data at child locations will also be deleted.
+ *
+ * The effect of the remove will be visible immediately and the corresponding
+ * event 'value' will be triggered. Synchronization of the remove to the
+ * Firebase servers will also be started, and the returned Promise will resolve
+ * when complete. If provided, the onComplete callback will be called
+ * asynchronously after synchronization has finished.
+ *
+ * @param ref - The location to remove.
+ * @returns Resolves when remove on server is complete.
+ */
+function remove$1(ref) {
+    validateWritablePath('remove', ref._path);
+    return set(ref, null);
+}
+/**
  * Writes data to this Database location.
  *
  * This will overwrite any data at this location and all child locations.
@@ -15202,7 +15220,7 @@ class firebaseTreeTrimmer {
                     // if the peer is not in the treeTrimming list,
                     // remove it from peersRef
                     if (treeTrimmers[child.key] === undefined) {
-                        remove(child.ref);
+                        remove$1(child.ref);
                     }
                 });
             },
@@ -15226,7 +15244,7 @@ class firebaseTreeTrimmer {
                     snap.child('lastUpdate').val() < Date.now() - 3 * 60000
                 ) {
                     // if not in the peers list or has not been updated for 3 minutes then remove
-                    remove(child(this.treeTrimmingRef, superior));
+                    remove$1(child(this.treeTrimmingRef, superior));
                 }
             },
             {

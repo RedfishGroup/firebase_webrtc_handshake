@@ -1,4 +1,11 @@
-import { child, onValue, orderByValue, query, set } from 'firebase/database'
+import {
+    child,
+    onValue,
+    orderByValue,
+    query,
+    remove,
+    set,
+} from 'firebase/database'
 
 /**  Description: class for monitoring firebase references
  and removing children that have not updated recently

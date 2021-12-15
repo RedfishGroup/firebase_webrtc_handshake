@@ -1,4 +1,4 @@
-import { child, off, get, onValue, query, orderByValue, set, update, serverTimestamp, onDisconnect, onChildAdded, push as push$1 } from 'firebase/database';
+import { child, off, get, onValue, query, orderByValue, set, remove as remove$1, update, serverTimestamp, onDisconnect, onChildAdded, push as push$1 } from 'firebase/database';
 import 'firebase/app';
 
 var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
@@ -477,7 +477,7 @@ class firebaseTreeTrimmer {
                     // if the peer is not in the treeTrimming list,
                     // remove it from peersRef
                     if (treeTrimmers[child.key] === undefined) {
-                        remove(child.ref);
+                        remove$1(child.ref);
                     }
                 });
             },
@@ -501,7 +501,7 @@ class firebaseTreeTrimmer {
                     snap.child('lastUpdate').val() < Date.now() - 3 * 60000
                 ) {
                     // if not in the peers list or has not been updated for 3 minutes then remove
-                    remove(child(this.treeTrimmingRef, superior));
+                    remove$1(child(this.treeTrimmingRef, superior));
                 }
             },
             {
