@@ -1,4 +1,4 @@
-import { child, off, get, onValue, query, orderByValue, set, remove as remove$1, update, serverTimestamp, onDisconnect, onChildAdded, push as push$1 } from 'firebase/database';
+import { child, off, onValue, query, orderByValue, set, remove as remove$1, update, serverTimestamp, onDisconnect, onChildAdded, push as push$1 } from 'firebase/database';
 import 'firebase/app';
 
 var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
@@ -392,14 +392,16 @@ class Channel {
  * @param {*} callback
  */
 function getPeerList(database, callback) {
-    get(database)
-        .then((ev) => {
+    onValue(
+        database,
+        (ev) => {
             var val = ev.val();
             callback(null, val);
-        })
-        .catch((err) => {
-            callback(err);
-        });
+        },
+        {
+            onlyOnce: true,
+        }
+    );
 }
 
 /**  Description: class for monitoring firebase references
@@ -998,43 +1000,49 @@ function P2PClientFactory(options) {
                 } else {
                     this.id = id;
                     this.serverRef = child(this.database, id);
-                    get(this.serverRef).next((ev1) => {
-                        ev1.val();
-                        let pOpts = {
-                            initiator: true,
-                            trickle: true,
-                            config: {
-                                iceServers: this.iceServers,
-                            },
-                            peerID: id,
-                        };
+                    onValue(
+                        this.serverRef,
+                        (ev1) => {
+                            ev1.val();
+                            let pOpts = {
+                                initiator: true,
+                                trickle: true,
+                                config: {
+                                    iceServers: this.iceServers,
+                                },
+                                peerID: id,
+                            };
 
-                        if (this.isStream) {
-                            pOpts.stream = this.getMyStream();
-                        }
+                            if (this.isStream) {
+                                pOpts.stream = this.getMyStream();
+                            }
 
-                        var p = new PeerBinary(pOpts);
-                        this.connection = p;
-                        this._registerEvents();
-                        p.on('signal', (data) => {
-                            if (data.type == 'offer') {
-                                this._createChannel(data);
-                            } else if (data.candidate) {
-                                if (this.debug) {
-                                    console.log(
-                                        'client recieved candidate from webrtc',
+                            var p = new PeerBinary(pOpts);
+                            this.connection = p;
+                            this._registerEvents();
+                            p.on('signal', (data) => {
+                                if (data.type == 'offer') {
+                                    this._createChannel(data);
+                                } else if (data.candidate) {
+                                    if (this.debug) {
+                                        console.log(
+                                            'client recieved candidate from webrtc',
+                                            data
+                                        );
+                                    }
+                                    push$1(this.outRef, data);
+                                } else {
+                                    console.warn(
+                                        'Client recieved unexpected signal through WebRTC:',
                                         data
                                     );
                                 }
-                                push$1(this.outRef, data);
-                            } else {
-                                console.warn(
-                                    'Client recieved unexpected signal through WebRTC:',
-                                    data
-                                );
-                            }
-                        });
-                    });
+                            });
+                        },
+                        {
+                            onlyOnce: true,
+                        }
+                    );
                 }
             });
         }

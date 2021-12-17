@@ -1,4 +1,4 @@
-import { get } from 'firebase/database'
+import { onValue } from 'firebase/database'
 
 /**
  *
@@ -6,12 +6,14 @@ import { get } from 'firebase/database'
  * @param {*} callback
  */
 export function getPeerList(database, callback) {
-    get(database)
-        .then((ev) => {
+    onValue(
+        database,
+        (ev) => {
             var val = ev.val()
             callback(null, val)
-        })
-        .catch((err) => {
-            callback(err)
-        })
+        },
+        {
+            onlyOnce: true,
+        }
+    )
 }

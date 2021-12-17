@@ -1,4 +1,4 @@
-import { child, get, off, onChildAdded, push } from 'firebase/database'
+import { child, off, onChildAdded, onValue, push } from 'firebase/database'
 
 import { settings } from './settings.js'
 import { Evented } from './Evented.js'
@@ -140,43 +140,49 @@ export function P2PClientFactory(options) {
                 } else {
                     this.id = id
                     this.serverRef = child(this.database, id)
-                    get(this.serverRef).next((ev1) => {
-                        var sval = ev1.val()
-                        let pOpts = {
-                            initiator: true,
-                            trickle: true,
-                            config: {
-                                iceServers: this.iceServers,
-                            },
-                            peerID: id,
-                        }
+                    onValue(
+                        this.serverRef,
+                        (ev1) => {
+                            var sval = ev1.val()
+                            let pOpts = {
+                                initiator: true,
+                                trickle: true,
+                                config: {
+                                    iceServers: this.iceServers,
+                                },
+                                peerID: id,
+                            }
 
-                        if (this.isStream) {
-                            pOpts.stream = this.getMyStream()
-                        }
+                            if (this.isStream) {
+                                pOpts.stream = this.getMyStream()
+                            }
 
-                        var p = new PeerBinary(pOpts)
-                        this.connection = p
-                        this._registerEvents()
-                        p.on('signal', (data) => {
-                            if (data.type == 'offer') {
-                                this._createChannel(data)
-                            } else if (data.candidate) {
-                                if (this.debug) {
-                                    console.log(
-                                        'client recieved candidate from webrtc',
+                            var p = new PeerBinary(pOpts)
+                            this.connection = p
+                            this._registerEvents()
+                            p.on('signal', (data) => {
+                                if (data.type == 'offer') {
+                                    this._createChannel(data)
+                                } else if (data.candidate) {
+                                    if (this.debug) {
+                                        console.log(
+                                            'client recieved candidate from webrtc',
+                                            data
+                                        )
+                                    }
+                                    push(this.outRef, data)
+                                } else {
+                                    console.warn(
+                                        'Client recieved unexpected signal through WebRTC:',
                                         data
                                     )
                                 }
-                                push(this.outRef, data)
-                            } else {
-                                console.warn(
-                                    'Client recieved unexpected signal through WebRTC:',
-                                    data
-                                )
-                            }
-                        })
-                    })
+                            })
+                        },
+                        {
+                            onlyOnce: true,
+                        }
+                    )
                 }
             })
         }

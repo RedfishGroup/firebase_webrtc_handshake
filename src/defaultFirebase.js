@@ -1,14 +1,6 @@
 import { initializeApp } from 'firebase/app'
 
-import {
-    child,
-    get,
-    getDatabase as _getDatabase,
-    ref,
-    off,
-    orderByValue,
-    query,
-} from 'firebase/database'
+import { child, getDatabase as _getDatabase, ref } from 'firebase/database'
 
 var defaultFBConfig = {
     apiKey: 'AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA',
@@ -47,13 +39,4 @@ function getFirebase() {
     return firebase
 }
 
-export {
-    getFirebase,
-    getDatabase,
-    initFirebase,
-    child,
-    get,
-    off,
-    orderByValue,
-    query,
-}
+export { getFirebase, getDatabase, initFirebase }

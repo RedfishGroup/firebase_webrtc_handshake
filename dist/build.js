@@ -10937,9 +10937,6 @@ class View {
 function viewGetServerCache(view) {
     return view.viewCache_.serverCache.getNode();
 }
-function viewGetCompleteNode(view) {
-    return viewCacheGetCompleteEventSnap(view.viewCache_);
-}
 function viewGetCompleteServerCache(view, path) {
     const cache = viewCacheGetCompleteServerSnap(view.viewCache_);
     if (cache) {
@@ -11605,33 +11602,6 @@ function syncTreeCalcCompleteEventCache(syncTree, path, writeIdsToExclude) {
         }
     });
     return writeTreeCalcCompleteEventCache(writeTree, path, serverCache, writeIdsToExclude, includeHiddenSets);
-}
-function syncTreeGetServerValue(syncTree, query) {
-    const path = query._path;
-    let serverCache = null;
-    // Any covering writes will necessarily be at the root, so really all we need to find is the server cache.
-    // Consider optimizing this once there's a better understanding of what actual behavior will be.
-    syncTree.syncPointTree_.foreachOnPath(path, (pathToSyncPoint, sp) => {
-        const relativePath = newRelativePath(pathToSyncPoint, path);
-        serverCache =
-            serverCache || syncPointGetCompleteServerCache(sp, relativePath);
-    });
-    let syncPoint = syncTree.syncPointTree_.get(path);
-    if (!syncPoint) {
-        syncPoint = new SyncPoint();
-        syncTree.syncPointTree_ = syncTree.syncPointTree_.set(path, syncPoint);
-    }
-    else {
-        serverCache =
-            serverCache || syncPointGetCompleteServerCache(syncPoint, newEmptyPath());
-    }
-    const serverCacheComplete = serverCache != null;
-    const serverCacheNode = serverCacheComplete
-        ? new CacheNode(serverCache, true, false)
-        : null;
-    const writesCache = writeTreeChildWrites(syncTree.pendingWriteTree_, query._path);
-    const view = syncPointGetView(syncPoint, query, writesCache, serverCacheComplete ? serverCacheNode.getNode() : ChildrenNode.EMPTY_NODE, serverCacheComplete);
-    return viewGetCompleteNode(view);
 }
 /**
  * A helper method that visits all descendant and ancestor SyncPoints, applying the operation.
@@ -12770,37 +12740,6 @@ function repoUpdateInfo(repo, pathString, value) {
 }
 function repoGetNextWriteId(repo) {
     return repo.nextWriteId_++;
-}
-/**
- * The purpose of `getValue` is to return the latest known value
- * satisfying `query`.
- *
- * This method will first check for in-memory cached values
- * belonging to active listeners. If they are found, such values
- * are considered to be the most up-to-date.
- *
- * If the client is not connected, this method will try to
- * establish a connection and request the value for `query`. If
- * the client is not able to retrieve the query result, it reports
- * an error.
- *
- * @param query - The query to surface a value for.
- */
-function repoGetValue(repo, query) {
-    // Only active queries are cached. There is no persisted cache.
-    const cached = syncTreeGetServerValue(repo.serverSyncTree_, query);
-    if (cached != null) {
-        return Promise.resolve(cached);
-    }
-    return repo.server_.get(query).then(payload => {
-        const node = nodeFromJSON(payload).withIndex(query._queryParams.getIndex());
-        const events = syncTreeApplyServerOverwrite(repo.serverSyncTree_, query._path, node);
-        eventQueueRaiseEventsAtPath(repo.eventQueue_, query._path, events);
-        return Promise.resolve(node);
-    }, err => {
-        repoLog(repo, 'get for query ' + stringify(query) + ' failed: ' + err);
-        return Promise.reject(new Error(err));
-    });
 }
 function repoSetWithPriority(repo, path, newVal, newPriority, onComplete) {
     repoLog(repo, 'set', {
@@ -14267,20 +14206,6 @@ function update(ref, values) {
     return deferred.promise;
 }
 /**
- * Gets the most up-to-date result for this query.
- *
- * @param query - The query to run.
- * @returns A `Promise` which resolves to the resulting DataSnapshot if a value is
- * available, or rejects if the client is unable to return a value (e.g., if the
- * server is unreachable and there is nothing cached).
- */
-function get(query) {
-    query = getModularInstance(query);
-    return repoGetValue(query._repo, query).then(node => {
-        return new DataSnapshot(node, new ReferenceImpl(query._repo, query._path), query._queryParams.getIndex());
-    });
-}
-/**
  * Represents registration for 'value' events.
  */
 class ValueEventRegistration {
@@ -15135,14 +15060,16 @@ class Channel {
  * @param {*} callback
  */
 function getPeerList(database, callback) {
-    get(database)
-        .then((ev) => {
+    onValue(
+        database,
+        (ev) => {
             var val = ev.val();
             callback(null, val);
-        })
-        .catch((err) => {
-            callback(err);
-        });
+        },
+        {
+            onlyOnce: true,
+        }
+    );
 }
 
 /**  Description: class for monitoring firebase references
@@ -15741,43 +15668,49 @@ function P2PClientFactory(options) {
                 } else {
                     this.id = id;
                     this.serverRef = child(this.database, id);
-                    get(this.serverRef).next((ev1) => {
-                        ev1.val();
-                        let pOpts = {
-                            initiator: true,
-                            trickle: true,
-                            config: {
-                                iceServers: this.iceServers,
-                            },
-                            peerID: id,
-                        };
+                    onValue(
+                        this.serverRef,
+                        (ev1) => {
+                            ev1.val();
+                            let pOpts = {
+                                initiator: true,
+                                trickle: true,
+                                config: {
+                                    iceServers: this.iceServers,
+                                },
+                                peerID: id,
+                            };
 
-                        if (this.isStream) {
-                            pOpts.stream = this.getMyStream();
-                        }
+                            if (this.isStream) {
+                                pOpts.stream = this.getMyStream();
+                            }
 
-                        var p = new PeerBinary(pOpts);
-                        this.connection = p;
-                        this._registerEvents();
-                        p.on('signal', (data) => {
-                            if (data.type == 'offer') {
-                                this._createChannel(data);
-                            } else if (data.candidate) {
-                                if (this.debug) {
-                                    console.log(
-                                        'client recieved candidate from webrtc',
+                            var p = new PeerBinary(pOpts);
+                            this.connection = p;
+                            this._registerEvents();
+                            p.on('signal', (data) => {
+                                if (data.type == 'offer') {
+                                    this._createChannel(data);
+                                } else if (data.candidate) {
+                                    if (this.debug) {
+                                        console.log(
+                                            'client recieved candidate from webrtc',
+                                            data
+                                        );
+                                    }
+                                    push$1(this.outRef, data);
+                                } else {
+                                    console.warn(
+                                        'Client recieved unexpected signal through WebRTC:',
                                         data
                                     );
                                 }
-                                push$1(this.outRef, data);
-                            } else {
-                                console.warn(
-                                    'Client recieved unexpected signal through WebRTC:',
-                                    data
-                                );
-                            }
-                        });
-                    });
+                            });
+                        },
+                        {
+                            onlyOnce: true,
+                        }
+                    );
                 }
             });
         }

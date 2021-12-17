@@ -6,6 +6,228 @@ var global$1 = (typeof global !== "undefined" ? global :
             typeof self !== "undefined" ? self :
             typeof window !== "undefined" ? window : {});
 
+// shim for using process in browser
+// based off https://github.com/defunctzombie/node-process/blob/master/browser.js
+
+function defaultSetTimout() {
+    throw new Error('setTimeout has not been defined');
+}
+function defaultClearTimeout () {
+    throw new Error('clearTimeout has not been defined');
+}
+var cachedSetTimeout = defaultSetTimout;
+var cachedClearTimeout = defaultClearTimeout;
+if (typeof global$1.setTimeout === 'function') {
+    cachedSetTimeout = setTimeout;
+}
+if (typeof global$1.clearTimeout === 'function') {
+    cachedClearTimeout = clearTimeout;
+}
+
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) {
+        //normal enviroments in sane situations
+        return setTimeout(fun, 0);
+    }
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch(e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch(e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+
+
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) {
+        //normal enviroments in sane situations
+        return clearTimeout(marker);
+    }
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+
+
+
+}
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = runTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    runClearTimeout(timeout);
+}
+function nextTick(fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        runTimeout(drainQueue);
+    }
+}
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+var title = 'browser';
+var platform = 'browser';
+var browser = true;
+var env = {};
+var argv = [];
+var version$3 = ''; // empty string to avoid regexp issues
+var versions = {};
+var release = {};
+var config = {};
+
+function noop() {}
+
+var on = noop;
+var addListener = noop;
+var once = noop;
+var off$1 = noop;
+var removeListener = noop;
+var removeAllListeners = noop;
+var emit = noop;
+
+function binding(name) {
+    throw new Error('process.binding is not supported');
+}
+
+function cwd () { return '/' }
+function chdir (dir) {
+    throw new Error('process.chdir is not supported');
+}function umask() { return 0; }
+
+// from https://github.com/kumavis/browser-process-hrtime/blob/master/index.js
+var performance = global$1.performance || {};
+var performanceNow =
+  performance.now        ||
+  performance.mozNow     ||
+  performance.msNow      ||
+  performance.oNow       ||
+  performance.webkitNow  ||
+  function(){ return (new Date()).getTime() };
+
+// generate timestamp or delta
+// see http://nodejs.org/api/process.html#process_process_hrtime
+function hrtime(previousTimestamp){
+  var clocktime = performanceNow.call(performance)*1e-3;
+  var seconds = Math.floor(clocktime);
+  var nanoseconds = Math.floor((clocktime%1)*1e9);
+  if (previousTimestamp) {
+    seconds = seconds - previousTimestamp[0];
+    nanoseconds = nanoseconds - previousTimestamp[1];
+    if (nanoseconds<0) {
+      seconds--;
+      nanoseconds += 1e9;
+    }
+  }
+  return [seconds,nanoseconds]
+}
+
+var startTime = new Date();
+function uptime() {
+  var currentTime = new Date();
+  var dif = currentTime - startTime;
+  return dif / 1000;
+}
+
+var process = {
+  nextTick: nextTick,
+  title: title,
+  browser: browser,
+  env: env,
+  argv: argv,
+  version: version$3,
+  versions: versions,
+  on: on,
+  addListener: addListener,
+  once: once,
+  off: off$1,
+  removeListener: removeListener,
+  removeAllListeners: removeAllListeners,
+  emit: emit,
+  binding: binding,
+  cwd: cwd,
+  chdir: chdir,
+  umask: umask,
+  hrtime: hrtime,
+  platform: platform,
+  release: release,
+  config: config,
+  uptime: uptime
+};
+
 /**
  * @license
  * Copyright 2017 Google LLC
@@ -1938,7 +2160,7 @@ const name$2 = "@firebase/firestore";
 const name$1$1 = "@firebase/firestore-compat";
 
 const name$p = "firebase";
-const version$3 = "9.5.0";
+const version$2 = "9.5.0";
 
 /**
  * @license
@@ -2180,7 +2402,7 @@ class FirebaseAppImpl {
  *
  * @public
  */
-const SDK_VERSION$1 = version$3;
+const SDK_VERSION$1 = version$2;
 function initializeApp(options, rawConfig = {}) {
     if (typeof rawConfig !== 'object') {
         const name = rawConfig;
@@ -2319,251 +2541,8 @@ function registerCoreComponents(variant) {
  */
 registerCoreComponents('');
 
-var name$1 = "firebase";
-var version$2 = "9.5.0";
-
-/**
- * @license
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-registerVersion(name$1, version$2, 'app');
-
-// shim for using process in browser
-// based off https://github.com/defunctzombie/node-process/blob/master/browser.js
-
-function defaultSetTimout() {
-    throw new Error('setTimeout has not been defined');
-}
-function defaultClearTimeout () {
-    throw new Error('clearTimeout has not been defined');
-}
-var cachedSetTimeout = defaultSetTimout;
-var cachedClearTimeout = defaultClearTimeout;
-if (typeof global$1.setTimeout === 'function') {
-    cachedSetTimeout = setTimeout;
-}
-if (typeof global$1.clearTimeout === 'function') {
-    cachedClearTimeout = clearTimeout;
-}
-
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
-        cachedSetTimeout = setTimeout;
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    // if clearTimeout wasn't available but was latter defined
-    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
-        cachedClearTimeout = clearTimeout;
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-function nextTick(fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-}
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-var title = 'browser';
-var platform = 'browser';
-var browser = true;
-var env = {};
-var argv = [];
-var version$1 = ''; // empty string to avoid regexp issues
-var versions = {};
-var release = {};
-var config = {};
-
-function noop() {}
-
-var on = noop;
-var addListener = noop;
-var once = noop;
-var off$1 = noop;
-var removeListener = noop;
-var removeAllListeners = noop;
-var emit = noop;
-
-function binding(name) {
-    throw new Error('process.binding is not supported');
-}
-
-function cwd () { return '/' }
-function chdir (dir) {
-    throw new Error('process.chdir is not supported');
-}function umask() { return 0; }
-
-// from https://github.com/kumavis/browser-process-hrtime/blob/master/index.js
-var performance = global$1.performance || {};
-var performanceNow =
-  performance.now        ||
-  performance.mozNow     ||
-  performance.msNow      ||
-  performance.oNow       ||
-  performance.webkitNow  ||
-  function(){ return (new Date()).getTime() };
-
-// generate timestamp or delta
-// see http://nodejs.org/api/process.html#process_process_hrtime
-function hrtime(previousTimestamp){
-  var clocktime = performanceNow.call(performance)*1e-3;
-  var seconds = Math.floor(clocktime);
-  var nanoseconds = Math.floor((clocktime%1)*1e9);
-  if (previousTimestamp) {
-    seconds = seconds - previousTimestamp[0];
-    nanoseconds = nanoseconds - previousTimestamp[1];
-    if (nanoseconds<0) {
-      seconds--;
-      nanoseconds += 1e9;
-    }
-  }
-  return [seconds,nanoseconds]
-}
-
-var startTime = new Date();
-function uptime() {
-  var currentTime = new Date();
-  var dif = currentTime - startTime;
-  return dif / 1000;
-}
-
-var process = {
-  nextTick: nextTick,
-  title: title,
-  browser: browser,
-  env: env,
-  argv: argv,
-  version: version$1,
-  versions: versions,
-  on: on,
-  addListener: addListener,
-  once: once,
-  off: off$1,
-  removeListener: removeListener,
-  removeAllListeners: removeAllListeners,
-  emit: emit,
-  binding: binding,
-  cwd: cwd,
-  chdir: chdir,
-  umask: umask,
-  hrtime: hrtime,
-  platform: platform,
-  release: release,
-  config: config,
-  uptime: uptime
-};
-
-const name = "@firebase/database";
-const version = "0.12.4";
+const name$1 = "@firebase/database";
+const version$1 = "0.12.4";
 
 /**
  * @license
@@ -11655,9 +11634,6 @@ class View {
 function viewGetServerCache(view) {
     return view.viewCache_.serverCache.getNode();
 }
-function viewGetCompleteNode(view) {
-    return viewCacheGetCompleteEventSnap(view.viewCache_);
-}
 function viewGetCompleteServerCache(view, path) {
     const cache = viewCacheGetCompleteServerSnap(view.viewCache_);
     if (cache) {
@@ -12323,33 +12299,6 @@ function syncTreeCalcCompleteEventCache(syncTree, path, writeIdsToExclude) {
         }
     });
     return writeTreeCalcCompleteEventCache(writeTree, path, serverCache, writeIdsToExclude, includeHiddenSets);
-}
-function syncTreeGetServerValue(syncTree, query) {
-    const path = query._path;
-    let serverCache = null;
-    // Any covering writes will necessarily be at the root, so really all we need to find is the server cache.
-    // Consider optimizing this once there's a better understanding of what actual behavior will be.
-    syncTree.syncPointTree_.foreachOnPath(path, (pathToSyncPoint, sp) => {
-        const relativePath = newRelativePath(pathToSyncPoint, path);
-        serverCache =
-            serverCache || syncPointGetCompleteServerCache(sp, relativePath);
-    });
-    let syncPoint = syncTree.syncPointTree_.get(path);
-    if (!syncPoint) {
-        syncPoint = new SyncPoint();
-        syncTree.syncPointTree_ = syncTree.syncPointTree_.set(path, syncPoint);
-    }
-    else {
-        serverCache =
-            serverCache || syncPointGetCompleteServerCache(syncPoint, newEmptyPath());
-    }
-    const serverCacheComplete = serverCache != null;
-    const serverCacheNode = serverCacheComplete
-        ? new CacheNode(serverCache, true, false)
-        : null;
-    const writesCache = writeTreeChildWrites(syncTree.pendingWriteTree_, query._path);
-    const view = syncPointGetView(syncPoint, query, writesCache, serverCacheComplete ? serverCacheNode.getNode() : ChildrenNode.EMPTY_NODE, serverCacheComplete);
-    return viewGetCompleteNode(view);
 }
 /**
  * A helper method that visits all descendant and ancestor SyncPoints, applying the operation.
@@ -13488,37 +13437,6 @@ function repoUpdateInfo(repo, pathString, value) {
 }
 function repoGetNextWriteId(repo) {
     return repo.nextWriteId_++;
-}
-/**
- * The purpose of `getValue` is to return the latest known value
- * satisfying `query`.
- *
- * This method will first check for in-memory cached values
- * belonging to active listeners. If they are found, such values
- * are considered to be the most up-to-date.
- *
- * If the client is not connected, this method will try to
- * establish a connection and request the value for `query`. If
- * the client is not able to retrieve the query result, it reports
- * an error.
- *
- * @param query - The query to surface a value for.
- */
-function repoGetValue(repo, query) {
-    // Only active queries are cached. There is no persisted cache.
-    const cached = syncTreeGetServerValue(repo.serverSyncTree_, query);
-    if (cached != null) {
-        return Promise.resolve(cached);
-    }
-    return repo.server_.get(query).then(payload => {
-        const node = nodeFromJSON(payload).withIndex(query._queryParams.getIndex());
-        const events = syncTreeApplyServerOverwrite(repo.serverSyncTree_, query._path, node);
-        eventQueueRaiseEventsAtPath(repo.eventQueue_, query._path, events);
-        return Promise.resolve(node);
-    }, err => {
-        repoLog(repo, 'get for query ' + stringify(query) + ' failed: ' + err);
-        return Promise.reject(new Error(err));
-    });
 }
 function repoSetWithPriority(repo, path, newVal, newPriority, onComplete) {
     repoLog(repo, 'set', {
@@ -15004,20 +14922,6 @@ function update(ref, values) {
     return deferred.promise;
 }
 /**
- * Gets the most up-to-date result for this query.
- *
- * @param query - The query to run.
- * @returns A `Promise` which resolves to the resulting DataSnapshot if a value is
- * available, or rejects if the client is unable to return a value (e.g., if the
- * server is unreachable and there is nothing cached).
- */
-function get(query) {
-    query = getModularInstance(query);
-    return repoGetValue(query._repo, query).then(node => {
-        return new DataSnapshot(node, new ReferenceImpl(query._repo, query._path), query._queryParams.getIndex());
-    });
-}
-/**
  * Represents registration for 'value' events.
  */
 class ValueEventRegistration {
@@ -15429,9 +15333,9 @@ function registerDatabase(variant) {
         const appCheckProvider = container.getProvider('app-check-internal');
         return repoManagerDatabaseFromApp(app, authProvider, appCheckProvider, url);
     }, "PUBLIC" /* PUBLIC */).setMultipleInstances(true));
-    registerVersion(name, version, variant);
+    registerVersion(name$1, version$1, variant);
     // BUILD_TARGET will be replaced by values like esm5, esm2017, cjs5, etc during the compilation
-    registerVersion(name, version, 'esm2017');
+    registerVersion(name$1, version$1, 'esm2017');
 }
 
 /**
@@ -15476,39 +15380,6 @@ PersistentConnection.prototype.echo = function (data, onEcho) {
  * @packageDocumentation
  */
 registerDatabase();
-
-var defaultFBConfig = {
-    apiKey: 'AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA',
-    authDomain: 'https://torrid-torch-716.firebaseio.com/',
-    databaseURL: 'https://torrid-torch-716.firebaseio.com/',
-    projectId: 'torrid-torch-716',
-};
-
-var firebase$1;
-function initFirebase(newFirebase, fbConfig = null) {
-    if (fbConfig) defaultFBConfig = fbConfig;
-
-    if (!firebase$1) {
-        firebase$1 = initializeApp(defaultFBConfig);
-    }
-
-    return { firebase: firebase$1, database: getDatabase() }
-}
-
-var database;
-
-function getDatabase() {
-    if (database) return database
-
-    if (!firebase$1) {
-        throw new Error(
-            `init must be called before accessing database.  no firebase`
-        )
-    }
-
-    database = child(ref(getDatabase$1(firebase$1)), 'peers');
-    return database
-}
 
 class Channel {
     constructor(fbref, peer) {
@@ -15886,20 +15757,76 @@ class Evented {
     }
 }
 
+var name = "firebase";
+var version = "9.5.0";
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+registerVersion(name, version, 'app');
+
+var defaultFBConfig = {
+    apiKey: 'AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA',
+    authDomain: 'https://torrid-torch-716.firebaseio.com/',
+    databaseURL: 'https://torrid-torch-716.firebaseio.com/',
+    projectId: 'torrid-torch-716',
+};
+
+var firebase$1;
+function initFirebase(newFirebase, fbConfig = null) {
+    if (fbConfig) defaultFBConfig = fbConfig;
+
+    if (!firebase$1) {
+        firebase$1 = initializeApp(defaultFBConfig);
+    }
+
+    return { firebase: firebase$1, database: getDatabase() }
+}
+
+var database;
+
+function getDatabase() {
+    if (database) return database
+
+    if (!firebase$1) {
+        throw new Error(
+            `init must be called before accessing database.  no firebase`
+        )
+    }
+
+    database = child(ref(getDatabase$1(firebase$1)), 'peers');
+    return database
+}
+
 /**
  *
  * @param {*} database
  * @param {*} callback
  */
 function getPeerList(database, callback) {
-    get(database)
-        .then((ev) => {
+    onValue(
+        database,
+        (ev) => {
             var val = ev.val();
             callback(null, val);
-        })
-        .catch((err) => {
-            callback(err);
-        });
+        },
+        {
+            onlyOnce: true,
+        }
+    );
 }
 
 /**  Description: class for monitoring firebase references
@@ -16498,43 +16425,49 @@ function P2PClientFactory(options) {
                 } else {
                     this.id = id;
                     this.serverRef = child(this.database, id);
-                    get(this.serverRef).next((ev1) => {
-                        ev1.val();
-                        let pOpts = {
-                            initiator: true,
-                            trickle: true,
-                            config: {
-                                iceServers: this.iceServers,
-                            },
-                            peerID: id,
-                        };
+                    onValue(
+                        this.serverRef,
+                        (ev1) => {
+                            ev1.val();
+                            let pOpts = {
+                                initiator: true,
+                                trickle: true,
+                                config: {
+                                    iceServers: this.iceServers,
+                                },
+                                peerID: id,
+                            };
 
-                        if (this.isStream) {
-                            pOpts.stream = this.getMyStream();
-                        }
+                            if (this.isStream) {
+                                pOpts.stream = this.getMyStream();
+                            }
 
-                        var p = new PeerBinary(pOpts);
-                        this.connection = p;
-                        this._registerEvents();
-                        p.on('signal', (data) => {
-                            if (data.type == 'offer') {
-                                this._createChannel(data);
-                            } else if (data.candidate) {
-                                if (this.debug) {
-                                    console.log(
-                                        'client recieved candidate from webrtc',
+                            var p = new PeerBinary(pOpts);
+                            this.connection = p;
+                            this._registerEvents();
+                            p.on('signal', (data) => {
+                                if (data.type == 'offer') {
+                                    this._createChannel(data);
+                                } else if (data.candidate) {
+                                    if (this.debug) {
+                                        console.log(
+                                            'client recieved candidate from webrtc',
+                                            data
+                                        );
+                                    }
+                                    push$1(this.outRef, data);
+                                } else {
+                                    console.warn(
+                                        'Client recieved unexpected signal through WebRTC:',
                                         data
                                     );
                                 }
-                                push$1(this.outRef, data);
-                            } else {
-                                console.warn(
-                                    'Client recieved unexpected signal through WebRTC:',
-                                    data
-                                );
-                            }
-                        });
-                    });
+                            });
+                        },
+                        {
+                            onlyOnce: true,
+                        }
+                    );
                 }
             });
         }

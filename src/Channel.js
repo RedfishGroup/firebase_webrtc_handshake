@@ -1,4 +1,4 @@
-import { child, off } from './defaultFirebase.js'
+import { child, off } from 'firebase/database'
 
 export class Channel {
     constructor(fbref, peer) {
