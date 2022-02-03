@@ -14083,7 +14083,7 @@ function onDisconnect(ref) {
  * @returns Combined `Promise` and `Reference`; resolves when write is complete,
  * but can be used immediately as the `Reference` to the child location.
  */
-function push$1(parent, value) {
+function push(parent, value) {
     parent = getModularInstance(parent);
     validateWritablePath('push', parent._path);
     validateFirebaseDataArg('push', value, parent._path, true);
@@ -15696,7 +15696,7 @@ function P2PClientFactory(options) {
                                             data
                                         );
                                     }
-                                    push$1(this.outRef, data);
+                                    push(this.outRef, data);
                                 } else {
                                     console.warn(
                                         'Client recieved unexpected signal through WebRTC:',
@@ -15754,7 +15754,7 @@ function P2PClientFactory(options) {
             offer.myID = this.myID;
             if (this.debug)
                 console.log('Got create channel with offer: ', offer);
-            this.channelRef = push$1(child(this.serverRef, 'channels'), {
+            this.channelRef = push(child(this.serverRef, 'channels'), {
                 fromClient: [offer],
             });
             this.outRef = child(this.channelRef, 'fromClient');

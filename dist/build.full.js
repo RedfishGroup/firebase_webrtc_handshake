@@ -1,4 +1,4 @@
-import { child, off, onValue, query, orderByValue, set, remove as remove$1, update, serverTimestamp, onDisconnect, onChildAdded, push as push$1 } from 'firebase/database';
+import { child, off, onValue, query, orderByValue, set, remove as remove$1, update, serverTimestamp, onDisconnect, onChildAdded, push } from 'firebase/database';
 import 'firebase/app';
 
 var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
@@ -1028,7 +1028,7 @@ function P2PClientFactory(options) {
                                             data
                                         );
                                     }
-                                    push$1(this.outRef, data);
+                                    push(this.outRef, data);
                                 } else {
                                     console.warn(
                                         'Client recieved unexpected signal through WebRTC:',
@@ -1086,7 +1086,7 @@ function P2PClientFactory(options) {
             offer.myID = this.myID;
             if (this.debug)
                 console.log('Got create channel with offer: ', offer);
-            this.channelRef = push$1(child(this.serverRef, 'channels'), {
+            this.channelRef = push(child(this.serverRef, 'channels'), {
                 fromClient: [offer],
             });
             this.outRef = child(this.channelRef, 'fromClient');
