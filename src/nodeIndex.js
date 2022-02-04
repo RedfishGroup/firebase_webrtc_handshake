@@ -2,7 +2,6 @@ import { Channel } from './Channel.js'
 import { P2PServerFactory } from './P2PServer.js'
 import { P2PClientFactory } from './P2PClient.js'
 
-import { initFirebase } from './defaultFirebase.js'
 
 const Peer = require('simple-peer')
 const wrtc = require('wrtc')

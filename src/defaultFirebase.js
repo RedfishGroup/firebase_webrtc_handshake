@@ -9,7 +9,7 @@ var defaultFBConfig = {
 }
 
 var firebase
-function initFirebase(newFirebase, fbConfig = null) {
+function initFirebase(fbConfig = null) {
     if (fbConfig) defaultFBConfig = fbConfig
 
     if (!firebase) {
