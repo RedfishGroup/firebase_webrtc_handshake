@@ -1593,7 +1593,7 @@ function isVersionServiceProvider(provider) {
 }
 
 const name$o = "@firebase/app";
-const version$1$1 = "0.7.9";
+const version$1$1 = "0.7.16";
 
 /**
  * @license
@@ -1660,7 +1660,7 @@ const name$2 = "@firebase/firestore";
 const name$1$1 = "@firebase/firestore-compat";
 
 const name$p = "firebase";
-const version$2 = "9.5.0";
+const version$2 = "9.6.6";
 const PLATFORM_LOG_STRING = {
     [name$o]: 'fire-core',
     [name$n]: 'fire-core-compat',
@@ -1845,7 +1845,7 @@ function registerCoreComponents(variant) {
 registerCoreComponents('');
 
 const name$1 = "@firebase/database";
-const version$1 = "0.12.4";
+const version$1 = "0.12.5";
 
 /**
  * @license
@@ -14780,14 +14780,22 @@ function areArraysEqual(a, b, isEqual, meta) {
 function areMapsEqual(a, b, isEqual, meta) {
     var isValueEqual = a.size === b.size;
     if (isValueEqual && a.size) {
+        var matchedIndices_1 = {};
         a.forEach(function (aValue, aKey) {
             if (isValueEqual) {
-                isValueEqual = false;
+                var hasMatch_1 = false;
+                var matchIndex_1 = 0;
                 b.forEach(function (bValue, bKey) {
-                    if (!isValueEqual && isEqual(aKey, bKey, meta)) {
-                        isValueEqual = isEqual(aValue, bValue, meta);
+                    if (!hasMatch_1 && !matchedIndices_1[matchIndex_1]) {
+                        hasMatch_1 =
+                            isEqual(aKey, bKey, meta) && isEqual(aValue, bValue, meta);
+                        if (hasMatch_1) {
+                            matchedIndices_1[matchIndex_1] = true;
+                        }
                     }
+                    matchIndex_1++;
                 });
+                isValueEqual = hasMatch_1;
             }
         });
     }
@@ -14857,14 +14865,21 @@ function areRegExpsEqual(a, b) {
 function areSetsEqual(a, b, isEqual, meta) {
     var isValueEqual = a.size === b.size;
     if (isValueEqual && a.size) {
+        var matchedIndices_2 = {};
         a.forEach(function (aValue) {
             if (isValueEqual) {
-                isValueEqual = false;
+                var hasMatch_2 = false;
+                var matchIndex_2 = 0;
                 b.forEach(function (bValue) {
-                    if (!isValueEqual) {
-                        isValueEqual = isEqual(aValue, bValue, meta);
+                    if (!hasMatch_2 && !matchedIndices_2[matchIndex_2]) {
+                        hasMatch_2 = isEqual(aValue, bValue, meta);
+                        if (hasMatch_2) {
+                            matchedIndices_2[matchIndex_2] = true;
+                        }
                     }
+                    matchIndex_2++;
                 });
+                isValueEqual = hasMatch_2;
             }
         });
     }
@@ -15011,7 +15026,7 @@ class Evented {
 }
 
 var name = "firebase";
-var version = "9.5.0";
+var version = "9.6.6";
 
 /**
  * @license
