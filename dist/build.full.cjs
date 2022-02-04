@@ -2,19 +2,19 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-var database$1 = require('firebase/database');
-var app = require('firebase/app');
+var database = require('firebase/database');
+require('firebase/app');
 
 class Channel {
     constructor(fbref, peer) {
-        this.outRef = database$1.child(fbref, 'fromServer'); //firebase
-        this.inRef = database$1.child(fbref, 'fromClient');
+        this.outRef = database.child(fbref, 'fromServer'); //firebase
+        this.inRef = database.child(fbref, 'fromClient');
         this.peer = peer; // simple-peer
     }
 
     destroy() {
-        database$1.off(this.outRef);
-        database$1.off(this.inRef);
+        database.off(this.outRef);
+        database.off(this.inRef);
         this.peer.destroy();
     }
 }
@@ -396,37 +396,13 @@ class Evented {
     }
 }
 
-var defaultFBConfig = {
-    apiKey: 'AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA',
-    authDomain: 'https://torrid-torch-716.firebaseio.com/',
-    databaseURL: 'https://torrid-torch-716.firebaseio.com/',
-    projectId: 'torrid-torch-716',
-};
-
-var firebase$1;
-function initFirebase(newFirebase, fbConfig = null) {
-    if (fbConfig) defaultFBConfig = fbConfig;
-
-    if (!firebase$1) {
-        firebase$1 = app.initializeApp(defaultFBConfig);
-    }
-
-    return { firebase: firebase$1, database: getDatabase() }
-}
-
-var database;
-
 function getDatabase() {
-    if (database) return database
 
-    if (!firebase$1) {
+    {
         throw new Error(
             `init must be called before accessing database.  no firebase`
         )
     }
-
-    database = database$1.child(database$1.ref(database$1.getDatabase(firebase$1)), 'peers');
-    return database
 }
 
 /**
@@ -434,10 +410,10 @@ function getDatabase() {
  * @param {*} database
  * @param {*} callback
  */
-function getPeerList(database, callback) {
-    console.log('getPeerList: ', database.path());
-    database$1.onValue(
-        database,
+function getPeerList(database$1, callback) {
+    console.log('getPeerList: ', database$1.path());
+    database.onValue(
+        database$1,
         (ev) => {
             var val = ev.val();
             callback(null, val);
@@ -469,13 +445,13 @@ class firebaseTreeTrimmer {
     }
 
     monitor() {
-        database$1.onValue(
-            database$1.query(this.treeTrimmingRef, database$1.orderByValue()),
+        database.onValue(
+            database.query(this.treeTrimmingRef, database.orderByValue()),
             (snapshot) => {
                 // check if in list
                 if (snapshot.child(this.id).val() === null) {
                     // if not add it
-                    database$1.set(database$1.child(snapshot.ref, this.id), Date.now());
+                    database.set(database.child(snapshot.ref, this.id), Date.now());
                 } else {
                     // otherwise calculate hierachy
                     let children = {};
@@ -516,14 +492,14 @@ class firebaseTreeTrimmer {
 
     treeTrimmer(treeTrimmers) {
         // remove all references to peers not in treeTrimming list
-        database$1.onValue(
+        database.onValue(
             this.peersRef,
             (snap) => {
                 snap.forEach(function (child) {
                     // if the peer is not in the treeTrimming list,
                     // remove it from peersRef
                     if (treeTrimmers[child.key] === undefined) {
-                        database$1.remove(child.ref);
+                        database.remove(child.ref);
                     }
                 });
             },
@@ -536,8 +512,8 @@ class firebaseTreeTrimmer {
     watchMySuperior(superior) {
         // if superior is either not in /peers/cameras, or their
         // lastUpdate is greater than a minute, remove from treeTrimming list
-        database$1.onValue(
-            database$1.child(this.peersRef, superior),
+        database.onValue(
+            database.child(this.peersRef, superior),
             (snap) => {
                 // if the peer's lastUpdate is greater than three minutes,
                 // or it doesn't exist, remove from treeTrimming list
@@ -547,7 +523,7 @@ class firebaseTreeTrimmer {
                     snap.child('lastUpdate').val() < Date.now() - 3 * 60000
                 ) {
                     // if not in the peers list or has not been updated for 3 minutes then remove
-                    database$1.remove(database$1.child(this.treeTrimmingRef, superior));
+                    database.remove(database.child(this.treeTrimmingRef, superior));
                 }
             },
             {
@@ -607,15 +583,15 @@ function P2PServerFactory(options) {
                 peersRef: this.database,
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
-                    database$1.child(this.database.parent, 'treeTrimming'),
+                    database.child(this.database.parent, 'treeTrimming'),
                 id: this.id,
             });
 
-            this.userRef = database$1.child(fbref, this.id);
+            this.userRef = database.child(fbref, this.id);
 
             console.log('userRef: ' + this.userRef, this.initialPeerInfo);
 
-            database$1.onValue(this.userRef, (snapshot) => {
+            database.onValue(this.userRef, (snapshot) => {
                 // handle being tree trimmed while asleep
                 let newPeerInfo = snapshot.val();
                 if (
@@ -637,9 +613,9 @@ function P2PServerFactory(options) {
                         this._peerInfo,
                         newPeerInfo
                     );
-                    database$1.update(this.userRef, {
+                    database.update(this.userRef, {
                         ...this._peerInfo,
-                        lastUpdate: database$1.serverTimestamp(),
+                        lastUpdate: database.serverTimestamp(),
                     });
                 } else if (this._peerInfo) ; else {
                     console.warn(
@@ -650,11 +626,11 @@ function P2PServerFactory(options) {
                 }
             });
 
-            database$1.onDisconnect(this.userRef).remove();
+            database.onDisconnect(this.userRef).remove();
 
             if (this.initialPeerInfo) {
                 console.log('UserRef: ' + this.userRef, this.initialPeerInfo);
-                database$1.update(this.userRef, this.initialPeerInfo)
+                database.update(this.userRef, this.initialPeerInfo)
                     .then(() => {
                         console.log('update finished');
                     })
@@ -663,14 +639,14 @@ function P2PServerFactory(options) {
                     });
             }
 
-            this.updateRef = database$1.child(this.userRef, 'lastUpdate');
-            database$1.set(this.updateRef, database$1.serverTimestamp());
+            this.updateRef = database.child(this.userRef, 'lastUpdate');
+            database.set(this.updateRef, database.serverTimestamp());
 
-            this.channelRef = database$1.child(this.userRef, 'channels');
+            this.channelRef = database.child(this.userRef, 'channels');
             if (this.stream) {
-                database$1.set(database$1.child(this.userRef, 'isStream'), true);
+                database.set(database.child(this.userRef, 'isStream'), true);
             }
-            database$1.set(this.channelRef, []);
+            database.set(this.channelRef, []);
 
             this.connections = [];
             this._intervalID = setInterval(() => {
@@ -685,7 +661,7 @@ function P2PServerFactory(options) {
 
         _updateOnFireBase() {
             // one may want to overwrite this
-            database$1.set(this.updateRef, database$1.serverTimestamp());
+            database.set(this.updateRef, database.serverTimestamp());
         }
 
         sendToAll(data) {
@@ -722,7 +698,7 @@ function P2PServerFactory(options) {
             // disabling no-loop-func because these loops are correct usage
             // https://eslint.org/docs/rules/no-loop-func
             // when a new channel is added, listen to it.
-            database$1.onChildAdded(this.channelRef, (ev) => {
+            database.onChildAdded(this.channelRef, (ev) => {
                 if (this.connections.length > this.MAX_CONNECTIONS) {
                     console.error(
                         'Too many connections. TODO:close/remove old stale connections'
@@ -740,7 +716,7 @@ function P2PServerFactory(options) {
                         var mykey = ev.key;
                         var { peerID, myID } = sig;
                         var channel = new Channel(
-                            database$1.child(this.channelRef, mykey),
+                            database.child(this.channelRef, mykey),
                             this._makePeer(myID)
                         );
                         this.connections = [...this.connections, channel];
@@ -756,10 +732,10 @@ function P2PServerFactory(options) {
                                         'Why am i trying to send multiple answers'
                                     );
                                 }
-                                database$1.push(channel.outRef, data);
+                                database.push(channel.outRef, data);
                                 answerSentYet = true;
                             } else if (data.candidate) {
-                                database$1.push(channel.outRef, data);
+                                database.push(channel.outRef, data);
                             } else {
                                 console.warn(
                                     data,
@@ -770,7 +746,7 @@ function P2PServerFactory(options) {
 
                         // on message through firebase
                         //eslint-disable-next-line no-loop-func
-                        database$1.onChildAdded(channel.inRef, (ev2) => {
+                        database.onChildAdded(channel.inRef, (ev2) => {
                             var val2 = ev2.val();
                             if (this.debug) {
                                 console.log(val2, 'child_added -- firebase');
@@ -875,9 +851,9 @@ function P2PServerFactory(options) {
         destroy() {
             remove(this.channelRef);
             remove(this.updateRef);
-            database$1.off(this.channelRef);
-            database$1.off(this.updateRef);
-            database$1.off(this.userRef);
+            database.off(this.channelRef);
+            database.off(this.updateRef);
+            database.off(this.userRef);
 
             this.isListening = false;
             for (var x of this.connections) {
@@ -1044,8 +1020,8 @@ function P2PClientFactory(options) {
                     this._notifyCallbacks('peer not defined');
                 } else {
                     this.id = id;
-                    this.serverRef = database$1.child(this.database, id);
-                    database$1.onValue(
+                    this.serverRef = database.child(this.database, id);
+                    database.onValue(
                         this.serverRef,
                         (ev1) => {
                             ev1.val();
@@ -1075,7 +1051,7 @@ function P2PClientFactory(options) {
                                             data
                                         );
                                     }
-                                    database$1.push(this.outRef, data);
+                                    database.push(this.outRef, data);
                                 } else {
                                     console.warn(
                                         'Client recieved unexpected signal through WebRTC:',
@@ -1111,13 +1087,13 @@ function P2PClientFactory(options) {
                 };
 
             if (this.serverRef) {
-                database$1.off(this.serverRef);
+                database.off(this.serverRef);
             }
             if (this.outRef) {
-                database$1.off(this.outRef);
+                database.off(this.outRef);
             }
             if (this.inRef) {
-                database$1.off(this.inRef);
+                database.off(this.inRef);
             }
             if (this.connection) {
                 this.connection.destroy(callback);
@@ -1133,12 +1109,12 @@ function P2PClientFactory(options) {
             offer.myID = this.myID;
             if (this.debug)
                 console.log('Got create channel with offer: ', offer);
-            this.channelRef = database$1.push(database$1.child(this.serverRef, 'channels'), {
+            this.channelRef = database.push(database.child(this.serverRef, 'channels'), {
                 fromClient: [offer],
             });
-            this.outRef = database$1.child(this.channelRef, 'fromClient');
-            this.inRef = database$1.child(this.channelRef, 'fromServer');
-            database$1.onChildAdded(this.inRef, (ev) => {
+            this.outRef = database.child(this.channelRef, 'fromClient');
+            this.inRef = database.child(this.channelRef, 'fromServer');
+            database.onChildAdded(this.inRef, (ev) => {
                 var val = ev.val();
                 if (this.debug) console.log(val, 'channel message, client');
                 if (val.type === 'answer') {
@@ -1558,9 +1534,9 @@ const wrtc = require('wrtc');
 const { decode, encode } = require('msgpack-lite');
 
 const firebase = require('firebase/app');
-require('firebase/compat/database');
+require('firebase/database');
 
-initFirebase();
+// initFirebase(firebase)
 setEncode(encode);
 
 const UnChunker = UnChunkerFactory({ decode });
