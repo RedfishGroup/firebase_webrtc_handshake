@@ -6,6 +6,7 @@ import { onValue } from 'firebase/database'
  * @param {*} callback
  */
 export function getPeerList(database, callback) {
+    console.log('getPeerList: ', database.path())
     onValue(
         database,
         (ev) => {

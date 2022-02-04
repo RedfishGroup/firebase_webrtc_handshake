@@ -407,6 +407,7 @@ class Channel {
  * @param {*} callback
  */
 function getPeerList(database, callback) {
+    console.log('getPeerList: ', database.path());
     onValue(
         database,
         (ev) => {
