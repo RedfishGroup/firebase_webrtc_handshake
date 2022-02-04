@@ -925,6 +925,7 @@ function P2PClientFactory(options) {
         }
 
         getPeerList(callback) {
+            console.log('Database: ', this.database);
             return getPeerList(this.database, callback)
         }
 
