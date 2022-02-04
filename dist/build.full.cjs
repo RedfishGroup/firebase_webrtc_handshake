@@ -411,7 +411,7 @@ function getDatabase() {
  * @param {*} callback
  */
 function getPeerList(database$1, callback) {
-    console.log('getPeerList: ', database$1.path());
+    console.log('getPeerList: ', database$1);
     database.onValue(
         database$1,
         (ev) => {
