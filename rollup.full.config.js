@@ -24,6 +24,7 @@ export default [
     },
     {
         input: 'src/nodeIndex.js',
+        external: ['firebase/app', 'firebase/database', 'firebase/storage'],
         plugins: [
             nodeGlobals(),
             nodeBuiltins(),
