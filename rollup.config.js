@@ -14,7 +14,8 @@ export default [
             'simple-peer/simplepeer.min.js',
             'msgpack-lite/dist/msgpack.min.js',
             'webrtc-adapter/src/js/adapter_core.js',
-            'firebase',
+            'firebase/app',
+            'firebase/database',
         ],
         plugins: [
             globals(),
