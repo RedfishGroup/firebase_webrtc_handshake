@@ -1,5 +1,4 @@
 import { initializeApp } from 'firebase/app'
-
 import { child, getDatabase as _getDatabase, ref } from 'firebase/database'
 
 var defaultFBConfig = {

@@ -22,7 +22,7 @@ import {
 
 import { PeerBinaryFactory } from './peerBinary.js'
 
-const firebase = require('firebase/compat/app')
+const firebase = require('firebase/app')
 require('firebase/compat/database')
 
 initFirebase(firebase)
