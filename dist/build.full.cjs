@@ -849,8 +849,8 @@ function P2PServerFactory(options) {
         }
 
         destroy() {
-            remove(this.channelRef);
-            remove(this.updateRef);
+            database.remove(this.channelRef);
+            database.remove(this.updateRef);
             database.off(this.channelRef);
             database.off(this.updateRef);
             database.off(this.userRef);
