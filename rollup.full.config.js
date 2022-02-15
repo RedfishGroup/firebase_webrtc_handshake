@@ -7,7 +7,6 @@ import nodeBuiltins from 'rollup-plugin-node-builtins'
 export default [
     {
         input: 'src/index.js',
-        external: ['firebase/app', 'firebase/database', 'firebase/storage'],
         plugins: [
             resolve({
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],
@@ -17,6 +16,23 @@ export default [
         output: [
             {
                 file: 'dist/build.full.js',
+                format: 'esm',
+                sourcemap: true,
+            },
+        ],
+    },
+    {
+        input: 'src/index.js',
+        external: ['firebase/app', 'firebase/database', 'firebase/storage'],
+        plugins: [
+            resolve({
+                mainFields: ['module', 'main', 'jsnext:main', 'browser'],
+            }),
+            commonjs(),
+        ],
+        output: [
+            {
+                file: 'dist/build.nofirebase.js',
                 format: 'esm',
                 sourcemap: true,
             },
