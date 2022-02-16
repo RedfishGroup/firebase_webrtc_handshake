@@ -19,7 +19,7 @@ import {
     UnChunkerFactory,
 } from './dataUtils.js'
 
-import { PeerBinaryFactory } from './peerBinary.js'
+import { PeerBinaryFactory } from './PeerBinary.js'
 
 const firebase = require('firebase/app')
 require('firebase/database')

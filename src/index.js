@@ -20,7 +20,7 @@ import {
     UnChunkerFactory,
 } from './dataUtils.js'
 
-import { PeerBinaryFactory } from './peerBinary.js'
+import { PeerBinaryFactory } from './PeerBinary.js'
 
 setEncode(msgPack.encode)
 
