@@ -15720,7 +15720,9 @@ async function recursivelyEncodeBlobs(obj, depth = 0) {
         let res = {};
         for (var i in obj) {
             console.log('encode obj key: ', i);
-            res[i] = await recursivelyEncodeBlobs(obj[i], depth + 1);
+            if (obj[i] !== undefined) {
+                res[i] = await recursivelyEncodeBlobs(obj[i], depth + 1);
+            }
         }
         return res
     }
