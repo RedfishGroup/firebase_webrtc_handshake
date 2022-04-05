@@ -1255,6 +1255,8 @@ async function recursivelyEncodeBlobs(obj, depth = 0) {
         throw (depth)
     }
     console.log('encode obj: ', obj);
+    if (obj === undefined) return obj
+
     if (
         (typeof File !== 'undefined' && obj.constructor == File) ||
         (typeof Blob !== 'undefined' && obj.constructor == Blob)
