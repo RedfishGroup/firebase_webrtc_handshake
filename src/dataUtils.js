@@ -38,7 +38,8 @@ export async function recursivelyEncodeBlobs(obj, depth = 0) {
     if (depth > MAX_RECURSIVE_DEPTH) {
         throw ('max depth reached', depth)
     }
-    console.log('encode obj: ', obj)
+
+    // console.log('encode obj: ', obj)
     if (obj === undefined) return obj
 
     if (
@@ -49,7 +50,7 @@ export async function recursivelyEncodeBlobs(obj, depth = 0) {
     } else if (obj.constructor == Object) {
         let res = {}
         for (var i in obj) {
-            console.log('encode obj key: ', i)
+            // console.log('encode obj key: ', i)
             if (obj[i] !== undefined) {
                 res[i] = await recursivelyEncodeBlobs(obj[i], depth + 1)
             }
@@ -63,6 +64,7 @@ export async function recursivelyDecodeBlobs(obj, depth = 0) {
     if (depth > MAX_RECURSIVE_DEPTH) {
         throw ('max depth reached', depth)
     }
+
     if (obj.constructor == Object && obj.type && obj.isBlob) {
         let descript = {}
         for (var i in obj) {
@@ -82,6 +84,7 @@ export async function recursivelyDecodeBlobs(obj, depth = 0) {
         }
         return res
     }
+
     return obj
 }
 
