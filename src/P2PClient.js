@@ -22,8 +22,14 @@ export function P2PClientFactory(options) {
             this.requestID = 0
             this.requestCallbacks = {}
 
-            Object.assign(this, settings)
-            Object.assign(this, options)
+            let combinedSettings = { ...settings, ...options }
+            if (combinedSettings.debug)
+                console.log('settings: ', {
+                    settings,
+                    options,
+                    combinedSettings,
+                })
+            Object.assign(this, combinedSettings)
 
             this.iceServers =
                 options.iceServers ||

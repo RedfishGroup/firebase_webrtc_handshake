@@ -45,7 +45,14 @@ export function P2PServerFactory(options) {
             this.POLLING_FREQUENCY =
                 options.POLLING_FREQUENCY || settings.POLLING_FREQUENCY
 
-            Object.assign(this, options)
+            let combinedSettings = { ...settings, ...options }
+            if (combinedSettings.debug)
+                console.log('settings: ', {
+                    settings,
+                    options,
+                    combinedSettings,
+                })
+            Object.assign(this, combinedSettings)
 
             this.database = options.database || getDatabase()
             console.log('Database: ', this.database)
