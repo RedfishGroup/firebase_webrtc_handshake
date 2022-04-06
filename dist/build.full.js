@@ -15031,7 +15031,8 @@ function P2PServerFactory(options) {
 
             this.userRef = child(fbref, this.id);
 
-            console.log('userRef: ' + this.userRef, this.initialPeerInfo);
+            if (this.debug)
+                console.log('userRef: ' + this.userRef, this.initialPeerInfo);
 
             onValue(this.userRef, (snapshot) => {
                 // handle being tree trimmed while asleep
@@ -15071,7 +15072,11 @@ function P2PServerFactory(options) {
             onDisconnect(this.userRef).remove();
 
             if (this.initialPeerInfo) {
-                console.log('UserRef: ' + this.userRef, this.initialPeerInfo);
+                if (this.debug)
+                    console.log(
+                        'UserRef: ' + this.userRef,
+                        this.initialPeerInfo
+                    );
                 update(this.userRef, this.initialPeerInfo)
                     .then(() => {
                         console.log('update finished');
@@ -15375,12 +15380,12 @@ function P2PClientFactory(options) {
         }
 
         getPeerList(callback) {
-            console.log('Database: ', this.database);
+            if (this.debug) console.log('Database: ', this.database);
             return getPeerList(this.database, callback)
         }
 
         ackCallback(ackID, data) {
-            console.log('ackCallback: ', { ackID, data });
+            if (this.debug) console.log('ackCallback: ', { ackID, data });
             let { callback, timeoutID } = this.ackCallbacks[ackID] || {};
             if (callback) {
                 clearTimeout(timeoutID);
@@ -15418,7 +15423,7 @@ function P2PClientFactory(options) {
         }
 
         requestCallback(requestID, data) {
-            console.log('requestCallback: ', { requestID, data });
+            if (this.debug) console.log('requestCallback: ', { requestID, data });
             let { callback, timeoutID } = this.requestCallbacks[requestID] || {};
 
             if (callback) {
@@ -15449,7 +15454,7 @@ function P2PClientFactory(options) {
             this.requestCallbacks[requestID] = { callback, timeoutID };
 
             request.requestID = requestID;
-            console.log('sending request: ', request);
+            if (this.debug) console.log('sending request: ', request);
 
             return this.connection.sendBig(request)
         }
@@ -15653,7 +15658,7 @@ function P2PClientFactory(options) {
                 this.fire('stream', { peer: this.connection, stream: stream });
             });
             this.connection._pc.addEventListener('signalingstatechange', () => {
-                console.log(
+                if (this.debug) console.log(
                     'signalState',
                     this.connection &&
                         this.connection._pc &&
