@@ -532,7 +532,7 @@ class firebaseTreeTrimmer {
 }
 
 function P2PServerFactory(options) {
-    const { PeerBinary, debug } = options;
+    const { PeerBinary } = options;
 
     return class P2PServer extends Evented {
         constructor(options = {}, initialPeerInfo = {}) {
@@ -561,7 +561,7 @@ function P2PServerFactory(options) {
             this.database = options.database || getDatabase();
             console.log('Database: ', this.database);
 
-            this.debug = !!debug || !!options.debug;
+            this.debug = !!options.debug;
             this.initialPeerInfo = initialPeerInfo;
             this.initialPeerInfo.id = this.id;
 
@@ -884,7 +884,7 @@ function P2PServerFactory(options) {
 }
 
 function P2PClientFactory(options) {
-    const { PeerBinary, debug } = options;
+    const { PeerBinary } = options;
 
     return class P2PClient extends Evented {
         constructor(options = {}) {
@@ -921,7 +921,7 @@ function P2PClientFactory(options) {
                 typeof options.isStream === 'boolean' ? options.isStream : true;
             this.connectionCallbacks = [];
             this.lastNegotiationState = undefined;
-            this.debug = !!debug || !!options.debug;
+            this.debug = !!options.debug;
         }
 
         getPeerList(callback) {

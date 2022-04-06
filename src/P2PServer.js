@@ -21,7 +21,7 @@ import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
 import { firebaseTreeTrimmer } from './firebaseTreeTrimmer.js'
 
 export function P2PServerFactory(options) {
-    const { PeerBinary, debug } = options
+    const { PeerBinary } = options
 
     return class P2PServer extends Evented {
         constructor(options = {}, initialPeerInfo = {}) {
@@ -50,7 +50,7 @@ export function P2PServerFactory(options) {
             this.database = options.database || getDatabase()
             console.log('Database: ', this.database)
 
-            this.debug = !!debug || !!options.debug
+            this.debug = !!options.debug
             this.initialPeerInfo = initialPeerInfo
             this.initialPeerInfo.id = this.id
 

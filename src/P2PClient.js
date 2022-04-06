@@ -6,7 +6,7 @@ import { getDatabase } from './defaultFirebase.js'
 import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
 
 export function P2PClientFactory(options) {
-    const { PeerBinary, debug } = options
+    const { PeerBinary } = options
 
     return class P2PClient extends Evented {
         constructor(options = {}) {
@@ -43,7 +43,7 @@ export function P2PClientFactory(options) {
                 typeof options.isStream === 'boolean' ? options.isStream : true
             this.connectionCallbacks = []
             this.lastNegotiationState = undefined
-            this.debug = !!debug || !!options.debug
+            this.debug = !!options.debug
         }
 
         getPeerList(callback) {
