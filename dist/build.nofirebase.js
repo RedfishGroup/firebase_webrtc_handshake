@@ -938,6 +938,8 @@ function P2PClientFactory(options) {
             this.connectionCallbacks = [];
             this.lastNegotiationState = undefined;
             this.debug = !!options.debug;
+
+            this.PER_CHUNK_WAIT = options.PER_CHUNK_WAIT;
         }
 
         getPeerList(callback) {
@@ -1050,6 +1052,13 @@ function P2PClientFactory(options) {
 
                             if (this.isStream) {
                                 pOpts.stream = this.getMyStream();
+                            }
+
+                            if (
+                                this.PER_CHUNK_WAIT ||
+                                this.PER_CHUNK_WAIT === 0
+                            ) {
+                                pOpts.PER_CHUNK_WAIT = this.PER_CHUNK_WAIT;
                             }
 
                             var p = new PeerBinary(pOpts);
