@@ -800,6 +800,8 @@ function P2PServerFactory(options) {
                 peerID,
             };
             if (this.stream) myoptions.stream = this.stream;
+            if (this.PER_CHUNK_WAIT !== undefined)
+                myoptions.PER_CHUNK_WAIT = this.PER_CHUNK_WAIT;
             var p = new PeerBinary(myoptions);
 
             // fire events
