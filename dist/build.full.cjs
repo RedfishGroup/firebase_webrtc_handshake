@@ -1558,6 +1558,8 @@ function PeerBinaryFactory(options) {
         }
 
         async sendBig(chunk) {
+            let rand = Math.random();
+            console.time(`sendBig-${rand}`);
             try {
                 let stuff = await generateWebRTCpayload(chunk);
                 await this.send(stuff.header);
@@ -1571,6 +1573,7 @@ function PeerBinaryFactory(options) {
             } catch (error) {
                 console.error('GOT AN ERROR: ', error);
             }
+            console.timeEnd(`sendBig-${rand}`);
         }
     }
 }
