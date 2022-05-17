@@ -6,7 +6,6 @@ import { P2PClientFactory } from './P2PClient.js'
 import * as Peer2 from 'simple-peer/simplepeer.min.js'
 const Peer = Peer2.default
 
-// import adapter from "webrtc-adapter/src/js/adapter_core.js";
 import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js'
 const msgPack = msgpacklite.default
 

@@ -215,7 +215,7 @@ export function P2PServerFactory(options) {
                     if (this.debug) console.log({ sig })
                     if (sig.type === 'offer') {
                         var mykey = ev.key
-                        var { peerID, myID } = sig
+                        var { myID } = sig
                         var channel = new Channel(
                             child(this.channelRef, mykey),
                             this._makePeer(myID)
@@ -224,7 +224,6 @@ export function P2PServerFactory(options) {
                         this.fire('addConnection', channel)
 
                         // on message through webRTC (simple-peer)
-                        //eslint-disable-next-line no-loop-func
                         var answerSentYet = false
                         channel.peer.on('signal', (data) => {
                             if (data.type === 'answer') {
@@ -246,7 +245,6 @@ export function P2PServerFactory(options) {
                         })
 
                         // on message through firebase
-                        //eslint-disable-next-line no-loop-func
                         onChildAdded(channel.inRef, (ev2) => {
                             var val2 = ev2.val()
                             if (this.debug) {
@@ -379,8 +377,13 @@ export function P2PServerFactory(options) {
             if (index >= 0) {
                 var conn = this.connections[index]
                 conn.destroy()
-                this.connections.splice(index, 1)
-                this.connections = [...this.connections]
+
+                //remove from list of connections and create new list of connections
+                this.connections = [
+                    ...this.connections.slice(0, index),
+                    ...this.connections.slice(index + 1),
+                ]
+
                 this.fire('removeConnection', conn)
                 if (this.debug) console.log(this.connections)
             }

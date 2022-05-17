@@ -349,6 +349,14 @@ const base64Encode = function (str) {
     return base64.encodeByteArray(utf8Bytes, true);
 };
 /**
+ * URL-safe base64 encoding (without "." padding in the end).
+ * e.g. Used in JSON Web Token (JWT) parts.
+ */
+const base64urlEncodeWithoutPadding = function (str) {
+    // Use base64url encoding and remove padding in the end (dot characters).
+    return base64Encode(str).replace(/\./g, '');
+};
+/**
  * URL-safe base64 decoding
  *
  * NOTE: DO NOT use the global atob() function - it does NOT support the
@@ -553,6 +561,152 @@ function isReactNative() {
 function isNodeSdk() {
     return CONSTANTS.NODE_ADMIN === true;
 }
+/**
+ * This method checks if indexedDB is supported by current browser/service worker context
+ * @return true if indexedDB is supported by current browser/service worker context
+ */
+function isIndexedDBAvailable() {
+    return typeof indexedDB === 'object';
+}
+/**
+ * This method validates browser/sw context for indexedDB by opening a dummy indexedDB database and reject
+ * if errors occur during the database open operation.
+ *
+ * @throws exception if current browser/sw context can't run idb.open (ex: Safari iframe, Firefox
+ * private browsing)
+ */
+function validateIndexedDBOpenable() {
+    return new Promise((resolve, reject) => {
+        try {
+            let preExist = true;
+            const DB_CHECK_NAME = 'validate-browser-context-for-indexeddb-analytics-module';
+            const request = self.indexedDB.open(DB_CHECK_NAME);
+            request.onsuccess = () => {
+                request.result.close();
+                // delete database only when it doesn't pre-exist
+                if (!preExist) {
+                    self.indexedDB.deleteDatabase(DB_CHECK_NAME);
+                }
+                resolve(true);
+            };
+            request.onupgradeneeded = () => {
+                preExist = false;
+            };
+            request.onerror = () => {
+                var _a;
+                reject(((_a = request.error) === null || _a === void 0 ? void 0 : _a.message) || '');
+            };
+        }
+        catch (error) {
+            reject(error);
+        }
+    });
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * @fileoverview Standardized Firebase Error.
+ *
+ * Usage:
+ *
+ *   // Typescript string literals for type-safe codes
+ *   type Err =
+ *     'unknown' |
+ *     'object-not-found'
+ *     ;
+ *
+ *   // Closure enum for type-safe error codes
+ *   // at-enum {string}
+ *   var Err = {
+ *     UNKNOWN: 'unknown',
+ *     OBJECT_NOT_FOUND: 'object-not-found',
+ *   }
+ *
+ *   let errors: Map<Err, string> = {
+ *     'generic-error': "Unknown error",
+ *     'file-not-found': "Could not find file: {$file}",
+ *   };
+ *
+ *   // Type-safe function - must pass a valid error code as param.
+ *   let error = new ErrorFactory<Err>('service', 'Service', errors);
+ *
+ *   ...
+ *   throw error.create(Err.GENERIC);
+ *   ...
+ *   throw error.create(Err.FILE_NOT_FOUND, {'file': fileName});
+ *   ...
+ *   // Service: Could not file file: foo.txt (service/file-not-found).
+ *
+ *   catch (e) {
+ *     assert(e.message === "Could not find file: foo.txt.");
+ *     if (e.code === 'service/file-not-found') {
+ *       console.log("Could not read file: " + e['file']);
+ *     }
+ *   }
+ */
+const ERROR_NAME = 'FirebaseError';
+// Based on code from:
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error#Custom_Error_Types
+class FirebaseError extends Error {
+    constructor(
+    /** The error code for this error. */
+    code, message, 
+    /** Custom data for this error. */
+    customData) {
+        super(message);
+        this.code = code;
+        this.customData = customData;
+        /** The custom name for all FirebaseErrors. */
+        this.name = ERROR_NAME;
+        // Fix For ES5
+        // https://github.com/Microsoft/TypeScript-wiki/blob/master/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
+        Object.setPrototypeOf(this, FirebaseError.prototype);
+        // Maintains proper stack trace for where our error was thrown.
+        // Only available on V8.
+        if (Error.captureStackTrace) {
+            Error.captureStackTrace(this, ErrorFactory.prototype.create);
+        }
+    }
+}
+class ErrorFactory {
+    constructor(service, serviceName, errors) {
+        this.service = service;
+        this.serviceName = serviceName;
+        this.errors = errors;
+    }
+    create(code, ...data) {
+        const customData = data[0] || {};
+        const fullCode = `${this.service}/${code}`;
+        const template = this.errors[code];
+        const message = template ? replaceTemplate(template, customData) : 'Error';
+        // Service Name: Error message (service/code).
+        const fullMessage = `${this.serviceName}: ${message} (${fullCode}).`;
+        const error = new FirebaseError(fullCode, fullMessage, customData);
+        return error;
+    }
+}
+function replaceTemplate(template, data) {
+    return template.replace(PATTERN, (_, key) => {
+        const value = data[key];
+        return value != null ? String(value) : `<${key}?>`;
+    });
+}
+const PATTERN = /\{\$([^}]+)}/g;
 
 /**
  * @license
@@ -1310,6 +1464,263 @@ class Logger {
     }
 }
 
+const instanceOfAny = (object, constructors) => constructors.some((c) => object instanceof c);
+
+let idbProxyableTypes;
+let cursorAdvanceMethods;
+// This is a function to prevent it throwing up in node environments.
+function getIdbProxyableTypes() {
+    return (idbProxyableTypes ||
+        (idbProxyableTypes = [
+            IDBDatabase,
+            IDBObjectStore,
+            IDBIndex,
+            IDBCursor,
+            IDBTransaction,
+        ]));
+}
+// This is a function to prevent it throwing up in node environments.
+function getCursorAdvanceMethods() {
+    return (cursorAdvanceMethods ||
+        (cursorAdvanceMethods = [
+            IDBCursor.prototype.advance,
+            IDBCursor.prototype.continue,
+            IDBCursor.prototype.continuePrimaryKey,
+        ]));
+}
+const cursorRequestMap = new WeakMap();
+const transactionDoneMap = new WeakMap();
+const transactionStoreNamesMap = new WeakMap();
+const transformCache = new WeakMap();
+const reverseTransformCache = new WeakMap();
+function promisifyRequest(request) {
+    const promise = new Promise((resolve, reject) => {
+        const unlisten = () => {
+            request.removeEventListener('success', success);
+            request.removeEventListener('error', error);
+        };
+        const success = () => {
+            resolve(wrap(request.result));
+            unlisten();
+        };
+        const error = () => {
+            reject(request.error);
+            unlisten();
+        };
+        request.addEventListener('success', success);
+        request.addEventListener('error', error);
+    });
+    promise
+        .then((value) => {
+        // Since cursoring reuses the IDBRequest (*sigh*), we cache it for later retrieval
+        // (see wrapFunction).
+        if (value instanceof IDBCursor) {
+            cursorRequestMap.set(value, request);
+        }
+        // Catching to avoid "Uncaught Promise exceptions"
+    })
+        .catch(() => { });
+    // This mapping exists in reverseTransformCache but doesn't doesn't exist in transformCache. This
+    // is because we create many promises from a single IDBRequest.
+    reverseTransformCache.set(promise, request);
+    return promise;
+}
+function cacheDonePromiseForTransaction(tx) {
+    // Early bail if we've already created a done promise for this transaction.
+    if (transactionDoneMap.has(tx))
+        return;
+    const done = new Promise((resolve, reject) => {
+        const unlisten = () => {
+            tx.removeEventListener('complete', complete);
+            tx.removeEventListener('error', error);
+            tx.removeEventListener('abort', error);
+        };
+        const complete = () => {
+            resolve();
+            unlisten();
+        };
+        const error = () => {
+            reject(tx.error || new DOMException('AbortError', 'AbortError'));
+            unlisten();
+        };
+        tx.addEventListener('complete', complete);
+        tx.addEventListener('error', error);
+        tx.addEventListener('abort', error);
+    });
+    // Cache it for later retrieval.
+    transactionDoneMap.set(tx, done);
+}
+let idbProxyTraps = {
+    get(target, prop, receiver) {
+        if (target instanceof IDBTransaction) {
+            // Special handling for transaction.done.
+            if (prop === 'done')
+                return transactionDoneMap.get(target);
+            // Polyfill for objectStoreNames because of Edge.
+            if (prop === 'objectStoreNames') {
+                return target.objectStoreNames || transactionStoreNamesMap.get(target);
+            }
+            // Make tx.store return the only store in the transaction, or undefined if there are many.
+            if (prop === 'store') {
+                return receiver.objectStoreNames[1]
+                    ? undefined
+                    : receiver.objectStore(receiver.objectStoreNames[0]);
+            }
+        }
+        // Else transform whatever we get back.
+        return wrap(target[prop]);
+    },
+    set(target, prop, value) {
+        target[prop] = value;
+        return true;
+    },
+    has(target, prop) {
+        if (target instanceof IDBTransaction &&
+            (prop === 'done' || prop === 'store')) {
+            return true;
+        }
+        return prop in target;
+    },
+};
+function replaceTraps(callback) {
+    idbProxyTraps = callback(idbProxyTraps);
+}
+function wrapFunction(func) {
+    // Due to expected object equality (which is enforced by the caching in `wrap`), we
+    // only create one new func per func.
+    // Edge doesn't support objectStoreNames (booo), so we polyfill it here.
+    if (func === IDBDatabase.prototype.transaction &&
+        !('objectStoreNames' in IDBTransaction.prototype)) {
+        return function (storeNames, ...args) {
+            const tx = func.call(unwrap(this), storeNames, ...args);
+            transactionStoreNamesMap.set(tx, storeNames.sort ? storeNames.sort() : [storeNames]);
+            return wrap(tx);
+        };
+    }
+    // Cursor methods are special, as the behaviour is a little more different to standard IDB. In
+    // IDB, you advance the cursor and wait for a new 'success' on the IDBRequest that gave you the
+    // cursor. It's kinda like a promise that can resolve with many values. That doesn't make sense
+    // with real promises, so each advance methods returns a new promise for the cursor object, or
+    // undefined if the end of the cursor has been reached.
+    if (getCursorAdvanceMethods().includes(func)) {
+        return function (...args) {
+            // Calling the original function with the proxy as 'this' causes ILLEGAL INVOCATION, so we use
+            // the original object.
+            func.apply(unwrap(this), args);
+            return wrap(cursorRequestMap.get(this));
+        };
+    }
+    return function (...args) {
+        // Calling the original function with the proxy as 'this' causes ILLEGAL INVOCATION, so we use
+        // the original object.
+        return wrap(func.apply(unwrap(this), args));
+    };
+}
+function transformCachableValue(value) {
+    if (typeof value === 'function')
+        return wrapFunction(value);
+    // This doesn't return, it just creates a 'done' promise for the transaction,
+    // which is later returned for transaction.done (see idbObjectHandler).
+    if (value instanceof IDBTransaction)
+        cacheDonePromiseForTransaction(value);
+    if (instanceOfAny(value, getIdbProxyableTypes()))
+        return new Proxy(value, idbProxyTraps);
+    // Return the same value back if we're not going to transform it.
+    return value;
+}
+function wrap(value) {
+    // We sometimes generate multiple promises from a single IDBRequest (eg when cursoring), because
+    // IDB is weird and a single IDBRequest can yield many responses, so these can't be cached.
+    if (value instanceof IDBRequest)
+        return promisifyRequest(value);
+    // If we've already transformed this value before, reuse the transformed value.
+    // This is faster, but it also provides object equality.
+    if (transformCache.has(value))
+        return transformCache.get(value);
+    const newValue = transformCachableValue(value);
+    // Not all types are transformed.
+    // These may be primitive types, so they can't be WeakMap keys.
+    if (newValue !== value) {
+        transformCache.set(value, newValue);
+        reverseTransformCache.set(newValue, value);
+    }
+    return newValue;
+}
+const unwrap = (value) => reverseTransformCache.get(value);
+
+/**
+ * Open a database.
+ *
+ * @param name Name of the database.
+ * @param version Schema version.
+ * @param callbacks Additional callbacks.
+ */
+function openDB(name, version, { blocked, upgrade, blocking, terminated } = {}) {
+    const request = indexedDB.open(name, version);
+    const openPromise = wrap(request);
+    if (upgrade) {
+        request.addEventListener('upgradeneeded', (event) => {
+            upgrade(wrap(request.result), event.oldVersion, event.newVersion, wrap(request.transaction));
+        });
+    }
+    if (blocked)
+        request.addEventListener('blocked', () => blocked());
+    openPromise
+        .then((db) => {
+        if (terminated)
+            db.addEventListener('close', () => terminated());
+        if (blocking)
+            db.addEventListener('versionchange', () => blocking());
+    })
+        .catch(() => { });
+    return openPromise;
+}
+
+const readMethods = ['get', 'getKey', 'getAll', 'getAllKeys', 'count'];
+const writeMethods = ['put', 'add', 'delete', 'clear'];
+const cachedMethods = new Map();
+function getMethod(target, prop) {
+    if (!(target instanceof IDBDatabase &&
+        !(prop in target) &&
+        typeof prop === 'string')) {
+        return;
+    }
+    if (cachedMethods.get(prop))
+        return cachedMethods.get(prop);
+    const targetFuncName = prop.replace(/FromIndex$/, '');
+    const useIndex = prop !== targetFuncName;
+    const isWrite = writeMethods.includes(targetFuncName);
+    if (
+    // Bail if the target doesn't exist on the target. Eg, getAll isn't in Edge.
+    !(targetFuncName in (useIndex ? IDBIndex : IDBObjectStore).prototype) ||
+        !(isWrite || readMethods.includes(targetFuncName))) {
+        return;
+    }
+    const method = async function (storeName, ...args) {
+        // isWrite ? 'readwrite' : undefined gzipps better, but fails in Edge :(
+        const tx = this.transaction(storeName, isWrite ? 'readwrite' : 'readonly');
+        let target = tx.store;
+        if (useIndex)
+            target = target.index(args.shift());
+        // Must reject if op rejects.
+        // If it's a write operation, must reject if tx.done rejects.
+        // Must reject with op rejection first.
+        // Must resolve with op value.
+        // Must handle both promises (no unhandled rejections)
+        return (await Promise.all([
+            target[targetFuncName](...args),
+            isWrite && tx.done,
+        ]))[0];
+    };
+    cachedMethods.set(prop, method);
+    return method;
+}
+replaceTraps((oldTraps) => ({
+    ...oldTraps,
+    get: (target, prop, receiver) => getMethod(target, prop) || oldTraps.get(target, prop, receiver),
+    has: (target, prop) => !!getMethod(target, prop) || oldTraps.has(target, prop),
+}));
+
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -1364,7 +1775,7 @@ function isVersionServiceProvider(provider) {
 }
 
 const name$o = "@firebase/app";
-const version$1$1 = "0.7.16";
+const version$1$1 = "0.7.24";
 
 /**
  * @license
@@ -1431,7 +1842,7 @@ const name$2 = "@firebase/firestore";
 const name$1$1 = "@firebase/firestore-compat";
 
 const name$p = "firebase";
-const version$2 = "9.6.6";
+const version$2 = "9.8.1";
 const PLATFORM_LOG_STRING = {
     [name$o]: 'fire-core',
     [name$n]: 'fire-core-compat',
@@ -1538,6 +1949,38 @@ function _registerComponent(component) {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+const ERRORS = {
+    ["no-app" /* NO_APP */]: "No Firebase App '{$appName}' has been created - " +
+        'call Firebase App.initializeApp()',
+    ["bad-app-name" /* BAD_APP_NAME */]: "Illegal App name: '{$appName}",
+    ["duplicate-app" /* DUPLICATE_APP */]: "Firebase App named '{$appName}' already exists with different options or config",
+    ["app-deleted" /* APP_DELETED */]: "Firebase App named '{$appName}' already deleted",
+    ["invalid-app-argument" /* INVALID_APP_ARGUMENT */]: 'firebase.{$appName}() takes either no argument or a ' +
+        'Firebase App instance.',
+    ["invalid-log-argument" /* INVALID_LOG_ARGUMENT */]: 'First argument to `onLog` must be null or a function.',
+    ["storage-open" /* STORAGE_OPEN */]: 'Error thrown when opening storage. Original error: {$originalErrorMessage}.',
+    ["storage-get" /* STORAGE_GET */]: 'Error thrown when reading from storage. Original error: {$originalErrorMessage}.',
+    ["storage-set" /* STORAGE_WRITE */]: 'Error thrown when writing to storage. Original error: {$originalErrorMessage}.',
+    ["storage-delete" /* STORAGE_DELETE */]: 'Error thrown when deleting from storage. Original error: {$originalErrorMessage}.'
+};
+const ERROR_FACTORY = new ErrorFactory('app', 'Firebase', ERRORS);
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 /**
  * The current SDK version.
  *
@@ -1583,6 +2026,312 @@ function registerVersion(libraryKeyOrName, version, variant) {
 
 /**
  * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const DB_NAME = 'firebase-heartbeat-database';
+const DB_VERSION = 1;
+const STORE_NAME = 'firebase-heartbeat-store';
+let dbPromise = null;
+function getDbPromise() {
+    if (!dbPromise) {
+        dbPromise = openDB(DB_NAME, DB_VERSION, {
+            upgrade: (db, oldVersion) => {
+                // We don't use 'break' in this switch statement, the fall-through
+                // behavior is what we want, because if there are multiple versions between
+                // the old version and the current version, we want ALL the migrations
+                // that correspond to those versions to run, not only the last one.
+                // eslint-disable-next-line default-case
+                switch (oldVersion) {
+                    case 0:
+                        db.createObjectStore(STORE_NAME);
+                }
+            }
+        }).catch(e => {
+            throw ERROR_FACTORY.create("storage-open" /* STORAGE_OPEN */, {
+                originalErrorMessage: e.message
+            });
+        });
+    }
+    return dbPromise;
+}
+async function readHeartbeatsFromIndexedDB(app) {
+    try {
+        const db = await getDbPromise();
+        return db
+            .transaction(STORE_NAME)
+            .objectStore(STORE_NAME)
+            .get(computeKey(app));
+    }
+    catch (e) {
+        throw ERROR_FACTORY.create("storage-get" /* STORAGE_GET */, {
+            originalErrorMessage: e.message
+        });
+    }
+}
+async function writeHeartbeatsToIndexedDB(app, heartbeatObject) {
+    try {
+        const db = await getDbPromise();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const objectStore = tx.objectStore(STORE_NAME);
+        await objectStore.put(heartbeatObject, computeKey(app));
+        return tx.done;
+    }
+    catch (e) {
+        throw ERROR_FACTORY.create("storage-set" /* STORAGE_WRITE */, {
+            originalErrorMessage: e.message
+        });
+    }
+}
+function computeKey(app) {
+    return `${app.name}!${app.options.appId}`;
+}
+
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const MAX_HEADER_BYTES = 1024;
+// 30 days
+const STORED_HEARTBEAT_RETENTION_MAX_MILLIS = 30 * 24 * 60 * 60 * 1000;
+class HeartbeatServiceImpl {
+    constructor(container) {
+        this.container = container;
+        /**
+         * In-memory cache for heartbeats, used by getHeartbeatsHeader() to generate
+         * the header string.
+         * Stores one record per date. This will be consolidated into the standard
+         * format of one record per user agent string before being sent as a header.
+         * Populated from indexedDB when the controller is instantiated and should
+         * be kept in sync with indexedDB.
+         * Leave public for easier testing.
+         */
+        this._heartbeatsCache = null;
+        const app = this.container.getProvider('app').getImmediate();
+        this._storage = new HeartbeatStorageImpl(app);
+        this._heartbeatsCachePromise = this._storage.read().then(result => {
+            this._heartbeatsCache = result;
+            return result;
+        });
+    }
+    /**
+     * Called to report a heartbeat. The function will generate
+     * a HeartbeatsByUserAgent object, update heartbeatsCache, and persist it
+     * to IndexedDB.
+     * Note that we only store one heartbeat per day. So if a heartbeat for today is
+     * already logged, subsequent calls to this function in the same day will be ignored.
+     */
+    async triggerHeartbeat() {
+        const platformLogger = this.container
+            .getProvider('platform-logger')
+            .getImmediate();
+        // This is the "Firebase user agent" string from the platform logger
+        // service, not the browser user agent.
+        const agent = platformLogger.getPlatformInfoString();
+        const date = getUTCDateString();
+        if (this._heartbeatsCache === null) {
+            this._heartbeatsCache = await this._heartbeatsCachePromise;
+        }
+        // Do not store a heartbeat if one is already stored for this day
+        // or if a header has already been sent today.
+        if (this._heartbeatsCache.lastSentHeartbeatDate === date ||
+            this._heartbeatsCache.heartbeats.some(singleDateHeartbeat => singleDateHeartbeat.date === date)) {
+            return;
+        }
+        else {
+            // There is no entry for this date. Create one.
+            this._heartbeatsCache.heartbeats.push({ date, agent });
+        }
+        // Remove entries older than 30 days.
+        this._heartbeatsCache.heartbeats = this._heartbeatsCache.heartbeats.filter(singleDateHeartbeat => {
+            const hbTimestamp = new Date(singleDateHeartbeat.date).valueOf();
+            const now = Date.now();
+            return now - hbTimestamp <= STORED_HEARTBEAT_RETENTION_MAX_MILLIS;
+        });
+        return this._storage.overwrite(this._heartbeatsCache);
+    }
+    /**
+     * Returns a base64 encoded string which can be attached to the heartbeat-specific header directly.
+     * It also clears all heartbeats from memory as well as in IndexedDB.
+     *
+     * NOTE: Consuming product SDKs should not send the header if this method
+     * returns an empty string.
+     */
+    async getHeartbeatsHeader() {
+        if (this._heartbeatsCache === null) {
+            await this._heartbeatsCachePromise;
+        }
+        // If it's still null or the array is empty, there is no data to send.
+        if (this._heartbeatsCache === null ||
+            this._heartbeatsCache.heartbeats.length === 0) {
+            return '';
+        }
+        const date = getUTCDateString();
+        // Extract as many heartbeats from the cache as will fit under the size limit.
+        const { heartbeatsToSend, unsentEntries } = extractHeartbeatsForHeader(this._heartbeatsCache.heartbeats);
+        const headerString = base64urlEncodeWithoutPadding(JSON.stringify({ version: 2, heartbeats: heartbeatsToSend }));
+        // Store last sent date to prevent another being logged/sent for the same day.
+        this._heartbeatsCache.lastSentHeartbeatDate = date;
+        if (unsentEntries.length > 0) {
+            // Store any unsent entries if they exist.
+            this._heartbeatsCache.heartbeats = unsentEntries;
+            // This seems more likely than emptying the array (below) to lead to some odd state
+            // since the cache isn't empty and this will be called again on the next request,
+            // and is probably safest if we await it.
+            await this._storage.overwrite(this._heartbeatsCache);
+        }
+        else {
+            this._heartbeatsCache.heartbeats = [];
+            // Do not wait for this, to reduce latency.
+            void this._storage.overwrite(this._heartbeatsCache);
+        }
+        return headerString;
+    }
+}
+function getUTCDateString() {
+    const today = new Date();
+    // Returns date format 'YYYY-MM-DD'
+    return today.toISOString().substring(0, 10);
+}
+function extractHeartbeatsForHeader(heartbeatsCache, maxSize = MAX_HEADER_BYTES) {
+    // Heartbeats grouped by user agent in the standard format to be sent in
+    // the header.
+    const heartbeatsToSend = [];
+    // Single date format heartbeats that are not sent.
+    let unsentEntries = heartbeatsCache.slice();
+    for (const singleDateHeartbeat of heartbeatsCache) {
+        // Look for an existing entry with the same user agent.
+        const heartbeatEntry = heartbeatsToSend.find(hb => hb.agent === singleDateHeartbeat.agent);
+        if (!heartbeatEntry) {
+            // If no entry for this user agent exists, create one.
+            heartbeatsToSend.push({
+                agent: singleDateHeartbeat.agent,
+                dates: [singleDateHeartbeat.date]
+            });
+            if (countBytes(heartbeatsToSend) > maxSize) {
+                // If the header would exceed max size, remove the added heartbeat
+                // entry and stop adding to the header.
+                heartbeatsToSend.pop();
+                break;
+            }
+        }
+        else {
+            heartbeatEntry.dates.push(singleDateHeartbeat.date);
+            // If the header would exceed max size, remove the added date
+            // and stop adding to the header.
+            if (countBytes(heartbeatsToSend) > maxSize) {
+                heartbeatEntry.dates.pop();
+                break;
+            }
+        }
+        // Pop unsent entry from queue. (Skipped if adding the entry exceeded
+        // quota and the loop breaks early.)
+        unsentEntries = unsentEntries.slice(1);
+    }
+    return {
+        heartbeatsToSend,
+        unsentEntries
+    };
+}
+class HeartbeatStorageImpl {
+    constructor(app) {
+        this.app = app;
+        this._canUseIndexedDBPromise = this.runIndexedDBEnvironmentCheck();
+    }
+    async runIndexedDBEnvironmentCheck() {
+        if (!isIndexedDBAvailable()) {
+            return false;
+        }
+        else {
+            return validateIndexedDBOpenable()
+                .then(() => true)
+                .catch(() => false);
+        }
+    }
+    /**
+     * Read all heartbeats.
+     */
+    async read() {
+        const canUseIndexedDB = await this._canUseIndexedDBPromise;
+        if (!canUseIndexedDB) {
+            return { heartbeats: [] };
+        }
+        else {
+            const idbHeartbeatObject = await readHeartbeatsFromIndexedDB(this.app);
+            return idbHeartbeatObject || { heartbeats: [] };
+        }
+    }
+    // overwrite the storage with the provided heartbeats
+    async overwrite(heartbeatsObject) {
+        var _a;
+        const canUseIndexedDB = await this._canUseIndexedDBPromise;
+        if (!canUseIndexedDB) {
+            return;
+        }
+        else {
+            const existingHeartbeatsObject = await this.read();
+            return writeHeartbeatsToIndexedDB(this.app, {
+                lastSentHeartbeatDate: (_a = heartbeatsObject.lastSentHeartbeatDate) !== null && _a !== void 0 ? _a : existingHeartbeatsObject.lastSentHeartbeatDate,
+                heartbeats: heartbeatsObject.heartbeats
+            });
+        }
+    }
+    // add heartbeats
+    async add(heartbeatsObject) {
+        var _a;
+        const canUseIndexedDB = await this._canUseIndexedDBPromise;
+        if (!canUseIndexedDB) {
+            return;
+        }
+        else {
+            const existingHeartbeatsObject = await this.read();
+            return writeHeartbeatsToIndexedDB(this.app, {
+                lastSentHeartbeatDate: (_a = heartbeatsObject.lastSentHeartbeatDate) !== null && _a !== void 0 ? _a : existingHeartbeatsObject.lastSentHeartbeatDate,
+                heartbeats: [
+                    ...existingHeartbeatsObject.heartbeats,
+                    ...heartbeatsObject.heartbeats
+                ]
+            });
+        }
+    }
+}
+/**
+ * Calculate bytes of a HeartbeatsByUserAgent array after being wrapped
+ * in a platform logging header JSON object, stringified, and converted
+ * to base 64.
+ */
+function countBytes(heartbeatsCache) {
+    // base64 has a restricted set of characters, all of which should be 1 byte.
+    return base64urlEncodeWithoutPadding(
+    // heartbeatsCache wrapper properties
+    JSON.stringify({ version: 2, heartbeats: heartbeatsCache })).length;
+}
+
+/**
+ * @license
  * Copyright 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -1599,6 +2348,7 @@ function registerVersion(libraryKeyOrName, version, variant) {
  */
 function registerCoreComponents(variant) {
     _registerComponent(new Component('platform-logger', container => new PlatformLoggerServiceImpl(container), "PRIVATE" /* PRIVATE */));
+    _registerComponent(new Component('heartbeat', container => new HeartbeatServiceImpl(container), "PRIVATE" /* PRIVATE */));
     // Register `app` package.
     registerVersion(name$o, version$1$1, variant);
     // BUILD_TARGET will be replaced by values like esm5, esm2017, cjs5, etc during the compilation
@@ -1616,7 +2366,7 @@ function registerCoreComponents(variant) {
 registerCoreComponents('');
 
 const name$1 = "@firebase/database";
-const version$1 = "0.12.5";
+const version$1 = "0.13.0";
 
 /**
  * @license
@@ -3401,7 +4151,7 @@ class WebSocketConnection {
         this.bytesReceived = 0;
         this.log_ = logWrapper(this.connId);
         this.stats_ = statsManagerGetCollection(repoInfo);
-        this.connURL = WebSocketConnection.connectionURL_(repoInfo, transportSessionId, lastSessionId, appCheckToken);
+        this.connURL = WebSocketConnection.connectionURL_(repoInfo, transportSessionId, lastSessionId, appCheckToken, applicationId);
         this.nodeAdmin = repoInfo.nodeAdmin;
     }
     /**
@@ -3411,7 +4161,7 @@ class WebSocketConnection {
      * @param lastSessionId - Optional lastSessionId if there was a previous connection
      * @returns connection url
      */
-    static connectionURL_(repoInfo, transportSessionId, lastSessionId, appCheckToken) {
+    static connectionURL_(repoInfo, transportSessionId, lastSessionId, appCheckToken, applicationId) {
         const urlParams = {};
         urlParams[VERSION_PARAM] = PROTOCOL_VERSION;
         if (typeof location !== 'undefined' &&
@@ -3428,6 +4178,9 @@ class WebSocketConnection {
         if (appCheckToken) {
             urlParams[APP_CHECK_TOKEN_PARAM] = appCheckToken;
         }
+        if (applicationId) {
+            urlParams[APPLICATION_ID_PARAM] = applicationId;
+        }
         return repoInfoConnectionURL(repoInfo, WEBSOCKET, urlParams);
     }
     /**
@@ -3442,16 +4195,9 @@ class WebSocketConnection {
         // Assume failure until proven otherwise.
         PersistentStorage.set('previous_websocket_failure', true);
         try {
+            let options;
             if (isNodeSdk()) ;
-            else {
-                const options = {
-                    headers: {
-                        'X-Firebase-GMPID': this.applicationId || '',
-                        'X-Firebase-AppCheck': this.appCheckToken || ''
-                    }
-                };
-                this.mySock = new WebSocketImpl(this.connURL, [], options);
-            }
+            this.mySock = new WebSocketImpl(this.connURL, [], options);
         }
         catch (e) {
             this.log_('Error instantiating WebSocket.');
@@ -3705,6 +4451,13 @@ class TransportManager {
     static get ALL_TRANSPORTS() {
         return [BrowserPollConnection, WebSocketConnection];
     }
+    /**
+     * Returns whether transport has been selected to ensure WebSocketConnection or BrowserPollConnection are not called after
+     * TransportManager has already set up transports_
+     */
+    static get IS_TRANSPORT_INITIALIZED() {
+        return this.globalTransportInitialized_;
+    }
     initTransports_(repoInfo) {
         const isWebSocketsAvailable = WebSocketConnection && WebSocketConnection['isAvailable']();
         let isSkipPollConnection = isWebSocketsAvailable && !WebSocketConnection.previouslyFailed();
@@ -3724,6 +4477,7 @@ class TransportManager {
                     transports.push(transport);
                 }
             }
+            TransportManager.globalTransportInitialized_ = true;
         }
     }
     /**
@@ -3749,6 +4503,8 @@ class TransportManager {
         }
     }
 }
+// Keeps track of whether the TransportManager has already chosen a transport to use
+TransportManager.globalTransportInitialized_ = false;
 
 /**
  * @license
@@ -13137,7 +13893,7 @@ const parseRepoInfo = function (dataURL, nodeAdmin) {
     }
     const webSocketOnly = parsedUrl.scheme === 'ws' || parsedUrl.scheme === 'wss';
     return {
-        repoInfo: new RepoInfo(parsedUrl.host, parsedUrl.secure, namespace, nodeAdmin, webSocketOnly, 
+        repoInfo: new RepoInfo(parsedUrl.host, parsedUrl.secure, namespace, webSocketOnly, nodeAdmin, 
         /*persistenceKey=*/ '', 
         /*includeNamespaceInQueryParams=*/ namespace !== parsedUrl.subdomain),
         path: new Path(parsedUrl.pathString)
@@ -14247,7 +15003,7 @@ function repoManagerDatabaseFromApp(app, authProvider, appCheckProvider, url, no
     let repoInfo = parsedUrl.repoInfo;
     let isEmulator;
     let dbEmulatorHost = undefined;
-    if (typeof process !== 'undefined') {
+    if (typeof process !== 'undefined' && process.env) {
         dbEmulatorHost = process.env[FIREBASE_DATABASE_EMULATOR_HOST_VAR];
     }
     if (dbEmulatorHost) {
@@ -14419,8 +15175,8 @@ PersistentConnection.prototype.echo = function (data, onEcho) {
  */
 registerDatabase();
 
-var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
 var keys = Object.keys;
+var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
 /**
  * are the values passed strictly equal or both NaN
  *
@@ -14497,7 +15253,7 @@ var getNewCache = (function (canUseWeakMap) {
 function createCircularEqualCreator(isEqual) {
     return function createCircularEqual(comparator) {
         var _comparator = isEqual || comparator;
-        return function circularEqual(a, b, cache) {
+        return function circularEqual(a, b, indexOrKeyA, indexOrKeyB, parentA, parentB, cache) {
             if (cache === void 0) { cache = getNewCache(); }
             var isCacheableA = !!a && typeof a === 'object';
             var isCacheableB = !!b && typeof b === 'object';
@@ -14533,7 +15289,7 @@ function areArraysEqual(a, b, isEqual, meta) {
         return false;
     }
     while (index-- > 0) {
-        if (!isEqual(a[index], b[index], meta)) {
+        if (!isEqual(a[index], b[index], index, index, a, b, meta)) {
             return false;
         }
     }
@@ -14552,20 +15308,23 @@ function areMapsEqual(a, b, isEqual, meta) {
     var isValueEqual = a.size === b.size;
     if (isValueEqual && a.size) {
         var matchedIndices_1 = {};
+        var indexA_1 = 0;
         a.forEach(function (aValue, aKey) {
             if (isValueEqual) {
                 var hasMatch_1 = false;
-                var matchIndex_1 = 0;
+                var matchIndexB_1 = 0;
                 b.forEach(function (bValue, bKey) {
-                    if (!hasMatch_1 && !matchedIndices_1[matchIndex_1]) {
+                    if (!hasMatch_1 && !matchedIndices_1[matchIndexB_1]) {
                         hasMatch_1 =
-                            isEqual(aKey, bKey, meta) && isEqual(aValue, bValue, meta);
+                            isEqual(aKey, bKey, indexA_1, matchIndexB_1, a, b, meta) &&
+                                isEqual(aValue, bValue, aKey, bKey, a, b, meta);
                         if (hasMatch_1) {
-                            matchedIndices_1[matchIndex_1] = true;
+                            matchedIndices_1[matchIndexB_1] = true;
                         }
                     }
-                    matchIndex_1++;
+                    matchIndexB_1++;
                 });
+                indexA_1++;
                 isValueEqual = hasMatch_1;
             }
         });
@@ -14601,7 +15360,8 @@ function areObjectsEqual(a, b, isEqual, meta) {
                     return false;
                 }
             }
-            if (!hasOwnProperty(b, key) || !isEqual(a[key], b[key], meta)) {
+            if (!hasOwnProperty(b, key) ||
+                !isEqual(a[key], b[key], key, key, a, b, meta)) {
                 return false;
             }
         }
@@ -14637,18 +15397,18 @@ function areSetsEqual(a, b, isEqual, meta) {
     var isValueEqual = a.size === b.size;
     if (isValueEqual && a.size) {
         var matchedIndices_2 = {};
-        a.forEach(function (aValue) {
+        a.forEach(function (aValue, aKey) {
             if (isValueEqual) {
                 var hasMatch_2 = false;
-                var matchIndex_2 = 0;
-                b.forEach(function (bValue) {
-                    if (!hasMatch_2 && !matchedIndices_2[matchIndex_2]) {
-                        hasMatch_2 = isEqual(aValue, bValue, meta);
+                var matchIndex_1 = 0;
+                b.forEach(function (bValue, bKey) {
+                    if (!hasMatch_2 && !matchedIndices_2[matchIndex_1]) {
+                        hasMatch_2 = isEqual(aValue, bValue, aKey, bKey, a, b, meta);
                         if (hasMatch_2) {
-                            matchedIndices_2[matchIndex_2] = true;
+                            matchedIndices_2[matchIndex_1] = true;
                         }
                     }
-                    matchIndex_2++;
+                    matchIndex_1++;
                 });
                 isValueEqual = hasMatch_2;
             }
@@ -14659,12 +15419,13 @@ function areSetsEqual(a, b, isEqual, meta) {
 
 var HAS_MAP_SUPPORT = typeof Map === 'function';
 var HAS_SET_SUPPORT = typeof Set === 'function';
+var valueOf = Object.prototype.valueOf;
 function createComparator(createIsEqual) {
     var isEqual = 
     /* eslint-disable no-use-before-define */
     typeof createIsEqual === 'function'
         ? createIsEqual(comparator)
-        : comparator;
+        : function (a, b, indexOrKeyA, indexOrKeyB, parentA, parentB, meta) { return comparator(a, b, meta); };
     /* eslint-enable */
     /**
      * compare the value of the two objects and return true if they are equivalent in values
@@ -14713,6 +15474,9 @@ function createComparator(createIsEqual) {
                 if (aShape || bShape) {
                     return aShape === bShape && areSetsEqual(a, b, isEqual, meta);
                 }
+            }
+            if (a.valueOf !== valueOf || b.valueOf !== valueOf) {
+                return sameValueZeroEqual(a.valueOf(), b.valueOf());
             }
             return areObjectsEqual(a, b, isEqual, meta);
         }
@@ -14797,7 +15561,7 @@ class Evented {
 }
 
 var name = "firebase";
-var version = "9.6.6";
+var version = "9.8.1";
 
 /**
  * @license
@@ -15161,7 +15925,7 @@ function P2PServerFactory(options) {
                     if (this.debug) console.log({ sig });
                     if (sig.type === 'offer') {
                         var mykey = ev.key;
-                        var { peerID, myID } = sig;
+                        var { myID } = sig;
                         var channel = new Channel(
                             child(this.channelRef, mykey),
                             this._makePeer(myID)
@@ -15170,7 +15934,6 @@ function P2PServerFactory(options) {
                         this.fire('addConnection', channel);
 
                         // on message through webRTC (simple-peer)
-                        //eslint-disable-next-line no-loop-func
                         var answerSentYet = false;
                         channel.peer.on('signal', (data) => {
                             if (data.type === 'answer') {
@@ -15192,7 +15955,6 @@ function P2PServerFactory(options) {
                         });
 
                         // on message through firebase
-                        //eslint-disable-next-line no-loop-func
                         onChildAdded(channel.inRef, (ev2) => {
                             var val2 = ev2.val();
                             if (this.debug) {
@@ -15323,8 +16085,13 @@ function P2PServerFactory(options) {
             if (index >= 0) {
                 var conn = this.connections[index];
                 conn.destroy();
-                this.connections.splice(index, 1);
-                this.connections = [...this.connections];
+
+                //remove from list of connections and create new list of connections
+                this.connections = [
+                    ...this.connections.slice(0, index),
+                    ...this.connections.slice(index + 1),
+                ];
+
                 this.fire('removeConnection', conn);
                 if (this.debug) console.log(this.connections);
             }
@@ -15697,7 +16464,7 @@ var msgpack_min = createCommonjsModule(function (module, exports) {
 if(t=z(t).replace(tt,""),t.length<2)return "";for(;t.length%4!==0;)t+="=";return t}function z(t){return t.trim?t.trim():t.replace(/^\s+|\s+$/g,"")}function V(t){return t<16?"0"+t.toString(16):t.toString(16)}function q(t,r){r=r||1/0;for(var e,n=t.length,i=null,o=[],f=0;f<n;++f){if(e=t.charCodeAt(f),e>55295&&e<57344){if(!i){if(e>56319){(r-=3)>-1&&o.push(239,191,189);continue}if(f+1===n){(r-=3)>-1&&o.push(239,191,189);continue}i=e;continue}if(e<56320){(r-=3)>-1&&o.push(239,191,189),i=e;continue}e=(i-55296<<10|e-56320)+65536;}else i&&(r-=3)>-1&&o.push(239,191,189);if(i=null,e<128){if((r-=1)<0)break;o.push(e);}else if(e<2048){if((r-=2)<0)break;o.push(e>>6|192,63&e|128);}else if(e<65536){if((r-=3)<0)break;o.push(e>>12|224,e>>6&63|128,63&e|128);}else {if(!(e<1114112))throw new Error("Invalid code point");if((r-=4)<0)break;o.push(e>>18|240,e>>12&63|128,e>>6&63|128,63&e|128);}}return o}function W(t){for(var r=[],e=0;e<t.length;++e)r.push(255&t.charCodeAt(e));return r}function J(t,r){for(var e,n,i,o=[],f=0;f<t.length&&!((r-=2)<0);++f)e=t.charCodeAt(f),n=e>>8,i=e%256,o.push(i),o.push(n);return o}function X(t){return Z.toByteArray(j(t))}function G(t,r,e,n){for(var i=0;i<n&&!(i+e>=r.length||i>=t.length);++i)r[i+e]=t[i];return i}function H(t){return t!==t}var Z=t("base64-js"),K=t("ieee754"),Q=t("isarray");e.Buffer=Buffer,e.SlowBuffer=y,e.INSPECT_MAX_BYTES=50,Buffer.TYPED_ARRAY_SUPPORT=void 0!==r.TYPED_ARRAY_SUPPORT?r.TYPED_ARRAY_SUPPORT:n(),e.kMaxLength=i(),Buffer.poolSize=8192,Buffer._augment=function(t){return t.__proto__=Buffer.prototype,t},Buffer.from=function(t,r,e){return f(null,t,r,e)},Buffer.TYPED_ARRAY_SUPPORT&&(Buffer.prototype.__proto__=Uint8Array.prototype,Buffer.__proto__=Uint8Array,"undefined"!=typeof Symbol&&Symbol.species&&Buffer[Symbol.species]===Buffer&&Object.defineProperty(Buffer,Symbol.species,{value:null,configurable:!0})),Buffer.alloc=function(t,r,e){return a(null,t,r,e)},Buffer.allocUnsafe=function(t){return s(null,t)},Buffer.allocUnsafeSlow=function(t){return s(null,t)},Buffer.isBuffer=function(t){return !(null==t||!t._isBuffer)},Buffer.compare=function(t,r){if(!Buffer.isBuffer(t)||!Buffer.isBuffer(r))throw new TypeError("Arguments must be Buffers");if(t===r)return 0;for(var e=t.length,n=r.length,i=0,o=Math.min(e,n);i<o;++i)if(t[i]!==r[i]){e=t[i],n=r[i];break}return e<n?-1:n<e?1:0},Buffer.isEncoding=function(t){switch(String(t).toLowerCase()){case"hex":case"utf8":case"utf-8":case"ascii":case"latin1":case"binary":case"base64":case"ucs2":case"ucs-2":case"utf16le":case"utf-16le":return !0;default:return !1}},Buffer.concat=function(t,r){if(!Q(t))throw new TypeError('"list" argument must be an Array of Buffers');if(0===t.length)return Buffer.alloc(0);var e;if(void 0===r)for(r=0,e=0;e<t.length;++e)r+=t[e].length;var n=Buffer.allocUnsafe(r),i=0;for(e=0;e<t.length;++e){var o=t[e];if(!Buffer.isBuffer(o))throw new TypeError('"list" argument must be an Array of Buffers');o.copy(n,i),i+=o.length;}return n},Buffer.byteLength=v,Buffer.prototype._isBuffer=!0,Buffer.prototype.swap16=function(){var t=this.length;if(t%2!==0)throw new RangeError("Buffer size must be a multiple of 16-bits");for(var r=0;r<t;r+=2)b(this,r,r+1);return this},Buffer.prototype.swap32=function(){var t=this.length;if(t%4!==0)throw new RangeError("Buffer size must be a multiple of 32-bits");for(var r=0;r<t;r+=4)b(this,r,r+3),b(this,r+1,r+2);return this},Buffer.prototype.swap64=function(){var t=this.length;if(t%8!==0)throw new RangeError("Buffer size must be a multiple of 64-bits");for(var r=0;r<t;r+=8)b(this,r,r+7),b(this,r+1,r+6),b(this,r+2,r+5),b(this,r+3,r+4);return this},Buffer.prototype.toString=function(){var t=0|this.length;return 0===t?"":0===arguments.length?k(this,0,t):g.apply(this,arguments)},Buffer.prototype.equals=function(t){if(!Buffer.isBuffer(t))throw new TypeError("Argument must be a Buffer");return this===t||0===Buffer.compare(this,t)},Buffer.prototype.inspect=function(){var t="",r=e.INSPECT_MAX_BYTES;return this.length>0&&(t=this.toString("hex",0,r).match(/.{2}/g).join(" "),this.length>r&&(t+=" ... ")),"<Buffer "+t+">"},Buffer.prototype.compare=function(t,r,e,n,i){if(!Buffer.isBuffer(t))throw new TypeError("Argument must be a Buffer");if(void 0===r&&(r=0),void 0===e&&(e=t?t.length:0),void 0===n&&(n=0),void 0===i&&(i=this.length),r<0||e>t.length||n<0||i>this.length)throw new RangeError("out of range index");if(n>=i&&r>=e)return 0;if(n>=i)return -1;if(r>=e)return 1;if(r>>>=0,e>>>=0,n>>>=0,i>>>=0,this===t)return 0;for(var o=i-n,f=e-r,u=Math.min(o,f),a=this.slice(n,i),s=t.slice(r,e),c=0;c<u;++c)if(a[c]!==s[c]){o=a[c],f=s[c];break}return o<f?-1:f<o?1:0},Buffer.prototype.includes=function(t,r,e){return this.indexOf(t,r,e)!==-1},Buffer.prototype.indexOf=function(t,r,e){return w(this,t,r,e,!0)},Buffer.prototype.lastIndexOf=function(t,r,e){return w(this,t,r,e,!1)},Buffer.prototype.write=function(t,r,e,n){if(void 0===r)n="utf8",e=this.length,r=0;else if(void 0===e&&"string"==typeof r)n=r,e=this.length,r=0;else {if(!isFinite(r))throw new Error("Buffer.write(string, encoding, offset[, length]) is no longer supported");r=0|r,isFinite(e)?(e=0|e,void 0===n&&(n="utf8")):(n=e,e=void 0);}var i=this.length-r;if((void 0===e||e>i)&&(e=i),t.length>0&&(e<0||r<0)||r>this.length)throw new RangeError("Attempt to write outside buffer bounds");n||(n="utf8");for(var o=!1;;)switch(n){case"hex":return A(this,t,r,e);case"utf8":case"utf-8":return m(this,t,r,e);case"ascii":return x(this,t,r,e);case"latin1":case"binary":return B(this,t,r,e);case"base64":return U(this,t,r,e);case"ucs2":case"ucs-2":case"utf16le":case"utf-16le":return P(this,t,r,e);default:if(o)throw new TypeError("Unknown encoding: "+n);n=(""+n).toLowerCase(),o=!0;}},Buffer.prototype.toJSON=function(){return {type:"Buffer",data:Array.prototype.slice.call(this._arr||this,0)}};var $=4096;Buffer.prototype.slice=function(t,r){var e=this.length;t=~~t,r=void 0===r?e:~~r,t<0?(t+=e,t<0&&(t=0)):t>e&&(t=e),r<0?(r+=e,r<0&&(r=0)):r>e&&(r=e),r<t&&(r=t);var n;if(Buffer.TYPED_ARRAY_SUPPORT)n=this.subarray(t,r),n.__proto__=Buffer.prototype;else {var i=r-t;n=new Buffer(i,void 0);for(var o=0;o<i;++o)n[o]=this[o+t];}return n},Buffer.prototype.readUIntLE=function(t,r,e){t=0|t,r=0|r,e||C(t,r,this.length);for(var n=this[t],i=1,o=0;++o<r&&(i*=256);)n+=this[t+o]*i;return n},Buffer.prototype.readUIntBE=function(t,r,e){t=0|t,r=0|r,e||C(t,r,this.length);for(var n=this[t+--r],i=1;r>0&&(i*=256);)n+=this[t+--r]*i;return n},Buffer.prototype.readUInt8=function(t,r){return r||C(t,1,this.length),this[t]},Buffer.prototype.readUInt16LE=function(t,r){return r||C(t,2,this.length),this[t]|this[t+1]<<8},Buffer.prototype.readUInt16BE=function(t,r){return r||C(t,2,this.length),this[t]<<8|this[t+1]},Buffer.prototype.readUInt32LE=function(t,r){return r||C(t,4,this.length),(this[t]|this[t+1]<<8|this[t+2]<<16)+16777216*this[t+3]},Buffer.prototype.readUInt32BE=function(t,r){return r||C(t,4,this.length),16777216*this[t]+(this[t+1]<<16|this[t+2]<<8|this[t+3])},Buffer.prototype.readIntLE=function(t,r,e){t=0|t,r=0|r,e||C(t,r,this.length);for(var n=this[t],i=1,o=0;++o<r&&(i*=256);)n+=this[t+o]*i;return i*=128,n>=i&&(n-=Math.pow(2,8*r)),n},Buffer.prototype.readIntBE=function(t,r,e){t=0|t,r=0|r,e||C(t,r,this.length);for(var n=r,i=1,o=this[t+--n];n>0&&(i*=256);)o+=this[t+--n]*i;return i*=128,o>=i&&(o-=Math.pow(2,8*r)),o},Buffer.prototype.readInt8=function(t,r){return r||C(t,1,this.length),128&this[t]?(255-this[t]+1)*-1:this[t]},Buffer.prototype.readInt16LE=function(t,r){r||C(t,2,this.length);var e=this[t]|this[t+1]<<8;return 32768&e?4294901760|e:e},Buffer.prototype.readInt16BE=function(t,r){r||C(t,2,this.length);var e=this[t+1]|this[t]<<8;return 32768&e?4294901760|e:e},Buffer.prototype.readInt32LE=function(t,r){return r||C(t,4,this.length),this[t]|this[t+1]<<8|this[t+2]<<16|this[t+3]<<24},Buffer.prototype.readInt32BE=function(t,r){return r||C(t,4,this.length),this[t]<<24|this[t+1]<<16|this[t+2]<<8|this[t+3]},Buffer.prototype.readFloatLE=function(t,r){return r||C(t,4,this.length),K.read(this,t,!0,23,4)},Buffer.prototype.readFloatBE=function(t,r){return r||C(t,4,this.length),K.read(this,t,!1,23,4)},Buffer.prototype.readDoubleLE=function(t,r){return r||C(t,8,this.length),K.read(this,t,!0,52,8)},Buffer.prototype.readDoubleBE=function(t,r){return r||C(t,8,this.length),K.read(this,t,!1,52,8)},Buffer.prototype.writeUIntLE=function(t,r,e,n){if(t=+t,r=0|r,e=0|e,!n){var i=Math.pow(2,8*e)-1;D(this,t,r,e,i,0);}var o=1,f=0;for(this[r]=255&t;++f<e&&(o*=256);)this[r+f]=t/o&255;return r+e},Buffer.prototype.writeUIntBE=function(t,r,e,n){if(t=+t,r=0|r,e=0|e,!n){var i=Math.pow(2,8*e)-1;D(this,t,r,e,i,0);}var o=e-1,f=1;for(this[r+o]=255&t;--o>=0&&(f*=256);)this[r+o]=t/f&255;return r+e},Buffer.prototype.writeUInt8=function(t,r,e){return t=+t,r=0|r,e||D(this,t,r,1,255,0),Buffer.TYPED_ARRAY_SUPPORT||(t=Math.floor(t)),this[r]=255&t,r+1},Buffer.prototype.writeUInt16LE=function(t,r,e){return t=+t,r=0|r,e||D(this,t,r,2,65535,0),Buffer.TYPED_ARRAY_SUPPORT?(this[r]=255&t,this[r+1]=t>>>8):O(this,t,r,!0),r+2},Buffer.prototype.writeUInt16BE=function(t,r,e){return t=+t,r=0|r,e||D(this,t,r,2,65535,0),Buffer.TYPED_ARRAY_SUPPORT?(this[r]=t>>>8,this[r+1]=255&t):O(this,t,r,!1),r+2},Buffer.prototype.writeUInt32LE=function(t,r,e){return t=+t,r=0|r,e||D(this,t,r,4,4294967295,0),Buffer.TYPED_ARRAY_SUPPORT?(this[r+3]=t>>>24,this[r+2]=t>>>16,this[r+1]=t>>>8,this[r]=255&t):L(this,t,r,!0),r+4},Buffer.prototype.writeUInt32BE=function(t,r,e){return t=+t,r=0|r,e||D(this,t,r,4,4294967295,0),Buffer.TYPED_ARRAY_SUPPORT?(this[r]=t>>>24,this[r+1]=t>>>16,this[r+2]=t>>>8,this[r+3]=255&t):L(this,t,r,!1),r+4},Buffer.prototype.writeIntLE=function(t,r,e,n){if(t=+t,r=0|r,!n){var i=Math.pow(2,8*e-1);D(this,t,r,e,i-1,-i);}var o=0,f=1,u=0;for(this[r]=255&t;++o<e&&(f*=256);)t<0&&0===u&&0!==this[r+o-1]&&(u=1),this[r+o]=(t/f>>0)-u&255;return r+e},Buffer.prototype.writeIntBE=function(t,r,e,n){if(t=+t,r=0|r,!n){var i=Math.pow(2,8*e-1);D(this,t,r,e,i-1,-i);}var o=e-1,f=1,u=0;for(this[r+o]=255&t;--o>=0&&(f*=256);)t<0&&0===u&&0!==this[r+o+1]&&(u=1),this[r+o]=(t/f>>0)-u&255;return r+e},Buffer.prototype.writeInt8=function(t,r,e){return t=+t,r=0|r,e||D(this,t,r,1,127,-128),Buffer.TYPED_ARRAY_SUPPORT||(t=Math.floor(t)),t<0&&(t=255+t+1),this[r]=255&t,r+1},Buffer.prototype.writeInt16LE=function(t,r,e){return t=+t,r=0|r,e||D(this,t,r,2,32767,-32768),Buffer.TYPED_ARRAY_SUPPORT?(this[r]=255&t,this[r+1]=t>>>8):O(this,t,r,!0),r+2},Buffer.prototype.writeInt16BE=function(t,r,e){return t=+t,r=0|r,e||D(this,t,r,2,32767,-32768),Buffer.TYPED_ARRAY_SUPPORT?(this[r]=t>>>8,this[r+1]=255&t):O(this,t,r,!1),r+2},Buffer.prototype.writeInt32LE=function(t,r,e){return t=+t,r=0|r,e||D(this,t,r,4,2147483647,-2147483648),Buffer.TYPED_ARRAY_SUPPORT?(this[r]=255&t,this[r+1]=t>>>8,this[r+2]=t>>>16,this[r+3]=t>>>24):L(this,t,r,!0),r+4},Buffer.prototype.writeInt32BE=function(t,r,e){return t=+t,r=0|r,e||D(this,t,r,4,2147483647,-2147483648),t<0&&(t=4294967295+t+1),Buffer.TYPED_ARRAY_SUPPORT?(this[r]=t>>>24,this[r+1]=t>>>16,this[r+2]=t>>>8,this[r+3]=255&t):L(this,t,r,!1),r+4},Buffer.prototype.writeFloatLE=function(t,r,e){return N(this,t,r,!0,e)},Buffer.prototype.writeFloatBE=function(t,r,e){return N(this,t,r,!1,e)},Buffer.prototype.writeDoubleLE=function(t,r,e){return F(this,t,r,!0,e)},Buffer.prototype.writeDoubleBE=function(t,r,e){return F(this,t,r,!1,e)},Buffer.prototype.copy=function(t,r,e,n){if(e||(e=0),n||0===n||(n=this.length),r>=t.length&&(r=t.length),r||(r=0),n>0&&n<e&&(n=e),n===e)return 0;if(0===t.length||0===this.length)return 0;if(r<0)throw new RangeError("targetStart out of bounds");if(e<0||e>=this.length)throw new RangeError("sourceStart out of bounds");if(n<0)throw new RangeError("sourceEnd out of bounds");n>this.length&&(n=this.length),t.length-r<n-e&&(n=t.length-r+e);var i,o=n-e;if(this===t&&e<r&&r<n)for(i=o-1;i>=0;--i)t[i+r]=this[i+e];else if(o<1e3||!Buffer.TYPED_ARRAY_SUPPORT)for(i=0;i<o;++i)t[i+r]=this[i+e];else Uint8Array.prototype.set.call(t,this.subarray(e,e+o),r);return o},Buffer.prototype.fill=function(t,r,e,n){if("string"==typeof t){if("string"==typeof r?(n=r,r=0,e=this.length):"string"==typeof e&&(n=e,e=this.length),1===t.length){var i=t.charCodeAt(0);i<256&&(t=i);}if(void 0!==n&&"string"!=typeof n)throw new TypeError("encoding must be a string");if("string"==typeof n&&!Buffer.isEncoding(n))throw new TypeError("Unknown encoding: "+n)}else "number"==typeof t&&(t=255&t);if(r<0||this.length<r||this.length<e)throw new RangeError("Out of range index");if(e<=r)return this;r>>>=0,e=void 0===e?this.length:e>>>0,t||(t=0);var o;if("number"==typeof t)for(o=r;o<e;++o)this[o]=t;else {var f=Buffer.isBuffer(t)?t:q(new Buffer(t,n).toString()),u=f.length;for(o=0;o<e-r;++o)this[o+r]=f[o%u];}return this};var tt=/[^+\/0-9A-Za-z-_]/g;}).call(this,"undefined"!=typeof commonjsGlobal?commonjsGlobal:"undefined"!=typeof self?self:"undefined"!=typeof window?window:{});},{"base64-js":30,ieee754:32,isarray:34}],30:[function(t,r,e){function n(t){var r=t.length;if(r%4>0)throw new Error("Invalid string. Length must be a multiple of 4");return "="===t[r-2]?2:"="===t[r-1]?1:0}function i(t){return 3*t.length/4-n(t)}function o(t){var r,e,i,o,f,u,a=t.length;f=n(t),u=new h(3*a/4-f),i=f>0?a-4:a;var s=0;for(r=0,e=0;r<i;r+=4,e+=3)o=c[t.charCodeAt(r)]<<18|c[t.charCodeAt(r+1)]<<12|c[t.charCodeAt(r+2)]<<6|c[t.charCodeAt(r+3)],u[s++]=o>>16&255,u[s++]=o>>8&255,u[s++]=255&o;return 2===f?(o=c[t.charCodeAt(r)]<<2|c[t.charCodeAt(r+1)]>>4,u[s++]=255&o):1===f&&(o=c[t.charCodeAt(r)]<<10|c[t.charCodeAt(r+1)]<<4|c[t.charCodeAt(r+2)]>>2,u[s++]=o>>8&255,u[s++]=255&o),u}function f(t){return s[t>>18&63]+s[t>>12&63]+s[t>>6&63]+s[63&t]}function u(t,r,e){for(var n,i=[],o=r;o<e;o+=3)n=(t[o]<<16)+(t[o+1]<<8)+t[o+2],i.push(f(n));return i.join("")}function a(t){for(var r,e=t.length,n=e%3,i="",o=[],f=16383,a=0,c=e-n;a<c;a+=f)o.push(u(t,a,a+f>c?c:a+f));return 1===n?(r=t[e-1],i+=s[r>>2],i+=s[r<<4&63],i+="=="):2===n&&(r=(t[e-2]<<8)+t[e-1],i+=s[r>>10],i+=s[r>>4&63],i+=s[r<<2&63],i+="="),o.push(i),o.join("")}e.byteLength=i,e.toByteArray=o,e.fromByteArray=a;for(var s=[],c=[],h="undefined"!=typeof Uint8Array?Uint8Array:Array,l="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",p=0,d=l.length;p<d;++p)s[p]=l[p],c[l.charCodeAt(p)]=p;c["-".charCodeAt(0)]=62,c["_".charCodeAt(0)]=63;},{}],31:[function(t,r,e){function n(){if(!(this instanceof n))return new n}!function(t){function e(t){for(var r in s)t[r]=s[r];return t}function n(t,r){return u(this,t).push(r),this}function i(t,r){function e(){o.call(n,t,e),r.apply(this,arguments);}var n=this;return e.originalListener=r,u(n,t).push(e),n}function o(t,r){function e(t){return t!==r&&t.originalListener!==r}var n,i=this;if(arguments.length){if(r){if(n=u(i,t,!0)){if(n=n.filter(e),!n.length)return o.call(i,t);i[a][t]=n;}}else if(n=i[a],n&&(delete n[t],!Object.keys(n).length))return o.call(i)}else delete i[a];return i}function f(t,r){function e(t){t.call(o);}function n(t){t.call(o,r);}function i(t){t.apply(o,s);}var o=this,f=u(o,t,!0);if(!f)return !1;var a=arguments.length;if(1===a)f.forEach(e);else if(2===a)f.forEach(n);else {var s=Array.prototype.slice.call(arguments,1);f.forEach(i);}return !!f.length}function u(t,r,e){if(!e||t[a]){var n=t[a]||(t[a]={});return n[r]||(n[r]=[])}}"undefined"!=typeof r&&(r.exports=t);var a="listeners",s={on:n,once:i,off:o,emit:f};e(t.prototype),t.mixin=e;}(n);},{}],32:[function(t,r,e){e.read=function(t,r,e,n,i){var o,f,u=8*i-n-1,a=(1<<u)-1,s=a>>1,c=-7,h=e?i-1:0,l=e?-1:1,p=t[r+h];for(h+=l,o=p&(1<<-c)-1,p>>=-c,c+=u;c>0;o=256*o+t[r+h],h+=l,c-=8);for(f=o&(1<<-c)-1,o>>=-c,c+=n;c>0;f=256*f+t[r+h],h+=l,c-=8);if(0===o)o=1-s;else {if(o===a)return f?NaN:(p?-1:1)*(1/0);f+=Math.pow(2,n),o-=s;}return (p?-1:1)*f*Math.pow(2,o-n)},e.write=function(t,r,e,n,i,o){var f,u,a,s=8*o-i-1,c=(1<<s)-1,h=c>>1,l=23===i?Math.pow(2,-24)-Math.pow(2,-77):0,p=n?0:o-1,d=n?1:-1,y=r<0||0===r&&1/r<0?1:0;for(r=Math.abs(r),isNaN(r)||r===1/0?(u=isNaN(r)?1:0,f=c):(f=Math.floor(Math.log(r)/Math.LN2),r*(a=Math.pow(2,-f))<1&&(f--,a*=2),r+=f+h>=1?l/a:l*Math.pow(2,1-h),r*a>=2&&(f++,a/=2),f+h>=c?(u=0,f=c):f+h>=1?(u=(r*a-1)*Math.pow(2,i),f+=h):(u=r*Math.pow(2,h-1)*Math.pow(2,i),f=0));i>=8;t[e+p]=255&u,p+=d,u/=256,i-=8);for(f=f<<i|u,s+=i;s>0;t[e+p]=255&f,p+=d,f/=256,s-=8);t[e+p-d]|=128*y;};},{}],33:[function(t,r,e){(function(Buffer){!function(e){function o(t,r,n){function i(t,r,e,n){return this instanceof i?v(this,t,r,e,n):new i(t,r,e,n)}function o(t){return !(!t||!t[F])}function v(t,r,e,n,i){if(E&&A&&(r instanceof A&&(r=new E(r)),n instanceof A&&(n=new E(n))),!(r||e||n||g))return void(t.buffer=h(m,0));if(!s(r,e)){var o=g||Array;i=e,n=r,e=0,r=new o(8);}t.buffer=r,t.offset=e|=0,b!==typeof n&&("string"==typeof n?x(r,e,n,i||10):s(n,i)?c(r,e,n,i):"number"==typeof i?(k(r,e+T,n),k(r,e+S,i)):n>0?O(r,e,n):n<0?L(r,e,n):c(r,e,m,0));}function x(t,r,e,n){var i=0,o=e.length,f=0,u=0;"-"===e[0]&&i++;for(var a=i;i<o;){var s=parseInt(e[i++],n);if(!(s>=0))break;u=u*n+s,f=f*n+Math.floor(u/B),u%=B;}a&&(f=~f,u?u=B-u:f++),k(t,r+T,f),k(t,r+S,u);}function P(){var t=this.buffer,r=this.offset,e=_(t,r+T),i=_(t,r+S);return n||(e|=0),e?e*B+i:i}function R(t){var r=this.buffer,e=this.offset,i=_(r,e+T),o=_(r,e+S),f="",u=!n&&2147483648&i;for(u&&(i=~i,o=B-o),t=t||10;;){var a=i%t*B+o;if(i=Math.floor(i/t),o=Math.floor(a/t),f=(a%t).toString(t)+f,!i&&!o)break}return u&&(f="-"+f),f}function k(t,r,e){t[r+D]=255&e,e>>=8,t[r+C]=255&e,e>>=8,t[r+Y]=255&e,e>>=8,t[r+I]=255&e;}function _(t,r){return t[r+I]*U+(t[r+Y]<<16)+(t[r+C]<<8)+t[r+D]}var T=r?0:4,S=r?4:0,I=r?0:3,Y=r?1:2,C=r?2:1,D=r?3:0,O=r?l:d,L=r?p:y,M=i.prototype,N="is"+t,F="_"+N;return M.buffer=void 0,M.offset=0,M[F]=!0,M.toNumber=P,M.toString=R,M.toJSON=P,M.toArray=f,w&&(M.toBuffer=u),E&&(M.toArrayBuffer=a),i[N]=o,e[t]=i,i}function f(t){var r=this.buffer,e=this.offset;return g=null,t!==!1&&0===e&&8===r.length&&x(r)?r:h(r,e)}function u(t){var r=this.buffer,e=this.offset;if(g=w,t!==!1&&0===e&&8===r.length&&Buffer.isBuffer(r))return r;var n=new w(8);return c(n,0,r,e),n}function a(t){var r=this.buffer,e=this.offset,n=r.buffer;if(g=E,t!==!1&&0===e&&n instanceof A&&8===n.byteLength)return n;var i=new E(8);return c(i,0,r,e),i.buffer}function s(t,r){var e=t&&t.length;return r|=0,e&&r+8<=e&&"string"!=typeof t[r]}function c(t,r,e,n){r|=0,n|=0;for(var i=0;i<8;i++)t[r++]=255&e[n++];}function h(t,r){return Array.prototype.slice.call(t,r,r+8)}function l(t,r,e){for(var n=r+8;n>r;)t[--n]=255&e,e/=256;}function p(t,r,e){var n=r+8;for(e++;n>r;)t[--n]=255&-e^255,e/=256;}function d(t,r,e){for(var n=r+8;r<n;)t[r++]=255&e,e/=256;}function y(t,r,e){var n=r+8;for(e++;r<n;)t[r++]=255&-e^255,e/=256;}function v(t){return !!t&&"[object Array]"==Object.prototype.toString.call(t)}var g,b="undefined",w=b!==typeof Buffer&&Buffer,E=b!==typeof Uint8Array&&Uint8Array,A=b!==typeof ArrayBuffer&&ArrayBuffer,m=[0,0,0,0,0,0,0,0],x=Array.isArray||v,B=4294967296,U=16777216;o("Uint64BE",!0,!0),o("Int64BE",!0,!1),o("Uint64LE",!1,!0),o("Int64LE",!1,!1);}("object"==typeof e&&"string"!=typeof e.nodeName?e:this||{});}).call(this,t("buffer").Buffer);},{buffer:29}],34:[function(t,r,e){var n={}.toString;r.exports=Array.isArray||function(t){return "[object Array]"==n.call(t)};},{}]},{},[1])(1)});
 });
 
-var encode; //encodce method dependency injection
+var encode; //encode method dependency injection
 function setEncode(newEncode) {
     encode = newEncode;
 }
@@ -15709,8 +16476,10 @@ const MAX_RECURSIVE_DEPTH = 10;
 // @param  {Function} callback []
 //
 async function generateWebRTCpayload(obj) {
+    console.time('generateWebRTCpayload');
     let deBlobbed = await recursivelyEncodeBlobs(obj);
     let result = _generateWebRTCpayload(deBlobbed);
+    console.timeEnd('generateWebRTCpayload');
     return result
 }
 
@@ -15724,7 +16493,7 @@ function deBlob(obj) {
             if (obj.name) descript.name = obj.name;
             if (obj.size) descript.size = obj.size;
             if (obj.exif) descript.exif = obj.exif;
-            descript.view = view; // _generateWebRTCpayload(view, descript);
+            descript.view = view;
             resolve(descript);
         });
         reader.readAsArrayBuffer(obj);
@@ -15736,7 +16505,6 @@ async function recursivelyEncodeBlobs(obj, depth = 0) {
         throw (depth)
     }
 
-    // console.log('encode obj: ', obj)
     if (obj === undefined) return obj
 
     if (
@@ -15747,7 +16515,6 @@ async function recursivelyEncodeBlobs(obj, depth = 0) {
     } else if (obj.constructor == Object) {
         let res = {};
         for (var i in obj) {
-            // console.log('encode obj key: ', i)
             if (obj[i] !== undefined) {
                 res[i] = await recursivelyEncodeBlobs(obj[i], depth + 1);
             }
@@ -15786,7 +16553,7 @@ async function recursivelyDecodeBlobs(obj, depth = 0) {
 }
 
 async function _generateWebRTCpayload(obj, headerOpt = {}) {
-    //console.time('generateWebRTCpayload')
+    console.time('generateWebRTCpayload');
     let bin = encode(obj);
     // console.log({ bin, obj })
     var header = Object.assign(
@@ -15798,7 +16565,7 @@ async function _generateWebRTCpayload(obj, headerOpt = {}) {
     );
     var chunks = arrayBufferToChunks(bin, header.payloadID);
     header.chunkCount = chunks.length;
-    //console.timeEnd('generateWebRTCpayload')
+    console.timeEnd('generateWebRTCpayload');
 
     let encodedHeader = encode(header);
     // console.log(encodedHeader, header)
@@ -15867,7 +16634,6 @@ function UnChunkerFactory(options = {}) {
                 try {
                     let val = decode(msg);
                     this._appendToPayload(val);
-                    //this.emit('dataBig', val)
                     if (this._isPayloadReady(val.payloadID)) {
                         this._assembleChunks(val.payloadID, (result) => {
                             this.onData(result);
@@ -15986,7 +16752,7 @@ function PeerBinaryFactory(options) {
             super({ wrtc, ...options });
             this.PER_CHUNK_WAIT = options.PER_CHUNK_WAIT || 50;
             this._registerDataMessage();
-            this.unchunker = new UnChunker(); //
+            this.unchunker = new UnChunker();
             this.unchunker.onData = (val) => {
                 this.emit('dataBig', val);
             };
@@ -15994,7 +16760,7 @@ function PeerBinaryFactory(options) {
         }
 
         //want to overide these 2 functions I think.
-        _registerDataMessage(event) {
+        _registerDataMessage() {
             this.on('data', (data) => {
                 //when its done with a complete chunk, call this.emit('dataBig', completed)
                 this.unchunker.registerChunk(data);
@@ -16008,8 +16774,10 @@ function PeerBinaryFactory(options) {
                 for (var i in stuff.chunks) {
                     var ch = stuff.chunks[i];
                     await this.send(ch);
-                    await sleep(this.PER_CHUNK_WAIT); //give the other side time to handle message
-                }    
+                    if (this.PER_CHUNK_WAIT) {
+                        await sleep(this.PER_CHUNK_WAIT); //give the other side time to handle message
+                    }
+                }
             } catch (error) {
                 console.error('GOT AN ERROR: ', error);
             }

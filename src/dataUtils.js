@@ -1,6 +1,6 @@
 import { settings } from './settings.js'
 
-var encode //encodce method dependency injection
+var encode //encode method dependency injection
 export function setEncode(newEncode) {
     encode = newEncode
 }
@@ -12,8 +12,10 @@ const MAX_RECURSIVE_DEPTH = 10
 // @param  {Function} callback []
 //
 export async function generateWebRTCpayload(obj) {
+    console.time('generateWebRTCpayload')
     let deBlobbed = await recursivelyEncodeBlobs(obj)
     let result = _generateWebRTCpayload(deBlobbed)
+    console.timeEnd('generateWebRTCpayload')
     return result
 }
 
@@ -27,7 +29,7 @@ export function deBlob(obj) {
             if (obj.name) descript.name = obj.name
             if (obj.size) descript.size = obj.size
             if (obj.exif) descript.exif = obj.exif
-            descript.view = view // _generateWebRTCpayload(view, descript);
+            descript.view = view
             resolve(descript)
         })
         reader.readAsArrayBuffer(obj)
@@ -39,7 +41,6 @@ export async function recursivelyEncodeBlobs(obj, depth = 0) {
         throw ('max depth reached', depth)
     }
 
-    // console.log('encode obj: ', obj)
     if (obj === undefined) return obj
 
     if (
@@ -50,7 +51,6 @@ export async function recursivelyEncodeBlobs(obj, depth = 0) {
     } else if (obj.constructor == Object) {
         let res = {}
         for (var i in obj) {
-            // console.log('encode obj key: ', i)
             if (obj[i] !== undefined) {
                 res[i] = await recursivelyEncodeBlobs(obj[i], depth + 1)
             }
@@ -89,7 +89,7 @@ export async function recursivelyDecodeBlobs(obj, depth = 0) {
 }
 
 export async function _generateWebRTCpayload(obj, headerOpt = {}) {
-    //console.time('generateWebRTCpayload')
+    console.time('generateWebRTCpayload')
     let bin = encode(obj)
     // console.log({ bin, obj })
     var header = Object.assign(
@@ -101,7 +101,7 @@ export async function _generateWebRTCpayload(obj, headerOpt = {}) {
     )
     var chunks = arrayBufferToChunks(bin, header.payloadID)
     header.chunkCount = chunks.length
-    //console.timeEnd('generateWebRTCpayload')
+    console.timeEnd('generateWebRTCpayload')
 
     let encodedHeader = encode(header)
     // console.log(encodedHeader, header)
@@ -170,7 +170,6 @@ export function UnChunkerFactory(options = {}) {
                 try {
                     let val = decode(msg)
                     this._appendToPayload(val)
-                    //this.emit('dataBig', val)
                     if (this._isPayloadReady(val.payloadID)) {
                         this._assembleChunks(val.payloadID, (result) => {
                             this.onData(result)

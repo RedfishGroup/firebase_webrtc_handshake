@@ -3,8 +3,8 @@ import 'firebase/app';
 import * as Peer2 from 'simple-peer/simplepeer.min.js';
 import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js';
 
-var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
 var keys = Object.keys;
+var HAS_WEAKSET_SUPPORT = typeof WeakSet === 'function';
 /**
  * are the values passed strictly equal or both NaN
  *
@@ -81,7 +81,7 @@ var getNewCache = (function (canUseWeakMap) {
 function createCircularEqualCreator(isEqual) {
     return function createCircularEqual(comparator) {
         var _comparator = isEqual || comparator;
-        return function circularEqual(a, b, cache) {
+        return function circularEqual(a, b, indexOrKeyA, indexOrKeyB, parentA, parentB, cache) {
             if (cache === void 0) { cache = getNewCache(); }
             var isCacheableA = !!a && typeof a === 'object';
             var isCacheableB = !!b && typeof b === 'object';
@@ -117,7 +117,7 @@ function areArraysEqual(a, b, isEqual, meta) {
         return false;
     }
     while (index-- > 0) {
-        if (!isEqual(a[index], b[index], meta)) {
+        if (!isEqual(a[index], b[index], index, index, a, b, meta)) {
             return false;
         }
     }
@@ -136,20 +136,23 @@ function areMapsEqual(a, b, isEqual, meta) {
     var isValueEqual = a.size === b.size;
     if (isValueEqual && a.size) {
         var matchedIndices_1 = {};
+        var indexA_1 = 0;
         a.forEach(function (aValue, aKey) {
             if (isValueEqual) {
                 var hasMatch_1 = false;
-                var matchIndex_1 = 0;
+                var matchIndexB_1 = 0;
                 b.forEach(function (bValue, bKey) {
-                    if (!hasMatch_1 && !matchedIndices_1[matchIndex_1]) {
+                    if (!hasMatch_1 && !matchedIndices_1[matchIndexB_1]) {
                         hasMatch_1 =
-                            isEqual(aKey, bKey, meta) && isEqual(aValue, bValue, meta);
+                            isEqual(aKey, bKey, indexA_1, matchIndexB_1, a, b, meta) &&
+                                isEqual(aValue, bValue, aKey, bKey, a, b, meta);
                         if (hasMatch_1) {
-                            matchedIndices_1[matchIndex_1] = true;
+                            matchedIndices_1[matchIndexB_1] = true;
                         }
                     }
-                    matchIndex_1++;
+                    matchIndexB_1++;
                 });
+                indexA_1++;
                 isValueEqual = hasMatch_1;
             }
         });
@@ -185,7 +188,8 @@ function areObjectsEqual(a, b, isEqual, meta) {
                     return false;
                 }
             }
-            if (!hasOwnProperty(b, key) || !isEqual(a[key], b[key], meta)) {
+            if (!hasOwnProperty(b, key) ||
+                !isEqual(a[key], b[key], key, key, a, b, meta)) {
                 return false;
             }
         }
@@ -221,18 +225,18 @@ function areSetsEqual(a, b, isEqual, meta) {
     var isValueEqual = a.size === b.size;
     if (isValueEqual && a.size) {
         var matchedIndices_2 = {};
-        a.forEach(function (aValue) {
+        a.forEach(function (aValue, aKey) {
             if (isValueEqual) {
                 var hasMatch_2 = false;
-                var matchIndex_2 = 0;
-                b.forEach(function (bValue) {
-                    if (!hasMatch_2 && !matchedIndices_2[matchIndex_2]) {
-                        hasMatch_2 = isEqual(aValue, bValue, meta);
+                var matchIndex_1 = 0;
+                b.forEach(function (bValue, bKey) {
+                    if (!hasMatch_2 && !matchedIndices_2[matchIndex_1]) {
+                        hasMatch_2 = isEqual(aValue, bValue, aKey, bKey, a, b, meta);
                         if (hasMatch_2) {
-                            matchedIndices_2[matchIndex_2] = true;
+                            matchedIndices_2[matchIndex_1] = true;
                         }
                     }
-                    matchIndex_2++;
+                    matchIndex_1++;
                 });
                 isValueEqual = hasMatch_2;
             }
@@ -243,12 +247,13 @@ function areSetsEqual(a, b, isEqual, meta) {
 
 var HAS_MAP_SUPPORT = typeof Map === 'function';
 var HAS_SET_SUPPORT = typeof Set === 'function';
+var valueOf = Object.prototype.valueOf;
 function createComparator(createIsEqual) {
     var isEqual = 
     /* eslint-disable no-use-before-define */
     typeof createIsEqual === 'function'
         ? createIsEqual(comparator)
-        : comparator;
+        : function (a, b, indexOrKeyA, indexOrKeyB, parentA, parentB, meta) { return comparator(a, b, meta); };
     /* eslint-enable */
     /**
      * compare the value of the two objects and return true if they are equivalent in values
@@ -297,6 +302,9 @@ function createComparator(createIsEqual) {
                 if (aShape || bShape) {
                     return aShape === bShape && areSetsEqual(a, b, isEqual, meta);
                 }
+            }
+            if (a.valueOf !== valueOf || b.valueOf !== valueOf) {
+                return sameValueZeroEqual(a.valueOf(), b.valueOf());
             }
             return areObjectsEqual(a, b, isEqual, meta);
         }
@@ -724,7 +732,7 @@ function P2PServerFactory(options) {
                     if (this.debug) console.log({ sig });
                     if (sig.type === 'offer') {
                         var mykey = ev.key;
-                        var { peerID, myID } = sig;
+                        var { myID } = sig;
                         var channel = new Channel(
                             child(this.channelRef, mykey),
                             this._makePeer(myID)
@@ -733,7 +741,6 @@ function P2PServerFactory(options) {
                         this.fire('addConnection', channel);
 
                         // on message through webRTC (simple-peer)
-                        //eslint-disable-next-line no-loop-func
                         var answerSentYet = false;
                         channel.peer.on('signal', (data) => {
                             if (data.type === 'answer') {
@@ -755,7 +762,6 @@ function P2PServerFactory(options) {
                         });
 
                         // on message through firebase
-                        //eslint-disable-next-line no-loop-func
                         onChildAdded(channel.inRef, (ev2) => {
                             var val2 = ev2.val();
                             if (this.debug) {
@@ -886,8 +892,13 @@ function P2PServerFactory(options) {
             if (index >= 0) {
                 var conn = this.connections[index];
                 conn.destroy();
-                this.connections.splice(index, 1);
-                this.connections = [...this.connections];
+
+                //remove from list of connections and create new list of connections
+                this.connections = [
+                    ...this.connections.slice(0, index),
+                    ...this.connections.slice(index + 1),
+                ];
+
                 this.fire('removeConnection', conn);
                 if (this.debug) console.log(this.connections);
             }
@@ -1241,7 +1252,7 @@ function P2PClientFactory(options) {
     }
 }
 
-var encode; //encodce method dependency injection
+var encode; //encode method dependency injection
 function setEncode(newEncode) {
     encode = newEncode;
 }
@@ -1253,8 +1264,10 @@ const MAX_RECURSIVE_DEPTH = 10;
 // @param  {Function} callback []
 //
 async function generateWebRTCpayload(obj) {
+    console.time('generateWebRTCpayload');
     let deBlobbed = await recursivelyEncodeBlobs(obj);
     let result = _generateWebRTCpayload(deBlobbed);
+    console.timeEnd('generateWebRTCpayload');
     return result
 }
 
@@ -1268,7 +1281,7 @@ function deBlob(obj) {
             if (obj.name) descript.name = obj.name;
             if (obj.size) descript.size = obj.size;
             if (obj.exif) descript.exif = obj.exif;
-            descript.view = view; // _generateWebRTCpayload(view, descript);
+            descript.view = view;
             resolve(descript);
         });
         reader.readAsArrayBuffer(obj);
@@ -1280,7 +1293,6 @@ async function recursivelyEncodeBlobs(obj, depth = 0) {
         throw (depth)
     }
 
-    // console.log('encode obj: ', obj)
     if (obj === undefined) return obj
 
     if (
@@ -1291,7 +1303,6 @@ async function recursivelyEncodeBlobs(obj, depth = 0) {
     } else if (obj.constructor == Object) {
         let res = {};
         for (var i in obj) {
-            // console.log('encode obj key: ', i)
             if (obj[i] !== undefined) {
                 res[i] = await recursivelyEncodeBlobs(obj[i], depth + 1);
             }
@@ -1330,7 +1341,7 @@ async function recursivelyDecodeBlobs(obj, depth = 0) {
 }
 
 async function _generateWebRTCpayload(obj, headerOpt = {}) {
-    //console.time('generateWebRTCpayload')
+    console.time('generateWebRTCpayload');
     let bin = encode(obj);
     // console.log({ bin, obj })
     var header = Object.assign(
@@ -1342,7 +1353,7 @@ async function _generateWebRTCpayload(obj, headerOpt = {}) {
     );
     var chunks = arrayBufferToChunks(bin, header.payloadID);
     header.chunkCount = chunks.length;
-    //console.timeEnd('generateWebRTCpayload')
+    console.timeEnd('generateWebRTCpayload');
 
     let encodedHeader = encode(header);
     // console.log(encodedHeader, header)
@@ -1411,7 +1422,6 @@ function UnChunkerFactory(options = {}) {
                 try {
                     let val = decode(msg);
                     this._appendToPayload(val);
-                    //this.emit('dataBig', val)
                     if (this._isPayloadReady(val.payloadID)) {
                         this._assembleChunks(val.payloadID, (result) => {
                             this.onData(result);
@@ -1530,7 +1540,7 @@ function PeerBinaryFactory(options) {
             super({ wrtc, ...options });
             this.PER_CHUNK_WAIT = options.PER_CHUNK_WAIT || 50;
             this._registerDataMessage();
-            this.unchunker = new UnChunker(); //
+            this.unchunker = new UnChunker();
             this.unchunker.onData = (val) => {
                 this.emit('dataBig', val);
             };
@@ -1538,7 +1548,7 @@ function PeerBinaryFactory(options) {
         }
 
         //want to overide these 2 functions I think.
-        _registerDataMessage(event) {
+        _registerDataMessage() {
             this.on('data', (data) => {
                 //when its done with a complete chunk, call this.emit('dataBig', completed)
                 this.unchunker.registerChunk(data);
@@ -1552,8 +1562,10 @@ function PeerBinaryFactory(options) {
                 for (var i in stuff.chunks) {
                     var ch = stuff.chunks[i];
                     await this.send(ch);
-                    await sleep(this.PER_CHUNK_WAIT); //give the other side time to handle message
-                }    
+                    if (this.PER_CHUNK_WAIT) {
+                        await sleep(this.PER_CHUNK_WAIT); //give the other side time to handle message
+                    }
+                }
             } catch (error) {
                 console.error('GOT AN ERROR: ', error);
             }
