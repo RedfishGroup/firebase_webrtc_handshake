@@ -1542,7 +1542,10 @@ function PeerBinaryFactory(options) {
     return class PeerBinary extends Peer {
         constructor(options) {
             super({ wrtc, ...options });
-            this.PER_CHUNK_WAIT = options.PER_CHUNK_WAIT || 50;
+            this.PER_CHUNK_WAIT =
+                options.PER_CHUNK_WAIT !== undefined
+                    ? options.PER_CHUNK_WAIT
+                    : 50;
             this._registerDataMessage();
             this.unchunker = new UnChunker();
             this.unchunker.onData = (val) => {
