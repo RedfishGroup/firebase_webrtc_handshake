@@ -1270,7 +1270,9 @@ const MAX_RECURSIVE_DEPTH = 10;
 async function generateWebRTCpayload(obj) {
     let rand = Math.random();
     console.time(`generateWebRTCpayload-${rand}`);
+    console.time(`recursivelyEncodeBlobs-${rand}`);
     let deBlobbed = await recursivelyEncodeBlobs(obj);
+    console.timeEnd(`recursivelyEncodeBlobs-${rand}`);
     let result = _generateWebRTCpayload(deBlobbed);
     console.timeEnd(`generateWebRTCpayload-${rand}`);
     return result
@@ -1377,7 +1379,7 @@ function arrayBufferToChunks(buff, payloadID) {
     for (var i = 0; i < buff.byteLength; i += settings.CHUNK_SIZE) {
         var chunksize = Math.min(buff.byteLength - i, settings.CHUNK_SIZE);
         var chunk = wholeshebang.slice(i, i + chunksize);
-        var id = count; //new Uint8Array(idSize);
+        var id = count;
         let chbin = encode$1({ payloadID: payloadID, id: id, chunk: chunk });
         result.push(chbin);
         count++;
