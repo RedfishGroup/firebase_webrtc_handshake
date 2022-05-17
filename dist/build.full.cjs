@@ -1560,6 +1560,7 @@ function PeerBinaryFactory(options) {
         async sendBig(chunk) {
             let rand = Math.random();
             console.time(`sendBig-${rand}`);
+            console.log(`PER_CHUNK_WAIT: ${this.PER_CHUNK_WAIT}`);
             try {
                 let stuff = await generateWebRTCpayload(chunk);
                 await this.send(stuff.header);
