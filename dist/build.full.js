@@ -16478,13 +16478,13 @@ const MAX_RECURSIVE_DEPTH = 10;
 // @param  {Function} callback []
 //
 async function generateWebRTCpayload(obj) {
-    let rand = Math.random();
-    console.time(`generateWebRTCpayload-${rand}`);
-    console.time(`recursivelyEncodeBlobs-${rand}`);
+    // let rand = Math.random()
+    // console.time(`generateWebRTCpayload-${rand}`)
+    // console.time(`recursivelyEncodeBlobs-${rand}`)
     let deBlobbed = await recursivelyEncodeBlobs(obj);
-    console.timeEnd(`recursivelyEncodeBlobs-${rand}`);
+    // console.timeEnd(`recursivelyEncodeBlobs-${rand}`)
     let result = _generateWebRTCpayload(deBlobbed);
-    console.timeEnd(`generateWebRTCpayload-${rand}`);
+    // console.timeEnd(`generateWebRTCpayload-${rand}`)
     return result
 }
 
@@ -16558,8 +16558,8 @@ async function recursivelyDecodeBlobs(obj, depth = 0) {
 }
 
 async function _generateWebRTCpayload(obj, headerOpt = {}) {
-    let rand = Math.random();
-    console.time(`_generateWebRTCpayload-${rand}`);
+    // let rand = Math.random()
+    // console.time(`_generateWebRTCpayload-${rand}`)
     let bin = encode(obj);
     // console.log({ bin, obj })
     var header = Object.assign(
@@ -16571,7 +16571,7 @@ async function _generateWebRTCpayload(obj, headerOpt = {}) {
     );
     var chunks = arrayBufferToChunks(bin, header.payloadID);
     header.chunkCount = chunks.length;
-    console.timeEnd(`_generateWebRTCpayload-${rand}`);
+    // console.timeEnd(`_generateWebRTCpayload-${rand}`)
 
     let encodedHeader = encode(header);
     // console.log(encodedHeader, header)
@@ -16579,9 +16579,9 @@ async function _generateWebRTCpayload(obj, headerOpt = {}) {
 }
 
 function arrayBufferToChunks(buff, payloadID) {
-    let rand = Math.random();
+    // let rand = Math.random()
 
-    console.time(`chunks-${rand}`);
+    // console.time(`chunks-${rand}`)
     var result = [];
     var wholeshebang = new Uint8Array(buff);
     var count = 0;
@@ -16597,7 +16597,7 @@ function arrayBufferToChunks(buff, payloadID) {
 
     // console.log(buff, result)
 
-    console.timeEnd(`chunks-${rand}`);
+    // console.timeEnd(`chunks-${rand}`)
     //console.log(`generated ${count} chunks`)
     return result
 }
@@ -16747,9 +16747,14 @@ function UnChunkerFactory(options = {}) {
     }
 }
 
-const sleep = (milliseconds) => {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds))
-};
+async function sleep(milliseconds) {
+    // console.log(`sleep: ${milliseconds}`)
+    // console.time('sleep')
+    await new Promise((resolve) => setTimeout(resolve, milliseconds));
+    // console.timeEnd('sleep')
+
+    return
+}
 
 function PeerBinaryFactory(options) {
     const { UnChunker, Peer, wrtc } = options; // dependency injection
@@ -16761,7 +16766,7 @@ function PeerBinaryFactory(options) {
             this.PER_CHUNK_WAIT =
                 options.PER_CHUNK_WAIT !== undefined
                     ? options.PER_CHUNK_WAIT
-                    : 50;
+                    : 0;
             this._registerDataMessage();
             this.unchunker = new UnChunker();
             this.unchunker.onData = (val) => {
@@ -16779,9 +16784,8 @@ function PeerBinaryFactory(options) {
         }
 
         async sendBig(chunk) {
-            let rand = Math.random();
-            console.time(`sendBig-${rand}`);
-            console.log(`PER_CHUNK_WAIT: ${this.PER_CHUNK_WAIT}`);
+            // let rand = Math.random()
+            // console.time(`sendBig-${rand}`)
             console.log(`PER_CHUNK_WAIT: ${this.PER_CHUNK_WAIT}`);
             try {
                 let stuff = await generateWebRTCpayload(chunk);
@@ -16796,7 +16800,7 @@ function PeerBinaryFactory(options) {
             } catch (error) {
                 console.error('GOT AN ERROR: ', error);
             }
-            console.timeEnd(`sendBig-${rand}`);
+            // console.timeEnd(`sendBig-${rand}`)
         }
     }
 }

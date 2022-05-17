@@ -12,13 +12,13 @@ const MAX_RECURSIVE_DEPTH = 10
 // @param  {Function} callback []
 //
 export async function generateWebRTCpayload(obj) {
-    let rand = Math.random()
-    console.time(`generateWebRTCpayload-${rand}`)
-    console.time(`recursivelyEncodeBlobs-${rand}`)
+    // let rand = Math.random()
+    // console.time(`generateWebRTCpayload-${rand}`)
+    // console.time(`recursivelyEncodeBlobs-${rand}`)
     let deBlobbed = await recursivelyEncodeBlobs(obj)
-    console.timeEnd(`recursivelyEncodeBlobs-${rand}`)
+    // console.timeEnd(`recursivelyEncodeBlobs-${rand}`)
     let result = _generateWebRTCpayload(deBlobbed)
-    console.timeEnd(`generateWebRTCpayload-${rand}`)
+    // console.timeEnd(`generateWebRTCpayload-${rand}`)
     return result
 }
 
@@ -92,8 +92,8 @@ export async function recursivelyDecodeBlobs(obj, depth = 0) {
 }
 
 export async function _generateWebRTCpayload(obj, headerOpt = {}) {
-    let rand = Math.random()
-    console.time(`_generateWebRTCpayload-${rand}`)
+    // let rand = Math.random()
+    // console.time(`_generateWebRTCpayload-${rand}`)
     let bin = encode(obj)
     // console.log({ bin, obj })
     var header = Object.assign(
@@ -105,7 +105,7 @@ export async function _generateWebRTCpayload(obj, headerOpt = {}) {
     )
     var chunks = arrayBufferToChunks(bin, header.payloadID)
     header.chunkCount = chunks.length
-    console.timeEnd(`_generateWebRTCpayload-${rand}`)
+    // console.timeEnd(`_generateWebRTCpayload-${rand}`)
 
     let encodedHeader = encode(header)
     // console.log(encodedHeader, header)
@@ -113,9 +113,9 @@ export async function _generateWebRTCpayload(obj, headerOpt = {}) {
 }
 
 export function arrayBufferToChunks(buff, payloadID) {
-    let rand = Math.random()
+    // let rand = Math.random()
 
-    console.time(`chunks-${rand}`)
+    // console.time(`chunks-${rand}`)
     var result = []
     var wholeshebang = new Uint8Array(buff)
     var count = 0
@@ -131,7 +131,7 @@ export function arrayBufferToChunks(buff, payloadID) {
 
     // console.log(buff, result)
 
-    console.timeEnd(`chunks-${rand}`)
+    // console.timeEnd(`chunks-${rand}`)
     //console.log(`generated ${count} chunks`)
     return result
 }

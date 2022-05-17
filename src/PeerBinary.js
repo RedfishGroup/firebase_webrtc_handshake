@@ -2,8 +2,13 @@
 import { generateWebRTCpayload } from './dataUtils.js'
 
 
-const sleep = (milliseconds) => {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds))
+async function sleep(milliseconds) {
+    // console.log(`sleep: ${milliseconds}`)
+    // console.time('sleep')
+    await new Promise((resolve) => setTimeout(resolve, milliseconds))
+    // console.timeEnd('sleep')
+
+    return
 }
 
 export function PeerBinaryFactory(options) {
@@ -16,7 +21,7 @@ export function PeerBinaryFactory(options) {
             this.PER_CHUNK_WAIT =
                 options.PER_CHUNK_WAIT !== undefined
                     ? options.PER_CHUNK_WAIT
-                    : 50
+                    : 0
             this._registerDataMessage()
             this.unchunker = new UnChunker()
             this.unchunker.onData = (val) => {
@@ -34,9 +39,8 @@ export function PeerBinaryFactory(options) {
         }
 
         async sendBig(chunk) {
-            let rand = Math.random()
-            console.time(`sendBig-${rand}`)
-            console.log(`PER_CHUNK_WAIT: ${this.PER_CHUNK_WAIT}`)
+            // let rand = Math.random()
+            // console.time(`sendBig-${rand}`)
             console.log(`PER_CHUNK_WAIT: ${this.PER_CHUNK_WAIT}`)
             try {
                 let stuff = await generateWebRTCpayload(chunk)
@@ -51,7 +55,7 @@ export function PeerBinaryFactory(options) {
             } catch (error) {
                 console.error('GOT AN ERROR: ', error)
             }
-            console.timeEnd(`sendBig-${rand}`)
+            // console.timeEnd(`sendBig-${rand}`)
         }
     }
 }
