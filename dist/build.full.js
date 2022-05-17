@@ -16478,10 +16478,11 @@ const MAX_RECURSIVE_DEPTH = 10;
 // @param  {Function} callback []
 //
 async function generateWebRTCpayload(obj) {
-    console.time('generateWebRTCpayload');
+    let rand = Math.random();
+    console.time(`generateWebRTCpayload-${rand}`);
     let deBlobbed = await recursivelyEncodeBlobs(obj);
     let result = _generateWebRTCpayload(deBlobbed);
-    console.timeEnd('generateWebRTCpayload');
+    console.timeEnd(`generateWebRTCpayload-${rand}`);
     return result
 }
 
@@ -16555,7 +16556,8 @@ async function recursivelyDecodeBlobs(obj, depth = 0) {
 }
 
 async function _generateWebRTCpayload(obj, headerOpt = {}) {
-    console.time('generateWebRTCpayload');
+    let rand = Math.random();
+    console.time(`_generateWebRTCpayload-${rand}`);
     let bin = encode(obj);
     // console.log({ bin, obj })
     var header = Object.assign(
@@ -16567,7 +16569,7 @@ async function _generateWebRTCpayload(obj, headerOpt = {}) {
     );
     var chunks = arrayBufferToChunks(bin, header.payloadID);
     header.chunkCount = chunks.length;
-    console.timeEnd('generateWebRTCpayload');
+    console.timeEnd(`_generateWebRTCpayload-${rand}`);
 
     let encodedHeader = encode(header);
     // console.log(encodedHeader, header)
@@ -16575,7 +16577,9 @@ async function _generateWebRTCpayload(obj, headerOpt = {}) {
 }
 
 function arrayBufferToChunks(buff, payloadID) {
-    //console.time('chunks')
+    let rand = Math.random();
+
+    console.time(`chunks-${rand}`);
     var result = [];
     var wholeshebang = new Uint8Array(buff);
     var count = 0;
@@ -16591,7 +16595,7 @@ function arrayBufferToChunks(buff, payloadID) {
 
     // console.log(buff, result)
 
-    //console.timeEnd('chunks')
+    console.timeEnd(`chunks-${rand}`);
     //console.log(`generated ${count} chunks`)
     return result
 }
