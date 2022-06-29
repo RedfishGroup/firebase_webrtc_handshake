@@ -140,6 +140,9 @@ export function P2PClientFactory(options) {
             this.getPeerList((err, peerList) => {
                 if (err) {
                     console.error(err)
+                    this._notifyCallbacks(
+                        `Got error requesting peer list:${err}`
+                    )
                     return
                 }
                 var peer = peerList[id]
