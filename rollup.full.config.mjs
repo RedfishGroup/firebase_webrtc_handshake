@@ -1,5 +1,5 @@
 // Rollup plugins.
-import resolve from 'rollup-plugin-node-resolve';
+import resolve from 'rollup-plugin-node-resolve'
 import commonjs from 'rollup-plugin-commonjs'
 import nodeGlobals from 'rollup-plugin-node-globals'
 import nodeBuiltins from 'rollup-plugin-node-builtins'
@@ -23,7 +23,7 @@ export default [
     },
     {
         input: 'src/index.js',
-        external: ['firebase/app', 'firebase/database', 'firebase/storage'],
+        external: ['firebase/app', 'firebase/database'],
         plugins: [
             resolve({
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],
@@ -39,8 +39,8 @@ export default [
         ],
     },
     {
-        input: 'src/nodeIndex.js',
-        external: ['firebase/app', 'firebase/database', 'firebase/storage'],
+        input: 'src/nodeIndex.mjs',
+        external: ['firebase/app', 'firebase/database'],
         plugins: [
             nodeGlobals(),
             nodeBuiltins(),

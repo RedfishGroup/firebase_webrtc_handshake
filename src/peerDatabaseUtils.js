@@ -1,13 +1,11 @@
-import { onValue } from 'firebase/database'
-
 /**
  *
  * @param {*} database
  * @param {*} callback
  */
-export function getPeerList(database, callback) {
+export function getPeerList(database, callback, firebase) {
     console.log('getPeerList: ', database)
-    onValue(
+    firebase.onValue(
         database,
         (ev) => {
             var val = ev.val()

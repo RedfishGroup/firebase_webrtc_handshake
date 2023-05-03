@@ -1,12 +1,10 @@
-import { child, off, onChildAdded, onValue, push } from 'firebase/database'
-
 import { settings } from './settings.js'
 import { Evented } from './Evented.js'
 import { getDatabase } from './defaultFirebase.js'
 import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
 
 export function P2PClientFactory(options) {
-    const { PeerBinary } = options
+    const { PeerBinary, firebase } = options
 
     return class P2PClient extends Evented {
         constructor(options = {}) {
@@ -56,7 +54,7 @@ export function P2PClientFactory(options) {
 
         getPeerList(callback) {
             if (this.debug) console.log('Database: ', this.database)
-            return _getPeerList(this.database, callback)
+            return _getPeerList(this.database, callback, firebase)
         }
 
         ackCallback(ackID, data) {
@@ -98,7 +96,8 @@ export function P2PClientFactory(options) {
         }
 
         requestCallback(requestID, data) {
-            if (this.debug) console.log('requestCallback: ', { requestID, data })
+            if (this.debug)
+                console.log('requestCallback: ', { requestID, data })
             let { callback, timeoutID } = this.requestCallbacks[requestID] || {}
 
             if (callback) {
@@ -151,8 +150,8 @@ export function P2PClientFactory(options) {
                     this._notifyCallbacks('peer not defined')
                 } else {
                     this.id = id
-                    this.serverRef = child(this.database, id)
-                    onValue(
+                    this.serverRef = firebase.child(this.database, id)
+                    firebase.onValue(
                         this.serverRef,
                         (ev1) => {
                             var sval = ev1.val()
@@ -189,7 +188,7 @@ export function P2PClientFactory(options) {
                                             data
                                         )
                                     }
-                                    push(this.outRef, data)
+                                    firebase.push(this.outRef, data)
                                 } else {
                                     console.warn(
                                         'Client recieved unexpected signal through WebRTC:',
@@ -225,13 +224,13 @@ export function P2PClientFactory(options) {
                 }
 
             if (this.serverRef) {
-                off(this.serverRef)
+                firebase.off(this.serverRef)
             }
             if (this.outRef) {
-                off(this.outRef)
+                firebase.off(this.outRef)
             }
             if (this.inRef) {
-                off(this.inRef)
+                firebase.off(this.inRef)
             }
             if (this.connection) {
                 this.connection.destroy(callback)
@@ -247,12 +246,15 @@ export function P2PClientFactory(options) {
             offer.myID = this.myID
             if (this.debug)
                 console.log('Got create channel with offer: ', offer)
-            this.channelRef = push(child(this.serverRef, 'channels'), {
-                fromClient: [offer],
-            })
-            this.outRef = child(this.channelRef, 'fromClient')
-            this.inRef = child(this.channelRef, 'fromServer')
-            onChildAdded(this.inRef, (ev) => {
+            this.channelRef = firebase.push(
+                firebase.child(this.serverRef, 'channels'),
+                {
+                    fromClient: [offer],
+                }
+            )
+            this.outRef = firebase.child(this.channelRef, 'fromClient')
+            this.inRef = firebase.child(this.channelRef, 'fromServer')
+            firebase.onChildAdded(this.inRef, (ev) => {
                 var val = ev.val()
                 if (this.debug) console.log(val, 'channel message, client')
                 if (val.type === 'answer') {
@@ -343,12 +345,13 @@ export function P2PClientFactory(options) {
                 this.fire('stream', { peer: this.connection, stream: stream })
             })
             this.connection._pc.addEventListener('signalingstatechange', () => {
-                if (this.debug) console.log(
-                    'signalState',
-                    this.connection &&
-                        this.connection._pc &&
-                        this.connection._pc.signalingState
-                )
+                if (this.debug)
+                    console.log(
+                        'signalState',
+                        this.connection &&
+                            this.connection._pc &&
+                            this.connection._pc.signalingState
+                    )
             })
         }
     }

@@ -2,7 +2,6 @@ import { Channel } from './Channel.js'
 import { P2PServerFactory } from './P2PServer.js'
 import { P2PClientFactory } from './P2PClient.js'
 
-
 const Peer = require('simple-peer')
 const wrtc = require('wrtc')
 
@@ -21,16 +20,22 @@ import {
 
 import { PeerBinaryFactory } from './PeerBinary.js'
 
-const firebase = require('firebase/app')
-require('firebase/database')
+require('firebase/app')
+const firebase = require('firebase/database')
 
 // initFirebase(firebase)
 setEncode(encode)
 
 const UnChunker = UnChunkerFactory({ decode })
 const PeerBinary = PeerBinaryFactory({ UnChunker, Peer, wrtc })
-const P2PServer = P2PServerFactory({ PeerBinary })
-const P2PClient = P2PClientFactory({ PeerBinary })
+const P2PServer = P2PServerFactory({
+    PeerBinary,
+    firebase,
+})
+const P2PClient = P2PClientFactory({
+    PeerBinary,
+    firebase,
+})
 
 export {
     P2PServer,

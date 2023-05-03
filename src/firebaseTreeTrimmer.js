@@ -1,12 +1,3 @@
-import {
-    child,
-    onValue,
-    orderByValue,
-    query,
-    remove,
-    set,
-} from 'firebase/database'
-
 /**  Description: class for monitoring firebase references
  and removing children that have not updated recently
 */
@@ -16,25 +7,33 @@ export class firebaseTreeTrimmer {
             options === null ||
             !options.treeTrimmingRef ||
             !options.peersRef ||
-            !options.id
+            !options.id ||
+            !options.firebase
         )
             throw new Error(
-                'requires an options object with an id, treeTrimmingRef and peersRef'
+                'requires an options object with an id, firebase, treeTrimmingRef and peersRef'
             )
         Object.assign(this, options)
 
         this.monitorReference = this.monitor.bind(this)
         this.monitor()
+        this.firebase = options.firebase
     }
 
     monitor() {
-        onValue(
-            query(this.treeTrimmingRef, orderByValue()),
+        this.firebase.onValue(
+            this.firebase.query(
+                this.treeTrimmingRef,
+                this.firebase.orderByValue()
+            ),
             (snapshot) => {
                 // check if in list
                 if (snapshot.child(this.id).val() === null) {
                     // if not add it
-                    set(child(snapshot.ref, this.id), Date.now())
+                    this.firebase.set(
+                        this.firebase.child(snapshot.ref, this.id),
+                        Date.now()
+                    )
                 } else {
                     // otherwise calculate hierachy
                     let children = {}
@@ -75,14 +74,14 @@ export class firebaseTreeTrimmer {
 
     treeTrimmer(treeTrimmers) {
         // remove all references to peers not in treeTrimming list
-        onValue(
+        this.firebase.onValue(
             this.peersRef,
             (snap) => {
                 snap.forEach(function (child) {
                     // if the peer is not in the treeTrimming list,
                     // remove it from peersRef
                     if (treeTrimmers[child.key] === undefined) {
-                        remove(child.ref)
+                        this.firebase.remove(child.ref)
                     }
                 })
             },
@@ -95,8 +94,8 @@ export class firebaseTreeTrimmer {
     watchMySuperior(superior) {
         // if superior is either not in /peers/cameras, or their
         // lastUpdate is greater than a minute, remove from treeTrimming list
-        onValue(
-            child(this.peersRef, superior),
+        this.firebase.onValue(
+            this.firebase.child(this.peersRef, superior),
             (snap) => {
                 // if the peer's lastUpdate is greater than three minutes,
                 // or it doesn't exist, remove from treeTrimming list
@@ -106,7 +105,9 @@ export class firebaseTreeTrimmer {
                     snap.child('lastUpdate').val() < Date.now() - 3 * 60000
                 ) {
                     // if not in the peers list or has not been updated for 3 minutes then remove
-                    remove(child(this.treeTrimmingRef, superior))
+                    this.firebase.remove(
+                        this.firebase.child(this.treeTrimmingRef, superior)
+                    )
                 }
             },
             {

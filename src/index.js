@@ -21,12 +21,42 @@ import {
 
 import { PeerBinaryFactory } from './PeerBinary.js'
 
+import {
+    child,
+    off,
+    onChildAdded,
+    onDisconnect,
+    onValue,
+    orderByValue,
+    push,
+    query,
+    remove,
+    serverTimestamp,
+    set,
+    update,
+} from 'firebase/database'
+
+const firebase = {
+    child,
+    off,
+    onChildAdded,
+    onDisconnect,
+    onValue,
+    orderByValue,
+    push,
+    query,
+    remove,
+    serverTimestamp,
+    set,
+    update,
+}
+
 setEncode(msgPack.encode)
 
 const UnChunker = UnChunkerFactory({ decode: msgPack.decode })
 const PeerBinary = PeerBinaryFactory({ UnChunker, Peer })
-const P2PServer = P2PServerFactory({ PeerBinary })
-const P2PClient = P2PClientFactory({ PeerBinary })
+const P2PServer = P2PServerFactory({ PeerBinary, firebase })
+const P2PClient = P2PClientFactory({ PeerBinary, firebase })
 
 export {
     P2PServer,
@@ -39,4 +69,5 @@ export {
     Channel,
     recursivelyEncodeBlobs,
     recursivelyDecodeBlobs,
+    firebase,
 }

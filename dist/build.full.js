@@ -1,3 +1,613 @@
+var getOwnPropertyNames = Object.getOwnPropertyNames, getOwnPropertySymbols = Object.getOwnPropertySymbols;
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+/**
+ * Combine two comparators into a single comparators.
+ */
+function combineComparators(comparatorA, comparatorB) {
+    return function isEqual(a, b, state) {
+        return comparatorA(a, b, state) && comparatorB(a, b, state);
+    };
+}
+/**
+ * Wrap the provided `areItemsEqual` method to manage the circular state, allowing
+ * for circular references to be safely included in the comparison without creating
+ * stack overflows.
+ */
+function createIsCircular(areItemsEqual) {
+    return function isCircular(a, b, state) {
+        if (!a || !b || typeof a !== 'object' || typeof b !== 'object') {
+            return areItemsEqual(a, b, state);
+        }
+        var cache = state.cache;
+        var cachedA = cache.get(a);
+        var cachedB = cache.get(b);
+        if (cachedA && cachedB) {
+            return cachedA === b && cachedB === a;
+        }
+        cache.set(a, b);
+        cache.set(b, a);
+        var result = areItemsEqual(a, b, state);
+        cache.delete(a);
+        cache.delete(b);
+        return result;
+    };
+}
+/**
+ * Get the properties to strictly examine, which include both own properties that are
+ * not enumerable and symbol properties.
+ */
+function getStrictProperties(object) {
+    return getOwnPropertyNames(object).concat(getOwnPropertySymbols(object));
+}
+/**
+ * Whether the object contains the property passed as an own property.
+ */
+var hasOwn = Object.hasOwn ||
+    (function (object, property) {
+        return hasOwnProperty.call(object, property);
+    });
+/**
+ * Whether the values passed are strictly equal or both NaN.
+ */
+function sameValueZeroEqual(a, b) {
+    return a || b ? a === b : a === b || (a !== a && b !== b);
+}
+
+var OWNER = '_owner';
+var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor, keys = Object.keys;
+/**
+ * Whether the arrays are equal in value.
+ */
+function areArraysEqual(a, b, state) {
+    var index = a.length;
+    if (b.length !== index) {
+        return false;
+    }
+    while (index-- > 0) {
+        if (!state.equals(a[index], b[index], index, index, a, b, state)) {
+            return false;
+        }
+    }
+    return true;
+}
+/**
+ * Whether the dates passed are equal in value.
+ */
+function areDatesEqual(a, b) {
+    return sameValueZeroEqual(a.getTime(), b.getTime());
+}
+/**
+ * Whether the `Map`s are equal in value.
+ */
+function areMapsEqual(a, b, state) {
+    if (a.size !== b.size) {
+        return false;
+    }
+    var matchedIndices = {};
+    var aIterable = a.entries();
+    var index = 0;
+    var aResult;
+    var bResult;
+    while ((aResult = aIterable.next())) {
+        if (aResult.done) {
+            break;
+        }
+        var bIterable = b.entries();
+        var hasMatch = false;
+        var matchIndex = 0;
+        while ((bResult = bIterable.next())) {
+            if (bResult.done) {
+                break;
+            }
+            var _a = aResult.value, aKey = _a[0], aValue = _a[1];
+            var _b = bResult.value, bKey = _b[0], bValue = _b[1];
+            if (!hasMatch &&
+                !matchedIndices[matchIndex] &&
+                (hasMatch =
+                    state.equals(aKey, bKey, index, matchIndex, a, b, state) &&
+                        state.equals(aValue, bValue, aKey, bKey, a, b, state))) {
+                matchedIndices[matchIndex] = true;
+            }
+            matchIndex++;
+        }
+        if (!hasMatch) {
+            return false;
+        }
+        index++;
+    }
+    return true;
+}
+/**
+ * Whether the objects are equal in value.
+ */
+function areObjectsEqual(a, b, state) {
+    var properties = keys(a);
+    var index = properties.length;
+    if (keys(b).length !== index) {
+        return false;
+    }
+    var property;
+    // Decrementing `while` showed faster results than either incrementing or
+    // decrementing `for` loop and than an incrementing `while` loop. Declarative
+    // methods like `some` / `every` were not used to avoid incurring the garbage
+    // cost of anonymous callbacks.
+    while (index-- > 0) {
+        property = properties[index];
+        if (property === OWNER &&
+            (a.$$typeof || b.$$typeof) &&
+            a.$$typeof !== b.$$typeof) {
+            return false;
+        }
+        if (!hasOwn(b, property) ||
+            !state.equals(a[property], b[property], property, property, a, b, state)) {
+            return false;
+        }
+    }
+    return true;
+}
+/**
+ * Whether the objects are equal in value with strict property checking.
+ */
+function areObjectsEqualStrict(a, b, state) {
+    var properties = getStrictProperties(a);
+    var index = properties.length;
+    if (getStrictProperties(b).length !== index) {
+        return false;
+    }
+    var property;
+    var descriptorA;
+    var descriptorB;
+    // Decrementing `while` showed faster results than either incrementing or
+    // decrementing `for` loop and than an incrementing `while` loop. Declarative
+    // methods like `some` / `every` were not used to avoid incurring the garbage
+    // cost of anonymous callbacks.
+    while (index-- > 0) {
+        property = properties[index];
+        if (property === OWNER &&
+            (a.$$typeof || b.$$typeof) &&
+            a.$$typeof !== b.$$typeof) {
+            return false;
+        }
+        if (!hasOwn(b, property)) {
+            return false;
+        }
+        if (!state.equals(a[property], b[property], property, property, a, b, state)) {
+            return false;
+        }
+        descriptorA = getOwnPropertyDescriptor(a, property);
+        descriptorB = getOwnPropertyDescriptor(b, property);
+        if ((descriptorA || descriptorB) &&
+            (!descriptorA ||
+                !descriptorB ||
+                descriptorA.configurable !== descriptorB.configurable ||
+                descriptorA.enumerable !== descriptorB.enumerable ||
+                descriptorA.writable !== descriptorB.writable)) {
+            return false;
+        }
+    }
+    return true;
+}
+/**
+ * Whether the primitive wrappers passed are equal in value.
+ */
+function arePrimitiveWrappersEqual(a, b) {
+    return sameValueZeroEqual(a.valueOf(), b.valueOf());
+}
+/**
+ * Whether the regexps passed are equal in value.
+ */
+function areRegExpsEqual(a, b) {
+    return a.source === b.source && a.flags === b.flags;
+}
+/**
+ * Whether the `Set`s are equal in value.
+ */
+function areSetsEqual(a, b, state) {
+    if (a.size !== b.size) {
+        return false;
+    }
+    var matchedIndices = {};
+    var aIterable = a.values();
+    var aResult;
+    var bResult;
+    while ((aResult = aIterable.next())) {
+        if (aResult.done) {
+            break;
+        }
+        var bIterable = b.values();
+        var hasMatch = false;
+        var matchIndex = 0;
+        while ((bResult = bIterable.next())) {
+            if (bResult.done) {
+                break;
+            }
+            if (!hasMatch &&
+                !matchedIndices[matchIndex] &&
+                (hasMatch = state.equals(aResult.value, bResult.value, aResult.value, bResult.value, a, b, state))) {
+                matchedIndices[matchIndex] = true;
+            }
+            matchIndex++;
+        }
+        if (!hasMatch) {
+            return false;
+        }
+    }
+    return true;
+}
+/**
+ * Whether the TypedArray instances are equal in value.
+ */
+function areTypedArraysEqual(a, b) {
+    var index = a.length;
+    if (b.length !== index) {
+        return false;
+    }
+    while (index-- > 0) {
+        if (a[index] !== b[index]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+var ARGUMENTS_TAG = '[object Arguments]';
+var BOOLEAN_TAG = '[object Boolean]';
+var DATE_TAG = '[object Date]';
+var MAP_TAG = '[object Map]';
+var NUMBER_TAG = '[object Number]';
+var OBJECT_TAG = '[object Object]';
+var REG_EXP_TAG = '[object RegExp]';
+var SET_TAG = '[object Set]';
+var STRING_TAG = '[object String]';
+var isArray = Array.isArray;
+var isTypedArray = typeof ArrayBuffer === 'function' && ArrayBuffer.isView
+    ? ArrayBuffer.isView
+    : null;
+var assign = Object.assign;
+var getTag = Object.prototype.toString.call.bind(Object.prototype.toString);
+/**
+ * Create a comparator method based on the type-specific equality comparators passed.
+ */
+function createEqualityComparator(_a) {
+    var areArraysEqual = _a.areArraysEqual, areDatesEqual = _a.areDatesEqual, areMapsEqual = _a.areMapsEqual, areObjectsEqual = _a.areObjectsEqual, arePrimitiveWrappersEqual = _a.arePrimitiveWrappersEqual, areRegExpsEqual = _a.areRegExpsEqual, areSetsEqual = _a.areSetsEqual, areTypedArraysEqual = _a.areTypedArraysEqual;
+    /**
+     * compare the value of the two objects and return true if they are equivalent in values
+     */
+    return function comparator(a, b, state) {
+        // If the items are strictly equal, no need to do a value comparison.
+        if (a === b) {
+            return true;
+        }
+        // If the items are not non-nullish objects, then the only possibility
+        // of them being equal but not strictly is if they are both `NaN`. Since
+        // `NaN` is uniquely not equal to itself, we can use self-comparison of
+        // both objects, which is faster than `isNaN()`.
+        if (a == null ||
+            b == null ||
+            typeof a !== 'object' ||
+            typeof b !== 'object') {
+            return a !== a && b !== b;
+        }
+        var constructor = a.constructor;
+        // Checks are listed in order of commonality of use-case:
+        //   1. Common complex object types (plain object, array)
+        //   2. Common data values (date, regexp)
+        //   3. Less-common complex object types (map, set)
+        //   4. Less-common data values (promise, primitive wrappers)
+        // Inherently this is both subjective and assumptive, however
+        // when reviewing comparable libraries in the wild this order
+        // appears to be generally consistent.
+        // Constructors should match, otherwise there is potential for false positives
+        // between class and subclass or custom object and POJO.
+        if (constructor !== b.constructor) {
+            return false;
+        }
+        // `isPlainObject` only checks against the object's own realm. Cross-realm
+        // comparisons are rare, and will be handled in the ultimate fallback, so
+        // we can avoid capturing the string tag.
+        if (constructor === Object) {
+            return areObjectsEqual(a, b, state);
+        }
+        // `isArray()` works on subclasses and is cross-realm, so we can avoid capturing
+        // the string tag or doing an `instanceof` check.
+        if (isArray(a)) {
+            return areArraysEqual(a, b, state);
+        }
+        // `isTypedArray()` works on all possible TypedArray classes, so we can avoid
+        // capturing the string tag or comparing against all possible constructors.
+        if (isTypedArray != null && isTypedArray(a)) {
+            return areTypedArraysEqual(a, b, state);
+        }
+        // Try to fast-path equality checks for other complex object types in the
+        // same realm to avoid capturing the string tag. Strict equality is used
+        // instead of `instanceof` because it is more performant for the common
+        // use-case. If someone is subclassing a native class, it will be handled
+        // with the string tag comparison.
+        if (constructor === Date) {
+            return areDatesEqual(a, b, state);
+        }
+        if (constructor === RegExp) {
+            return areRegExpsEqual(a, b, state);
+        }
+        if (constructor === Map) {
+            return areMapsEqual(a, b, state);
+        }
+        if (constructor === Set) {
+            return areSetsEqual(a, b, state);
+        }
+        // Since this is a custom object, capture the string tag to determing its type.
+        // This is reasonably performant in modern environments like v8 and SpiderMonkey.
+        var tag = getTag(a);
+        if (tag === DATE_TAG) {
+            return areDatesEqual(a, b, state);
+        }
+        if (tag === REG_EXP_TAG) {
+            return areRegExpsEqual(a, b, state);
+        }
+        if (tag === MAP_TAG) {
+            return areMapsEqual(a, b, state);
+        }
+        if (tag === SET_TAG) {
+            return areSetsEqual(a, b, state);
+        }
+        if (tag === OBJECT_TAG) {
+            // The exception for value comparison is custom `Promise`-like class instances. These should
+            // be treated the same as standard `Promise` objects, which means strict equality, and if
+            // it reaches this point then that strict equality comparison has already failed.
+            return (typeof a.then !== 'function' &&
+                typeof b.then !== 'function' &&
+                areObjectsEqual(a, b, state));
+        }
+        // If an arguments tag, it should be treated as a standard object.
+        if (tag === ARGUMENTS_TAG) {
+            return areObjectsEqual(a, b, state);
+        }
+        // As the penultimate fallback, check if the values passed are primitive wrappers. This
+        // is very rare in modern JS, which is why it is deprioritized compared to all other object
+        // types.
+        if (tag === BOOLEAN_TAG || tag === NUMBER_TAG || tag === STRING_TAG) {
+            return arePrimitiveWrappersEqual(a, b, state);
+        }
+        // If not matching any tags that require a specific type of comparison, then we hard-code false because
+        // the only thing remaining is strict equality, which has already been compared. This is for a few reasons:
+        //   - Certain types that cannot be introspected (e.g., `WeakMap`). For these types, this is the only
+        //     comparison that can be made.
+        //   - For types that can be introspected, but rarely have requirements to be compared
+        //     (`ArrayBuffer`, `DataView`, etc.), the cost is avoided to prioritize the common
+        //     use-cases (may be included in a future release, if requested enough).
+        //   - For types that can be introspected but do not have an objective definition of what
+        //     equality is (`Error`, etc.), the subjective decision is to be conservative and strictly compare.
+        // In all cases, these decisions should be reevaluated based on changes to the language and
+        // common development practices.
+        return false;
+    };
+}
+/**
+ * Create the configuration object used for building comparators.
+ */
+function createEqualityComparatorConfig(_a) {
+    var circular = _a.circular, createCustomConfig = _a.createCustomConfig, strict = _a.strict;
+    var config = {
+        areArraysEqual: strict
+            ? areObjectsEqualStrict
+            : areArraysEqual,
+        areDatesEqual: areDatesEqual,
+        areMapsEqual: strict
+            ? combineComparators(areMapsEqual, areObjectsEqualStrict)
+            : areMapsEqual,
+        areObjectsEqual: strict
+            ? areObjectsEqualStrict
+            : areObjectsEqual,
+        arePrimitiveWrappersEqual: arePrimitiveWrappersEqual,
+        areRegExpsEqual: areRegExpsEqual,
+        areSetsEqual: strict
+            ? combineComparators(areSetsEqual, areObjectsEqualStrict)
+            : areSetsEqual,
+        areTypedArraysEqual: strict
+            ? areObjectsEqualStrict
+            : areTypedArraysEqual,
+    };
+    if (createCustomConfig) {
+        config = assign({}, config, createCustomConfig(config));
+    }
+    if (circular) {
+        var areArraysEqual$1 = createIsCircular(config.areArraysEqual);
+        var areMapsEqual$1 = createIsCircular(config.areMapsEqual);
+        var areObjectsEqual$1 = createIsCircular(config.areObjectsEqual);
+        var areSetsEqual$1 = createIsCircular(config.areSetsEqual);
+        config = assign({}, config, {
+            areArraysEqual: areArraysEqual$1,
+            areMapsEqual: areMapsEqual$1,
+            areObjectsEqual: areObjectsEqual$1,
+            areSetsEqual: areSetsEqual$1,
+        });
+    }
+    return config;
+}
+/**
+ * Default equality comparator pass-through, used as the standard `isEqual` creator for
+ * use inside the built comparator.
+ */
+function createInternalEqualityComparator(compare) {
+    return function (a, b, _indexOrKeyA, _indexOrKeyB, _parentA, _parentB, state) {
+        return compare(a, b, state);
+    };
+}
+/**
+ * Create the `isEqual` function used by the consuming application.
+ */
+function createIsEqual(_a) {
+    var circular = _a.circular, comparator = _a.comparator, createState = _a.createState, equals = _a.equals, strict = _a.strict;
+    if (createState) {
+        return function isEqual(a, b) {
+            var _a = createState(), _b = _a.cache, cache = _b === void 0 ? circular ? new WeakMap() : undefined : _b, meta = _a.meta;
+            return comparator(a, b, {
+                cache: cache,
+                equals: equals,
+                meta: meta,
+                strict: strict,
+            });
+        };
+    }
+    if (circular) {
+        return function isEqual(a, b) {
+            return comparator(a, b, {
+                cache: new WeakMap(),
+                equals: equals,
+                meta: undefined,
+                strict: strict,
+            });
+        };
+    }
+    var state = {
+        cache: undefined,
+        equals: equals,
+        meta: undefined,
+        strict: strict,
+    };
+    return function isEqual(a, b) {
+        return comparator(a, b, state);
+    };
+}
+
+/**
+ * Whether the items passed are deeply-equal in value.
+ */
+var deepEqual = createCustomEqual();
+/**
+ * Whether the items passed are deeply-equal in value based on strict comparison.
+ */
+createCustomEqual({ strict: true });
+/**
+ * Whether the items passed are deeply-equal in value, including circular references.
+ */
+createCustomEqual({ circular: true });
+/**
+ * Whether the items passed are deeply-equal in value, including circular references,
+ * based on strict comparison.
+ */
+createCustomEqual({
+    circular: true,
+    strict: true,
+});
+/**
+ * Whether the items passed are shallowly-equal in value.
+ */
+createCustomEqual({
+    createInternalComparator: function () { return sameValueZeroEqual; },
+});
+/**
+ * Whether the items passed are shallowly-equal in value based on strict comparison
+ */
+createCustomEqual({
+    strict: true,
+    createInternalComparator: function () { return sameValueZeroEqual; },
+});
+/**
+ * Whether the items passed are shallowly-equal in value, including circular references.
+ */
+createCustomEqual({
+    circular: true,
+    createInternalComparator: function () { return sameValueZeroEqual; },
+});
+/**
+ * Whether the items passed are shallowly-equal in value, including circular references,
+ * based on strict comparison.
+ */
+createCustomEqual({
+    circular: true,
+    createInternalComparator: function () { return sameValueZeroEqual; },
+    strict: true,
+});
+/**
+ * Create a custom equality comparison method.
+ *
+ * This can be done to create very targeted comparisons in extreme hot-path scenarios
+ * where the standard methods are not performant enough, but can also be used to provide
+ * support for legacy environments that do not support expected features like
+ * `RegExp.prototype.flags` out of the box.
+ */
+function createCustomEqual(options) {
+    if (options === void 0) { options = {}; }
+    var _a = options.circular, circular = _a === void 0 ? false : _a, createCustomInternalComparator = options.createInternalComparator, createState = options.createState, _b = options.strict, strict = _b === void 0 ? false : _b;
+    var config = createEqualityComparatorConfig(options);
+    var comparator = createEqualityComparator(config);
+    var equals = createCustomInternalComparator
+        ? createCustomInternalComparator(comparator)
+        : createInternalEqualityComparator(comparator);
+    return createIsEqual({ circular: circular, comparator: comparator, createState: createState, equals: equals, strict: strict });
+}
+
+var settings = {
+    // Get a reference to the database service
+
+    // Was having a bug where the WIFI router would crash if the chunk size was bigger than 2^10
+    CHUNK_SIZE: Math.pow(2, 14), // size in bytes of the chunks. 2^14 is just under the limit in chrome.
+    ICE_SERVERS: [
+        {
+            url: 'stun:23.21.150.121',
+            urls: 'stun:23.21.150.121',
+        },
+        {
+            url: 'turn:global.turn.twilio.com:3478?transport=udp',
+            username:
+                '508d1e639868dc17f5da97a75b1d3b43bf2fc6d11e4e863678501db568b5665c',
+            credential: 'W5GTdhQQ6DqOD7k6bS8+xZVNQXm+fgLXSEQpN8bTe70=',
+            urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+        },
+    ],
+    POLLING_FREQUENCY: 15000,
+    debug: false,
+};
+
+/**
+ * Evented
+ */
+
+class Evented {
+    constructor() {
+        this.events = {};
+    }
+
+    on(eventName, callback) {
+        if (typeof callback !== 'function') return
+        if (!this.events.hasOwnProperty(eventName)) {
+            this.events[eventName] = [];
+        }
+        this.events[eventName].push(callback);
+    }
+
+    off(eventName, callback) {
+        if (this.events.hasOwnProperty(eventName)) {
+            if (typeof callback === 'function') {
+                //_.without(this.events[eventName], callback);
+                this.events = this.events.filter(function (x) {
+                    if (x != this.events[eventName]) {
+                        return x
+                    }
+                });
+            } else {
+                delete this.events[eventName];
+            }
+        }
+    }
+
+    fire(eventName, argument) {
+        //_.each(this.events[eventName], (cb) => setTimeout(() => cb(argument)));
+        if (this.events[eventName]) {
+            for (var cb of this.events[eventName]) {
+                setTimeout(() => cb(argument));
+            }
+        }
+    }
+
+    fireAll(argument) {
+        for (var k in this.events) {
+            this.fire(k, argument);
+        }
+    }
+}
+
 /**
  * @license
  * Copyright 2017 Google LLC
@@ -300,7 +910,7 @@ const base64 = {
             const byte4 = haveByte4 ? charToByteMap[input.charAt(i)] : 64;
             ++i;
             if (byte1 == null || byte2 == null || byte3 == null || byte4 == null) {
-                throw Error();
+                throw new DecodeBase64StringError();
             }
             const outByte1 = (byte1 << 2) | (byte2 >> 4);
             output.push(outByte1);
@@ -341,6 +951,15 @@ const base64 = {
         }
     }
 };
+/**
+ * An error encountered while decoding base64 string.
+ */
+class DecodeBase64StringError extends Error {
+    constructor() {
+        super(...arguments);
+        this.name = 'DecodeBase64StringError';
+    }
+}
 /**
  * URL-safe base64 encoding
  */
@@ -566,7 +1185,12 @@ function isNodeSdk() {
  * @return true if indexedDB is supported by current browser/service worker context
  */
 function isIndexedDBAvailable() {
-    return typeof indexedDB === 'object';
+    try {
+        return typeof indexedDB === 'object';
+    }
+    catch (e) {
+        return false;
+    }
 }
 /**
  * This method validates browser/sw context for indexedDB by opening a dummy indexedDB database and reject
@@ -1287,7 +1911,7 @@ class Component {
          * Properties to be added to the service namespace
          */
         this.serviceProps = {};
-        this.instantiationMode = "LAZY" /* LAZY */;
+        this.instantiationMode = "LAZY" /* InstantiationMode.LAZY */;
         this.onInstanceCreated = null;
     }
     setInstantiationMode(mode) {
@@ -1660,17 +2284,21 @@ function openDB(name, version, { blocked, upgrade, blocking, terminated } = {}) 
     const openPromise = wrap(request);
     if (upgrade) {
         request.addEventListener('upgradeneeded', (event) => {
-            upgrade(wrap(request.result), event.oldVersion, event.newVersion, wrap(request.transaction));
+            upgrade(wrap(request.result), event.oldVersion, event.newVersion, wrap(request.transaction), event);
         });
     }
-    if (blocked)
-        request.addEventListener('blocked', () => blocked());
+    if (blocked) {
+        request.addEventListener('blocked', (event) => blocked(
+        // Casting due to https://github.com/microsoft/TypeScript-DOM-lib-generator/pull/1405
+        event.oldVersion, event.newVersion, event));
+    }
     openPromise
         .then((db) => {
         if (terminated)
             db.addEventListener('close', () => terminated());
-        if (blocking)
-            db.addEventListener('versionchange', () => blocking());
+        if (blocking) {
+            db.addEventListener('versionchange', (event) => blocking(event.oldVersion, event.newVersion, event));
+        }
     })
         .catch(() => { });
     return openPromise;
@@ -1771,11 +2399,11 @@ class PlatformLoggerServiceImpl {
  */
 function isVersionServiceProvider(provider) {
     const component = provider.getComponent();
-    return (component === null || component === void 0 ? void 0 : component.type) === "VERSION" /* VERSION */;
+    return (component === null || component === void 0 ? void 0 : component.type) === "VERSION" /* ComponentType.VERSION */;
 }
 
 const name$o = "@firebase/app";
-const version$1$1 = "0.7.27";
+const version$1$1 = "0.9.9";
 
 /**
  * @license
@@ -1842,7 +2470,7 @@ const name$2 = "@firebase/firestore";
 const name$1$1 = "@firebase/firestore-compat";
 
 const name$p = "firebase";
-const version$2 = "9.8.4";
+const version$2 = "9.21.0";
 const PLATFORM_LOG_STRING = {
     [name$o]: 'fire-core',
     [name$n]: 'fire-core-compat',
@@ -1950,18 +2578,19 @@ function _registerComponent(component) {
  * limitations under the License.
  */
 const ERRORS = {
-    ["no-app" /* NO_APP */]: "No Firebase App '{$appName}' has been created - " +
+    ["no-app" /* AppError.NO_APP */]: "No Firebase App '{$appName}' has been created - " +
         'call Firebase App.initializeApp()',
-    ["bad-app-name" /* BAD_APP_NAME */]: "Illegal App name: '{$appName}",
-    ["duplicate-app" /* DUPLICATE_APP */]: "Firebase App named '{$appName}' already exists with different options or config",
-    ["app-deleted" /* APP_DELETED */]: "Firebase App named '{$appName}' already deleted",
-    ["invalid-app-argument" /* INVALID_APP_ARGUMENT */]: 'firebase.{$appName}() takes either no argument or a ' +
+    ["bad-app-name" /* AppError.BAD_APP_NAME */]: "Illegal App name: '{$appName}",
+    ["duplicate-app" /* AppError.DUPLICATE_APP */]: "Firebase App named '{$appName}' already exists with different options or config",
+    ["app-deleted" /* AppError.APP_DELETED */]: "Firebase App named '{$appName}' already deleted",
+    ["no-options" /* AppError.NO_OPTIONS */]: 'Need to provide options, when not being deployed to hosting via source.',
+    ["invalid-app-argument" /* AppError.INVALID_APP_ARGUMENT */]: 'firebase.{$appName}() takes either no argument or a ' +
         'Firebase App instance.',
-    ["invalid-log-argument" /* INVALID_LOG_ARGUMENT */]: 'First argument to `onLog` must be null or a function.',
-    ["storage-open" /* STORAGE_OPEN */]: 'Error thrown when opening storage. Original error: {$originalErrorMessage}.',
-    ["storage-get" /* STORAGE_GET */]: 'Error thrown when reading from storage. Original error: {$originalErrorMessage}.',
-    ["storage-set" /* STORAGE_WRITE */]: 'Error thrown when writing to storage. Original error: {$originalErrorMessage}.',
-    ["storage-delete" /* STORAGE_DELETE */]: 'Error thrown when deleting from storage. Original error: {$originalErrorMessage}.'
+    ["invalid-log-argument" /* AppError.INVALID_LOG_ARGUMENT */]: 'First argument to `onLog` must be null or a function.',
+    ["idb-open" /* AppError.IDB_OPEN */]: 'Error thrown when opening IndexedDB. Original error: {$originalErrorMessage}.',
+    ["idb-get" /* AppError.IDB_GET */]: 'Error thrown when reading from IndexedDB. Original error: {$originalErrorMessage}.',
+    ["idb-set" /* AppError.IDB_WRITE */]: 'Error thrown when writing to IndexedDB. Original error: {$originalErrorMessage}.',
+    ["idb-delete" /* AppError.IDB_DELETE */]: 'Error thrown when deleting from IndexedDB. Original error: {$originalErrorMessage}.'
 };
 const ERROR_FACTORY = new ErrorFactory('app', 'Firebase', ERRORS);
 
@@ -2021,7 +2650,7 @@ function registerVersion(libraryKeyOrName, version, variant) {
         logger$1.warn(warning.join(' '));
         return;
     }
-    _registerComponent(new Component(`${library}-version`, () => ({ library, version }), "VERSION" /* VERSION */));
+    _registerComponent(new Component(`${library}-version`, () => ({ library, version }), "VERSION" /* ComponentType.VERSION */));
 }
 
 /**
@@ -2059,7 +2688,7 @@ function getDbPromise() {
                 }
             }
         }).catch(e => {
-            throw ERROR_FACTORY.create("storage-open" /* STORAGE_OPEN */, {
+            throw ERROR_FACTORY.create("idb-open" /* AppError.IDB_OPEN */, {
                 originalErrorMessage: e.message
             });
         });
@@ -2067,7 +2696,6 @@ function getDbPromise() {
     return dbPromise;
 }
 async function readHeartbeatsFromIndexedDB(app) {
-    var _a;
     try {
         const db = await getDbPromise();
         return db
@@ -2076,13 +2704,18 @@ async function readHeartbeatsFromIndexedDB(app) {
             .get(computeKey(app));
     }
     catch (e) {
-        throw ERROR_FACTORY.create("storage-get" /* STORAGE_GET */, {
-            originalErrorMessage: (_a = e) === null || _a === void 0 ? void 0 : _a.message
-        });
+        if (e instanceof FirebaseError) {
+            logger$1.warn(e.message);
+        }
+        else {
+            const idbGetError = ERROR_FACTORY.create("idb-get" /* AppError.IDB_GET */, {
+                originalErrorMessage: e === null || e === void 0 ? void 0 : e.message
+            });
+            logger$1.warn(idbGetError.message);
+        }
     }
 }
 async function writeHeartbeatsToIndexedDB(app, heartbeatObject) {
-    var _a;
     try {
         const db = await getDbPromise();
         const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -2091,9 +2724,15 @@ async function writeHeartbeatsToIndexedDB(app, heartbeatObject) {
         return tx.done;
     }
     catch (e) {
-        throw ERROR_FACTORY.create("storage-set" /* STORAGE_WRITE */, {
-            originalErrorMessage: (_a = e) === null || _a === void 0 ? void 0 : _a.message
-        });
+        if (e instanceof FirebaseError) {
+            logger$1.warn(e.message);
+        }
+        else {
+            const idbGetError = ERROR_FACTORY.create("idb-set" /* AppError.IDB_WRITE */, {
+                originalErrorMessage: e === null || e === void 0 ? void 0 : e.message
+            });
+            logger$1.warn(idbGetError.message);
+        }
     }
 }
 function computeKey(app) {
@@ -2349,8 +2988,8 @@ function countBytes(heartbeatsCache) {
  * limitations under the License.
  */
 function registerCoreComponents(variant) {
-    _registerComponent(new Component('platform-logger', container => new PlatformLoggerServiceImpl(container), "PRIVATE" /* PRIVATE */));
-    _registerComponent(new Component('heartbeat', container => new HeartbeatServiceImpl(container), "PRIVATE" /* PRIVATE */));
+    _registerComponent(new Component('platform-logger', container => new PlatformLoggerServiceImpl(container), "PRIVATE" /* ComponentType.PRIVATE */));
+    _registerComponent(new Component('heartbeat', container => new HeartbeatServiceImpl(container), "PRIVATE" /* ComponentType.PRIVATE */));
     // Register `app` package.
     registerVersion(name$o, version$1$1, variant);
     // BUILD_TARGET will be replaced by values like esm5, esm2017, cjs5, etc during the compilation
@@ -2367,8 +3006,29 @@ function registerCoreComponents(variant) {
  */
 registerCoreComponents('');
 
-const name$1 = "@firebase/database";
-const version$1 = "0.13.2";
+var name$1 = "firebase";
+var version$1 = "9.21.0";
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+registerVersion(name$1, version$1, 'app');
+
+const name = "@firebase/database";
+const version = "0.14.4";
 
 /**
  * @license
@@ -3038,8 +3698,17 @@ const beingCrawled = function () {
  */
 const setTimeoutNonBlocking = function (fn, time) {
     const timeout = setTimeout(fn, time);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (typeof timeout === 'object' && timeout['unref']) {
+    // Note: at the time of this comment, unrefTimer is under the unstable set of APIs. Run with --unstable to enable the API.
+    if (typeof timeout === 'number' &&
+        // @ts-ignore Is only defined in Deno environments.
+        typeof Deno !== 'undefined' &&
+        // @ts-ignore Deno and unrefTimer are only defined in Deno environments.
+        Deno['unrefTimer']) {
+        // @ts-ignore Deno and unrefTimer are only defined in Deno environments.
+        Deno.unrefTimer(timeout);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }
+    else if (typeof timeout === 'object' && timeout['unref']) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         timeout['unref']();
     }
@@ -3284,13 +3953,14 @@ class RepoInfo {
      * @param nodeAdmin - Whether this instance uses Admin SDK credentials
      * @param persistenceKey - Override the default session persistence storage key
      */
-    constructor(host, secure, namespace, webSocketOnly, nodeAdmin = false, persistenceKey = '', includeNamespaceInQueryParams = false) {
+    constructor(host, secure, namespace, webSocketOnly, nodeAdmin = false, persistenceKey = '', includeNamespaceInQueryParams = false, isUsingEmulator = false) {
         this.secure = secure;
         this.namespace = namespace;
         this.webSocketOnly = webSocketOnly;
         this.nodeAdmin = nodeAdmin;
         this.persistenceKey = persistenceKey;
         this.includeNamespaceInQueryParams = includeNamespaceInQueryParams;
+        this.isUsingEmulator = isUsingEmulator;
         this._host = host.toLowerCase();
         this._domain = this._host.substr(this._host.indexOf('.') + 1);
         this.internalHost =
@@ -3925,8 +4595,8 @@ class FirebaseIFrameScriptHolder {
         if (this.myIFrame) {
             //We have to actually remove all of the html inside this iframe before removing it from the
             //window, or IE will continue loading and executing the script tags we've already added, which
-            //can lead to some errors being thrown. Setting innerHTML seems to be the easiest way to do this.
-            this.myIFrame.doc.body.innerHTML = '';
+            //can lead to some errors being thrown. Setting textContent seems to be the safest way to do this.
+            this.myIFrame.doc.body.textContent = '';
             setTimeout(() => {
                 if (this.myIFrame !== null) {
                     document.body.removeChild(this.myIFrame);
@@ -4574,7 +5244,7 @@ class Connection {
         this.lastSessionId = lastSessionId;
         this.connectionCount = 0;
         this.pendingDataMessages = [];
-        this.state_ = 0 /* CONNECTING */;
+        this.state_ = 0 /* RealtimeState.CONNECTING */;
         this.log_ = logWrapper('c:' + this.id + ':');
         this.transportManager_ = new TransportManager(repoInfo_);
         this.log_('Connection created');
@@ -4654,7 +5324,7 @@ class Connection {
     }
     connReceiver_(conn) {
         return (message) => {
-            if (this.state_ !== 2 /* DISCONNECTED */) {
+            if (this.state_ !== 2 /* RealtimeState.DISCONNECTED */) {
                 if (conn === this.rx_) {
                     this.onPrimaryMessageReceived_(message);
                 }
@@ -4777,7 +5447,12 @@ class Connection {
         if (MESSAGE_DATA in controlData) {
             const payload = controlData[MESSAGE_DATA];
             if (cmd === SERVER_HELLO) {
-                this.onHandshake_(payload);
+                const handshakePayload = Object.assign({}, payload);
+                if (this.repoInfo_.isUsingEmulator) {
+                    // Upon connecting, the emulator will pass the hostname that it's aware of, but we prefer the user's set hostname via `connectDatabaseEmulator` over what the emulator passes.
+                    handshakePayload.h = this.repoInfo_.host;
+                }
+                this.onHandshake_(handshakePayload);
             }
             else if (cmd === END_TRANSMISSION) {
                 this.log_('recvd end transmission on primary');
@@ -4820,7 +5495,7 @@ class Connection {
         this.sessionId = handshake.s;
         this.repoInfo_.host = host;
         // if we've already closed the connection, then don't bother trying to progress further
-        if (this.state_ === 0 /* CONNECTING */) {
+        if (this.state_ === 0 /* RealtimeState.CONNECTING */) {
             this.conn_.start();
             this.onConnectionEstablished_(this.conn_, timestamp);
             if (PROTOCOL_VERSION !== version) {
@@ -4858,7 +5533,7 @@ class Connection {
         this.repoInfo_.host = host;
         // TODO: if we're already "connected", we need to trigger a disconnect at the next layer up.
         // We don't currently support resets after the connection has already been established
-        if (this.state_ === 1 /* CONNECTED */) {
+        if (this.state_ === 1 /* RealtimeState.CONNECTED */) {
             this.close();
         }
         else {
@@ -4870,7 +5545,7 @@ class Connection {
     onConnectionEstablished_(conn, timestamp) {
         this.log_('Realtime connection established.');
         this.conn_ = conn;
-        this.state_ = 1 /* CONNECTED */;
+        this.state_ = 1 /* RealtimeState.CONNECTED */;
         if (this.onReady_) {
             this.onReady_(timestamp, this.sessionId);
             this.onReady_ = null;
@@ -4889,7 +5564,7 @@ class Connection {
     }
     sendPingOnPrimaryIfNecessary_() {
         // If the connection isn't considered healthy yet, we'll send a noop ping packet request.
-        if (!this.isHealthy_ && this.state_ === 1 /* CONNECTED */) {
+        if (!this.isHealthy_ && this.state_ === 1 /* RealtimeState.CONNECTED */) {
             this.log_('sending ping on primary.');
             this.sendData_({ t: 'c', d: { t: PING, d: {} } });
         }
@@ -4910,7 +5585,7 @@ class Connection {
         this.conn_ = null;
         // NOTE: IF you're seeing a Firefox error for this line, I think it might be because it's getting
         // called on window close and RealtimeState.CONNECTING is no longer defined.  Just a guess.
-        if (!everConnected && this.state_ === 0 /* CONNECTING */) {
+        if (!everConnected && this.state_ === 0 /* RealtimeState.CONNECTING */) {
             this.log_('Realtime connection failed.');
             // Since we failed to connect at all, clear any cached entry for this namespace in case the machine went away
             if (this.repoInfo_.isCacheableHost()) {
@@ -4919,7 +5594,7 @@ class Connection {
                 this.repoInfo_.internalHost = this.repoInfo_.host;
             }
         }
-        else if (this.state_ === 1 /* CONNECTED */) {
+        else if (this.state_ === 1 /* RealtimeState.CONNECTED */) {
             this.log_('Realtime connection lost.');
         }
         this.close();
@@ -4936,7 +5611,7 @@ class Connection {
         this.close();
     }
     sendData_(data) {
-        if (this.state_ !== 1 /* CONNECTED */) {
+        if (this.state_ !== 1 /* RealtimeState.CONNECTED */) {
             throw 'Connection is not connected';
         }
         else {
@@ -4947,9 +5622,9 @@ class Connection {
      * Cleans up this connection, calling the appropriate callbacks
      */
     close() {
-        if (this.state_ !== 2 /* DISCONNECTED */) {
+        if (this.state_ !== 2 /* RealtimeState.DISCONNECTED */) {
             this.log_('Closing realtime connection.');
-            this.state_ = 2 /* DISCONNECTED */;
+            this.state_ = 2 /* RealtimeState.DISCONNECTED */;
             this.closeConnections_();
             if (this.onDisconnect_) {
                 this.onDisconnect_();
@@ -5501,7 +6176,6 @@ class VisibilityMonitor extends EventEmitter {
  */
 const RECONNECT_MIN_DELAY = 1000;
 const RECONNECT_MAX_DELAY_DEFAULT = 60 * 5 * 1000; // 5 minutes in milliseconds (Case: 1858)
-const GET_CONNECT_TIMEOUT = 3 * 1000;
 const RECONNECT_MAX_DELAY_FOR_ADMINS = 30 * 1000; // 30 seconds for admin clients (likely to be a backend server)
 const RECONNECT_DELAY_MULTIPLIER = 1.3;
 const RECONNECT_DELAY_RESET_TIMEOUT = 30000; // Reset delay back to MIN_DELAY after being connected for 30sec.
@@ -5600,21 +6274,6 @@ class PersistentConnection extends ServerActions {
         this.outstandingGets_.push(outstandingGet);
         this.outstandingGetCount_++;
         const index = this.outstandingGets_.length - 1;
-        if (!this.connected_) {
-            setTimeout(() => {
-                const get = this.outstandingGets_[index];
-                if (get === undefined || outstandingGet !== get) {
-                    return;
-                }
-                delete this.outstandingGets_[index];
-                this.outstandingGetCount_--;
-                if (this.outstandingGetCount_ === 0) {
-                    this.outstandingGets_ = [];
-                }
-                this.log_('get ' + index + ' timed out on connection');
-                deferred.reject(new Error('Client is offline.'));
-            }, GET_CONNECT_TIMEOUT);
-        }
         if (this.connected_) {
             this.sendGet_(index);
         }
@@ -8287,100 +8946,25 @@ const VALUE_INDEX = new ValueIndex();
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// Modeled after base64 web-safe chars, but ordered by ASCII.
-const PUSH_CHARS = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
-/**
- * Fancy ID generator that creates 20-character string identifiers with the
- * following properties:
- *
- * 1. They're based on timestamp so that they sort *after* any existing ids.
- * 2. They contain 72-bits of random data after the timestamp so that IDs won't
- *    collide with other clients' IDs.
- * 3. They sort *lexicographically* (so the timestamp is converted to characters
- *    that will sort properly).
- * 4. They're monotonically increasing. Even if you generate more than one in
- *    the same timestamp, the latter ones will sort after the former ones. We do
- *    this by using the previous random bits but "incrementing" them by 1 (only
- *    in the case of a timestamp collision).
- */
-const nextPushId = (function () {
-    // Timestamp of last push, used to prevent local collisions if you push twice
-    // in one ms.
-    let lastPushTime = 0;
-    // We generate 72-bits of randomness which get turned into 12 characters and
-    // appended to the timestamp to prevent collisions with other clients. We
-    // store the last characters we generated because in the event of a collision,
-    // we'll use those same characters except "incremented" by one.
-    const lastRandChars = [];
-    return function (now) {
-        const duplicateTime = now === lastPushTime;
-        lastPushTime = now;
-        let i;
-        const timeStampChars = new Array(8);
-        for (i = 7; i >= 0; i--) {
-            timeStampChars[i] = PUSH_CHARS.charAt(now % 64);
-            // NOTE: Can't use << here because javascript will convert to int and lose
-            // the upper bits.
-            now = Math.floor(now / 64);
-        }
-        assert(now === 0, 'Cannot push at time == 0');
-        let id = timeStampChars.join('');
-        if (!duplicateTime) {
-            for (i = 0; i < 12; i++) {
-                lastRandChars[i] = Math.floor(Math.random() * 64);
-            }
-        }
-        else {
-            // If the timestamp hasn't changed since last push, use the same random
-            // number, except incremented by 1.
-            for (i = 11; i >= 0 && lastRandChars[i] === 63; i--) {
-                lastRandChars[i] = 0;
-            }
-            lastRandChars[i]++;
-        }
-        for (i = 0; i < 12; i++) {
-            id += PUSH_CHARS.charAt(lastRandChars[i]);
-        }
-        assert(id.length === 20, 'nextPushId: Length should be 20.');
-        return id;
-    };
-})();
-
-/**
- * @license
- * Copyright 2017 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 function changeValue(snapshotNode) {
-    return { type: "value" /* VALUE */, snapshotNode };
+    return { type: "value" /* ChangeType.VALUE */, snapshotNode };
 }
 function changeChildAdded(childName, snapshotNode) {
-    return { type: "child_added" /* CHILD_ADDED */, snapshotNode, childName };
+    return { type: "child_added" /* ChangeType.CHILD_ADDED */, snapshotNode, childName };
 }
 function changeChildRemoved(childName, snapshotNode) {
-    return { type: "child_removed" /* CHILD_REMOVED */, snapshotNode, childName };
+    return { type: "child_removed" /* ChangeType.CHILD_REMOVED */, snapshotNode, childName };
 }
 function changeChildChanged(childName, snapshotNode, oldSnap) {
     return {
-        type: "child_changed" /* CHILD_CHANGED */,
+        type: "child_changed" /* ChangeType.CHILD_CHANGED */,
         snapshotNode,
         childName,
         oldSnap
     };
 }
 function changeChildMoved(childName, snapshotNode) {
-    return { type: "child_moved" /* CHILD_MOVED */, snapshotNode, childName };
+    return { type: "child_moved" /* ChangeType.CHILD_MOVED */, snapshotNode, childName };
 }
 
 /**
@@ -8514,6 +9098,8 @@ class RangedFilter {
         this.index_ = params.getIndex();
         this.startPost_ = RangedFilter.getStartPost_(params);
         this.endPost_ = RangedFilter.getEndPost_(params);
+        this.startIsInclusive_ = !params.startAfterSet_;
+        this.endIsInclusive_ = !params.endBeforeSet_;
     }
     getStartPost() {
         return this.startPost_;
@@ -8522,8 +9108,13 @@ class RangedFilter {
         return this.endPost_;
     }
     matches(node) {
-        return (this.index_.compare(this.getStartPost(), node) <= 0 &&
-            this.index_.compare(node, this.getEndPost()) <= 0);
+        const isWithinStart = this.startIsInclusive_
+            ? this.index_.compare(this.getStartPost(), node) <= 0
+            : this.index_.compare(this.getStartPost(), node) < 0;
+        const isWithinEnd = this.endIsInclusive_
+            ? this.index_.compare(node, this.getEndPost()) <= 0
+            : this.index_.compare(node, this.getEndPost()) < 0;
+        return isWithinStart && isWithinEnd;
     }
     updateChild(snap, key, newChild, affectedPath, source, optChangeAccumulator) {
         if (!this.matches(new NamedNode(key, newChild))) {
@@ -8601,10 +9192,22 @@ class RangedFilter {
  */
 class LimitedFilter {
     constructor(params) {
+        this.withinDirectionalStart = (node) => this.reverse_ ? this.withinEndPost(node) : this.withinStartPost(node);
+        this.withinDirectionalEnd = (node) => this.reverse_ ? this.withinStartPost(node) : this.withinEndPost(node);
+        this.withinStartPost = (node) => {
+            const compareRes = this.index_.compare(this.rangedFilter_.getStartPost(), node);
+            return this.startIsInclusive_ ? compareRes <= 0 : compareRes < 0;
+        };
+        this.withinEndPost = (node) => {
+            const compareRes = this.index_.compare(node, this.rangedFilter_.getEndPost());
+            return this.endIsInclusive_ ? compareRes <= 0 : compareRes < 0;
+        };
         this.rangedFilter_ = new RangedFilter(params);
         this.index_ = params.getIndex();
         this.limit_ = params.getLimit();
         this.reverse_ = !params.isViewFromLeft();
+        this.startIsInclusive_ = !params.startAfterSet_;
+        this.endIsInclusive_ = !params.endBeforeSet_;
     }
     updateChild(snap, key, newChild, affectedPath, source, optChangeAccumulator) {
         if (!this.rangedFilter_.matches(new NamedNode(key, newChild))) {
@@ -8645,22 +9248,17 @@ class LimitedFilter {
                 let count = 0;
                 while (iterator.hasNext() && count < this.limit_) {
                     const next = iterator.getNext();
-                    let inRange;
-                    if (this.reverse_) {
-                        inRange =
-                            this.index_.compare(this.rangedFilter_.getStartPost(), next) <= 0;
+                    if (!this.withinDirectionalStart(next)) {
+                        // if we have not reached the start, skip to the next element
+                        continue;
+                    }
+                    else if (!this.withinDirectionalEnd(next)) {
+                        // if we have reached the end, stop adding elements
+                        break;
                     }
                     else {
-                        inRange =
-                            this.index_.compare(next, this.rangedFilter_.getEndPost()) <= 0;
-                    }
-                    if (inRange) {
                         filtered = filtered.updateImmediateChild(next.name, next.node);
                         count++;
-                    }
-                    else {
-                        // if we have reached the end post, we cannot keep adding elemments
-                        break;
                     }
                 }
             }
@@ -8669,32 +9267,19 @@ class LimitedFilter {
                 filtered = newSnap.withIndex(this.index_);
                 // Don't support priorities on queries
                 filtered = filtered.updatePriority(ChildrenNode.EMPTY_NODE);
-                let startPost;
-                let endPost;
-                let cmp;
                 let iterator;
                 if (this.reverse_) {
                     iterator = filtered.getReverseIterator(this.index_);
-                    startPost = this.rangedFilter_.getEndPost();
-                    endPost = this.rangedFilter_.getStartPost();
-                    const indexCompare = this.index_.getCompare();
-                    cmp = (a, b) => indexCompare(b, a);
                 }
                 else {
                     iterator = filtered.getIterator(this.index_);
-                    startPost = this.rangedFilter_.getStartPost();
-                    endPost = this.rangedFilter_.getEndPost();
-                    cmp = this.index_.getCompare();
                 }
                 let count = 0;
-                let foundStartPost = false;
                 while (iterator.hasNext()) {
                     const next = iterator.getNext();
-                    if (!foundStartPost && cmp(startPost, next) <= 0) {
-                        // start adding
-                        foundStartPost = true;
-                    }
-                    const inRange = foundStartPost && count < this.limit_ && cmp(next, endPost) <= 0;
+                    const inRange = count < this.limit_ &&
+                        this.withinDirectionalStart(next) &&
+                        this.withinDirectionalEnd(next);
                     if (inRange) {
                         count++;
                     }
@@ -8825,10 +9410,10 @@ class QueryParams {
         this.limitSet_ = false;
         this.startSet_ = false;
         this.startNameSet_ = false;
-        this.startAfterSet_ = false;
+        this.startAfterSet_ = false; // can only be true if startSet_ is true
         this.endSet_ = false;
         this.endNameSet_ = false;
-        this.endBeforeSet_ = false;
+        this.endBeforeSet_ = false; // can only be true if endSet_ is true
         this.limit_ = 0;
         this.viewFrom_ = '';
         this.indexStartValue_ = null;
@@ -8839,12 +9424,6 @@ class QueryParams {
     }
     hasStart() {
         return this.startSet_;
-    }
-    hasStartAfter() {
-        return this.startAfterSet_;
-    }
-    hasEndBefore() {
-        return this.endBeforeSet_;
     }
     /**
      * @returns True if it would return from left.
@@ -8858,7 +9437,7 @@ class QueryParams {
             return this.startSet_;
         }
         else {
-            return this.viewFrom_ === "l" /* VIEW_FROM_LEFT */;
+            return this.viewFrom_ === "l" /* WIRE_PROTOCOL_CONSTANTS.VIEW_FROM_LEFT */;
         }
     }
     /**
@@ -8934,10 +9513,12 @@ class QueryParams {
         copy.limitSet_ = this.limitSet_;
         copy.limit_ = this.limit_;
         copy.startSet_ = this.startSet_;
+        copy.startAfterSet_ = this.startAfterSet_;
         copy.indexStartValue_ = this.indexStartValue_;
         copy.startNameSet_ = this.startNameSet_;
         copy.indexStartName_ = this.indexStartName_;
         copy.endSet_ = this.endSet_;
+        copy.endBeforeSet_ = this.endBeforeSet_;
         copy.indexEndValue_ = this.indexEndValue_;
         copy.endNameSet_ = this.endNameSet_;
         copy.indexEndName_ = this.indexEndName_;
@@ -8974,39 +9555,43 @@ function queryParamsToRestQueryStringParameters(queryParams) {
     }
     let orderBy;
     if (queryParams.index_ === PRIORITY_INDEX) {
-        orderBy = "$priority" /* PRIORITY_INDEX */;
+        orderBy = "$priority" /* REST_QUERY_CONSTANTS.PRIORITY_INDEX */;
     }
     else if (queryParams.index_ === VALUE_INDEX) {
-        orderBy = "$value" /* VALUE_INDEX */;
+        orderBy = "$value" /* REST_QUERY_CONSTANTS.VALUE_INDEX */;
     }
     else if (queryParams.index_ === KEY_INDEX) {
-        orderBy = "$key" /* KEY_INDEX */;
+        orderBy = "$key" /* REST_QUERY_CONSTANTS.KEY_INDEX */;
     }
     else {
         assert(queryParams.index_ instanceof PathIndex, 'Unrecognized index type!');
         orderBy = queryParams.index_.toString();
     }
-    qs["orderBy" /* ORDER_BY */] = stringify(orderBy);
+    qs["orderBy" /* REST_QUERY_CONSTANTS.ORDER_BY */] = stringify(orderBy);
     if (queryParams.startSet_) {
-        qs["startAt" /* START_AT */] = stringify(queryParams.indexStartValue_);
+        const startParam = queryParams.startAfterSet_
+            ? "startAfter" /* REST_QUERY_CONSTANTS.START_AFTER */
+            : "startAt" /* REST_QUERY_CONSTANTS.START_AT */;
+        qs[startParam] = stringify(queryParams.indexStartValue_);
         if (queryParams.startNameSet_) {
-            qs["startAt" /* START_AT */] +=
-                ',' + stringify(queryParams.indexStartName_);
+            qs[startParam] += ',' + stringify(queryParams.indexStartName_);
         }
     }
     if (queryParams.endSet_) {
-        qs["endAt" /* END_AT */] = stringify(queryParams.indexEndValue_);
+        const endParam = queryParams.endBeforeSet_
+            ? "endBefore" /* REST_QUERY_CONSTANTS.END_BEFORE */
+            : "endAt" /* REST_QUERY_CONSTANTS.END_AT */;
+        qs[endParam] = stringify(queryParams.indexEndValue_);
         if (queryParams.endNameSet_) {
-            qs["endAt" /* END_AT */] +=
-                ',' + stringify(queryParams.indexEndName_);
+            qs[endParam] += ',' + stringify(queryParams.indexEndName_);
         }
     }
     if (queryParams.limitSet_) {
         if (queryParams.isViewFromLeft()) {
-            qs["limitToFirst" /* LIMIT_TO_FIRST */] = queryParams.limit_;
+            qs["limitToFirst" /* REST_QUERY_CONSTANTS.LIMIT_TO_FIRST */] = queryParams.limit_;
         }
         else {
-            qs["limitToLast" /* LIMIT_TO_LAST */] = queryParams.limit_;
+            qs["limitToLast" /* REST_QUERY_CONSTANTS.LIMIT_TO_LAST */] = queryParams.limit_;
         }
     }
     return qs;
@@ -9014,35 +9599,39 @@ function queryParamsToRestQueryStringParameters(queryParams) {
 function queryParamsGetQueryObject(queryParams) {
     const obj = {};
     if (queryParams.startSet_) {
-        obj["sp" /* INDEX_START_VALUE */] =
+        obj["sp" /* WIRE_PROTOCOL_CONSTANTS.INDEX_START_VALUE */] =
             queryParams.indexStartValue_;
         if (queryParams.startNameSet_) {
-            obj["sn" /* INDEX_START_NAME */] =
+            obj["sn" /* WIRE_PROTOCOL_CONSTANTS.INDEX_START_NAME */] =
                 queryParams.indexStartName_;
         }
+        obj["sin" /* WIRE_PROTOCOL_CONSTANTS.INDEX_START_IS_INCLUSIVE */] =
+            !queryParams.startAfterSet_;
     }
     if (queryParams.endSet_) {
-        obj["ep" /* INDEX_END_VALUE */] = queryParams.indexEndValue_;
+        obj["ep" /* WIRE_PROTOCOL_CONSTANTS.INDEX_END_VALUE */] = queryParams.indexEndValue_;
         if (queryParams.endNameSet_) {
-            obj["en" /* INDEX_END_NAME */] = queryParams.indexEndName_;
+            obj["en" /* WIRE_PROTOCOL_CONSTANTS.INDEX_END_NAME */] = queryParams.indexEndName_;
         }
+        obj["ein" /* WIRE_PROTOCOL_CONSTANTS.INDEX_END_IS_INCLUSIVE */] =
+            !queryParams.endBeforeSet_;
     }
     if (queryParams.limitSet_) {
-        obj["l" /* LIMIT */] = queryParams.limit_;
+        obj["l" /* WIRE_PROTOCOL_CONSTANTS.LIMIT */] = queryParams.limit_;
         let viewFrom = queryParams.viewFrom_;
         if (viewFrom === '') {
             if (queryParams.isViewFromLeft()) {
-                viewFrom = "l" /* VIEW_FROM_LEFT */;
+                viewFrom = "l" /* WIRE_PROTOCOL_CONSTANTS.VIEW_FROM_LEFT */;
             }
             else {
-                viewFrom = "r" /* VIEW_FROM_RIGHT */;
+                viewFrom = "r" /* WIRE_PROTOCOL_CONSTANTS.VIEW_FROM_RIGHT */;
             }
         }
-        obj["vf" /* VIEW_FROM */] = viewFrom;
+        obj["vf" /* WIRE_PROTOCOL_CONSTANTS.VIEW_FROM */] = viewFrom;
     }
     // For now, priority index is the default, so we only specify if it's some other index
     if (queryParams.index_ !== PRIORITY_INDEX) {
-        obj["i" /* INDEX */] = queryParams.index_.toString();
+        obj["i" /* WIRE_PROTOCOL_CONSTANTS.INDEX */] = queryParams.index_.toString();
     }
     return obj;
 }
@@ -9786,16 +10375,16 @@ function eventGeneratorGenerateEventsForChanges(eventGenerator, changes, eventCa
     const events = [];
     const moves = [];
     changes.forEach(change => {
-        if (change.type === "child_changed" /* CHILD_CHANGED */ &&
+        if (change.type === "child_changed" /* ChangeType.CHILD_CHANGED */ &&
             eventGenerator.index_.indexedValueChanged(change.oldSnap, change.snapshotNode)) {
             moves.push(changeChildMoved(change.childName, change.snapshotNode));
         }
     });
-    eventGeneratorGenerateEventsForType(eventGenerator, events, "child_removed" /* CHILD_REMOVED */, changes, eventRegistrations, eventCache);
-    eventGeneratorGenerateEventsForType(eventGenerator, events, "child_added" /* CHILD_ADDED */, changes, eventRegistrations, eventCache);
-    eventGeneratorGenerateEventsForType(eventGenerator, events, "child_moved" /* CHILD_MOVED */, moves, eventRegistrations, eventCache);
-    eventGeneratorGenerateEventsForType(eventGenerator, events, "child_changed" /* CHILD_CHANGED */, changes, eventRegistrations, eventCache);
-    eventGeneratorGenerateEventsForType(eventGenerator, events, "value" /* VALUE */, changes, eventRegistrations, eventCache);
+    eventGeneratorGenerateEventsForType(eventGenerator, events, "child_removed" /* ChangeType.CHILD_REMOVED */, changes, eventRegistrations, eventCache);
+    eventGeneratorGenerateEventsForType(eventGenerator, events, "child_added" /* ChangeType.CHILD_ADDED */, changes, eventRegistrations, eventCache);
+    eventGeneratorGenerateEventsForType(eventGenerator, events, "child_moved" /* ChangeType.CHILD_MOVED */, moves, eventRegistrations, eventCache);
+    eventGeneratorGenerateEventsForType(eventGenerator, events, "child_changed" /* ChangeType.CHILD_CHANGED */, changes, eventRegistrations, eventCache);
+    eventGeneratorGenerateEventsForType(eventGenerator, events, "value" /* ChangeType.VALUE */, changes, eventRegistrations, eventCache);
     return events;
 }
 /**
@@ -10876,31 +11465,31 @@ class ChildChangeAccumulator {
     trackChildChange(change) {
         const type = change.type;
         const childKey = change.childName;
-        assert(type === "child_added" /* CHILD_ADDED */ ||
-            type === "child_changed" /* CHILD_CHANGED */ ||
-            type === "child_removed" /* CHILD_REMOVED */, 'Only child changes supported for tracking');
+        assert(type === "child_added" /* ChangeType.CHILD_ADDED */ ||
+            type === "child_changed" /* ChangeType.CHILD_CHANGED */ ||
+            type === "child_removed" /* ChangeType.CHILD_REMOVED */, 'Only child changes supported for tracking');
         assert(childKey !== '.priority', 'Only non-priority child changes can be tracked.');
         const oldChange = this.changeMap.get(childKey);
         if (oldChange) {
             const oldType = oldChange.type;
-            if (type === "child_added" /* CHILD_ADDED */ &&
-                oldType === "child_removed" /* CHILD_REMOVED */) {
+            if (type === "child_added" /* ChangeType.CHILD_ADDED */ &&
+                oldType === "child_removed" /* ChangeType.CHILD_REMOVED */) {
                 this.changeMap.set(childKey, changeChildChanged(childKey, change.snapshotNode, oldChange.snapshotNode));
             }
-            else if (type === "child_removed" /* CHILD_REMOVED */ &&
-                oldType === "child_added" /* CHILD_ADDED */) {
+            else if (type === "child_removed" /* ChangeType.CHILD_REMOVED */ &&
+                oldType === "child_added" /* ChangeType.CHILD_ADDED */) {
                 this.changeMap.delete(childKey);
             }
-            else if (type === "child_removed" /* CHILD_REMOVED */ &&
-                oldType === "child_changed" /* CHILD_CHANGED */) {
+            else if (type === "child_removed" /* ChangeType.CHILD_REMOVED */ &&
+                oldType === "child_changed" /* ChangeType.CHILD_CHANGED */) {
                 this.changeMap.set(childKey, changeChildRemoved(childKey, oldChange.oldSnap));
             }
-            else if (type === "child_changed" /* CHILD_CHANGED */ &&
-                oldType === "child_added" /* CHILD_ADDED */) {
+            else if (type === "child_changed" /* ChangeType.CHILD_CHANGED */ &&
+                oldType === "child_added" /* ChangeType.CHILD_ADDED */) {
                 this.changeMap.set(childKey, changeChildAdded(childKey, change.snapshotNode));
             }
-            else if (type === "child_changed" /* CHILD_CHANGED */ &&
-                oldType === "child_changed" /* CHILD_CHANGED */) {
+            else if (type === "child_changed" /* ChangeType.CHILD_CHANGED */ &&
+                oldType === "child_changed" /* ChangeType.CHILD_CHANGED */) {
                 this.changeMap.set(childKey, changeChildChanged(childKey, change.snapshotNode, oldChange.oldSnap));
             }
             else {
@@ -11302,7 +11891,7 @@ function viewProcessorApplyServerMerge(viewProcessor, viewCache, path, changedCh
     });
     viewMergeTree.children.inorderTraversal((childKey, childMergeTree) => {
         const isUnknownDeepMerge = !viewCache.serverCache.isCompleteForChild(childKey) &&
-            childMergeTree.value === undefined;
+            childMergeTree.value === null;
         if (!serverNode.hasChild(childKey) && !isUnknownDeepMerge) {
             const serverChild = viewCache.serverCache
                 .getNode()
@@ -11938,9 +12527,11 @@ function syncTreeApplyTaggedListenComplete(syncTree, path, tag) {
  *
  * @param eventRegistration - If null, all callbacks are removed.
  * @param cancelError - If a cancelError is provided, appropriate cancel events will be returned.
+ * @param skipListenerDedup - When performing a `get()`, we don't add any new listeners, so no
+ *  deduping needs to take place. This flag allows toggling of that behavior
  * @returns Cancel events, if cancelError was provided.
  */
-function syncTreeRemoveEventRegistration(syncTree, query, eventRegistration, cancelError) {
+function syncTreeRemoveEventRegistration(syncTree, query, eventRegistration, cancelError, skipListenerDedup = false) {
     // Find the syncPoint first. Then deal with whether or not it has matching listeners
     const path = query._path;
     const maybeSyncPoint = syncTree.syncPointTree_.get(path);
@@ -11957,48 +12548,52 @@ function syncTreeRemoveEventRegistration(syncTree, query, eventRegistration, can
         }
         const removed = removedAndEvents.removed;
         cancelEvents = removedAndEvents.events;
-        // We may have just removed one of many listeners and can short-circuit this whole process
-        // We may also not have removed a default listener, in which case all of the descendant listeners should already be
-        // properly set up.
-        //
-        // Since indexed queries can shadow if they don't have other query constraints, check for loadsAllData(), instead of
-        // queryId === 'default'
-        const removingDefault = -1 !==
-            removed.findIndex(query => {
-                return query._queryParams.loadsAllData();
-            });
-        const covered = syncTree.syncPointTree_.findOnPath(path, (relativePath, parentSyncPoint) => syncPointHasCompleteView(parentSyncPoint));
-        if (removingDefault && !covered) {
-            const subtree = syncTree.syncPointTree_.subtree(path);
-            // There are potentially child listeners. Determine what if any listens we need to send before executing the
-            // removal
-            if (!subtree.isEmpty()) {
-                // We need to fold over our subtree and collect the listeners to send
-                const newViews = syncTreeCollectDistinctViewsForSubTree_(subtree);
-                // Ok, we've collected all the listens we need. Set them up.
-                for (let i = 0; i < newViews.length; ++i) {
-                    const view = newViews[i], newQuery = view.query;
-                    const listener = syncTreeCreateListenerForView_(syncTree, view);
-                    syncTree.listenProvider_.startListening(syncTreeQueryForListening_(newQuery), syncTreeTagForQuery_(syncTree, newQuery), listener.hashFn, listener.onComplete);
-                }
-            }
-        }
-        // If we removed anything and we're not covered by a higher up listen, we need to stop listening on this query
-        // The above block has us covered in terms of making sure we're set up on listens lower in the tree.
-        // Also, note that if we have a cancelError, it's already been removed at the provider level.
-        if (!covered && removed.length > 0 && !cancelError) {
-            // If we removed a default, then we weren't listening on any of the other queries here. Just cancel the one
-            // default. Otherwise, we need to iterate through and cancel each individual query
-            if (removingDefault) {
-                // We don't tag default listeners
-                const defaultTag = null;
-                syncTree.listenProvider_.stopListening(syncTreeQueryForListening_(query), defaultTag);
-            }
-            else {
-                removed.forEach((queryToRemove) => {
-                    const tagToRemove = syncTree.queryToTagMap.get(syncTreeMakeQueryKey_(queryToRemove));
-                    syncTree.listenProvider_.stopListening(syncTreeQueryForListening_(queryToRemove), tagToRemove);
+        if (!skipListenerDedup) {
+            /**
+             * We may have just removed one of many listeners and can short-circuit this whole process
+             * We may also not have removed a default listener, in which case all of the descendant listeners should already be
+             * properly set up.
+             */
+            // Since indexed queries can shadow if they don't have other query constraints, check for loadsAllData(), instead of
+            // queryId === 'default'
+            const removingDefault = -1 !==
+                removed.findIndex(query => {
+                    return query._queryParams.loadsAllData();
                 });
+            const covered = syncTree.syncPointTree_.findOnPath(path, (relativePath, parentSyncPoint) => syncPointHasCompleteView(parentSyncPoint));
+            if (removingDefault && !covered) {
+                const subtree = syncTree.syncPointTree_.subtree(path);
+                // There are potentially child listeners. Determine what if any listens we need to send before executing the
+                // removal
+                if (!subtree.isEmpty()) {
+                    // We need to fold over our subtree and collect the listeners to send
+                    const newViews = syncTreeCollectDistinctViewsForSubTree_(subtree);
+                    // Ok, we've collected all the listens we need. Set them up.
+                    for (let i = 0; i < newViews.length; ++i) {
+                        const view = newViews[i], newQuery = view.query;
+                        const listener = syncTreeCreateListenerForView_(syncTree, view);
+                        syncTree.listenProvider_.startListening(syncTreeQueryForListening_(newQuery), syncTreeTagForQuery(syncTree, newQuery), listener.hashFn, listener.onComplete);
+                    }
+                }
+                // Otherwise there's nothing below us, so nothing we need to start listening on
+            }
+            // If we removed anything and we're not covered by a higher up listen, we need to stop listening on this query
+            // The above block has us covered in terms of making sure we're set up on listens lower in the tree.
+            // Also, note that if we have a cancelError, it's already been removed at the provider level.
+            if (!covered && removed.length > 0 && !cancelError) {
+                // If we removed a default, then we weren't listening on any of the other queries here. Just cancel the one
+                // default. Otherwise, we need to iterate through and cancel each individual query
+                if (removingDefault) {
+                    // We don't tag default listeners
+                    const defaultTag = null;
+                    syncTree.listenProvider_.stopListening(syncTreeQueryForListening_(query), defaultTag);
+                }
+                else {
+                    removed.forEach((queryToRemove) => {
+                        const tagToRemove = syncTree.queryToTagMap.get(syncTreeMakeQueryKey_(queryToRemove));
+                        syncTree.listenProvider_.stopListening(syncTreeQueryForListening_(queryToRemove), tagToRemove);
+                    });
+                }
             }
         }
         // Now, clear all of the tags we're tracking for the removed listens
@@ -12046,11 +12641,11 @@ function syncTreeApplyTaggedQueryMerge(syncTree, path, changedChildren, tag) {
     }
 }
 /**
- * Creates a new syncpoint for a query and creates a tag if the view doesn't exist.
- * Extracted from addEventRegistration to allow `repoGetValue` to properly set up the SyncTree
- * without actually listening on a query.
+ * Add an event callback for the specified query.
+ *
+ * @returns Events to raise.
  */
-function syncTreeRegisterSyncPoint(query, syncTree) {
+function syncTreeAddEventRegistration(syncTree, query, eventRegistration, skipSetupListener = false) {
     const path = query._path;
     let serverCache = null;
     let foundAncestorDefaultView = false;
@@ -12099,24 +12694,8 @@ function syncTreeRegisterSyncPoint(query, syncTree) {
         syncTree.tagToQueryMap.set(tag, queryKey);
     }
     const writesCache = writeTreeChildWrites(syncTree.pendingWriteTree_, path);
-    return {
-        syncPoint,
-        writesCache,
-        serverCache,
-        serverCacheComplete,
-        foundAncestorDefaultView,
-        viewAlreadyExists
-    };
-}
-/**
- * Add an event callback for the specified query.
- *
- * @returns Events to raise.
- */
-function syncTreeAddEventRegistration(syncTree, query, eventRegistration) {
-    const { syncPoint, serverCache, writesCache, serverCacheComplete, viewAlreadyExists, foundAncestorDefaultView } = syncTreeRegisterSyncPoint(query, syncTree);
     let events = syncPointAddEventRegistration(syncPoint, query, eventRegistration, writesCache, serverCache, serverCacheComplete);
-    if (!viewAlreadyExists && !foundAncestorDefaultView) {
+    if (!viewAlreadyExists && !foundAncestorDefaultView && !skipSetupListener) {
         const view = syncPointViewForQuery(syncPoint, query);
         events = events.concat(syncTreeSetupListener_(syncTree, query, view));
     }
@@ -12219,7 +12798,7 @@ function syncTreeApplyOperationDescendantsHelper_(operation, syncPointTree, serv
 }
 function syncTreeCreateListenerForView_(syncTree, view) {
     const query = view.query;
-    const tag = syncTreeTagForQuery_(syncTree, query);
+    const tag = syncTreeTagForQuery(syncTree, query);
     return {
         hashFn: () => {
             const cache = viewGetServerCache(view) || ChildrenNode.EMPTY_NODE;
@@ -12247,7 +12826,7 @@ function syncTreeCreateListenerForView_(syncTree, view) {
 /**
  * Return the tag associated with the given query.
  */
-function syncTreeTagForQuery_(syncTree, query) {
+function syncTreeTagForQuery(syncTree, query) {
     const queryKey = syncTreeMakeQueryKey_(query);
     return syncTree.queryToTagMap.get(queryKey);
 }
@@ -12347,7 +12926,7 @@ function syncTreeGetNextQueryTag_() {
  */
 function syncTreeSetupListener_(syncTree, query, view) {
     const path = query._path;
-    const tag = syncTreeTagForQuery_(syncTree, query);
+    const tag = syncTreeTagForQuery(syncTree, query);
     const listener = syncTreeCreateListenerForView_(syncTree, view);
     const events = syncTree.listenProvider_.startListening(syncTreeQueryForListening_(query), tag, listener.hashFn, listener.onComplete);
     const subtree = syncTree.syncPointTree_.subtree(path);
@@ -12378,7 +12957,7 @@ function syncTreeSetupListener_(syncTree, query, view) {
         });
         for (let i = 0; i < queriesToStop.length; ++i) {
             const queryToStop = queriesToStop[i];
-            syncTree.listenProvider_.stopListening(syncTreeQueryForListening_(queryToStop), syncTreeTagForQuery_(syncTree, queryToStop));
+            syncTree.listenProvider_.stopListening(syncTreeQueryForListening_(queryToStop), syncTreeTagForQuery(syncTree, queryToStop));
         }
     }
     return events;
@@ -13488,7 +14067,7 @@ function repoSendReadyTransactions(repo, node = repo.transactionQueueTree_) {
     if (treeGetValue(node)) {
         const queue = repoBuildTransactionQueue(repo, node);
         assert(queue.length > 0, 'Sending zero length transaction queue');
-        const allRun = queue.every((transaction) => transaction.status === 0 /* RUN */);
+        const allRun = queue.every((transaction) => transaction.status === 0 /* TransactionStatus.RUN */);
         // If they're all run (and not sent), we can send them.  Else, we must wait.
         if (allRun) {
             repoSendTransactionQueue(repo, treeGetPath(node), queue);
@@ -13517,8 +14096,8 @@ function repoSendTransactionQueue(repo, path, queue) {
     const latestHash = latestState.hash();
     for (let i = 0; i < queue.length; i++) {
         const txn = queue[i];
-        assert(txn.status === 0 /* RUN */, 'tryToSendTransactionQueue_: items in queue should all be run.');
-        txn.status = 1 /* SENT */;
+        assert(txn.status === 0 /* TransactionStatus.RUN */, 'tryToSendTransactionQueue_: items in queue should all be run.');
+        txn.status = 1 /* TransactionStatus.SENT */;
         txn.retryCount++;
         const relativePath = newRelativePath(path, txn.path);
         // If we've gotten to this point, the output snapshot must be defined.
@@ -13539,7 +14118,7 @@ function repoSendTransactionQueue(repo, path, queue) {
             // transactions or sets.
             const callbacks = [];
             for (let i = 0; i < queue.length; i++) {
-                queue[i].status = 2 /* COMPLETED */;
+                queue[i].status = 2 /* TransactionStatus.COMPLETED */;
                 events = events.concat(syncTreeAckUserWrite(repo.serverSyncTree_, queue[i].currentWriteId));
                 if (queue[i].onComplete) {
                     // We never unset the output snapshot, and given that this
@@ -13562,18 +14141,18 @@ function repoSendTransactionQueue(repo, path, queue) {
             // transactions are no longer sent.  Update their status appropriately.
             if (status === 'datastale') {
                 for (let i = 0; i < queue.length; i++) {
-                    if (queue[i].status === 3 /* SENT_NEEDS_ABORT */) {
-                        queue[i].status = 4 /* NEEDS_ABORT */;
+                    if (queue[i].status === 3 /* TransactionStatus.SENT_NEEDS_ABORT */) {
+                        queue[i].status = 4 /* TransactionStatus.NEEDS_ABORT */;
                     }
                     else {
-                        queue[i].status = 0 /* RUN */;
+                        queue[i].status = 0 /* TransactionStatus.RUN */;
                     }
                 }
             }
             else {
                 warn('transaction at ' + pathToSend.toString() + ' failed: ' + status);
                 for (let i = 0; i < queue.length; i++) {
-                    queue[i].status = 4 /* NEEDS_ABORT */;
+                    queue[i].status = 4 /* TransactionStatus.NEEDS_ABORT */;
                     queue[i].abortReason = status;
                 }
             }
@@ -13617,7 +14196,7 @@ function repoRerunTransactionQueue(repo, queue, path) {
     let events = [];
     // Ignore all of the sets we're going to re-run.
     const txnsToRerun = queue.filter(q => {
-        return q.status === 0 /* RUN */;
+        return q.status === 0 /* TransactionStatus.RUN */;
     });
     const setsToIgnore = txnsToRerun.map(q => {
         return q.currentWriteId;
@@ -13627,12 +14206,12 @@ function repoRerunTransactionQueue(repo, queue, path) {
         const relativePath = newRelativePath(path, transaction.path);
         let abortTransaction = false, abortReason;
         assert(relativePath !== null, 'rerunTransactionsUnderNode_: relativePath should not be null.');
-        if (transaction.status === 4 /* NEEDS_ABORT */) {
+        if (transaction.status === 4 /* TransactionStatus.NEEDS_ABORT */) {
             abortTransaction = true;
             abortReason = transaction.abortReason;
             events = events.concat(syncTreeAckUserWrite(repo.serverSyncTree_, transaction.currentWriteId, true));
         }
-        else if (transaction.status === 0 /* RUN */) {
+        else if (transaction.status === 0 /* TransactionStatus.RUN */) {
             if (transaction.retryCount >= MAX_TRANSACTION_RETRIES) {
                 abortTransaction = true;
                 abortReason = 'maxretry';
@@ -13675,7 +14254,7 @@ function repoRerunTransactionQueue(repo, queue, path) {
         events = [];
         if (abortTransaction) {
             // Abort.
-            queue[i].status = 2 /* COMPLETED */;
+            queue[i].status = 2 /* TransactionStatus.COMPLETED */;
             // Removing a listener can trigger pruning which can muck with
             // mergedData/visibleData (as it prunes data). So defer the unwatcher
             // until we're done.
@@ -13756,7 +14335,7 @@ function repoPruneCompletedTransactionsBelowNode(repo, node) {
     if (queue) {
         let to = 0;
         for (let from = 0; from < queue.length; from++) {
-            if (queue[from].status !== 2 /* COMPLETED */) {
+            if (queue[from].status !== 2 /* TransactionStatus.COMPLETED */) {
                 queue[to] = queue[from];
                 to++;
             }
@@ -13804,16 +14383,16 @@ function repoAbortTransactionsOnNode(repo, node) {
         let events = [];
         let lastSent = -1;
         for (let i = 0; i < queue.length; i++) {
-            if (queue[i].status === 3 /* SENT_NEEDS_ABORT */) ;
-            else if (queue[i].status === 1 /* SENT */) {
+            if (queue[i].status === 3 /* TransactionStatus.SENT_NEEDS_ABORT */) ;
+            else if (queue[i].status === 1 /* TransactionStatus.SENT */) {
                 assert(lastSent === i - 1, 'All SENT items should be at beginning of queue.');
                 lastSent = i;
                 // Mark transaction for abort when it comes back.
-                queue[i].status = 3 /* SENT_NEEDS_ABORT */;
+                queue[i].status = 3 /* TransactionStatus.SENT_NEEDS_ABORT */;
                 queue[i].abortReason = 'set';
             }
             else {
-                assert(queue[i].status === 0 /* RUN */, 'Unexpected transaction status in abort');
+                assert(queue[i].status === 0 /* TransactionStatus.RUN */, 'Unexpected transaction status in abort');
                 // We can abort it immediately.
                 queue[i].unwatcher();
                 events = events.concat(syncTreeAckUserWrite(repo.serverSyncTree_, queue[i].currentWriteId, true));
@@ -13982,6 +14561,81 @@ const parseDatabaseURL = function (dataURL) {
         namespace
     };
 };
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+// Modeled after base64 web-safe chars, but ordered by ASCII.
+const PUSH_CHARS = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+/**
+ * Fancy ID generator that creates 20-character string identifiers with the
+ * following properties:
+ *
+ * 1. They're based on timestamp so that they sort *after* any existing ids.
+ * 2. They contain 72-bits of random data after the timestamp so that IDs won't
+ *    collide with other clients' IDs.
+ * 3. They sort *lexicographically* (so the timestamp is converted to characters
+ *    that will sort properly).
+ * 4. They're monotonically increasing. Even if you generate more than one in
+ *    the same timestamp, the latter ones will sort after the former ones. We do
+ *    this by using the previous random bits but "incrementing" them by 1 (only
+ *    in the case of a timestamp collision).
+ */
+const nextPushId = (function () {
+    // Timestamp of last push, used to prevent local collisions if you push twice
+    // in one ms.
+    let lastPushTime = 0;
+    // We generate 72-bits of randomness which get turned into 12 characters and
+    // appended to the timestamp to prevent collisions with other clients. We
+    // store the last characters we generated because in the event of a collision,
+    // we'll use those same characters except "incremented" by one.
+    const lastRandChars = [];
+    return function (now) {
+        const duplicateTime = now === lastPushTime;
+        lastPushTime = now;
+        let i;
+        const timeStampChars = new Array(8);
+        for (i = 7; i >= 0; i--) {
+            timeStampChars[i] = PUSH_CHARS.charAt(now % 64);
+            // NOTE: Can't use << here because javascript will convert to int and lose
+            // the upper bits.
+            now = Math.floor(now / 64);
+        }
+        assert(now === 0, 'Cannot push at time == 0');
+        let id = timeStampChars.join('');
+        if (!duplicateTime) {
+            for (i = 0; i < 12; i++) {
+                lastRandChars[i] = Math.floor(Math.random() * 64);
+            }
+        }
+        else {
+            // If the timestamp hasn't changed since last push, use the same random
+            // number, except incremented by 1.
+            for (i = 11; i >= 0 && lastRandChars[i] === 63; i--) {
+                lastRandChars[i] = 0;
+            }
+            lastRandChars[i]++;
+        }
+        for (i = 0; i < 12; i++) {
+            id += PUSH_CHARS.charAt(lastRandChars[i]);
+        }
+        assert(id.length === 20, 'nextPushId: Length should be 20.');
+        return id;
+    };
+})();
 
 /**
  * @license
@@ -14617,8 +15271,8 @@ function onDisconnect(ref) {
  * resulting list of items is chronologically sorted. The keys are also
  * designed to be unguessable (they contain 72 random bits of entropy).
  *
- * See {@link https://firebase.google.com/docs/database/web/lists-of-data#append_to_a_list_of_data | Append to a list of data}
- * </br>See {@link ttps://firebase.googleblog.com/2015/02/the-2120-ways-to-ensure-unique_68.html | The 2^120 Ways to Ensure Unique Identifiers}
+ * See {@link https://firebase.google.com/docs/database/web/lists-of-data#append_to_a_list_of_data | Append to a list of data}.
+ * See {@link https://firebase.googleblog.com/2015/02/the-2120-ways-to-ensure-unique_68.html | The 2^120 Ways to Ensure Unique Identifiers}.
  *
  * @param parent - The parent location.
  * @param value - Optional value to be written at the generated location.
@@ -14875,12 +15529,11 @@ function onChildAdded(query, callback, cancelCallbackOrListenOptions, options) {
     return addEventListener(query, 'child_added', callback, cancelCallbackOrListenOptions, options);
 }
 /**
- * Detaches a callback previously attached with `on()`.
+ * Detaches a callback previously attached with the corresponding `on*()` (`onValue`, `onChildAdded`) listener.
+ * Note: This is not the recommended way to remove a listener. Instead, please use the returned callback function from
+ * the respective `on*` callbacks.
  *
- * Detach a callback previously attached with `on()`. Note that if `on()` was
- * called multiple times with the same eventType and callback, the callback
- * will be called multiple times for each event, and `off()` must be called
- * multiple times to remove the callback. Calling `off()` on a parent listener
+ * Detach a callback previously attached with `on*()`. Calling `off()` on a parent listener
  * will not automatically remove listeners registered on child nodes, `off()`
  * must also be called on any child listeners to remove the callback.
  *
@@ -15141,10 +15794,10 @@ function registerDatabase(variant) {
         const authProvider = container.getProvider('auth-internal');
         const appCheckProvider = container.getProvider('app-check-internal');
         return repoManagerDatabaseFromApp(app, authProvider, appCheckProvider, url);
-    }, "PUBLIC" /* PUBLIC */).setMultipleInstances(true));
-    registerVersion(name$1, version$1, variant);
+    }, "PUBLIC" /* ComponentType.PUBLIC */).setMultipleInstances(true));
+    registerVersion(name, version, variant);
     // BUILD_TARGET will be replaced by values like esm5, esm2017, cjs5, etc during the compilation
-    registerVersion(name$1, version$1, 'esm2017');
+    registerVersion(name, version, 'esm2017');
 }
 
 /**
@@ -15190,471 +15843,6 @@ PersistentConnection.prototype.echo = function (data, onEcho) {
  */
 registerDatabase();
 
-/**
- * Default equality comparator pass-through, used as the standard `isEqual` creator for
- * use inside the built comparator.
- */
-function createDefaultIsNestedEqual(comparator) {
-    return function isEqual(a, b, _indexOrKeyA, _indexOrKeyB, _parentA, _parentB, meta) {
-        return comparator(a, b, meta);
-    };
-}
-/**
- * Wrap the provided `areItemsEqual` method to manage the circular cache, allowing
- * for circular references to be safely included in the comparison without creating
- * stack overflows.
- */
-function createIsCircular(areItemsEqual) {
-    return function isCircular(a, b, isEqual, cache) {
-        if (!a || !b || typeof a !== 'object' || typeof b !== 'object') {
-            return areItemsEqual(a, b, isEqual, cache);
-        }
-        var cachedA = cache.get(a);
-        var cachedB = cache.get(b);
-        if (cachedA && cachedB) {
-            return cachedA === b && cachedB === a;
-        }
-        cache.set(a, b);
-        cache.set(b, a);
-        var result = areItemsEqual(a, b, isEqual, cache);
-        cache.delete(a);
-        cache.delete(b);
-        return result;
-    };
-}
-/**
- * Targeted shallow merge of two objects.
- *
- * @NOTE
- * This exists as a tinier compiled version of the `__assign` helper that
- * `tsc` injects in case of `Object.assign` not being present.
- */
-function merge(a, b) {
-    var merged = {};
-    for (var key in a) {
-        merged[key] = a[key];
-    }
-    for (var key in b) {
-        merged[key] = b[key];
-    }
-    return merged;
-}
-/**
- * Whether the value is a plain object.
- *
- * @NOTE
- * This is a same-realm compariosn only.
- */
-function isPlainObject(value) {
-    return value.constructor === Object || value.constructor == null;
-}
-/**
- * When the value is `Promise`-like, aka "then-able".
- */
-function isPromiseLike(value) {
-    return typeof value.then === 'function';
-}
-/**
- * Whether the values passed are strictly equal or both NaN.
- */
-function sameValueZeroEqual(a, b) {
-    return a === b || (a !== a && b !== b);
-}
-
-var ARGUMENTS_TAG = '[object Arguments]';
-var BOOLEAN_TAG = '[object Boolean]';
-var DATE_TAG = '[object Date]';
-var REG_EXP_TAG = '[object RegExp]';
-var MAP_TAG = '[object Map]';
-var NUMBER_TAG = '[object Number]';
-var OBJECT_TAG = '[object Object]';
-var SET_TAG = '[object Set]';
-var STRING_TAG = '[object String]';
-var toString = Object.prototype.toString;
-function createComparator(_a) {
-    var areArraysEqual = _a.areArraysEqual, areDatesEqual = _a.areDatesEqual, areMapsEqual = _a.areMapsEqual, areObjectsEqual = _a.areObjectsEqual, areRegExpsEqual = _a.areRegExpsEqual, areSetsEqual = _a.areSetsEqual, createIsNestedEqual = _a.createIsNestedEqual;
-    var isEqual = createIsNestedEqual(comparator);
-    /**
-     * compare the value of the two objects and return true if they are equivalent in values
-     */
-    function comparator(a, b, meta) {
-        // If the items are strictly equal, no need to do a value comparison.
-        if (a === b) {
-            return true;
-        }
-        // If the items are not non-nullish objects, then the only possibility
-        // of them being equal but not strictly is if they are both `NaN`. Since
-        // `NaN` is uniquely not equal to itself, we can use self-comparison of
-        // both objects, which is faster than `isNaN()`.
-        if (!a || !b || typeof a !== 'object' || typeof b !== 'object') {
-            return a !== a && b !== b;
-        }
-        // Checks are listed in order of commonality of use-case:
-        //   1. Common complex object types (plain object, array)
-        //   2. Common data values (date, regexp)
-        //   3. Less-common complex object types (map, set)
-        //   4. Less-common data values (promise, primitive wrappers)
-        // Inherently this is both subjective and assumptive, however
-        // when reviewing comparable libraries in the wild this order
-        // appears to be generally consistent.
-        // `isPlainObject` only checks against the object's own realm. Cross-realm
-        // comparisons are rare, and will be handled in the ultimate fallback, so
-        // we can avoid the `toString.call()` cost unless necessary.
-        if (isPlainObject(a) && isPlainObject(b)) {
-            return areObjectsEqual(a, b, isEqual, meta);
-        }
-        // `isArray()` works on subclasses and is cross-realm, so we can again avoid
-        // the `toString.call()` cost unless necessary by just checking if either
-        // and then both are arrays.
-        var aArray = Array.isArray(a);
-        var bArray = Array.isArray(b);
-        if (aArray || bArray) {
-            return aArray === bArray && areArraysEqual(a, b, isEqual, meta);
-        }
-        // Since this is a custom object, use the classic `toString.call()` to get its
-        // type. This is reasonably performant in modern environments like v8 and
-        // SpiderMonkey, and allows for cross-realm comparison when other checks like
-        // `instanceof` do not.
-        var aTag = toString.call(a);
-        if (aTag !== toString.call(b)) {
-            return false;
-        }
-        if (aTag === DATE_TAG) {
-            // `getTime()` showed better results compared to alternatives like `valueOf()`
-            // or the unary `+` operator.
-            return areDatesEqual(a, b, isEqual, meta);
-        }
-        if (aTag === REG_EXP_TAG) {
-            return areRegExpsEqual(a, b, isEqual, meta);
-        }
-        if (aTag === MAP_TAG) {
-            return areMapsEqual(a, b, isEqual, meta);
-        }
-        if (aTag === SET_TAG) {
-            return areSetsEqual(a, b, isEqual, meta);
-        }
-        // If a simple object tag, then we can prioritize a simple object comparison because
-        // it is likely a custom class. If an arguments tag, it should be treated as a standard
-        // object.
-        if (aTag === OBJECT_TAG || aTag === ARGUMENTS_TAG) {
-            // The exception for value comparison is `Promise`-like contracts. These should be
-            // treated the same as standard `Promise` objects, which means strict equality.
-            return isPromiseLike(a) || isPromiseLike(b)
-                ? a === b
-                : areObjectsEqual(a, b, isEqual, meta);
-        }
-        // As the penultimate fallback, check if the values passed are primitive wrappers. This
-        // is very rare in modern JS, which is why it is deprioritized compared to all other object
-        // types.
-        if (aTag === BOOLEAN_TAG || aTag === NUMBER_TAG || aTag === STRING_TAG) {
-            return sameValueZeroEqual(a.valueOf(), b.valueOf());
-        }
-        // If not matching any tags that require a specific type of comparison, then use strict
-        // equality. This is for a few reasons:
-        //   - For types that cannot be introspected (`Promise`, `WeakMap`, etc.), this is the only
-        //     comparison that can be made.
-        //   - For types that can be introspected, but rarely have requirements to be compared
-        //     (`ArrayBuffer`, `DataView`, etc.), the cost is avoided to prioritize the common
-        //     use-cases.
-        //   - For types that can be introspected, but do not have an objective definition of what
-        //     equality is (`Error`, etc.), the subjective decision was to be conservative.
-        // In all cases, these decisions should be reevaluated based on changes to the language and
-        // common development practices.
-        return a === b;
-    }
-    return comparator;
-}
-
-/**
- * Whether the arrays are equal in value.
- */
-function areArraysEqual(a, b, isEqual, meta) {
-    var index = a.length;
-    if (b.length !== index) {
-        return false;
-    }
-    // Decrementing `while` showed faster results than either incrementing or
-    // decrementing `for` loop and than an incrementing `while` loop. Declarative
-    // methods like `some` / `every` were not used to avoid incurring the garbage
-    // cost of anonymous callbacks.
-    while (index-- > 0) {
-        if (!isEqual(a[index], b[index], index, index, a, b, meta)) {
-            return false;
-        }
-    }
-    return true;
-}
-/**
- * Whether the arrays are equal in value, including circular references.
- */
-var areArraysEqualCircular = createIsCircular(areArraysEqual);
-
-/**
- * Whether the dates passed are equal in value.
- *
- * @NOTE
- * This is a standalone function instead of done inline in the comparator
- * to allow for overrides.
- */
-function areDatesEqual(a, b) {
-    return sameValueZeroEqual(a.valueOf(), b.valueOf());
-}
-
-/**
- * Whether the `Map`s are equal in value.
- */
-function areMapsEqual(a, b, isEqual, meta) {
-    var isValueEqual = a.size === b.size;
-    if (!isValueEqual) {
-        return false;
-    }
-    if (!a.size) {
-        return true;
-    }
-    // The use of `forEach()` is to avoid the transpilation cost of `for...of` comparisons, and
-    // the inability to control the performance of the resulting code. It also avoids excessive
-    // iteration compared to doing comparisons of `keys()` and `values()`. As a result, though,
-    // we cannot short-circuit the iterations; bookkeeping must be done to short-circuit the
-    // equality checks themselves.
-    var matchedIndices = {};
-    var indexA = 0;
-    a.forEach(function (aValue, aKey) {
-        if (!isValueEqual) {
-            return;
-        }
-        var hasMatch = false;
-        var matchIndexB = 0;
-        b.forEach(function (bValue, bKey) {
-            if (!hasMatch &&
-                !matchedIndices[matchIndexB] &&
-                (hasMatch =
-                    isEqual(aKey, bKey, indexA, matchIndexB, a, b, meta) &&
-                        isEqual(aValue, bValue, aKey, bKey, a, b, meta))) {
-                matchedIndices[matchIndexB] = true;
-            }
-            matchIndexB++;
-        });
-        indexA++;
-        isValueEqual = hasMatch;
-    });
-    return isValueEqual;
-}
-/**
- * Whether the `Map`s are equal in value, including circular references.
- */
-var areMapsEqualCircular = createIsCircular(areMapsEqual);
-
-var OWNER = '_owner';
-var hasOwnProperty = Object.prototype.hasOwnProperty;
-/**
- * Whether the objects are equal in value.
- */
-function areObjectsEqual(a, b, isEqual, meta) {
-    var keysA = Object.keys(a);
-    var index = keysA.length;
-    if (Object.keys(b).length !== index) {
-        return false;
-    }
-    var key;
-    // Decrementing `while` showed faster results than either incrementing or
-    // decrementing `for` loop and than an incrementing `while` loop. Declarative
-    // methods like `some` / `every` were not used to avoid incurring the garbage
-    // cost of anonymous callbacks.
-    while (index-- > 0) {
-        key = keysA[index];
-        if (key === OWNER) {
-            var reactElementA = !!a.$$typeof;
-            var reactElementB = !!b.$$typeof;
-            if ((reactElementA || reactElementB) && reactElementA !== reactElementB) {
-                return false;
-            }
-        }
-        if (!hasOwnProperty.call(b, key) ||
-            !isEqual(a[key], b[key], key, key, a, b, meta)) {
-            return false;
-        }
-    }
-    return true;
-}
-/**
- * Whether the objects are equal in value, including circular references.
- */
-var areObjectsEqualCircular = createIsCircular(areObjectsEqual);
-
-/**
- * Whether the regexps passed are equal in value.
- *
- * @NOTE
- * This is a standalone function instead of done inline in the comparator
- * to allow for overrides. An example of this would be supporting a
- * pre-ES2015 environment where the `flags` property is not available.
- */
-function areRegExpsEqual(a, b) {
-    return a.source === b.source && a.flags === b.flags;
-}
-
-/**
- * Whether the `Set`s are equal in value.
- */
-function areSetsEqual(a, b, isEqual, meta) {
-    var isValueEqual = a.size === b.size;
-    if (!isValueEqual) {
-        return false;
-    }
-    if (!a.size) {
-        return true;
-    }
-    // The use of `forEach()` is to avoid the transpilation cost of `for...of` comparisons, and
-    // the inability to control the performance of the resulting code. It also avoids excessive
-    // iteration compared to doing comparisons of `keys()` and `values()`. As a result, though,
-    // we cannot short-circuit the iterations; bookkeeping must be done to short-circuit the
-    // equality checks themselves.
-    var matchedIndices = {};
-    a.forEach(function (aValue, aKey) {
-        if (!isValueEqual) {
-            return;
-        }
-        var hasMatch = false;
-        var matchIndex = 0;
-        b.forEach(function (bValue, bKey) {
-            if (!hasMatch &&
-                !matchedIndices[matchIndex] &&
-                (hasMatch = isEqual(aValue, bValue, aKey, bKey, a, b, meta))) {
-                matchedIndices[matchIndex] = true;
-            }
-            matchIndex++;
-        });
-        isValueEqual = hasMatch;
-    });
-    return isValueEqual;
-}
-/**
- * Whether the `Set`s are equal in value, including circular references.
- */
-var areSetsEqualCircular = createIsCircular(areSetsEqual);
-
-var DEFAULT_CONFIG = Object.freeze({
-    areArraysEqual: areArraysEqual,
-    areDatesEqual: areDatesEqual,
-    areMapsEqual: areMapsEqual,
-    areObjectsEqual: areObjectsEqual,
-    areRegExpsEqual: areRegExpsEqual,
-    areSetsEqual: areSetsEqual,
-    createIsNestedEqual: createDefaultIsNestedEqual,
-});
-var DEFAULT_CIRCULAR_CONFIG = Object.freeze({
-    areArraysEqual: areArraysEqualCircular,
-    areDatesEqual: areDatesEqual,
-    areMapsEqual: areMapsEqualCircular,
-    areObjectsEqual: areObjectsEqualCircular,
-    areRegExpsEqual: areRegExpsEqual,
-    areSetsEqual: areSetsEqualCircular,
-    createIsNestedEqual: createDefaultIsNestedEqual,
-});
-var isDeepEqual = createComparator(DEFAULT_CONFIG);
-/**
- * Whether the items passed are deeply-equal in value.
- */
-function deepEqual(a, b) {
-    return isDeepEqual(a, b, undefined);
-}
-createComparator(merge(DEFAULT_CONFIG, { createIsNestedEqual: function () { return sameValueZeroEqual; } }));
-createComparator(DEFAULT_CIRCULAR_CONFIG);
-createComparator(merge(DEFAULT_CIRCULAR_CONFIG, {
-    createIsNestedEqual: function () { return sameValueZeroEqual; },
-}));
-
-var settings = {
-    // Get a reference to the database service
-
-    // Was having a bug where the WIFI router would crash if the chunk size was bigger than 2^10
-    CHUNK_SIZE: Math.pow(2, 14), // size in bytes of the chunks. 2^14 is just under the limit in chrome.
-    ICE_SERVERS: [
-        {
-            url: 'stun:23.21.150.121',
-            urls: 'stun:23.21.150.121',
-        },
-        {
-            url: 'turn:global.turn.twilio.com:3478?transport=udp',
-            username:
-                '508d1e639868dc17f5da97a75b1d3b43bf2fc6d11e4e863678501db568b5665c',
-            credential: 'W5GTdhQQ6DqOD7k6bS8+xZVNQXm+fgLXSEQpN8bTe70=',
-            urls: 'turn:global.turn.twilio.com:3478?transport=udp',
-        },
-    ],
-    POLLING_FREQUENCY: 15000,
-    debug: false,
-};
-
-/**
- * Evented
- */
-
-class Evented {
-    constructor() {
-        this.events = {};
-    }
-
-    on(eventName, callback) {
-        if (typeof callback !== 'function') return
-        if (!this.events.hasOwnProperty(eventName)) {
-            this.events[eventName] = [];
-        }
-        this.events[eventName].push(callback);
-    }
-
-    off(eventName, callback) {
-        if (this.events.hasOwnProperty(eventName)) {
-            if (typeof callback === 'function') {
-                //_.without(this.events[eventName], callback);
-                this.events = this.events.filter(function (x) {
-                    if (x != this.events[eventName]) {
-                        return x
-                    }
-                });
-            } else {
-                delete this.events[eventName];
-            }
-        }
-    }
-
-    fire(eventName, argument) {
-        //_.each(this.events[eventName], (cb) => setTimeout(() => cb(argument)));
-        if (this.events[eventName]) {
-            for (var cb of this.events[eventName]) {
-                setTimeout(() => cb(argument));
-            }
-        }
-    }
-
-    fireAll(argument) {
-        for (var k in this.events) {
-            this.fire(k, argument);
-        }
-    }
-}
-
-var name = "firebase";
-var version = "9.8.4";
-
-/**
- * @license
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-registerVersion(name, version, 'app');
-
 function getDatabase() {
 
     {
@@ -15683,9 +15871,9 @@ class Channel {
  * @param {*} database
  * @param {*} callback
  */
-function getPeerList(database, callback) {
+function getPeerList(database, callback, firebase) {
     console.log('getPeerList: ', database);
-    onValue(
+    firebase.onValue(
         database,
         (ev) => {
             var val = ev.val();
@@ -15706,25 +15894,33 @@ class firebaseTreeTrimmer {
             options === null ||
             !options.treeTrimmingRef ||
             !options.peersRef ||
-            !options.id
+            !options.id ||
+            !options.firebase
         )
             throw new Error(
-                'requires an options object with an id, treeTrimmingRef and peersRef'
+                'requires an options object with an id, firebase, treeTrimmingRef and peersRef'
             )
         Object.assign(this, options);
 
         this.monitorReference = this.monitor.bind(this);
         this.monitor();
+        this.firebase = options.firebase;
     }
 
     monitor() {
-        onValue(
-            query(this.treeTrimmingRef, orderByValue()),
+        this.firebase.onValue(
+            this.firebase.query(
+                this.treeTrimmingRef,
+                this.firebase.orderByValue()
+            ),
             (snapshot) => {
                 // check if in list
                 if (snapshot.child(this.id).val() === null) {
                     // if not add it
-                    set(child(snapshot.ref, this.id), Date.now());
+                    this.firebase.set(
+                        this.firebase.child(snapshot.ref, this.id),
+                        Date.now()
+                    );
                 } else {
                     // otherwise calculate hierachy
                     let children = {};
@@ -15765,14 +15961,14 @@ class firebaseTreeTrimmer {
 
     treeTrimmer(treeTrimmers) {
         // remove all references to peers not in treeTrimming list
-        onValue(
+        this.firebase.onValue(
             this.peersRef,
             (snap) => {
                 snap.forEach(function (child) {
                     // if the peer is not in the treeTrimming list,
                     // remove it from peersRef
                     if (treeTrimmers[child.key] === undefined) {
-                        remove(child.ref);
+                        this.firebase.remove(child.ref);
                     }
                 });
             },
@@ -15785,8 +15981,8 @@ class firebaseTreeTrimmer {
     watchMySuperior(superior) {
         // if superior is either not in /peers/cameras, or their
         // lastUpdate is greater than a minute, remove from treeTrimming list
-        onValue(
-            child(this.peersRef, superior),
+        this.firebase.onValue(
+            this.firebase.child(this.peersRef, superior),
             (snap) => {
                 // if the peer's lastUpdate is greater than three minutes,
                 // or it doesn't exist, remove from treeTrimming list
@@ -15796,7 +15992,9 @@ class firebaseTreeTrimmer {
                     snap.child('lastUpdate').val() < Date.now() - 3 * 60000
                 ) {
                     // if not in the peers list or has not been updated for 3 minutes then remove
-                    remove(child(this.treeTrimmingRef, superior));
+                    this.firebase.remove(
+                        this.firebase.child(this.treeTrimmingRef, superior)
+                    );
                 }
             },
             {
@@ -15807,7 +16005,7 @@ class firebaseTreeTrimmer {
 }
 
 function P2PServerFactory(options) {
-    const { PeerBinary } = options;
+    const { PeerBinary, firebase } = options;
 
     return class P2PServer extends Evented {
         constructor(options = {}, initialPeerInfo = {}) {
@@ -15863,16 +16061,16 @@ function P2PServerFactory(options) {
                 peersRef: this.database,
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
-                    child(this.database.parent, 'treeTrimming'),
+                    firebase.child(this.database.parent, 'treeTrimming'),
                 id: this.id,
             });
 
-            this.userRef = child(fbref, this.id);
+            this.userRef = firebase.child(fbref, this.id);
 
             if (this.debug)
                 console.log('userRef: ' + this.userRef, this.initialPeerInfo);
 
-            onValue(this.userRef, (snapshot) => {
+            firebase.onValue(this.userRef, (snapshot) => {
                 // handle being tree trimmed while asleep
                 let newPeerInfo = snapshot.val();
                 if (
@@ -15894,9 +16092,9 @@ function P2PServerFactory(options) {
                         this._peerInfo,
                         newPeerInfo
                     );
-                    update(this.userRef, {
+                    firebase.update(this.userRef, {
                         ...this._peerInfo,
-                        lastUpdate: serverTimestamp(),
+                        lastUpdate: firebase.serverTimestamp(),
                     });
                 } else if (this._peerInfo) ; else {
                     console.warn(
@@ -15907,7 +16105,7 @@ function P2PServerFactory(options) {
                 }
             });
 
-            onDisconnect(this.userRef).remove();
+            firebase.onDisconnect(this.userRef).remove();
 
             if (this.initialPeerInfo) {
                 if (this.debug)
@@ -15915,7 +16113,8 @@ function P2PServerFactory(options) {
                         'UserRef: ' + this.userRef,
                         this.initialPeerInfo
                     );
-                update(this.userRef, this.initialPeerInfo)
+                firebase
+                    .update(this.userRef, this.initialPeerInfo)
                     .then(() => {
                         console.log('update finished');
                     })
@@ -15924,14 +16123,14 @@ function P2PServerFactory(options) {
                     });
             }
 
-            this.updateRef = child(this.userRef, 'lastUpdate');
-            set(this.updateRef, serverTimestamp());
+            this.updateRef = firebase.child(this.userRef, 'lastUpdate');
+            firebase.set(this.updateRef, firebase.serverTimestamp());
 
-            this.channelRef = child(this.userRef, 'channels');
+            this.channelRef = firebase.child(this.userRef, 'channels');
             if (this.stream) {
-                set(child(this.userRef, 'isStream'), true);
+                firebase.set(firebase.child(this.userRef, 'isStream'), true);
             }
-            set(this.channelRef, []);
+            firebase.set(this.channelRef, []);
 
             this.connections = [];
             this._intervalID = setInterval(() => {
@@ -15946,7 +16145,7 @@ function P2PServerFactory(options) {
 
         _updateOnFireBase() {
             // one may want to overwrite this
-            set(this.updateRef, serverTimestamp());
+            firebase.set(this.updateRef, firebase.serverTimestamp());
         }
 
         sendToAll(data) {
@@ -15983,7 +16182,7 @@ function P2PServerFactory(options) {
             // disabling no-loop-func because these loops are correct usage
             // https://eslint.org/docs/rules/no-loop-func
             // when a new channel is added, listen to it.
-            onChildAdded(this.channelRef, (ev) => {
+            firebase.onChildAdded(this.channelRef, (ev) => {
                 if (this.connections.length > this.MAX_CONNECTIONS) {
                     console.error(
                         'Too many connections. TODO:close/remove old stale connections'
@@ -16001,8 +16200,9 @@ function P2PServerFactory(options) {
                         var mykey = ev.key;
                         var { myID } = sig;
                         var channel = new Channel(
-                            child(this.channelRef, mykey),
-                            this._makePeer(myID)
+                            firebase.child(this.channelRef, mykey),
+                            this._makePeer(myID),
+                            firebase
                         );
                         this.connections = [...this.connections, channel];
                         this.fire('addConnection', channel);
@@ -16016,10 +16216,10 @@ function P2PServerFactory(options) {
                                         'Why am i trying to send multiple answers'
                                     );
                                 }
-                                push(channel.outRef, data);
+                                firebase.push(channel.outRef, data);
                                 answerSentYet = true;
                             } else if (data.candidate) {
-                                push(channel.outRef, data);
+                                firebase.push(channel.outRef, data);
                             } else {
                                 console.warn(
                                     data,
@@ -16029,7 +16229,7 @@ function P2PServerFactory(options) {
                         });
 
                         // on message through firebase
-                        onChildAdded(channel.inRef, (ev2) => {
+                        firebase.onChildAdded(channel.inRef, (ev2) => {
                             var val2 = ev2.val();
                             if (this.debug) {
                                 console.log(val2, 'child_added -- firebase');
@@ -16130,15 +16330,15 @@ function P2PServerFactory(options) {
         }
 
         getPeerList(callback) {
-            return getPeerList(this.database, callback)
+            return getPeerList(this.database, callback, firebase)
         }
 
         destroy() {
-            remove(this.channelRef);
-            remove(this.updateRef);
-            off(this.channelRef);
-            off(this.updateRef);
-            off(this.userRef);
+            firebase.remove(this.channelRef);
+            firebase.remove(this.updateRef);
+            firebase.off(this.channelRef);
+            firebase.off(this.updateRef);
+            firebase.off(this.userRef);
 
             this.isListening = false;
             for (var x of this.connections) {
@@ -16176,7 +16376,7 @@ function P2PServerFactory(options) {
 }
 
 function P2PClientFactory(options) {
-    const { PeerBinary } = options;
+    const { PeerBinary, firebase } = options;
 
     return class P2PClient extends Evented {
         constructor(options = {}) {
@@ -16226,7 +16426,7 @@ function P2PClientFactory(options) {
 
         getPeerList(callback) {
             if (this.debug) console.log('Database: ', this.database);
-            return getPeerList(this.database, callback)
+            return getPeerList(this.database, callback, firebase)
         }
 
         ackCallback(ackID, data) {
@@ -16268,7 +16468,8 @@ function P2PClientFactory(options) {
         }
 
         requestCallback(requestID, data) {
-            if (this.debug) console.log('requestCallback: ', { requestID, data });
+            if (this.debug)
+                console.log('requestCallback: ', { requestID, data });
             let { callback, timeoutID } = this.requestCallbacks[requestID] || {};
 
             if (callback) {
@@ -16321,8 +16522,8 @@ function P2PClientFactory(options) {
                     this._notifyCallbacks('peer not defined');
                 } else {
                     this.id = id;
-                    this.serverRef = child(this.database, id);
-                    onValue(
+                    this.serverRef = firebase.child(this.database, id);
+                    firebase.onValue(
                         this.serverRef,
                         (ev1) => {
                             ev1.val();
@@ -16359,7 +16560,7 @@ function P2PClientFactory(options) {
                                             data
                                         );
                                     }
-                                    push(this.outRef, data);
+                                    firebase.push(this.outRef, data);
                                 } else {
                                     console.warn(
                                         'Client recieved unexpected signal through WebRTC:',
@@ -16395,13 +16596,13 @@ function P2PClientFactory(options) {
                 };
 
             if (this.serverRef) {
-                off(this.serverRef);
+                firebase.off(this.serverRef);
             }
             if (this.outRef) {
-                off(this.outRef);
+                firebase.off(this.outRef);
             }
             if (this.inRef) {
-                off(this.inRef);
+                firebase.off(this.inRef);
             }
             if (this.connection) {
                 this.connection.destroy(callback);
@@ -16417,12 +16618,15 @@ function P2PClientFactory(options) {
             offer.myID = this.myID;
             if (this.debug)
                 console.log('Got create channel with offer: ', offer);
-            this.channelRef = push(child(this.serverRef, 'channels'), {
-                fromClient: [offer],
-            });
-            this.outRef = child(this.channelRef, 'fromClient');
-            this.inRef = child(this.channelRef, 'fromServer');
-            onChildAdded(this.inRef, (ev) => {
+            this.channelRef = firebase.push(
+                firebase.child(this.serverRef, 'channels'),
+                {
+                    fromClient: [offer],
+                }
+            );
+            this.outRef = firebase.child(this.channelRef, 'fromClient');
+            this.inRef = firebase.child(this.channelRef, 'fromServer');
+            firebase.onChildAdded(this.inRef, (ev) => {
                 var val = ev.val();
                 if (this.debug) console.log(val, 'channel message, client');
                 if (val.type === 'answer') {
@@ -16513,12 +16717,13 @@ function P2PClientFactory(options) {
                 this.fire('stream', { peer: this.connection, stream: stream });
             });
             this.connection._pc.addEventListener('signalingstatechange', () => {
-                if (this.debug) console.log(
-                    'signalState',
-                    this.connection &&
-                        this.connection._pc &&
-                        this.connection._pc.signalingState
-                );
+                if (this.debug)
+                    console.log(
+                        'signalState',
+                        this.connection &&
+                            this.connection._pc &&
+                            this.connection._pc.signalingState
+                    );
             });
         }
     }
@@ -16885,12 +17090,27 @@ function PeerBinaryFactory(options) {
 const Peer = simplepeer_min;
 const msgPack = msgpack_min;
 
+const firebase = {
+    child,
+    off,
+    onChildAdded,
+    onDisconnect,
+    onValue,
+    orderByValue,
+    push,
+    query,
+    remove,
+    serverTimestamp,
+    set,
+    update,
+};
+
 setEncode(msgPack.encode);
 
 const UnChunker = UnChunkerFactory({ decode: msgPack.decode });
 const PeerBinary = PeerBinaryFactory({ UnChunker, Peer });
-const P2PServer = P2PServerFactory({ PeerBinary });
-const P2PClient = P2PClientFactory({ PeerBinary });
+const P2PServer = P2PServerFactory({ PeerBinary, firebase });
+const P2PClient = P2PClientFactory({ PeerBinary, firebase });
 
-export { Channel, P2PClient, P2PServer, PeerBinary, UnChunker, arrayBufferToChunks, generateWebRTCpayload, imageToBlob, recursivelyDecodeBlobs, recursivelyEncodeBlobs };
+export { Channel, P2PClient, P2PServer, PeerBinary, UnChunker, arrayBufferToChunks, firebase, generateWebRTCpayload, imageToBlob, recursivelyDecodeBlobs, recursivelyEncodeBlobs };
 //# sourceMappingURL=build.full.js.map
