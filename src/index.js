@@ -2,7 +2,6 @@ import { P2PServerFactory } from './P2PServer.js'
 import { Channel } from './Channel.js'
 import { P2PClientFactory } from './P2PClient.js'
 
-
 import * as Peer2 from 'simple-peer/simplepeer.min.js'
 const Peer = Peer2.default
 
@@ -55,8 +54,8 @@ setEncode(msgPack.encode)
 
 const UnChunker = UnChunkerFactory({ decode: msgPack.decode })
 const PeerBinary = PeerBinaryFactory({ UnChunker, Peer })
-const P2PServer = P2PServerFactory({ PeerBinary, firebase })
-const P2PClient = P2PClientFactory({ PeerBinary, firebase })
+const P2PServer = P2PServerFactory({ PeerBinary })
+const P2PClient = P2PClientFactory({ PeerBinary })
 
 export {
     P2PServer,

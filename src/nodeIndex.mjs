@@ -30,11 +30,9 @@ const UnChunker = UnChunkerFactory({ decode })
 const PeerBinary = PeerBinaryFactory({ UnChunker, Peer, wrtc })
 const P2PServer = P2PServerFactory({
     PeerBinary,
-    firebase,
 })
 const P2PClient = P2PClientFactory({
     PeerBinary,
-    firebase,
 })
 
 export {

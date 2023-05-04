@@ -8,7 +8,7 @@ import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
 import { firebaseTreeTrimmer } from './firebaseTreeTrimmer.js'
 
 export function P2PServerFactory(options) {
-    const { PeerBinary, firebase } = options
+    const { PeerBinary } = options
 
     return class P2PServer extends Evented {
         constructor(options = {}, initialPeerInfo = {}) {
@@ -17,6 +17,9 @@ export function P2PServerFactory(options) {
                 options.iceServers,
                 'Server: no ice servers yet. Using defaults'
             )
+
+            this.firebase = options.firebase
+
             this.MAX_CONNECTIONS = 50
             this.isListening = false
 
@@ -64,16 +67,16 @@ export function P2PServerFactory(options) {
                 peersRef: this.database,
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
-                    firebase.child(this.database.parent, 'treeTrimming'),
+                    this.firebase.child(this.database.parent, 'treeTrimming'),
                 id: this.id,
             })
 
-            this.userRef = firebase.child(fbref, this.id)
+            this.userRef = this.firebase.child(fbref, this.id)
 
             if (this.debug)
                 console.log('userRef: ' + this.userRef, this.initialPeerInfo)
 
-            firebase.onValue(this.userRef, (snapshot) => {
+            this.firebase.onValue(this.userRef, (snapshot) => {
                 // handle being tree trimmed while asleep
                 let newPeerInfo = snapshot.val()
                 if (
@@ -95,9 +98,9 @@ export function P2PServerFactory(options) {
                         this._peerInfo,
                         newPeerInfo
                     )
-                    firebase.update(this.userRef, {
+                    this.firebase.update(this.userRef, {
                         ...this._peerInfo,
-                        lastUpdate: firebase.serverTimestamp(),
+                        lastUpdate: this.firebase.serverTimestamp(),
                     })
                 } else if (this._peerInfo) {
                     //console.log('no update needed')
@@ -110,7 +113,7 @@ export function P2PServerFactory(options) {
                 }
             })
 
-            firebase.onDisconnect(this.userRef).remove()
+            this.firebase.onDisconnect(this.userRef).remove()
 
             if (this.initialPeerInfo) {
                 if (this.debug)
@@ -118,7 +121,7 @@ export function P2PServerFactory(options) {
                         'UserRef: ' + this.userRef,
                         this.initialPeerInfo
                     )
-                firebase
+                this.firebase
                     .update(this.userRef, this.initialPeerInfo)
                     .then(() => {
                         console.log('update finished')
@@ -128,14 +131,17 @@ export function P2PServerFactory(options) {
                     })
             }
 
-            this.updateRef = firebase.child(this.userRef, 'lastUpdate')
-            firebase.set(this.updateRef, firebase.serverTimestamp())
+            this.updateRef = this.firebase.child(this.userRef, 'lastUpdate')
+            this.firebase.set(this.updateRef, this.firebase.serverTimestamp())
 
-            this.channelRef = firebase.child(this.userRef, 'channels')
+            this.channelRef = this.firebase.child(this.userRef, 'channels')
             if (this.stream) {
-                firebase.set(firebase.child(this.userRef, 'isStream'), true)
+                this.firebase.set(
+                    this.firebase.child(this.userRef, 'isStream'),
+                    true
+                )
             }
-            firebase.set(this.channelRef, [])
+            this.firebase.set(this.channelRef, [])
 
             this.connections = []
             this._intervalID = setInterval(() => {
@@ -150,7 +156,7 @@ export function P2PServerFactory(options) {
 
         _updateOnFireBase() {
             // one may want to overwrite this
-            firebase.set(this.updateRef, firebase.serverTimestamp())
+            this.firebase.set(this.updateRef, this.firebase.serverTimestamp())
         }
 
         sendToAll(data) {
@@ -187,7 +193,7 @@ export function P2PServerFactory(options) {
             // disabling no-loop-func because these loops are correct usage
             // https://eslint.org/docs/rules/no-loop-func
             // when a new channel is added, listen to it.
-            firebase.onChildAdded(this.channelRef, (ev) => {
+            this.firebase.onChildAdded(this.channelRef, (ev) => {
                 if (this.connections.length > this.MAX_CONNECTIONS) {
                     console.error(
                         'Too many connections. TODO:close/remove old stale connections'
@@ -205,9 +211,9 @@ export function P2PServerFactory(options) {
                         var mykey = ev.key
                         var { myID } = sig
                         var channel = new Channel(
-                            firebase.child(this.channelRef, mykey),
+                            this.firebase.child(this.channelRef, mykey),
                             this._makePeer(myID),
-                            firebase
+                            this.firebase
                         )
                         this.connections = [...this.connections, channel]
                         this.fire('addConnection', channel)
@@ -221,10 +227,10 @@ export function P2PServerFactory(options) {
                                         'Why am i trying to send multiple answers'
                                     )
                                 }
-                                firebase.push(channel.outRef, data)
+                                this.firebase.push(channel.outRef, data)
                                 answerSentYet = true
                             } else if (data.candidate) {
-                                firebase.push(channel.outRef, data)
+                                this.firebase.push(channel.outRef, data)
                             } else {
                                 console.warn(
                                     data,
@@ -234,7 +240,7 @@ export function P2PServerFactory(options) {
                         })
 
                         // on message through firebase
-                        firebase.onChildAdded(channel.inRef, (ev2) => {
+                        this.firebase.onChildAdded(channel.inRef, (ev2) => {
                             var val2 = ev2.val()
                             if (this.debug) {
                                 console.log(val2, 'child_added -- firebase')
@@ -337,15 +343,15 @@ export function P2PServerFactory(options) {
         }
 
         getPeerList(callback) {
-            return _getPeerList(this.database, callback, firebase)
+            return _getPeerList(this.database, callback, this.firebase)
         }
 
         destroy() {
-            firebase.remove(this.channelRef)
-            firebase.remove(this.updateRef)
-            firebase.off(this.channelRef)
-            firebase.off(this.updateRef)
-            firebase.off(this.userRef)
+            this.firebase.remove(this.channelRef)
+            this.firebase.remove(this.updateRef)
+            this.firebase.off(this.channelRef)
+            this.firebase.off(this.updateRef)
+            this.firebase.off(this.userRef)
 
             this.isListening = false
             for (var x of this.connections) {

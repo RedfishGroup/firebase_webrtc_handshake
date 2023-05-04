@@ -4,11 +4,13 @@ import { getDatabase } from './defaultFirebase.js'
 import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
 
 export function P2PClientFactory(options) {
-    const { PeerBinary, firebase } = options
+    const { PeerBinary } = options
 
     return class P2PClient extends Evented {
         constructor(options = {}) {
             super()
+
+            this.firebase = options.firebase
 
             this.id = 'client_' + Math.floor(Math.random() * 100000)
             this.myID = this.id
@@ -54,7 +56,7 @@ export function P2PClientFactory(options) {
 
         getPeerList(callback) {
             if (this.debug) console.log('Database: ', this.database)
-            return _getPeerList(this.database, callback, firebase)
+            return _getPeerList(this.database, callback, this.firebase)
         }
 
         ackCallback(ackID, data) {
@@ -140,18 +142,18 @@ export function P2PClientFactory(options) {
                 if (err) {
                     console.error(err)
                     this._notifyCallbacks(
-                        `Got error requesting peer list:${err}`
+                        `Got error requesting peer list: ${err}`
                     )
                     return
                 }
                 var peer = peerList[id]
                 if (!peer) {
-                    console.error('peer not defined. id:', id)
+                    console.error(`peer not defined. id: ${id}`)
                     this._notifyCallbacks('peer not defined')
                 } else {
                     this.id = id
-                    this.serverRef = firebase.child(this.database, id)
-                    firebase.onValue(
+                    this.serverRef = this.firebase.child(this.database, id)
+                    this.firebase.onValue(
                         this.serverRef,
                         (ev1) => {
                             var sval = ev1.val()
@@ -188,7 +190,7 @@ export function P2PClientFactory(options) {
                                             data
                                         )
                                     }
-                                    firebase.push(this.outRef, data)
+                                    this.firebase.push(this.outRef, data)
                                 } else {
                                     console.warn(
                                         'Client recieved unexpected signal through WebRTC:',
@@ -224,13 +226,13 @@ export function P2PClientFactory(options) {
                 }
 
             if (this.serverRef) {
-                firebase.off(this.serverRef)
+                this.firebase.off(this.serverRef)
             }
             if (this.outRef) {
-                firebase.off(this.outRef)
+                this.firebase.off(this.outRef)
             }
             if (this.inRef) {
-                firebase.off(this.inRef)
+                this.firebase.off(this.inRef)
             }
             if (this.connection) {
                 this.connection.destroy(callback)
@@ -246,15 +248,15 @@ export function P2PClientFactory(options) {
             offer.myID = this.myID
             if (this.debug)
                 console.log('Got create channel with offer: ', offer)
-            this.channelRef = firebase.push(
-                firebase.child(this.serverRef, 'channels'),
+            this.channelRef = this.firebase.push(
+                this.firebase.child(this.serverRef, 'channels'),
                 {
                     fromClient: [offer],
                 }
             )
-            this.outRef = firebase.child(this.channelRef, 'fromClient')
-            this.inRef = firebase.child(this.channelRef, 'fromServer')
-            firebase.onChildAdded(this.inRef, (ev) => {
+            this.outRef = this.firebase.child(this.channelRef, 'fromClient')
+            this.inRef = this.firebase.child(this.channelRef, 'fromServer')
+            this.firebase.onChildAdded(this.inRef, (ev) => {
                 var val = ev.val()
                 if (this.debug) console.log(val, 'channel message, client')
                 if (val.type === 'answer') {
