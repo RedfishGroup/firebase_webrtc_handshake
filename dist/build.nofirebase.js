@@ -1,5 +1,3 @@
-import { child, off, onChildAdded, onDisconnect, onValue, orderByValue, push, query, remove, serverTimestamp, set, update } from 'firebase/database';
-
 var getOwnPropertyNames = Object.getOwnPropertyNames, getOwnPropertySymbols = Object.getOwnPropertySymbols;
 var hasOwnProperty = Object.prototype.hasOwnProperty;
 /**
@@ -831,6 +829,7 @@ function P2PServerFactory(options) {
                     this.treeTrimmingRef ||
                     this.firebase.child(this.database.parent, 'treeTrimming'),
                 id: this.id,
+                firebase: this.firebase,
             });
 
             this.userRef = this.firebase.child(fbref, this.id);
@@ -1867,20 +1866,6 @@ function PeerBinaryFactory(options) {
 const Peer = simplepeer_min;
 const msgPack = msgpack_min;
 
-const firebase = {
-    child,
-    off,
-    onChildAdded,
-    onDisconnect,
-    onValue,
-    orderByValue,
-    push,
-    query,
-    remove,
-    serverTimestamp,
-    set,
-    update,
-};
 
 setEncode(msgPack.encode);
 
@@ -1889,5 +1874,5 @@ const PeerBinary = PeerBinaryFactory({ UnChunker, Peer });
 const P2PServer = P2PServerFactory({ PeerBinary });
 const P2PClient = P2PClientFactory({ PeerBinary });
 
-export { Channel, P2PClient, P2PServer, PeerBinary, UnChunker, arrayBufferToChunks, firebase, generateWebRTCpayload, imageToBlob, recursivelyDecodeBlobs, recursivelyEncodeBlobs };
+export { Channel, P2PClient, P2PServer, PeerBinary, UnChunker, arrayBufferToChunks, generateWebRTCpayload, imageToBlob, recursivelyDecodeBlobs, recursivelyEncodeBlobs };
 //# sourceMappingURL=build.nofirebase.js.map

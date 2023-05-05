@@ -831,6 +831,7 @@ function P2PServerFactory(options) {
                     this.treeTrimmingRef ||
                     this.firebase.child(this.database.parent, 'treeTrimming'),
                 id: this.id,
+                firebase: this.firebase,
             });
 
             this.userRef = this.firebase.child(fbref, this.id);

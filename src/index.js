@@ -20,35 +20,6 @@ import {
 
 import { PeerBinaryFactory } from './PeerBinary.js'
 
-import {
-    child,
-    off,
-    onChildAdded,
-    onDisconnect,
-    onValue,
-    orderByValue,
-    push,
-    query,
-    remove,
-    serverTimestamp,
-    set,
-    update,
-} from 'firebase/database'
-
-const firebase = {
-    child,
-    off,
-    onChildAdded,
-    onDisconnect,
-    onValue,
-    orderByValue,
-    push,
-    query,
-    remove,
-    serverTimestamp,
-    set,
-    update,
-}
 
 setEncode(msgPack.encode)
 
@@ -68,5 +39,4 @@ export {
     Channel,
     recursivelyEncodeBlobs,
     recursivelyDecodeBlobs,
-    firebase,
 }
