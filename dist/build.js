@@ -836,6 +836,12 @@ function P2PServerFactory(options) {
             return this.readyPromise
         }
 
+        peerListPromise() {
+            return new Promise((resolve, reject) => {
+                return getPeerList(this.database, resolve, this.firebase)
+            })
+        }
+
         init() {
             var fbref = this.database;
 
@@ -1121,12 +1127,6 @@ function P2PServerFactory(options) {
 
         getPeerList(callback) {
             return getPeerList(this.database, callback, this.firebase)
-        }
-
-        peerListPromise() {
-            return new Promise((resolve, reject) => {
-                return getPeerList(this.database, resolve, this.firebase)
-            })
         }
 
         destroy() {
