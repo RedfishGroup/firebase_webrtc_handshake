@@ -822,6 +822,17 @@ function P2PServerFactory(options) {
             }
 
             this._peerInfo = null;
+
+            this.resolveReady = null;
+            this.rejectReady = null;
+            this.readyPromise = new Promise((resolve, reject) => {
+                this.resolveReady = resolve;
+                this.rejectReady = reject;                
+            });
+        }
+
+        ready() {
+            return this.readyPromise
         }
 
         init() {
@@ -890,8 +901,10 @@ function P2PServerFactory(options) {
                     .update(this.userRef, this.initialPeerInfo)
                     .then(() => {
                         console.log('update finished');
+                        this.resolveReady(this.userRef);
                     })
                     .catch((e) => {
+                        this.rejectReady(e);
                         throw new Error(e)
                     });
             }
