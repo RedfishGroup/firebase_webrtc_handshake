@@ -662,9 +662,9 @@ class firebaseTreeTrimmer {
             )
         Object.assign(this, options);
 
+        this.firebase = options.firebase;
         this.monitorReference = this.monitor.bind(this);
         this.monitor();
-        this.firebase = options.firebase;
     }
 
     monitor() {
@@ -724,7 +724,7 @@ class firebaseTreeTrimmer {
         this.firebase.onValue(
             this.peersRef,
             (snap) => {
-                snap.forEach(function (child) {
+                snap.forEach((child) => {
                     // if the peer is not in the treeTrimming list,
                     // remove it from peersRef
                     if (treeTrimmers[child.key] === undefined) {
