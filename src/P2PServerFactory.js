@@ -69,7 +69,7 @@ export function P2PServerFactory(options) {
             this.rejectReady = null
             this.readyPromise = new Promise((resolve, reject) => {
                 this.resolveReady = resolve
-                this.rejectReady = reject                
+                this.rejectReady = reject
             })
         }
 
@@ -366,6 +366,12 @@ export function P2PServerFactory(options) {
 
         getPeerList(callback) {
             return _getPeerList(this.database, callback, this.firebase)
+        }
+
+        peerListPromise() {
+            return new Promise((resolve, reject) => {
+                return _getPeerList(this.database, resolve, this.firebase)
+            })
         }
 
         destroy() {
