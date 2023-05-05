@@ -663,6 +663,7 @@ class firebaseTreeTrimmer {
         Object.assign(this, options);
 
         this.firebase = options.firebase;
+        this.monitorRate = options.monitorRate || 60000;
         this.monitorReference = this.monitor.bind(this);
         this.monitor();
     }
@@ -711,7 +712,7 @@ class firebaseTreeTrimmer {
                 }
 
                 // continuously check for treeTrimming, every minute
-                setTimeout(this.monitorReference, 60000);
+                setTimeout(this.monitorReference, this.monitorRate);
             },
             {
                 onlyOnce: true,
