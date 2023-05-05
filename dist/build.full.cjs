@@ -892,7 +892,7 @@ function P2PServerFactory(options) {
                         console.log('update finished');
                     })
                     .catch((e) => {
-                        console.log('problem: ', e);
+                        throw new Error(e)
                     });
             }
 
