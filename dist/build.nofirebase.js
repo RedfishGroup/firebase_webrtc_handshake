@@ -903,7 +903,7 @@ function P2PServerFactory(options) {
                     })
                     .catch((e) => {
                         this.rejectReady(e);
-                        throw new Error(e)
+                        console.error('propblem: ', e);
                     });
             }
 
@@ -1220,6 +1220,12 @@ function P2PClientFactory(options) {
         getPeerList(callback) {
             if (this.debug) console.log('Database: ', this.database);
             return getPeerList(this.database, callback, this.firebase)
+        }
+
+        peerListPromise() {
+            return new Promise((resolve, reject) => {
+                return getPeerList(this.database, resolve, this.firebase)
+            })
         }
 
         ackCallback(ackID, data) {

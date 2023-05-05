@@ -149,7 +149,7 @@ export function P2PServerFactory(options) {
                     })
                     .catch((e) => {
                         this.rejectReady(e)
-                        throw new Error(e)
+                        console.error('propblem: ', e)
                     })
             }
 

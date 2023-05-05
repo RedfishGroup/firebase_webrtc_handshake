@@ -62,6 +62,12 @@ export function P2PClientFactory(options) {
             return _getPeerList(this.database, callback, this.firebase)
         }
 
+        peerListPromise() {
+            return new Promise((resolve, reject) => {
+                return _getPeerList(this.database, resolve, this.firebase)
+            })
+        }
+
         ackCallback(ackID, data) {
             if (this.debug) console.log('ackCallback: ', { ackID, data })
             let { callback, timeoutID } = this.ackCallbacks[ackID] || {}
