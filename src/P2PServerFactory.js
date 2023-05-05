@@ -79,7 +79,14 @@ export function P2PServerFactory(options) {
 
         peerListPromise() {
             return new Promise((resolve, reject) => {
-                return _getPeerList(this.database, resolve, this.firebase)
+                return _getPeerList(
+                    this.database,
+                    (err, val) => {
+                        if (err) return reject(err)
+                        resolve(val)
+                    },
+                    this.firebase
+                )
             })
         }
 
