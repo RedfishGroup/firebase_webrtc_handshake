@@ -814,6 +814,7 @@ function P2PServerFactory(options) {
             this.initialPeerInfo = initialPeerInfo;
             this.initialPeerInfo.id = this.id;
             this.monitorRate = options.monitorRate;
+            console.log('monitorRate: ', this.monitorRate);
 
             if (this.debug) console.log(this.id);
             if (!options.dontCallInitYet) {
