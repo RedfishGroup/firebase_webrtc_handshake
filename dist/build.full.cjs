@@ -1851,8 +1851,8 @@ const wrtc = require('wrtc');
 // import adapter from "webrtc-adapter/src/js/adapter_core.js";
 const { decode, encode } = require('msgpack-lite');
 
-require('firebase/app');
-const firebase = require('firebase/database');
+// require('firebase/app')
+// const firebase = require('firebase/database')
 
 // initFirebase(firebase)
 setEncode(encode);
@@ -1872,7 +1872,6 @@ exports.P2PServer = P2PServer;
 exports.PeerBinary = PeerBinary;
 exports.UnChunker = UnChunker;
 exports.arrayBufferToChunks = arrayBufferToChunks;
-exports.firebase = firebase;
 exports.generateWebRTCpayload = generateWebRTCpayload;
 exports.imageToBlob = imageToBlob;
 exports.recursivelyDecodeBlobs = recursivelyDecodeBlobs;

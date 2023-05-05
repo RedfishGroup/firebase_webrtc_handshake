@@ -1,6 +1,6 @@
 import { Channel } from './Channel.js'
-import { P2PServerFactory } from './P2PServer.js'
-import { P2PClientFactory } from './P2PClient.js'
+import { P2PServerFactory } from './P2PServerFactory.js'
+import { P2PClientFactory } from './P2PClientFactory.js'
 
 const Peer = require('simple-peer')
 const wrtc = require('wrtc')
@@ -20,8 +20,8 @@ import {
 
 import { PeerBinaryFactory } from './PeerBinary.js'
 
-require('firebase/app')
-const firebase = require('firebase/database')
+// require('firebase/app')
+// const firebase = require('firebase/database')
 
 // initFirebase(firebase)
 setEncode(encode)
@@ -46,5 +46,5 @@ export {
     Channel,
     recursivelyDecodeBlobs,
     recursivelyEncodeBlobs,
-    firebase,
+    // firebase,
 }

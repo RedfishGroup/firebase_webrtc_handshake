@@ -1,5 +1,38 @@
 import { initializeApp } from 'firebase/app'
-import { child, getDatabase as _getDatabase, ref } from 'firebase/database'
+
+import {
+    child,
+    getDatabase as _getDatabase,
+    off,
+    onChildAdded,
+    onDisconnect,
+    onValue,
+    orderByValue,
+    push,
+    query,
+    ref,
+    remove,
+    serverTimestamp,
+    set,
+    update,
+} from 'firebase/database'
+
+export const firebaseMethods = {
+    child,
+    off,
+    onChildAdded,
+    onDisconnect,
+    onValue,
+    orderByValue,
+    push,
+    query,
+    ref,
+    remove,
+    serverTimestamp,
+    set,
+    update,
+}
+
 
 var defaultFBConfig = {
     apiKey: 'AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA',

@@ -1,6 +1,6 @@
-import { P2PServerFactory } from './P2PServer.js'
+import { P2PServerFactory } from './P2PServerFactory.js'
 import { Channel } from './Channel.js'
-import { P2PClientFactory } from './P2PClient.js'
+import { P2PClientFactory } from './P2PClientFactory.js'
 
 import * as Peer2 from 'simple-peer/simplepeer.min.js'
 const Peer = Peer2.default
