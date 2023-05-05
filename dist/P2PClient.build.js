@@ -1,6 +1,3 @@
-import 'firebase/app';
-import 'firebase/database';
-
 var settings = {
     // Get a reference to the database service
 
@@ -71,15 +68,6 @@ class Evented {
     }
 }
 
-function getDatabase() {
-
-    {
-        throw new Error(
-            `init must be called before accessing database.  no firebase`
-        )
-    }
-}
-
 /**
  *
  * @param {*} database
@@ -105,6 +93,12 @@ function P2PClientFactory(options) {
     return class P2PClient extends Evented {
         constructor(options = {}) {
             super();
+
+            if (!options.firebase)
+                throw new Error('firebase must be passed in the options object')
+
+            if (!options.database)
+                throw new Error('database must be passed in the options object')
 
             this.firebase = options.firebase;
 
@@ -134,8 +128,6 @@ function P2PClientFactory(options) {
 
             if (options.database) {
                 this.database = options.database;
-            } else {
-                this.database = getDatabase();
             }
 
             this.connection = null;

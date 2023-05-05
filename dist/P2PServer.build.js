@@ -1,6 +1,3 @@
-import 'firebase/app';
-import 'firebase/database';
-
 var getOwnPropertyNames = Object.getOwnPropertyNames, getOwnPropertySymbols = Object.getOwnPropertySymbols;
 var hasOwnProperty = Object.prototype.hasOwnProperty;
 /**
@@ -611,15 +608,6 @@ class Evented {
     }
 }
 
-function getDatabase() {
-
-    {
-        throw new Error(
-            `init must be called before accessing database.  no firebase`
-        )
-    }
-}
-
 class Channel {
     constructor(fbref, peer, firebase) {
         this.firebase = firebase;
@@ -784,6 +772,12 @@ function P2PServerFactory(options) {
                 'Server: no ice servers yet. Using defaults'
             );
 
+            if (!options.firebase)
+                throw new Error('firebase must be passed in the options object')
+
+            if (!options.database)
+                throw new Error('database must be passed in the options object')
+
             this.firebase = options.firebase;
 
             this.MAX_CONNECTIONS = 50;
@@ -810,7 +804,7 @@ function P2PServerFactory(options) {
                 });
             Object.assign(this, combinedSettings);
 
-            this.database = options.database || getDatabase();
+            this.database = options.database;
             console.log('Database: ', this.database);
 
             this.debug = !!options.debug;

@@ -1,7 +1,6 @@
 import { deepEqual } from 'fast-equals'
 import { settings } from './settings.js'
 import { Evented } from './Evented.js'
-import { getDatabase } from './defaultFirebase.js'
 import { Channel } from './Channel.js'
 
 import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
@@ -17,6 +16,12 @@ export function P2PServerFactory(options) {
                 options.iceServers,
                 'Server: no ice servers yet. Using defaults'
             )
+
+            if (!options.firebase)
+                throw new Error('firebase must be passed in the options object')
+
+            if (!options.database)
+                throw new Error('database must be passed in the options object')
 
             this.firebase = options.firebase
 
@@ -44,7 +49,7 @@ export function P2PServerFactory(options) {
                 })
             Object.assign(this, combinedSettings)
 
-            this.database = options.database || getDatabase()
+            this.database = options.database
             console.log('Database: ', this.database)
 
             this.debug = !!options.debug

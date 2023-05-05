@@ -1,6 +1,5 @@
 import { settings } from './settings.js'
 import { Evented } from './Evented.js'
-import { getDatabase } from './defaultFirebase.js'
 import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
 
 export function P2PClientFactory(options) {
@@ -9,6 +8,12 @@ export function P2PClientFactory(options) {
     return class P2PClient extends Evented {
         constructor(options = {}) {
             super()
+
+            if (!options.firebase)
+                throw new Error('firebase must be passed in the options object')
+
+            if (!options.database)
+                throw new Error('database must be passed in the options object')
 
             this.firebase = options.firebase
 
@@ -38,8 +43,6 @@ export function P2PClientFactory(options) {
 
             if (options.database) {
                 this.database = options.database
-            } else {
-                this.database = getDatabase()
             }
 
             this.connection = null
