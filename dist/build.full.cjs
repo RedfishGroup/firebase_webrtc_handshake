@@ -636,7 +636,7 @@ function getPeerList(database, callback, firebase) {
         database,
         (ev) => {
             var val = ev.val();
-            callback(null, val);
+            if (callback) callback(null, val);
         },
         {
             onlyOnce: true,
