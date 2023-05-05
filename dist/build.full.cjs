@@ -1,18 +1,19 @@
 'use strict';
 
-var database = require('firebase/database');
 require('firebase/app');
+require('firebase/database');
 
 class Channel {
-    constructor(fbref, peer) {
-        this.outRef = database.child(fbref, 'fromServer'); //firebase
-        this.inRef = database.child(fbref, 'fromClient');
+    constructor(fbref, peer, firebase) {
+        this.firebase = firebase;
+        this.outRef = firebase.child(fbref, 'fromServer'); //firebase
+        this.inRef = firebase.child(fbref, 'fromClient');
         this.peer = peer; // simple-peer
     }
 
     destroy() {
-        database.off(this.outRef);
-        database.off(this.inRef);
+        this.firebase.off(this.outRef);
+        this.firebase.off(this.inRef);
         this.peer.destroy();
     }
 }

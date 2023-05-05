@@ -1,5 +1,5 @@
 import 'firebase/app';
-import { child, off } from 'firebase/database';
+import 'firebase/database';
 
 var getOwnPropertyNames = Object.getOwnPropertyNames, getOwnPropertySymbols = Object.getOwnPropertySymbols;
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -621,15 +621,16 @@ function getDatabase() {
 }
 
 class Channel {
-    constructor(fbref, peer) {
-        this.outRef = child(fbref, 'fromServer'); //firebase
-        this.inRef = child(fbref, 'fromClient');
+    constructor(fbref, peer, firebase) {
+        this.firebase = firebase;
+        this.outRef = firebase.child(fbref, 'fromServer'); //firebase
+        this.inRef = firebase.child(fbref, 'fromClient');
         this.peer = peer; // simple-peer
     }
 
     destroy() {
-        off(this.outRef);
-        off(this.inRef);
+        this.firebase.off(this.outRef);
+        this.firebase.off(this.inRef);
         this.peer.destroy();
     }
 }
