@@ -55,6 +55,7 @@ export function P2PServerFactory(options) {
             this.debug = !!options.debug
             this.initialPeerInfo = initialPeerInfo
             this.initialPeerInfo.id = this.id
+            this.monitorRate = options.monitorRate
 
             if (this.debug) console.log(this.id)
             if (!options.dontCallInitYet) {
@@ -75,6 +76,7 @@ export function P2PServerFactory(options) {
                     this.firebase.child(this.database.parent, 'treeTrimming'),
                 id: this.id,
                 firebase: this.firebase,
+                monitorRate: this.monitorRate || 60000,
             })
 
             this.userRef = this.firebase.child(fbref, this.id)
