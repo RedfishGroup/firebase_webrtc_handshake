@@ -56,6 +56,7 @@ export function P2PServerFactory(options) {
             this.initialPeerInfo = initialPeerInfo
             this.initialPeerInfo.id = this.id
             this.monitorRate = options.monitorRate
+            this.trimmerRemoveRate = options.trimmerRemoveRate
             console.log('monitorRate: ', this.monitorRate)
 
             if (this.debug) console.log(this.id)
@@ -102,6 +103,7 @@ export function P2PServerFactory(options) {
                 id: this.id,
                 firebase: this.firebase,
                 monitorRate: this.monitorRate || 60000,
+                trimmerRemoveRate: this.trimmerRemoveRate,
             })
 
             this.userRef = this.firebase.child(fbref, this.id)

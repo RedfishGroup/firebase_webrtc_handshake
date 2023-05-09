@@ -573,7 +573,7 @@ var settings = {
             urls: 'turn:global.turn.twilio.com:3478?transport=udp',
         },
     ],
-    POLLING_FREQUENCY: 15000,
+    POLLING_FREQUENCY: 30000,
     debug: false,
 };
 
@@ -664,6 +664,7 @@ class firebaseTreeTrimmer {
         this.firebase = options.firebase;
         this.monitorRate = options.monitorRate || 60000;
         this.monitorReference = this.monitor.bind(this);
+        this.trimmerRemoveRate = options.trimmerRemoveRate || 5 * 60000;
         this.monitor();
     }
 
@@ -744,12 +745,13 @@ class firebaseTreeTrimmer {
         this.firebase.onValue(
             this.firebase.child(this.peersRef, superior),
             (snap) => {
-                // if the peer's lastUpdate is greater than three minutes,
+                // if the peer's lastUpdate is greater than this.trimmerRemoveRate,
                 // or it doesn't exist, remove from treeTrimming list
                 if (
                     snap.val() === null ||
                     snap.child('lastUpdate').val() === null ||
-                    snap.child('lastUpdate').val() < Date.now() - 3 * 60000
+                    snap.child('lastUpdate').val() <
+                        Date.now() - this.trimmerRemoveRate
                 ) {
                     // if not in the peers list or has not been updated for 3 minutes then remove
                     this.firebase.remove(
@@ -814,6 +816,7 @@ function P2PServerFactory(options) {
             this.initialPeerInfo = initialPeerInfo;
             this.initialPeerInfo.id = this.id;
             this.monitorRate = options.monitorRate;
+            this.trimmerRemoveRate = options.trimmerRemoveRate;
             console.log('monitorRate: ', this.monitorRate);
 
             if (this.debug) console.log(this.id);
@@ -860,6 +863,7 @@ function P2PServerFactory(options) {
                 id: this.id,
                 firebase: this.firebase,
                 monitorRate: this.monitorRate || 60000,
+                trimmerRemoveRate: this.trimmerRemoveRate,
             });
 
             this.userRef = this.firebase.child(fbref, this.id);

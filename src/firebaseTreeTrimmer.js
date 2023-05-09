@@ -18,6 +18,7 @@ export class firebaseTreeTrimmer {
         this.firebase = options.firebase
         this.monitorRate = options.monitorRate || 60000
         this.monitorReference = this.monitor.bind(this)
+        this.trimmerRemoveRate = options.trimmerRemoveRate || 5 * 60000
         this.monitor()
     }
 
@@ -98,12 +99,13 @@ export class firebaseTreeTrimmer {
         this.firebase.onValue(
             this.firebase.child(this.peersRef, superior),
             (snap) => {
-                // if the peer's lastUpdate is greater than three minutes,
+                // if the peer's lastUpdate is greater than this.trimmerRemoveRate,
                 // or it doesn't exist, remove from treeTrimming list
                 if (
                     snap.val() === null ||
                     snap.child('lastUpdate').val() === null ||
-                    snap.child('lastUpdate').val() < Date.now() - 3 * 60000
+                    snap.child('lastUpdate').val() <
+                        Date.now() - this.trimmerRemoveRate
                 ) {
                     // if not in the peers list or has not been updated for 3 minutes then remove
                     this.firebase.remove(
