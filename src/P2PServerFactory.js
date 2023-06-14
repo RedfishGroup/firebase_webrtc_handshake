@@ -120,45 +120,48 @@ export function P2PServerFactory(options) {
                     this.initialPeerInfo
                 )
 
-            this.firebase.onValue(this.userRef, (snapshot) => {
-                // handle being tree trimmed while asleep
-                let newPeerInfo = snapshot.val()
-                if (
-                    newPeerInfo &&
-                    newPeerInfo.id &&
-                    !deepEqual(
-                        { ...this._peerInfo, lastUpdate: null },
-                        { ...newPeerInfo, lastUpdate: null }
-                    )
-                ) {
-                    this._peerInfo = newPeerInfo
-                } else if (
-                    this._peerInfo &&
-                    this._peerInfo.id &&
-                    !(newPeerInfo && newPeerInfo.id)
-                ) {
-                    console.log(
-                        'peerInfo lost, updating with saved version: ',
-                        this._peerInfo,
-                        newPeerInfo
-                    )
-                    this.firebase.update(
-                        this.firebase.child(this.peerInfoRef, this.id),
-                        {
-                            ...this._peerInfo,
-                            lastUpdate: this.firebase.serverTimestamp(),
-                        }
-                    )
-                } else if (this._peerInfo) {
-                    //console.log('no update needed')
-                } else {
-                    console.warn(
-                        'Appears we have not yet set peerInfo: ',
-                        this._peerInfo,
-                        newPeerInfo
-                    )
+            this.firebase.onValue(
+                this.firebase.child(this.peerInfoRef, this.id),
+                (snapshot) => {
+                    // handle being tree trimmed while asleep
+                    let newPeerInfo = snapshot.val()
+                    if (
+                        newPeerInfo &&
+                        newPeerInfo.id &&
+                        !deepEqual(
+                            { ...this._peerInfo, lastUpdate: null },
+                            { ...newPeerInfo, lastUpdate: null }
+                        )
+                    ) {
+                        this._peerInfo = newPeerInfo
+                    } else if (
+                        this._peerInfo &&
+                        this._peerInfo.id &&
+                        !(newPeerInfo && newPeerInfo.id)
+                    ) {
+                        console.log(
+                            'peerInfo lost, updating with saved version: ',
+                            this._peerInfo,
+                            newPeerInfo
+                        )
+                        this.firebase.update(
+                            this.firebase.child(this.peerInfoRef, this.id),
+                            {
+                                ...this._peerInfo,
+                                lastUpdate: this.firebase.serverTimestamp(),
+                            }
+                        )
+                    } else if (this._peerInfo) {
+                        //console.log('no update needed')
+                    } else {
+                        console.warn(
+                            'Appears we have not yet set peerInfo: ',
+                            this._peerInfo,
+                            newPeerInfo
+                        )
+                    }
                 }
-            })
+            )
 
             this.firebase.onDisconnect(this.userRef).remove()
             this.firebase
