@@ -389,7 +389,7 @@ export function P2PServerFactory(options) {
         }
 
         getPeerList(callback) {
-            return _getPeerList(peerInfoRef, callback, this.firebase)
+            return _getPeerList(this.peerInfoRef, callback, this.firebase)
         }
 
         destroy() {

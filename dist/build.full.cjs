@@ -1161,7 +1161,7 @@ function P2PServerFactory(options) {
         }
 
         getPeerList(callback) {
-            return getPeerList(peerInfoRef, callback, this.firebase)
+            return getPeerList(this.peerInfoRef, callback, this.firebase)
         }
 
         destroy() {
@@ -1268,7 +1268,7 @@ function P2PClientFactory(options) {
         }
 
         getPeerList(callback) {
-            if (this.debug) console.log('Database: ', this.database);
+            if (this.debug) console.log('Database: ', this.peerInfoRef);
             return getPeerList(this.peerInfoRef, callback, this.firebase)
         }
 

@@ -64,7 +64,7 @@ export function P2PClientFactory(options) {
         }
 
         getPeerList(callback) {
-            if (this.debug) console.log('Database: ', this.database)
+            if (this.debug) console.log('Database: ', this.peerInfoRef)
             return _getPeerList(this.peerInfoRef, callback, this.firebase)
         }
 
