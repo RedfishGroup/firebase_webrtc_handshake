@@ -828,6 +828,11 @@ function P2PServerFactory(options) {
             this.database = options.database;
             console.log('Database: ', this.database);
 
+            this.peerInfoRef = this.firebase.child(
+                this.database.parent,
+                'peerInfo'
+            );
+
             this.debug = !!options.debug;
             this.initialPeerInfo = initialPeerInfo;
             this.initialPeerInfo.id = this.id;
@@ -857,7 +862,7 @@ function P2PServerFactory(options) {
         peerListPromise() {
             return new Promise((resolve, reject) => {
                 return getPeerList(
-                    this.database,
+                    this.peerInfoRef,
                     (err, val) => {
                         if (err) return reject(err)
                         resolve(val);
@@ -872,7 +877,7 @@ function P2PServerFactory(options) {
 
             // the below assumes that tree trimming would happen at the same lavel as the peers ref or would be passed explicitly
             this.treeTrimmer = new firebaseTreeTrimmer({
-                peersRef: this.firebase.child(this.database.parent, 'peerInfo'),
+                peersRef: this.peerInfoRef,
                 channelsRef: this.database,
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
@@ -1156,7 +1161,7 @@ function P2PServerFactory(options) {
         }
 
         getPeerList(callback) {
-            return getPeerList(this.database, callback, this.firebase)
+            return getPeerList(peerInfoRef, callback, this.firebase)
         }
 
         destroy() {
@@ -1244,6 +1249,12 @@ function P2PClientFactory(options) {
                 this.database = options.database;
             }
 
+            this.peerInfoRef = this.firebase.child(
+                this.database.parent,
+                'peerInfo'
+            );
+
+
             this.connection = null;
             this.channelRef = null;
             this.stream = undefined;
@@ -1258,12 +1269,12 @@ function P2PClientFactory(options) {
 
         getPeerList(callback) {
             if (this.debug) console.log('Database: ', this.database);
-            return getPeerList(this.database, callback, this.firebase)
+            return getPeerList(this.peerInfoRef, callback, this.firebase)
         }
 
         peerListPromise() {
             return new Promise((resolve, reject) => {
-                return getPeerList(this.database, resolve, this.firebase)
+                return getPeerList(this.peerInfoRef, resolve, this.firebase)
             })
         }
 

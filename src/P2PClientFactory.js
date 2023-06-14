@@ -45,6 +45,12 @@ export function P2PClientFactory(options) {
                 this.database = options.database
             }
 
+            this.peerInfoRef = this.firebase.child(
+                this.database.parent,
+                'peerInfo'
+            )
+
+
             this.connection = null
             this.channelRef = null
             this.stream = undefined
@@ -59,12 +65,12 @@ export function P2PClientFactory(options) {
 
         getPeerList(callback) {
             if (this.debug) console.log('Database: ', this.database)
-            return _getPeerList(this.database, callback, this.firebase)
+            return _getPeerList(this.peerInfoRef, callback, this.firebase)
         }
 
         peerListPromise() {
             return new Promise((resolve, reject) => {
-                return _getPeerList(this.database, resolve, this.firebase)
+                return _getPeerList(this.peerInfoRef, resolve, this.firebase)
             })
         }
 

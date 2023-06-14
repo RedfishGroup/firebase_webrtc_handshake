@@ -52,6 +52,11 @@ export function P2PServerFactory(options) {
             this.database = options.database
             console.log('Database: ', this.database)
 
+            this.peerInfoRef = this.firebase.child(
+                this.database.parent,
+                'peerInfo'
+            )
+
             this.debug = !!options.debug
             this.initialPeerInfo = initialPeerInfo
             this.initialPeerInfo.id = this.id
@@ -81,7 +86,7 @@ export function P2PServerFactory(options) {
         peerListPromise() {
             return new Promise((resolve, reject) => {
                 return _getPeerList(
-                    this.database,
+                    this.peerInfoRef,
                     (err, val) => {
                         if (err) return reject(err)
                         resolve(val)
@@ -96,7 +101,7 @@ export function P2PServerFactory(options) {
 
             // the below assumes that tree trimming would happen at the same lavel as the peers ref or would be passed explicitly
             this.treeTrimmer = new firebaseTreeTrimmer({
-                peersRef: this.firebase.child(this.database.parent, 'peerInfo'),
+                peersRef: this.peerInfoRef,
                 channelsRef: this.database,
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
@@ -384,7 +389,7 @@ export function P2PServerFactory(options) {
         }
 
         getPeerList(callback) {
-            return _getPeerList(this.database, callback, this.firebase)
+            return _getPeerList(peerInfoRef, callback, this.firebase)
         }
 
         destroy() {
