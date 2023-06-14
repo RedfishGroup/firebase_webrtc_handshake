@@ -411,6 +411,15 @@ export function P2PServerFactory(options) {
             return _getPeerList(this.peerInfoRef, callback, this.firebase)
         }
 
+        onPeerList(callback) {
+            return _getPeerList(
+                this.peerInfoRef,
+                callback,
+                this.firebase,
+                false
+            )
+        }
+
         destroy() {
             this.firebase.remove(this.channelRef)
             this.firebase.remove(this.updateRef)

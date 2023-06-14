@@ -630,7 +630,7 @@ class Evented {
  * @param {*} database
  * @param {*} callback
  */
-function getPeerList(database, callback, firebase) {
+function getPeerList(database, callback, firebase, onlyOne = true) {
     console.log('getPeerList: ', database);
     firebase.onValue(
         database,
@@ -639,7 +639,7 @@ function getPeerList(database, callback, firebase) {
             if (callback) callback(null, val);
         },
         {
-            onlyOnce: true,
+            onlyOnce,
         }
     );
 }
@@ -1181,6 +1181,15 @@ function P2PServerFactory(options) {
 
         getPeerList(callback) {
             return getPeerList(this.peerInfoRef, callback, this.firebase)
+        }
+
+        onPeerList(callback) {
+            return getPeerList(
+                this.peerInfoRef,
+                callback,
+                this.firebase,
+                false
+            )
         }
 
         destroy() {
