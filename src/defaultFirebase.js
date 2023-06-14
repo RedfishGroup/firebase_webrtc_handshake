@@ -63,7 +63,7 @@ function getDatabase() {
         )
     }
 
-    database = child(ref(_getDatabase(firebase)), 'peers')
+    database = child(ref(_getDatabase(firebase)), 'peers-channels')
     return database
 }
 
