@@ -648,11 +648,11 @@ function getPeerList(database, callback, firebase) {
 class firebaseTreeTrimmer {
     constructor(options = null) {
         if (
-            options === null ||
-            !options.treeTrimmingRef ||
-            !options.peersRef ||
-            !options.id ||
-            !options.firebase
+            (options === null ||
+                !options.treeTrimmingRef ||
+                !options.peersRef ||
+                !options.channelsRef,
+            !options.id || !options.firebase)
         )
             throw new Error(
                 'requires an options object with an id, firebase, treeTrimmingRef and peersRef'
@@ -735,6 +735,22 @@ class firebaseTreeTrimmer {
                 onlyOnce: true,
             }
         );
+        this.firebase.onValue(
+            this.channelsRef,
+            (snap) => {
+                snap.forEach((child) => {
+                    // if the peer is not in the treeTrimming list,
+                    // remove it from peersRef
+                    if (treeTrimmers[child.key] === undefined) {
+                        this.firebase.remove(child.ref);
+                    }
+                });
+            },
+            {
+                onlyOnce: true,
+            }
+        );
+
     }
 
     watchMySuperior(superior) {
@@ -854,7 +870,8 @@ function P2PServerFactory(options) {
 
             // the below assumes that tree trimming would happen at the same lavel as the peers ref or would be passed explicitly
             this.treeTrimmer = new firebaseTreeTrimmer({
-                peersRef: this.database,
+                peersRef: this.firebase.child(this.database.parent, 'peerInfo'),
+                channelsRef: this.database,
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
                     this.firebase.child(this.database.parent, 'treeTrimming'),

@@ -96,7 +96,8 @@ export function P2PServerFactory(options) {
 
             // the below assumes that tree trimming would happen at the same lavel as the peers ref or would be passed explicitly
             this.treeTrimmer = new firebaseTreeTrimmer({
-                peersRef: this.database,
+                peersRef: this.firebase.child(this.database.parent, 'peerInfo'),
+                channelsRef: this.database,
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
                     this.firebase.child(this.database.parent, 'treeTrimming'),

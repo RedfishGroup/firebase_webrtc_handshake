@@ -4,11 +4,11 @@
 export class firebaseTreeTrimmer {
     constructor(options = null) {
         if (
-            options === null ||
-            !options.treeTrimmingRef ||
-            !options.peersRef ||
-            !options.id ||
-            !options.firebase
+            (options === null ||
+                !options.treeTrimmingRef ||
+                !options.peersRef ||
+                !options.channelsRef,
+            !options.id || !options.firebase)
         )
             throw new Error(
                 'requires an options object with an id, firebase, treeTrimmingRef and peersRef'
@@ -91,6 +91,22 @@ export class firebaseTreeTrimmer {
                 onlyOnce: true,
             }
         )
+        this.firebase.onValue(
+            this.channelsRef,
+            (snap) => {
+                snap.forEach((child) => {
+                    // if the peer is not in the treeTrimming list,
+                    // remove it from peersRef
+                    if (treeTrimmers[child.key] === undefined) {
+                        this.firebase.remove(child.ref)
+                    }
+                })
+            },
+            {
+                onlyOnce: true,
+            }
+        )
+
     }
 
     watchMySuperior(superior) {
