@@ -3,7 +3,7 @@
  * @param {*} database
  * @param {*} callback
  */
-export function getPeerList(database, callback, firebase, onlyOne = true) {
+export function getPeerList(database, callback, firebase, onlyOnce = true) {
     console.log('getPeerList: ', database)
     firebase.onValue(
         database,

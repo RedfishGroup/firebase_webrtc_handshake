@@ -631,7 +631,7 @@ class Channel {
  * @param {*} database
  * @param {*} callback
  */
-function getPeerList(database, callback, firebase, onlyOne = true) {
+function getPeerList(database, callback, firebase, onlyOnce = true) {
     console.log('getPeerList: ', database);
     firebase.onValue(
         database,
