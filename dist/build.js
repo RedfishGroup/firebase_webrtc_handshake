@@ -827,7 +827,7 @@ function P2PServerFactory(options) {
             Object.assign(this, combinedSettings);
 
             this.database = options.database;
-            console.log('Database: ', this.database);
+            console.log('Database: ', this.database.toString());
 
             this.peerInfoRef = this.firebase.child(
                 this.database.parent,
@@ -892,7 +892,10 @@ function P2PServerFactory(options) {
             this.userRef = this.firebase.child(this.database, this.id);
 
             if (this.debug)
-                console.log('userRef: ' + this.userRef, this.initialPeerInfo);
+                console.log(
+                    'userRef: ' + this.userRef.toString(),
+                    this.initialPeerInfo
+                );
 
             this.firebase.onValue(this.userRef, (snapshot) => {
                 // handle being tree trimmed while asleep
@@ -916,10 +919,13 @@ function P2PServerFactory(options) {
                         this._peerInfo,
                         newPeerInfo
                     );
-                    this.firebase.update(this.userRef, {
-                        ...this._peerInfo,
-                        lastUpdate: this.firebase.serverTimestamp(),
-                    });
+                    this.firebase.update(
+                        firebase.child(this.peerInfoRef, this.id),
+                        {
+                            ...this._peerInfo,
+                            lastUpdate: this.firebase.serverTimestamp(),
+                        }
+                    );
                 } else if (this._peerInfo) ; else {
                     console.warn(
                         'Appears we have not yet set peerInfo: ',
@@ -930,6 +936,9 @@ function P2PServerFactory(options) {
             });
 
             this.firebase.onDisconnect(this.userRef).remove();
+            this.firebase
+                .onDisconnect(firebase.child(this.peerInfoRef, this.id))
+                .remove();
 
             if (this.initialPeerInfo) {
                 if (this.debug)
@@ -938,7 +947,10 @@ function P2PServerFactory(options) {
                         this.initialPeerInfo
                     );
                 this.firebase
-                    .update(this.userRef, this.initialPeerInfo)
+                    .update(
+                        firebase.child(this.peerInfoRef, this.id),
+                        this.initialPeerInfo
+                    )
                     .then(() => {
                         console.log('update finished');
                         this.resolveReady(this.userRef);
@@ -949,13 +961,19 @@ function P2PServerFactory(options) {
                     });
             }
 
-            this.updateRef = this.firebase.child(this.userRef, 'lastUpdate');
+            this.updateRef = this.firebase.child(
+                firebase.child(this.peerInfoRef, this.id),
+                'lastUpdate'
+            );
             this.firebase.set(this.updateRef, this.firebase.serverTimestamp());
 
             this.channelRef = this.firebase.child(this.userRef, 'channels');
             if (this.stream) {
                 this.firebase.set(
-                    this.firebase.child(this.userRef, 'isStream'),
+                    this.firebase.child(
+                        firebase.child(this.peerInfoRef, this.id),
+                        'isStream'
+                    ),
                     true
                 );
             }
@@ -1011,6 +1029,10 @@ function P2PServerFactory(options) {
             // disabling no-loop-func because these loops are correct usage
             // https://eslint.org/docs/rules/no-loop-func
             // when a new channel is added, listen to it.
+
+            if (this.debug)
+                console.log('channelRef: ', this.channelRef.toString());
+
             this.firebase.onChildAdded(this.channelRef, (ev) => {
                 if (this.connections.length > this.MAX_CONNECTIONS) {
                     console.error(
@@ -1400,14 +1422,14 @@ function P2PClientFactory(options) {
                                 } else if (data.candidate) {
                                     if (this.debug) {
                                         console.log(
-                                            'client recieved candidate from webrtc',
+                                            'client received candidate from webrtc',
                                             data
                                         );
                                     }
                                     this.firebase.push(this.outRef, data);
                                 } else {
                                     console.warn(
-                                        'Client recieved unexpected signal through WebRTC:',
+                                        'Client received unexpected signal through WebRTC:',
                                         data
                                     );
                                 }

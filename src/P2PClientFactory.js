@@ -198,14 +198,14 @@ export function P2PClientFactory(options) {
                                 } else if (data.candidate) {
                                     if (this.debug) {
                                         console.log(
-                                            'client recieved candidate from webrtc',
+                                            'client received candidate from webrtc',
                                             data
                                         )
                                     }
                                     this.firebase.push(this.outRef, data)
                                 } else {
                                     console.warn(
-                                        'Client recieved unexpected signal through WebRTC:',
+                                        'Client received unexpected signal through WebRTC:',
                                         data
                                     )
                                 }
