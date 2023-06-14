@@ -853,7 +853,7 @@ function P2PServerFactory(options) {
         }
 
         init() {
-            var fbref = this.database;
+            this.database;
 
             // the below assumes that tree trimming would happen at the same lavel as the peers ref or would be passed explicitly
             this.treeTrimmer = new firebaseTreeTrimmer({
@@ -867,7 +867,10 @@ function P2PServerFactory(options) {
                 trimmerRemoveRate: this.trimmerRemoveRate,
             });
 
-            this.userRef = this.firebase.child(fbref, this.id);
+            this.userRef = this.firebase.child(
+                this.firebase.child(this.database.parent, 'peerInfo'),
+                this.id
+            );
 
             if (this.debug)
                 console.log('userRef: ' + this.userRef, this.initialPeerInfo);
