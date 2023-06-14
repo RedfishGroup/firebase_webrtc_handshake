@@ -143,7 +143,7 @@ export function P2PServerFactory(options) {
                         newPeerInfo
                     )
                     this.firebase.update(
-                        firebase.child(this.peerInfoRef, this.id),
+                        this.firebase.child(this.peerInfoRef, this.id),
                         {
                             ...this._peerInfo,
                             lastUpdate: this.firebase.serverTimestamp(),
@@ -162,7 +162,7 @@ export function P2PServerFactory(options) {
 
             this.firebase.onDisconnect(this.userRef).remove()
             this.firebase
-                .onDisconnect(firebase.child(this.peerInfoRef, this.id))
+                .onDisconnect(this.firebase.child(this.peerInfoRef, this.id))
                 .remove()
 
             if (this.initialPeerInfo) {
@@ -173,7 +173,7 @@ export function P2PServerFactory(options) {
                     )
                 this.firebase
                     .update(
-                        firebase.child(this.peerInfoRef, this.id),
+                        this.firebase.child(this.peerInfoRef, this.id),
                         this.initialPeerInfo
                     )
                     .then(() => {
@@ -187,7 +187,7 @@ export function P2PServerFactory(options) {
             }
 
             this.updateRef = this.firebase.child(
-                firebase.child(this.peerInfoRef, this.id),
+                this.firebase.child(this.peerInfoRef, this.id),
                 'lastUpdate'
             )
             this.firebase.set(this.updateRef, this.firebase.serverTimestamp())
@@ -196,7 +196,7 @@ export function P2PServerFactory(options) {
             if (this.stream) {
                 this.firebase.set(
                     this.firebase.child(
-                        firebase.child(this.peerInfoRef, this.id),
+                        this.firebase.child(this.peerInfoRef, this.id),
                         'isStream'
                     ),
                     true
