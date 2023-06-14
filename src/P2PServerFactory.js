@@ -106,7 +106,10 @@ export function P2PServerFactory(options) {
                 trimmerRemoveRate: this.trimmerRemoveRate,
             })
 
-            this.userRef = this.firebase.child(fbref, this.id)
+            this.userRef = this.firebase.child(
+                this.firebase.child(this.database.parent, 'peerInfo'),
+                this.id
+            )
 
             if (this.debug)
                 console.log('userRef: ' + this.userRef, this.initialPeerInfo)
