@@ -888,10 +888,7 @@ function P2PServerFactory(options) {
                 trimmerRemoveRate: this.trimmerRemoveRate,
             });
 
-            this.userRef = this.firebase.child(
-                this.firebase.child(this.database.parent, 'peerInfo'),
-                this.id
-            );
+            this.userRef = this.firebase.child(this.database, this.id);
 
             if (this.debug)
                 console.log('userRef: ' + this.userRef, this.initialPeerInfo);
@@ -1245,15 +1242,12 @@ function P2PClientFactory(options) {
                 options.ICE_SERVERS ||
                 settings.ICE_SERVERS;
 
-            if (options.database) {
-                this.database = options.database;
-            }
+            this.database = options.database;
 
             this.peerInfoRef = this.firebase.child(
                 this.database.parent,
                 'peerInfo'
             );
-
 
             this.connection = null;
             this.channelRef = null;

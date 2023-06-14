@@ -41,15 +41,12 @@ export function P2PClientFactory(options) {
                 options.ICE_SERVERS ||
                 settings.ICE_SERVERS
 
-            if (options.database) {
-                this.database = options.database
-            }
+            this.database = options.database
 
             this.peerInfoRef = this.firebase.child(
                 this.database.parent,
                 'peerInfo'
             )
-
 
             this.connection = null
             this.channelRef = null
