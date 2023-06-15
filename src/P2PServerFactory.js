@@ -225,7 +225,7 @@ export function P2PServerFactory(options) {
 
             this.connections = []
             this._intervalID = setInterval(() => {
-                this.fire('updateTimeStamp', undefined)
+                this.fire('updateTimeStamp')
                 this._updateOnFireBase()
             }, this.POLLING_FREQUENCY)
 
