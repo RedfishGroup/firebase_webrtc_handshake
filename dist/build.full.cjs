@@ -1252,7 +1252,8 @@ function P2PClientFactory(options) {
 
             this.firebase = options.firebase;
 
-            this.id = 'client_' + Math.floor(Math.random() * 100000);
+            this.id =
+                options.peerID || 'client_' + Math.floor(Math.random() * 100000);
             this.myID = this.id;
             this.peerID = this.id;
 
