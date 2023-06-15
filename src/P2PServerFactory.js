@@ -178,6 +178,11 @@ export function P2PServerFactory(options) {
             this.firebase
                 .onDisconnect(this.firebase.child(this.peerInfoRef, this.id))
                 .remove()
+                this.firebase
+                    .onDisconnect(
+                        this.firebase.child(this.heartneatRef, this.id)
+                    )
+                    .remove()
 
             if (this.initialPeerInfo) {
                 if (this.debug)
@@ -201,7 +206,7 @@ export function P2PServerFactory(options) {
             }
 
             this.updateRef = this.firebase.child(
-                this.firebase.child(this.peerInfoRef, this.id),
+                this.firebase.child(this.heartbeatRef, this.id),
                 'lastUpdate'
             )
             this.firebase.set(this.updateRef, this.firebase.serverTimestamp())
