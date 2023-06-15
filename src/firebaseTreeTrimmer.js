@@ -7,11 +7,12 @@ export class firebaseTreeTrimmer {
             (options === null ||
                 !options.treeTrimmingRef ||
                 !options.peersRef ||
-                !options.channelsRef,
+                !options.channelsRef ||
+                !options.heartbeatRef,
             !options.id || !options.firebase)
         )
             throw new Error(
-                'requires an options object with an id, firebase, treeTrimmingRef and peersRef'
+                'requires an options object with an id, firebase, treeTrimmingRef, heartbeatRef and peersRef'
             )
         Object.assign(this, options)
 
@@ -77,11 +78,11 @@ export class firebaseTreeTrimmer {
     treeTrimmer(treeTrimmers) {
         // remove all references to peers not in treeTrimming list
         this.firebase.onValue(
-            this.peersRef,
+            this.heartbeatRef,
             (snap) => {
                 snap.forEach((child) => {
                     // if the peer is not in the treeTrimming list,
-                    // remove it from peersRef
+                    // remove it from heartbeatRef
                     if (treeTrimmers[child.key] === undefined) {
                         this.firebase.remove(child.ref)
                     }
@@ -96,7 +97,22 @@ export class firebaseTreeTrimmer {
             (snap) => {
                 snap.forEach((child) => {
                     // if the peer is not in the treeTrimming list,
-                    // remove it from peersRef
+                    // remove it from channelsRef
+                    if (treeTrimmers[child.key] === undefined) {
+                        this.firebase.remove(child.ref)
+                    }
+                })
+            },
+            {
+                onlyOnce: true,
+            }
+        )
+        this.firebase.onValue(
+            this.peersRef,
+            (snap) => {
+                snap.forEach((child) => {
+                    // if the peer is not in the treeTrimming list,
+                    // remove it from channelsRef
                     if (treeTrimmers[child.key] === undefined) {
                         this.firebase.remove(child.ref)
                     }
@@ -107,13 +123,14 @@ export class firebaseTreeTrimmer {
             }
         )
 
+
     }
 
     watchMySuperior(superior) {
         // if superior is either not in /peers/cameras, or their
         // lastUpdate is greater than a minute, remove from treeTrimming list
         this.firebase.onValue(
-            this.firebase.child(this.peersRef, superior),
+            this.firebase.child(this.heartbeatRef, superior),
             (snap) => {
                 // if the peer's lastUpdate is greater than this.trimmerRemoveRate,
                 // or it doesn't exist, remove from treeTrimming list

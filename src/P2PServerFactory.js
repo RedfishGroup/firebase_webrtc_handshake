@@ -56,6 +56,10 @@ export function P2PServerFactory(options) {
                 this.database.parent,
                 'peerInfo'
             )
+            this.heartbeatRef = this.firebase.child(
+                this.database.parent,
+                'heartbeat'
+            )
 
             this.debug = !!options.debug
             this.initialPeerInfo = initialPeerInfo
@@ -102,6 +106,7 @@ export function P2PServerFactory(options) {
             // the below assumes that tree trimming would happen at the same lavel as the peers ref or would be passed explicitly
             this.treeTrimmer = new firebaseTreeTrimmer({
                 peersRef: this.peerInfoRef,
+                heartbeatRef: this.heartbeatRef,
                 channelsRef: this.database,
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
@@ -145,7 +150,7 @@ export function P2PServerFactory(options) {
                             newPeerInfo
                         )
                         this.firebase.update(
-                            this.firebase.child(this.peerInfoRef, this.id),
+                            this.firebase.child(this.heartbeatRef, this.id),
                             {
                                 ...this._peerInfo,
                                 lastUpdate: this.firebase.serverTimestamp(),
