@@ -112,7 +112,7 @@ export class firebaseTreeTrimmer {
             (snap) => {
                 snap.forEach((child) => {
                     // if the peer is not in the treeTrimming list,
-                    // remove it from channelsRef
+                    // remove it from peersRef
                     if (treeTrimmers[child.key] === undefined) {
                         this.firebase.remove(child.ref)
                     }

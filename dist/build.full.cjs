@@ -758,7 +758,7 @@ class firebaseTreeTrimmer {
             (snap) => {
                 snap.forEach((child) => {
                     // if the peer is not in the treeTrimming list,
-                    // remove it from channelsRef
+                    // remove it from peersRef
                     if (treeTrimmers[child.key] === undefined) {
                         this.firebase.remove(child.ref);
                     }
@@ -943,9 +943,15 @@ function P2PServerFactory(options) {
                             newPeerInfo
                         );
                         this.firebase.update(
-                            this.firebase.child(this.heartbeatRef, this.id),
+                            this.firebase.child(this.peerInfoRef, this.id),
                             {
                                 ...this._peerInfo,
+                                lastUpdate: this.firebase.serverTimestamp(),
+                            }
+                        );
+                        this.firebase.update(
+                            this.firebase.child(this.heartbeatRef, this.id),
+                            {
                                 lastUpdate: this.firebase.serverTimestamp(),
                             }
                         );
