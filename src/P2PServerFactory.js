@@ -270,8 +270,8 @@ export function P2PServerFactory(options) {
             }
         }
 
-        updatePeerInfo(newPeerInfo) {
-            this.firebase.update(
+        async updatePeerInfo(newPeerInfo) {
+            return this.firebase.update(
                 this.firebase.child(this.peerInfoRef, this.id),
                 { ...newPeerInfo, lastUpdate: this.firebase.serverTimestamp() }
             )
