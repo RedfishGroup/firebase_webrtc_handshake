@@ -666,6 +666,12 @@ class firebaseTreeTrimmer {
         this.monitorRate = options.monitorRate || 60000;
         this.monitorReference = this.monitor.bind(this);
         this.trimmerRemoveRate = options.trimmerRemoveRate || 5 * 60000;
+        
+        this.firebase
+            .onDisconnect(this.firebase.child(this.treeTrimmingRef, this.id))
+            .remove();
+
+
         this.monitor();
     }
 
@@ -719,6 +725,7 @@ class firebaseTreeTrimmer {
                 onlyOnce: true,
             }
         );
+
     }
 
     treeTrimmer(treeTrimmers) {
