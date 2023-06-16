@@ -1083,11 +1083,11 @@ function P2PServerFactory(options) {
                     if (this.debug) console.log('signal: ', { sig });
                     if (sig.type === 'offer') {
                         var mykey = ev.key;
-                        var { myID } = sig;
+                        var { serverID } = sig;
                         console.log('listener create channel: ', sig);
                         var channel = new Channel(
                             this.firebase.child(this.channelRef, mykey),
-                            this._makePeer(myID),
+                            this._makePeer(serverID),
                             this.firebase
                         );
                         this.connections = [...this.connections, channel];
@@ -1289,6 +1289,7 @@ function P2PClientFactory(options) {
                 options.peerID || 'client_' + Math.floor(Math.random() * 100000);
             this.myID = this.id;
             this.peerID = this.id;
+            this.serverID = options.serverID;
 
             this.ackID = 0;
             this.ackCallbacks = {};
@@ -1527,6 +1528,7 @@ function P2PClientFactory(options) {
         _createChannel(offer) {
             offer.peerID = this.peerID;
             offer.myID = this.myID;
+            offer.serverID = this.serverID;
             if (this.debug)
                 console.log('Got create channel with offer: ', offer, this);
             this.channelRef = this.firebase.push(

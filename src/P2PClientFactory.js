@@ -21,6 +21,7 @@ export function P2PClientFactory(options) {
                 options.peerID || 'client_' + Math.floor(Math.random() * 100000)
             this.myID = this.id
             this.peerID = this.id
+            this.serverID = options.serverID
 
             this.ackID = 0
             this.ackCallbacks = {}
@@ -259,6 +260,7 @@ export function P2PClientFactory(options) {
         _createChannel(offer) {
             offer.peerID = this.peerID
             offer.myID = this.myID
+            offer.serverID = this.serverID
             if (this.debug)
                 console.log('Got create channel with offer: ', offer, this)
             this.channelRef = this.firebase.push(
