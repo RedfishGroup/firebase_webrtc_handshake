@@ -967,11 +967,9 @@ function P2PServerFactory(options) {
             this.firebase
                 .onDisconnect(this.firebase.child(this.peerInfoRef, this.id))
                 .remove();
-                this.firebase
-                    .onDisconnect(
-                        this.firebase.child(this.heartneatRef, this.id)
-                    )
-                    .remove();
+            this.firebase
+                .onDisconnect(this.firebase.child(this.heartbeatRef, this.id))
+                .remove();
 
             if (this.initialPeerInfo) {
                 if (this.debug)
@@ -1014,6 +1012,7 @@ function P2PServerFactory(options) {
 
             this.connections = [];
             this._intervalID = setInterval(() => {
+                console.log('setInterval: ', this.POLLING_FREQUENCY);
                 this.fire('updateTimeStamp');
                 this._updateOnFireBase();
             }, this.POLLING_FREQUENCY);
@@ -1025,6 +1024,7 @@ function P2PServerFactory(options) {
 
         _updateOnFireBase() {
             // one may want to overwrite this
+            console.log('updateOnFirebase');
             this.firebase.set(this.updateRef, this.firebase.serverTimestamp());
         }
 
