@@ -222,8 +222,9 @@ export function P2PServerFactory(options) {
             this.firebase.set(this.channelRef, [])
 
             this.connections = []
+            console.log('POLLING_FREQUENCY: ', this.POLLING_FREQUENCY)
             this._intervalID = setInterval(() => {
-                console.log('setInterval: ', this.POLLING_FREQUENCY)
+                // console.log('setInterval: ', this.POLLING_FREQUENCY)
                 this.fire('updateTimeStamp')
                 this._updateOnFireBase()
             }, this.POLLING_FREQUENCY)
@@ -235,7 +236,7 @@ export function P2PServerFactory(options) {
 
         _updateOnFireBase() {
             // one may want to overwrite this
-            console.log('updateOnFirebase')
+            // console.log('updateOnFirebase')
             this.firebase.set(this.updateRef, this.firebase.serverTimestamp())
         }
 
