@@ -294,11 +294,11 @@ export function P2PServerFactory(options) {
                     if (this.debug) console.log('signal: ', { sig })
                     if (sig.type === 'offer') {
                         var mykey = ev.key
-                        var { serverID } = sig
+                        var { peerID } = sig
                         console.log('listener create channel: ', sig)
                         var channel = new Channel(
                             this.firebase.child(this.channelRef, mykey),
-                            this._makePeer(serverID),
+                            this._makePeer(peerID),
                             this.firebase
                         )
                         this.connections = [...this.connections, channel]

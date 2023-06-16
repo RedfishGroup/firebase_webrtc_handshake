@@ -23,6 +23,8 @@ export function P2PClientFactory(options) {
             this.peerID = this.id
             this.serverID = options.serverID
 
+            console.log('P2PClient: ', this)
+
             this.ackID = 0
             this.ackCallbacks = {}
 
@@ -151,7 +153,6 @@ export function P2PClientFactory(options) {
 
         connectToPeerID(id, callback = () => {}) {
             this.connectionCallbacks.push(callback)
-            this.serverID = id
             this.getPeerList((err, peerList) => {
                 if (err) {
                     console.error(err)
