@@ -1083,11 +1083,11 @@ function P2PServerFactory(options) {
                     if (this.debug) console.log('signal: ', { sig });
                     if (sig.type === 'offer') {
                         var mykey = ev.key;
-                        var { peerID } = sig;
+                        var { serverID } = sig;
                         console.log('listener create channel: ', sig);
                         var channel = new Channel(
                             this.firebase.child(this.channelRef, mykey),
-                            this._makePeer(peerID),
+                            this._makePeer(serverID),
                             this.firebase
                         );
                         this.connections = [...this.connections, channel];
