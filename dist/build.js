@@ -1069,6 +1069,13 @@ function P2PServerFactory(options) {
             }
         }
 
+        updatePeerInfo(newPeerInfo) {
+            this.firebase.update(
+                this.firebase.child(this.peerInfoRef, this.id),
+                newPeerInfo
+            );
+        }
+
         listenToChannels() {
             // disabling no-loop-func because these loops are correct usage
             // https://eslint.org/docs/rules/no-loop-func
