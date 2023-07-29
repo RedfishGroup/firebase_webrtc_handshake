@@ -2,11 +2,11 @@ import { P2PServerFactory } from './P2PServerFactory.js'
 import { Channel } from './Channel.js'
 import { P2PClientFactory } from './P2PClientFactory.js'
 
-import * as Peer2 from 'simple-peer/simplepeer.min.js'
-const Peer = Peer2.default
+import Peer from 'simple-peer'
+// const Peer = Peer2.default
 
 import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js'
-const msgPack = msgpacklite.default
+const msgPack = msgpacklite
 
 import {
     generateWebRTCpayload,

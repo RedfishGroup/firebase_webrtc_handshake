@@ -35,10 +35,14 @@ export const firebaseMethods = {
 
 
 var defaultFBConfig = {
-    apiKey: 'AIzaSyBEbLlzJmmOC7CVfbeZs_HQBWia_xSb4sA',
-    authDomain: 'https://torrid-torch-716.firebaseio.com/',
-    databaseURL: 'https://torrid-torch-716.firebaseio.com/',
-    projectId: 'torrid-torch-716',
+    apiKey: 'AIzaSyCKuD19DkUeHtEawjVB5IPCXSqe5lkaWIY',
+    authDomain: 'workerqueuedemo.firebaseapp.com',
+    databaseURL: 'https://workerqueuedemo.firebaseio.com',
+    projectId: 'workerqueuedemo',
+    storageBucket: 'workerqueuedemo.appspot.com',
+    messagingSenderId: '498046902833',
+    appId: '1:498046902833:web:40502381ff5ba4db166b10',
+    measurementId: 'G-DGFXRT7F49',
 }
 
 var firebase

@@ -22,6 +22,22 @@ export default [
         ],
     },
     {
+        input: 'node_modules/simple-peer/simplepeer.min.js',
+        plugins: [
+            resolve({
+                mainFields: ['module', 'main', 'jsnext:main', 'browser'],
+            }),
+            commonjs(),
+        ],
+        output: [
+            {
+                file: 'dist/simple-peer.mjs',
+                format: 'esm',
+                sourcemap: true,
+            },
+        ],
+    },
+    {
         input: 'src/index.js',
         external: ['firebase/app', 'firebase/database'],
         plugins: [

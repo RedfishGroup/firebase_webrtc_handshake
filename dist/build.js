@@ -1,4 +1,4 @@
-import * as Peer2 from 'simple-peer/simplepeer.min.js';
+import * as Peer from 'simple-peer/simplepeer.min.js';
 import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js';
 
 var getOwnPropertyNames = Object.getOwnPropertyNames, getOwnPropertySymbols = Object.getOwnPropertySymbols;
@@ -1999,8 +1999,7 @@ function PeerBinaryFactory(options) {
     }
 }
 
-const Peer = Peer2.default;
-const msgPack = msgpacklite.default;
+const msgPack = msgpacklite;
 
 
 setEncode(msgPack.encode);
