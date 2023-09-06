@@ -671,7 +671,6 @@ class firebaseTreeTrimmer {
             .onDisconnect(this.firebase.child(this.treeTrimmingRef, this.id))
             .remove();
 
-
         this.monitor();
     }
 
@@ -735,9 +734,17 @@ class firebaseTreeTrimmer {
             (snap) => {
                 snap.forEach((child) => {
                     // if the peer is not in the treeTrimming list,
-                    // remove it from heartbeatRef
+                    // remove it from other refs heartbeatRef
                     if (treeTrimmers[child.key] === undefined) {
-                        this.firebase.remove(child.ref);
+                        this.firebase.remove(
+                            this.firebase.child(heartbeatRef, child.key)
+                        );
+                        this.firebase.remove(
+                            this.firebase.child(channelsRef, child.key)
+                        );
+                        this.firebase.remove(
+                            this.firebase.child(peersRef, child.key)
+                        );
                     }
                 });
             },
@@ -745,43 +752,41 @@ class firebaseTreeTrimmer {
                 onlyOnce: true,
             }
         );
-        this.firebase.onValue(
-            this.channelsRef,
-            (snap) => {
-                snap.forEach((child) => {
-                    // if the peer is not in the treeTrimming list,
-                    // remove it from channelsRef
-                    if (treeTrimmers[child.key] === undefined) {
-                        this.firebase.remove(child.ref);
-                    }
-                });
-            },
-            {
-                onlyOnce: true,
-            }
-        );
-        this.firebase.onValue(
-            this.peersRef,
-            (snap) => {
-                snap.forEach((child) => {
-                    // if the peer is not in the treeTrimming list,
-                    // remove it from peersRef
-                    if (treeTrimmers[child.key] === undefined) {
-                        this.firebase.remove(child.ref);
-                    }
-                });
-            },
-            {
-                onlyOnce: true,
-            }
-        );
-
-
+        // this.firebase.onValue(
+        //     this.channelsRef,
+        //     (snap) => {
+        //         snap.forEach((child) => {
+        //             // if the peer is not in the treeTrimming list,
+        //             // remove it from channelsRef
+        //             if (treeTrimmers[child.key] === undefined) {
+        //                 this.firebase.remove(child.ref)
+        //             }
+        //         })
+        //     },
+        //     {
+        //         onlyOnce: true,
+        //     }
+        // )
+        // this.firebase.onValue(
+        //     this.peersRef,
+        //     (snap) => {
+        //         snap.forEach((child) => {
+        //             // if the peer is not in the treeTrimming list,
+        //             // remove it from peersRef
+        //             if (treeTrimmers[child.key] === undefined) {
+        //                 this.firebase.remove(child.ref)
+        //             }
+        //         })
+        //     },
+        //     {
+        //         onlyOnce: true,
+        //     }
+        // )
     }
 
     watchMySuperior(superior) {
-        // if superior is either not in /peers/cameras, or their
-        // lastUpdate is greater than a minute, remove from treeTrimming list
+        // if superior is either not in heartbeatRef, or their
+        // lastUpdate is greater than a trimmerRemoveRate, remove from treeTrimming list
         this.firebase.onValue(
             this.firebase.child(this.heartbeatRef, superior),
             (snap) => {
@@ -793,7 +798,7 @@ class firebaseTreeTrimmer {
                     snap.child('lastUpdate').val() <
                         Date.now() - this.trimmerRemoveRate
                 ) {
-                    // if not in the peers list or has not been updated for 3 minutes then remove
+                    // if not in the heartbeat list or has not been updated for trimmerRemoveRate then remove
                     this.firebase.remove(
                         this.firebase.child(this.treeTrimmingRef, superior)
                     );
@@ -856,6 +861,7 @@ function P2PServerFactory(options) {
                 this.database.parent,
                 'peerInfo'
             );
+
             this.heartbeatRef = this.firebase.child(
                 this.database.parent,
                 'heartbeat'

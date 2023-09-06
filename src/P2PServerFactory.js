@@ -56,6 +56,7 @@ export function P2PServerFactory(options) {
                 this.database.parent,
                 'peerInfo'
             )
+
             this.heartbeatRef = this.firebase.child(
                 this.database.parent,
                 'heartbeat'
