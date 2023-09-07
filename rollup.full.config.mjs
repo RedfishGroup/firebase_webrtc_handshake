@@ -28,14 +28,14 @@ export default [
         input: 'src/index.js',
         external: ['firebase/app', 'firebase/database', 'firebase/storage'],
         plugins: [
+            nodeGlobals(),
             resolve({
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],
                 preferBuiltins: false,
                 browser: true,
             }),
-            nodeGlobals(),
-            nodeBuiltins(),
             commonjs(),
+            nodeBuiltins(),
         ],
         output: [
             {
