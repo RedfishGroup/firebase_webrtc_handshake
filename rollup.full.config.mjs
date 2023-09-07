@@ -33,6 +33,7 @@ export default [
                 preferBuiltins: false,
                 browser: true,
             }),
+            nodeGlobals(),
             nodeBuiltins(),
             commonjs(),
         ],
