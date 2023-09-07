@@ -1692,11 +1692,7 @@ function getAugmentedNamespace(n) {
 	return a;
 }
 
-var global$2 = (typeof global !== "undefined" ? global :
-  typeof self !== "undefined" ? self :
-  typeof window !== "undefined" ? window : {});
-
-var global$1 = (typeof global$2 !== "undefined" ? global$2 :
+var global$1 = (typeof global !== "undefined" ? global :
             typeof self !== "undefined" ? self :
             typeof window !== "undefined" ? window : {});
 
@@ -1835,7 +1831,7 @@ Item.prototype.run = function () {
 };
 var title = 'browser';
 var platform = 'browser';
-var browser$1 = true;
+var browser$2 = true;
 var env = {};
 var argv = [];
 var version = ''; // empty string to avoid regexp issues
@@ -1899,7 +1895,7 @@ function uptime() {
 var process = {
   nextTick: nextTick,
   title: title,
-  browser: browser$1,
+  browser: browser$2,
   env: env,
   argv: argv,
   version: version,
@@ -1922,24 +1918,281 @@ var process = {
   uptime: uptime
 };
 
-var browser = true;
+/* eslint-env browser */
 
 /**
- * Detect Electron renderer / nwjs process, which is node, but we should
- * treat as a browser.
+ * This is the web browser implementation of `debug()`.
  */
 
-if (typeof process === 'undefined' || process.type === 'renderer' || browser === true || process.__nwjs) {
-	module.exports = require('./browser.js');
-} else {
-	module.exports = require('./node.js');
+exports.formatArgs = formatArgs;
+exports.save = save;
+exports.load = load;
+exports.useColors = useColors;
+exports.storage = localstorage();
+exports.destroy = (() => {
+	let warned = false;
+
+	return () => {
+		if (!warned) {
+			warned = true;
+			console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+		}
+	};
+})();
+
+/**
+ * Colors.
+ */
+
+exports.colors = [
+	'#0000CC',
+	'#0000FF',
+	'#0033CC',
+	'#0033FF',
+	'#0066CC',
+	'#0066FF',
+	'#0099CC',
+	'#0099FF',
+	'#00CC00',
+	'#00CC33',
+	'#00CC66',
+	'#00CC99',
+	'#00CCCC',
+	'#00CCFF',
+	'#3300CC',
+	'#3300FF',
+	'#3333CC',
+	'#3333FF',
+	'#3366CC',
+	'#3366FF',
+	'#3399CC',
+	'#3399FF',
+	'#33CC00',
+	'#33CC33',
+	'#33CC66',
+	'#33CC99',
+	'#33CCCC',
+	'#33CCFF',
+	'#6600CC',
+	'#6600FF',
+	'#6633CC',
+	'#6633FF',
+	'#66CC00',
+	'#66CC33',
+	'#9900CC',
+	'#9900FF',
+	'#9933CC',
+	'#9933FF',
+	'#99CC00',
+	'#99CC33',
+	'#CC0000',
+	'#CC0033',
+	'#CC0066',
+	'#CC0099',
+	'#CC00CC',
+	'#CC00FF',
+	'#CC3300',
+	'#CC3333',
+	'#CC3366',
+	'#CC3399',
+	'#CC33CC',
+	'#CC33FF',
+	'#CC6600',
+	'#CC6633',
+	'#CC9900',
+	'#CC9933',
+	'#CCCC00',
+	'#CCCC33',
+	'#FF0000',
+	'#FF0033',
+	'#FF0066',
+	'#FF0099',
+	'#FF00CC',
+	'#FF00FF',
+	'#FF3300',
+	'#FF3333',
+	'#FF3366',
+	'#FF3399',
+	'#FF33CC',
+	'#FF33FF',
+	'#FF6600',
+	'#FF6633',
+	'#FF9900',
+	'#FF9933',
+	'#FFCC00',
+	'#FFCC33'
+];
+
+/**
+ * Currently only WebKit-based Web Inspectors, Firefox >= v31,
+ * and the Firebug extension (any Firefox version) are known
+ * to support "%c" CSS customizations.
+ *
+ * TODO: add a `localStorage` variable to explicitly enable/disable colors
+ */
+
+// eslint-disable-next-line complexity
+function useColors() {
+	// NB: In an Electron preload script, document will be defined but not fully
+	// initialized. Since we know we're in Chrome, we'll just detect this case
+	// explicitly
+	if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
+		return true;
+	}
+
+	// Internet Explorer and Edge do not support colors.
+	if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
+		return false;
+	}
+
+	// Is webkit? http://stackoverflow.com/a/16459606/376773
+	// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+	return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
+		// Is firebug? http://stackoverflow.com/a/398120/376773
+		(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
+		// Is firefox >= v31?
+		// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31) ||
+		// Double check webkit in userAgent just in case we are in a worker
+		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
 }
 
-var src = /*#__PURE__*/Object.freeze({
+/**
+ * Colorize log arguments if enabled.
+ *
+ * @api public
+ */
+
+function formatArgs(args) {
+	args[0] = (this.useColors ? '%c' : '') +
+		this.namespace +
+		(this.useColors ? ' %c' : ' ') +
+		args[0] +
+		(this.useColors ? '%c ' : ' ') +
+		'+' + module.exports.humanize(this.diff);
+
+	if (!this.useColors) {
+		return;
+	}
+
+	const c = 'color: ' + this.color;
+	args.splice(1, 0, c, 'color: inherit');
+
+	// The final "%c" is somewhat tricky, because there could be other
+	// arguments passed either before or after the %c, so we need to
+	// figure out the correct index to insert the CSS into
+	let index = 0;
+	let lastC = 0;
+	args[0].replace(/%[a-zA-Z%]/g, match => {
+		if (match === '%%') {
+			return;
+		}
+		index++;
+		if (match === '%c') {
+			// We only are interested in the *last* %c
+			// (the user may have provided their own)
+			lastC = index;
+		}
+	});
+
+	args.splice(lastC, 0, c);
+}
+
+/**
+ * Invokes `console.debug()` when available.
+ * No-op when `console.debug` is not a "function".
+ * If `console.debug` is not available, falls back
+ * to `console.log`.
+ *
+ * @api public
+ */
+exports.log = console.debug || console.log || (() => {});
+
+/**
+ * Save `namespaces`.
+ *
+ * @param {String} namespaces
+ * @api private
+ */
+function save(namespaces) {
+	try {
+		if (namespaces) {
+			exports.storage.setItem('debug', namespaces);
+		} else {
+			exports.storage.removeItem('debug');
+		}
+	} catch (error) {
+		// Swallow
+		// XXX (@Qix-) should we be logging these?
+	}
+}
+
+/**
+ * Load `namespaces`.
+ *
+ * @return {String} returns the previously persisted debug modes
+ * @api private
+ */
+function load() {
+	let r;
+	try {
+		r = exports.storage.getItem('debug');
+	} catch (error) {
+		// Swallow
+		// XXX (@Qix-) should we be logging these?
+	}
+
+	// If debug isn't set in LS, and we're in Electron, try to load $DEBUG
+	if (!r && typeof process !== 'undefined' && 'env' in process) {
+		r = process.env.DEBUG;
+	}
+
+	return r;
+}
+
+/**
+ * Localstorage attempts to return the localstorage.
+ *
+ * This is necessary because safari throws
+ * when a user disables cookies/localstorage
+ * and you attempt to access it.
+ *
+ * @return {LocalStorage}
+ * @api private
+ */
+
+function localstorage() {
+	try {
+		// TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
+		// The Browser also has localStorage in the global context.
+		return localStorage;
+	} catch (error) {
+		// Swallow
+		// XXX (@Qix-) should we be logging these?
+	}
+}
+
+module.exports = require('./common')(exports);
+
+const {formatters} = module.exports;
+
+/**
+ * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+ */
+
+formatters.j = function (v) {
+	try {
+		return JSON.stringify(v);
+	} catch (error) {
+		return '[UnexpectedJSONParseError]: ' + error.message;
+	}
+};
+
+var browser$1 = /*#__PURE__*/Object.freeze({
     __proto__: null
 });
 
-var require$$0$2 = /*@__PURE__*/getAugmentedNamespace(src);
+var require$$0$1 = /*@__PURE__*/getAugmentedNamespace(browser$1);
 
 // originally pulled out of simple-peer
 
@@ -1957,16 +2210,60 @@ var getBrowserRtc = function getBrowserRTC () {
   return wrtc
 };
 
-var _polyfillNode_crypto = {};
+// limit of Crypto.getRandomValues()
+// https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
+var MAX_BYTES = 65536;
 
-var _polyfillNode_crypto$1 = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    default: _polyfillNode_crypto
+// Node supports requesting up to this number of bytes
+// https://github.com/nodejs/node/blob/master/lib/internal/crypto/random.js#L48
+var MAX_UINT32 = 4294967295;
+
+function oldBrowser () {
+  throw new Error('Secure random number generation is not supported by this browser.\nUse Chrome, Firefox or Internet Explorer 11')
+}
+
+var Buffer$4 = require('safe-buffer').Buffer;
+var crypto = global$1.crypto || global$1.msCrypto;
+
+if (crypto && crypto.getRandomValues) {
+  module.exports = randomBytes;
+} else {
+  module.exports = oldBrowser;
+}
+
+function randomBytes (size, cb) {
+  // phantomjs needs to throw
+  if (size > MAX_UINT32) throw new RangeError('requested too many random bytes')
+
+  var bytes = Buffer$4.allocUnsafe(size);
+
+  if (size > 0) {  // getRandomValues fails on IE if size == 0
+    if (size > MAX_BYTES) { // this is the max bytes crypto.getRandomValues
+      // can do at once see https://developer.mozilla.org/en-US/docs/Web/API/window.crypto.getRandomValues
+      for (var generated = 0; generated < size; generated += MAX_BYTES) {
+        // buffer.slice automatically checks if the end is past the end of
+        // the buffer so we don't have to here
+        crypto.getRandomValues(bytes.slice(generated, generated + MAX_BYTES));
+      }
+    } else {
+      crypto.getRandomValues(bytes);
+    }
+  }
+
+  if (typeof cb === 'function') {
+    return nextTick(function () {
+      cb(null, bytes);
+    })
+  }
+
+  return bytes
+}
+
+var browser = /*#__PURE__*/Object.freeze({
+    __proto__: null
 });
 
-var require$$0$1 = /*@__PURE__*/getAugmentedNamespace(_polyfillNode_crypto$1);
-
-var randombytes$1 = require$$0$1.randomBytes;
+var require$$2$1 = /*@__PURE__*/getAugmentedNamespace(browser);
 
 var readableBrowser = {exports: {}};
 
@@ -3747,7 +4044,7 @@ var _stream_writable = /*#__PURE__*/Object.freeze({
     __proto__: null
 });
 
-var require$$1$1 = /*@__PURE__*/getAugmentedNamespace(_stream_writable);
+var require$$1 = /*@__PURE__*/getAugmentedNamespace(_stream_writable);
 
 /*<replacement>*/
 
@@ -3998,37 +4295,37 @@ createErrorType('ERR_UNKNOWN_ENCODING', function (arg) {
 createErrorType('ERR_STREAM_UNSHIFT_AFTER_END_EVENT', 'stream.unshift() after end event');
 errorsBrowser.codes = codes;
 
-var inherits;
-if (typeof Object.create === 'function'){
-  inherits = function inherits(ctor, superCtor) {
-    // implementation from standard node.js 'util' module
-    ctor.super_ = superCtor;
-    ctor.prototype = Object.create(superCtor.prototype, {
-      constructor: {
-        value: ctor,
-        enumerable: false,
-        writable: true,
-        configurable: true
-      }
-    });
+var inherits_browser = {exports: {}};
+
+if (typeof Object.create === 'function') {
+  // implementation from standard node.js 'util' module
+  inherits_browser.exports = function inherits(ctor, superCtor) {
+    if (superCtor) {
+      ctor.super_ = superCtor;
+      ctor.prototype = Object.create(superCtor.prototype, {
+        constructor: {
+          value: ctor,
+          enumerable: false,
+          writable: true,
+          configurable: true
+        }
+      });
+    }
   };
 } else {
-  inherits = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor;
-    var TempCtor = function () {};
-    TempCtor.prototype = superCtor.prototype;
-    ctor.prototype = new TempCtor();
-    ctor.prototype.constructor = ctor;
+  // old school shim for old browsers
+  inherits_browser.exports = function inherits(ctor, superCtor) {
+    if (superCtor) {
+      ctor.super_ = superCtor;
+      var TempCtor = function () {};
+      TempCtor.prototype = superCtor.prototype;
+      ctor.prototype = new TempCtor();
+      ctor.prototype.constructor = ctor;
+    }
   };
 }
-var inherits$1 = inherits;
 
-var _polyfillNode_inherits = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    default: inherits$1
-});
-
-var require$$1 = /*@__PURE__*/getAugmentedNamespace(_polyfillNode_inherits);
+var inherits_browserExports = inherits_browser.exports;
 
 var _stream_transform = Transform$1;
 
@@ -4040,7 +4337,7 @@ var _require$codes$1 = errorsBrowser.codes,
 
 var Duplex = require$$2;
 
-require$$1(Transform$1, Duplex);
+inherits_browserExports(Transform$1, Duplex);
 
 function afterTransform(er, data) {
   var ts = this._transformState;
@@ -4173,7 +4470,7 @@ var _stream_passthrough = PassThrough;
 
 var Transform = _stream_transform;
 
-require$$1(PassThrough, Transform);
+inherits_browserExports(PassThrough, Transform);
 
 function PassThrough(options) {
   if (!(this instanceof PassThrough)) return new PassThrough(options);
@@ -4383,7 +4680,7 @@ var pipeline_1 = pipeline;
 	exports = module.exports = require$$0;
 	exports.Stream = exports;
 	exports.Readable = exports;
-	exports.Writable = require$$1$1;
+	exports.Writable = require$$1;
 	exports.Duplex = require$$2;
 	exports.Transform = _stream_transform;
 	exports.PassThrough = _stream_passthrough;
@@ -4678,13 +4975,6 @@ var isArray = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-/*!
- * The buffer module from node.js, for the browser.
- *
- * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
- * @license  MIT
- */
-
 var INSPECT_MAX_BYTES = 50;
 
 /**
@@ -4711,8 +5001,8 @@ var INSPECT_MAX_BYTES = 50;
  * We detect these buggy browsers and set `Buffer.TYPED_ARRAY_SUPPORT` to `false` so they
  * get the Object implementation, which is slower but behaves correctly.
  */
-Buffer$1.TYPED_ARRAY_SUPPORT = global$2.TYPED_ARRAY_SUPPORT !== undefined
-  ? global$2.TYPED_ARRAY_SUPPORT
+Buffer$1.TYPED_ARRAY_SUPPORT = global$1.TYPED_ARRAY_SUPPORT !== undefined
+  ? global$1.TYPED_ARRAY_SUPPORT
   : true;
 
 /*
@@ -6459,7 +6749,7 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isFastBuffer(obj.slice(0, 0))
 }
 
-var _polyfillNode_buffer = /*#__PURE__*/Object.freeze({
+var bufferEs6 = /*#__PURE__*/Object.freeze({
     __proto__: null,
     Buffer: Buffer$1,
     INSPECT_MAX_BYTES: INSPECT_MAX_BYTES,
@@ -6468,13 +6758,13 @@ var _polyfillNode_buffer = /*#__PURE__*/Object.freeze({
     kMaxLength: _kMaxLength
 });
 
-var require$$6 = /*@__PURE__*/getAugmentedNamespace(_polyfillNode_buffer);
+var require$$6 = /*@__PURE__*/getAugmentedNamespace(bufferEs6);
 
 /*! simple-peer. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> */
 
-const debug = require$$0$2('simple-peer');
+const debug = require$$0$1('simple-peer');
 const getBrowserRTC = getBrowserRtc;
-const randombytes = randombytes$1;
+const randombytes = require$$2$1;
 const stream = readableBrowserExports;
 const queueMicrotask$1 = require$$4; // TODO: remove when Node 10 is not supported
 const errCode = errCode$1;

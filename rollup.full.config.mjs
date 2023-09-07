@@ -31,11 +31,11 @@ export default [
         external: ['firebase/app', 'firebase/database', 'firebase/storage'],
         plugins: [
             nodeGlobals(),
-            nodePolyfills(),
+            nodeBuiltins(),
             resolve({
-                mainFields: ['module', 'main', 'jsnext:main', 'browser'],
-                preferBuiltins: false,
-                // browser: true,
+                // mainFields: ['module', 'main', 'jsnext:main', 'browser'],
+                preferBuiltins: true,
+                browser: true,
             }),
             commonjs(),
         ],
