@@ -10,6 +10,7 @@ export default [
         plugins: [
             resolve({
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],
+                preferBuiltins: true,
             }),
             commonjs(),
         ],
@@ -22,27 +23,12 @@ export default [
         ],
     },
     {
-        input: 'node_modules/simple-peer/simplepeer.min.js',
-        plugins: [
-            resolve({
-                mainFields: ['module', 'main', 'jsnext:main', 'browser'],
-            }),
-            commonjs(),
-        ],
-        output: [
-            {
-                file: 'dist/simple-peer.mjs',
-                format: 'esm',
-                sourcemap: true,
-            },
-        ],
-    },
-    {
         input: 'src/index.js',
-        external: ['firebase/app', 'firebase/database'],
+        external: ['firebase/app', 'firebase/database', 'firebase/storage'],
         plugins: [
             resolve({
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],
+                preferBuiltins: true,
             }),
             commonjs(),
         ],
@@ -56,7 +42,7 @@ export default [
     },
     {
         input: 'src/nodeIndex.mjs',
-        external: ['firebase/app', 'firebase/database'],
+        external: ['firebase/app', 'firebase/database', 'firebase/storage'],
         plugins: [
             nodeGlobals(),
             nodeBuiltins(),
