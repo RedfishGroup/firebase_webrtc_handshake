@@ -28,11 +28,11 @@ export default [
         input: 'src/index.js',
         external: ['firebase/app', 'firebase/database', 'firebase/storage'],
         plugins: [
-            nodePolyfills(),
             nodeGlobals(),
+            nodePolyfills(),
             resolve({
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],
-                preferBuiltins: false,
+                preferBuiltins: true,
                 browser: true,
             }),
             commonjs(),

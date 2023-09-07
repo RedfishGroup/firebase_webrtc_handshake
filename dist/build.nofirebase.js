@@ -1692,9 +1692,13 @@ function getAugmentedNamespace(n) {
 	return a;
 }
 
-var global$1 = (typeof global !== "undefined" ? global :
+var global$2 = (typeof global !== "undefined" ? global :
   typeof self !== "undefined" ? self :
   typeof window !== "undefined" ? window : {});
+
+var global$1 = (typeof global$2 !== "undefined" ? global$2 :
+            typeof self !== "undefined" ? self :
+            typeof window !== "undefined" ? window : {});
 
 // shim for using process in browser
 // based off https://github.com/defunctzombie/node-process/blob/master/browser.js
@@ -1831,7 +1835,7 @@ Item.prototype.run = function () {
 };
 var title = 'browser';
 var platform = 'browser';
-var browser = true;
+var browser$1 = true;
 var env = {};
 var argv = [];
 var version = ''; // empty string to avoid regexp issues
@@ -1892,10 +1896,10 @@ function uptime() {
   return dif / 1000;
 }
 
-var browser$1 = {
+var process = {
   nextTick: nextTick,
   title: title,
-  browser: browser,
+  browser: browser$1,
   env: env,
   argv: argv,
   version: version,
@@ -1918,12 +1922,14 @@ var browser$1 = {
   uptime: uptime
 };
 
+var browser = true;
+
 /**
  * Detect Electron renderer / nwjs process, which is node, but we should
  * treat as a browser.
  */
 
-if (typeof browser$1 === 'undefined' || browser$1.type === 'renderer' || browser$1.browser === true || browser$1.__nwjs) {
+if (typeof process === 'undefined' || process.type === 'renderer' || browser === true || process.__nwjs) {
 	module.exports = require('./browser.js');
 } else {
 	module.exports = require('./node.js');
@@ -2470,7 +2476,7 @@ function emitReadable(stream) {
   if (!state.emittedReadable) {
     debug$1('emitReadable', state.flowing);
     state.emittedReadable = true;
-    browser$1.nextTick(emitReadable_, stream);
+    nextTick(emitReadable_, stream);
   }
 }
 
@@ -2502,7 +2508,7 @@ function emitReadable_(stream) {
 function maybeReadMore(stream, state) {
   if (!state.readingMore) {
     state.readingMore = true;
-    browser$1.nextTick(maybeReadMore_, stream, state);
+    nextTick(maybeReadMore_, stream, state);
   }
 }
 
@@ -2569,9 +2575,9 @@ Readable$1.prototype.pipe = function (dest, pipeOpts) {
 
   state.pipesCount += 1;
   debug$1('pipe count=%d opts=%j', state.pipesCount, pipeOpts);
-  var doEnd = (!pipeOpts || pipeOpts.end !== false) && dest !== browser$1.stdout && dest !== browser$1.stderr;
+  var doEnd = (!pipeOpts || pipeOpts.end !== false) && dest !== process.stdout && dest !== process.stderr;
   var endFn = doEnd ? onend : unpipe;
-  if (state.endEmitted) browser$1.nextTick(endFn);else src.once('end', endFn);
+  if (state.endEmitted) nextTick(endFn);else src.once('end', endFn);
   dest.on('unpipe', onunpipe);
 
   function onunpipe(readable, unpipeInfo) {
@@ -2765,7 +2771,7 @@ Readable$1.prototype.on = function (ev, fn) {
       if (state.length) {
         emitReadable(this);
       } else if (!state.reading) {
-        browser$1.nextTick(nReadingNextTick, this);
+        nextTick(nReadingNextTick, this);
       }
     }
   }
@@ -2785,7 +2791,7 @@ Readable$1.prototype.removeListener = function (ev, fn) {
     // support once('readable', fn) cycles. This means that calling
     // resume within the same tick will have no
     // effect.
-    browser$1.nextTick(updateReadableListening, this);
+    nextTick(updateReadableListening, this);
   }
 
   return res;
@@ -2801,7 +2807,7 @@ Readable$1.prototype.removeAllListeners = function (ev) {
     // support once('readable', fn) cycles. This means that calling
     // resume within the same tick will have no
     // effect.
-    browser$1.nextTick(updateReadableListening, this);
+    nextTick(updateReadableListening, this);
   }
 
   return res;
@@ -2846,7 +2852,7 @@ Readable$1.prototype.resume = function () {
 function resume(stream, state) {
   if (!state.resumeScheduled) {
     state.resumeScheduled = true;
-    browser$1.nextTick(resume_, stream, state);
+    nextTick(resume_, stream, state);
   }
 }
 
@@ -3024,7 +3030,7 @@ function endReadable(stream) {
 
   if (!state.endEmitted) {
     state.ended = true;
-    browser$1.nextTick(endReadableNT, state, stream);
+    nextTick(endReadableNT, state, stream);
   }
 }
 
@@ -3302,7 +3308,7 @@ function writeAfterEnd(stream, cb) {
   var er = new ERR_STREAM_WRITE_AFTER_END(); // TODO: defer error events consistently everywhere, not just the cb
 
   errorOrDestroy(stream, er);
-  browser$1.nextTick(cb, er);
+  nextTick(cb, er);
 } // Checks that a user-supplied chunk is valid, especially for the particular
 // mode the stream is in. Currently this means that `null` is never accepted
 // and undefined/non-string values are only allowed in object mode.
@@ -3319,7 +3325,7 @@ function validChunk(stream, state, chunk, cb) {
 
   if (er) {
     errorOrDestroy(stream, er);
-    browser$1.nextTick(cb, er);
+    nextTick(cb, er);
     return false;
   }
 
@@ -3457,10 +3463,10 @@ function onwriteError(stream, state, sync, er, cb) {
   if (sync) {
     // defer the callback if we are being called synchronously
     // to avoid piling up things on the stack
-    browser$1.nextTick(cb, er); // this can emit finish, and it will always happen
+    nextTick(cb, er); // this can emit finish, and it will always happen
     // after error
 
-    browser$1.nextTick(finishMaybe, stream, state);
+    nextTick(finishMaybe, stream, state);
     stream._writableState.errorEmitted = true;
     errorOrDestroy(stream, er);
   } else {
@@ -3497,7 +3503,7 @@ function onwrite(stream, er) {
     }
 
     if (sync) {
-      browser$1.nextTick(afterWrite, stream, state, finished, cb);
+      nextTick(afterWrite, stream, state, finished, cb);
     } else {
       afterWrite(stream, state, finished, cb);
     }
@@ -3646,7 +3652,7 @@ function prefinish$1(stream, state) {
     if (typeof stream._final === 'function' && !state.destroyed) {
       state.pendingcb++;
       state.finalCalled = true;
-      browser$1.nextTick(callFinal, stream, state);
+      nextTick(callFinal, stream, state);
     } else {
       state.prefinished = true;
       stream.emit('prefinish');
@@ -3684,7 +3690,7 @@ function endWritable(stream, state, cb) {
   finishMaybe(stream, state);
 
   if (cb) {
-    if (state.finished) browser$1.nextTick(cb);else stream.once('finish', cb);
+    if (state.finished) nextTick(cb);else stream.once('finish', cb);
   }
 
   state.ended = true;
@@ -3825,7 +3831,7 @@ function onend() {
   if (this._writableState.ended) return; // no more data can be written.
   // But allow more writes to happen in this tick.
 
-  browser$1.nextTick(onEndNT, this);
+  nextTick(onEndNT, this);
 }
 
 function onEndNT(self) {
@@ -4705,8 +4711,8 @@ var INSPECT_MAX_BYTES = 50;
  * We detect these buggy browsers and set `Buffer.TYPED_ARRAY_SUPPORT` to `false` so they
  * get the Object implementation, which is slower but behaves correctly.
  */
-Buffer$1.TYPED_ARRAY_SUPPORT = global$1.TYPED_ARRAY_SUPPORT !== undefined
-  ? global$1.TYPED_ARRAY_SUPPORT
+Buffer$1.TYPED_ARRAY_SUPPORT = global$2.TYPED_ARRAY_SUPPORT !== undefined
+  ? global$2.TYPED_ARRAY_SUPPORT
   : true;
 
 /*
