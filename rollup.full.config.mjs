@@ -9,11 +9,13 @@ export default [
     {
         input: 'src/index.js',
         plugins: [
+            nodeGlobals(),
+            nodePolyfills(),
             resolve({
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],
                 preferBuiltins: true,
             }),
-            nodeBuiltins(),
+            // nodeBuiltins(),
             commonjs(),
         ],
         output: [
@@ -32,8 +34,8 @@ export default [
             nodePolyfills(),
             resolve({
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],
-                preferBuiltins: true,
-                browser: true,
+                preferBuiltins: false,
+                // browser: true,
             }),
             commonjs(),
         ],
