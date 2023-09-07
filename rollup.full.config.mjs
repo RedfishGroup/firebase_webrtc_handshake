@@ -28,6 +28,7 @@ export default [
         input: 'src/index.js',
         external: ['firebase/app', 'firebase/database', 'firebase/storage'],
         plugins: [
+            nodePolyfills(),
             nodeGlobals(),
             resolve({
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],
@@ -35,7 +36,6 @@ export default [
                 browser: true,
             }),
             commonjs(),
-            nodeBuiltins(),
         ],
         output: [
             {
