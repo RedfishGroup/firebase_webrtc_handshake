@@ -17,6 +17,7 @@
     "browser": "/src/index.js",
     "scripts": {
         "start": "node server.js",
+        "build:simple-peer": "rollup --config simple-peer-rollup.mjs",
         "build": "rollup --config rollup.config.mjs && rollup --config rollup.full.config.mjs "
     },
     "homepage": "https://github.com/RedfishGroup/firebase_webrtc_handshake#readme",

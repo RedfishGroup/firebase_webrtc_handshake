@@ -30,14 +30,13 @@ export default [
         input: 'src/index.js',
         external: ['firebase/app', 'firebase/database', 'firebase/storage'],
         plugins: [
-            nodeGlobals(),
-            nodeBuiltins(),
+            // nodeGlobals(),
+            // nodeBuiltins(),
             resolve({
-                // mainFields: ['module', 'main', 'jsnext:main', 'browser'],
+                mainFields: ['module', 'main', 'jsnext:main', 'browser'],
                 preferBuiltins: true,
-                browser: true,
             }),
-            commonjs(),
+            // commonjs(),
         ],
         output: [
             {
