@@ -4,8 +4,6 @@ import { P2PClientFactory } from './P2PClientFactory.js'
 
 import Peer from '../dist/simple-peer.es6.js'
 
-console.log('Peer: ', SimplePeer, Peer)
-
 import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js'
 const msgPack = msgpacklite
 

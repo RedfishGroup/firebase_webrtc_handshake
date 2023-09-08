@@ -2028,7 +2028,6 @@ function PeerBinaryFactory(options) {
     }
 }
 
-console.log('Peer: ', SimplePeer, simplepeer_min);
 const msgPack = msgpacklite;
 
 
