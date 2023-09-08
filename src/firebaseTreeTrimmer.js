@@ -91,13 +91,13 @@ export class firebaseTreeTrimmer {
                     // remove it from other refs heartbeatRef
                     if (treeTrimmers[child.key] === undefined) {
                         this.firebase.remove(
-                            this.firebase.child(heartbeatRef, child.key)
+                            this.firebase.child(this.heartbeatRef, child.key)
                         )
                         this.firebase.remove(
-                            this.firebase.child(channelsRef, child.key)
+                            this.firebase.child(this.channelsRef, child.key)
                         )
                         this.firebase.remove(
-                            this.firebase.child(peersRef, child.key)
+                            this.firebase.child(this.peersRef, child.key)
                         )
                     }
                 })
