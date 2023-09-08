@@ -34,7 +34,7 @@ export default [
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],
                 preferBuiltins: true,
             }),
-            // commonjs(),
+            commonjs(),
         ],
         output: [
             {
