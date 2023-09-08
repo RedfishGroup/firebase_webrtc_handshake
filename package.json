@@ -18,7 +18,8 @@
     "scripts": {
         "start": "node server.js",
         "build:simple-peer": "rollup --config simple-peer-rollup.mjs",
-        "build": "rollup --config rollup.config.mjs && rollup --config rollup.full.config.mjs "
+        "build": "rollup --config rollup.config.mjs && rollup --config rollup.full.config.mjs ",
+        "postinstall": "yarn run build:simple-peer"
     },
     "homepage": "https://github.com/RedfishGroup/firebase_webrtc_handshake#readme",
     "peerDependencies": {
@@ -33,7 +34,6 @@
         "rollup": "3.29.0",
         "rollup-plugin-node-builtins": "2.1.2",
         "rollup-plugin-node-globals": "1.4.0",
-        "rollup-plugin-polyfill-node": "0.12.0",
         "rollup-plugin-replace": "2.2.0",
         "simple-peer": "9.11.1",
         "webrtc-adapter": "8.2.3",

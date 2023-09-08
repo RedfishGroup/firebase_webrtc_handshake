@@ -3,19 +3,17 @@ import resolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 import nodeGlobals from 'rollup-plugin-node-globals'
 import nodeBuiltins from 'rollup-plugin-node-builtins'
-import nodePolyfills from 'rollup-plugin-polyfill-node'
 
 export default [
     {
         input: 'src/index.js',
         plugins: [
             nodeGlobals(),
-            nodePolyfills(),
             resolve({
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],
                 preferBuiltins: true,
             }),
-            // nodeBuiltins(),
+            nodeBuiltins(),
             commonjs(),
         ],
         output: [
@@ -33,8 +31,8 @@ export default [
             // nodeGlobals(),
             // nodeBuiltins(),
             resolve({
-                // mainFields: ['module', 'main', 'jsnext:main', 'browser'],
-                // preferBuiltins: true,
+                mainFields: ['module', 'main', 'jsnext:main', 'browser'],
+                preferBuiltins: true,
             }),
             // commonjs(),
         ],
@@ -51,7 +49,6 @@ export default [
         external: ['firebase/app', 'firebase/database', 'firebase/storage'],
         plugins: [
             nodeGlobals(),
-            nodeBuiltins(),
             resolve({
                 mainFields: ['module', 'main'],
                 preferBuiltins: true,

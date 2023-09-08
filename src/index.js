@@ -2,8 +2,7 @@ import { P2PServerFactory } from './P2PServerFactory.js'
 import { Channel } from './Channel.js'
 import { P2PClientFactory } from './P2PClientFactory.js'
 
-import * as SimplePeer from 'simple-peer'
-const Peer = SimplePeer.default
+import Peer from '../dist/simple-peer.es6.js'
 
 console.log('Peer: ', SimplePeer, Peer)
 
