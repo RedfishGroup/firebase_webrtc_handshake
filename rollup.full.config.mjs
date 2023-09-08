@@ -33,8 +33,8 @@ export default [
             // nodeGlobals(),
             // nodeBuiltins(),
             resolve({
-                mainFields: ['module', 'main', 'jsnext:main', 'browser'],
-                preferBuiltins: true,
+                // mainFields: ['module', 'main', 'jsnext:main', 'browser'],
+                // preferBuiltins: true,
             }),
             // commonjs(),
         ],

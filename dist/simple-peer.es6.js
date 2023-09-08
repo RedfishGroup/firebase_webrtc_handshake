@@ -18,4 +18,4 @@ var simplepeer_minExports = simplepeer_min$1.exports;
 var simplepeer_min = /*@__PURE__*/getDefaultExportFromCjs(simplepeer_minExports);
 
 export { simplepeer_min as default };
-//# sourceMappingURL=simple-peer.test.js.map
+//# sourceMappingURL=simple-peer.es6.js.map

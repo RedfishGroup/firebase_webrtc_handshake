@@ -2,9 +2,10 @@ import { P2PServerFactory } from './P2PServerFactory.js'
 import { Channel } from './Channel.js'
 import { P2PClientFactory } from './P2PClientFactory.js'
 
-import Peer from '../dist/simple-peer.test.js'
-// import Peer from 'simple-peer'
-// const Peer = Peer2.default
+import * as SimplePeer from 'simple-peer'
+const Peer = SimplePeer.default
+
+console.log('Peer: ', SimplePeer, Peer)
 
 import * as msgpacklite from 'msgpack-lite/dist/msgpack.min.js'
 const msgPack = msgpacklite
