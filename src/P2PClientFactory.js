@@ -53,7 +53,7 @@ export function P2PClientFactory(options) {
             )
 
             this.connection = null
-            this.channelRef = null
+            this.channelsRef = null
             this.stream = undefined
             this.isStream =
                 typeof options.isStream === 'boolean' ? options.isStream : true
@@ -264,14 +264,14 @@ export function P2PClientFactory(options) {
             offer.serverID = this.serverID
             if (this.debug)
                 console.log('Got create channel with offer: ', offer, this)
-            this.channelRef = this.firebase.push(
-                this.firebase.child(this.serverRef, 'channels'),
+            this.channelsRef = this.firebase.push(
+                this.firebase.child(this.database.parent, 'channels'),
                 {
                     fromClient: [offer],
                 }
             )
-            this.outRef = this.firebase.child(this.channelRef, 'fromClient')
-            this.inRef = this.firebase.child(this.channelRef, 'fromServer')
+            this.outRef = this.firebase.child(this.channelsRef, 'fromClient')
+            this.inRef = this.firebase.child(this.channelsRef, 'fromServer')
             this.firebase.onChildAdded(this.inRef, (ev) => {
                 var val = ev.val()
                 if (this.debug) console.log(val, 'channel message, client')

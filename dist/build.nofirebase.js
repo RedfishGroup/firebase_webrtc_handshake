@@ -926,7 +926,7 @@ function P2PServerFactory(options) {
             this.treeTrimmer = new firebaseTreeTrimmer({
                 peersRef: this.peerInfoRef,
                 heartbeatRef: this.heartbeatRef,
-                channelsRef: this.database,
+                channelsRef: this.firebase(this.database.parent, 'channels'),
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
                     this.firebase.child(this.database.parent, 'treeTrimming'),
@@ -1026,7 +1026,7 @@ function P2PServerFactory(options) {
             );
             this.firebase.set(this.updateRef, this.firebase.serverTimestamp());
 
-            this.channelRef = this.firebase.child(this.userRef, 'channels');
+            this.channelsRef = this.firebase.child(this.userRef, 'channels');
             if (this.stream) {
                 this.firebase.set(
                     this.firebase.child(
@@ -1036,7 +1036,7 @@ function P2PServerFactory(options) {
                     true
                 );
             }
-            this.firebase.set(this.channelRef, []);
+            this.firebase.set(this.channelsRef, []);
 
             this.connections = [];
             console.log('POLLING_FREQUENCY: ', this.POLLING_FREQUENCY);
@@ -1100,9 +1100,9 @@ function P2PServerFactory(options) {
             // when a new channel is added, listen to it.
 
             if (this.debug)
-                console.log('channelRef: ', this.channelRef.toString());
+                console.log('channelsRef: ', this.channelsRef.toString());
 
-            this.firebase.onChildAdded(this.channelRef, (ev) => {
+            this.firebase.onChildAdded(this.channelsRef, (ev) => {
                 if (this.connections.length > this.MAX_CONNECTIONS) {
                     console.error(
                         'Too many connections. TODO:close/remove old stale connections'
@@ -1121,7 +1121,7 @@ function P2PServerFactory(options) {
                         var { serverID } = sig;
                         console.log('listener create channel: ', sig);
                         var channel = new Channel(
-                            this.firebase.child(this.channelRef, mykey),
+                            this.firebase.child(this.channelsRef, mykey),
                             this._makePeer(serverID),
                             this.firebase
                         );
@@ -1264,9 +1264,9 @@ function P2PServerFactory(options) {
         }
 
         destroy() {
-            this.firebase.remove(this.channelRef);
+            this.firebase.remove(this.channelsRef);
             this.firebase.remove(this.updateRef);
-            this.firebase.off(this.channelRef);
+            this.firebase.off(this.channelsRef);
             this.firebase.off(this.updateRef);
             this.firebase.off(this.userRef);
 
@@ -1356,7 +1356,7 @@ function P2PClientFactory(options) {
             );
 
             this.connection = null;
-            this.channelRef = null;
+            this.channelsRef = null;
             this.stream = undefined;
             this.isStream =
                 typeof options.isStream === 'boolean' ? options.isStream : true;
@@ -1567,14 +1567,14 @@ function P2PClientFactory(options) {
             offer.serverID = this.serverID;
             if (this.debug)
                 console.log('Got create channel with offer: ', offer, this);
-            this.channelRef = this.firebase.push(
-                this.firebase.child(this.serverRef, 'channels'),
+            this.channelsRef = this.firebase.push(
+                this.firebase.child(this.database.parent, 'channels'),
                 {
                     fromClient: [offer],
                 }
             );
-            this.outRef = this.firebase.child(this.channelRef, 'fromClient');
-            this.inRef = this.firebase.child(this.channelRef, 'fromServer');
+            this.outRef = this.firebase.child(this.channelsRef, 'fromClient');
+            this.inRef = this.firebase.child(this.channelsRef, 'fromServer');
             this.firebase.onChildAdded(this.inRef, (ev) => {
                 var val = ev.val();
                 if (this.debug) console.log(val, 'channel message, client');

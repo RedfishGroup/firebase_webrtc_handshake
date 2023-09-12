@@ -108,7 +108,7 @@ export function P2PServerFactory(options) {
             this.treeTrimmer = new firebaseTreeTrimmer({
                 peersRef: this.peerInfoRef,
                 heartbeatRef: this.heartbeatRef,
-                channelsRef: this.database,
+                channelsRef: this.firebase(this.database.parent, 'channels'),
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
                     this.firebase.child(this.database.parent, 'treeTrimming'),
@@ -210,7 +210,7 @@ export function P2PServerFactory(options) {
             )
             this.firebase.set(this.updateRef, this.firebase.serverTimestamp())
 
-            this.channelRef = this.firebase.child(this.userRef, 'channels')
+            this.channelsRef = this.firebase.child(this.userRef, 'channels')
             if (this.stream) {
                 this.firebase.set(
                     this.firebase.child(
@@ -220,7 +220,7 @@ export function P2PServerFactory(options) {
                     true
                 )
             }
-            this.firebase.set(this.channelRef, [])
+            this.firebase.set(this.channelsRef, [])
 
             this.connections = []
             console.log('POLLING_FREQUENCY: ', this.POLLING_FREQUENCY)
@@ -284,9 +284,9 @@ export function P2PServerFactory(options) {
             // when a new channel is added, listen to it.
 
             if (this.debug)
-                console.log('channelRef: ', this.channelRef.toString())
+                console.log('channelsRef: ', this.channelsRef.toString())
 
-            this.firebase.onChildAdded(this.channelRef, (ev) => {
+            this.firebase.onChildAdded(this.channelsRef, (ev) => {
                 if (this.connections.length > this.MAX_CONNECTIONS) {
                     console.error(
                         'Too many connections. TODO:close/remove old stale connections'
@@ -305,7 +305,7 @@ export function P2PServerFactory(options) {
                         var { serverID } = sig
                         console.log('listener create channel: ', sig)
                         var channel = new Channel(
-                            this.firebase.child(this.channelRef, mykey),
+                            this.firebase.child(this.channelsRef, mykey),
                             this._makePeer(serverID),
                             this.firebase
                         )
@@ -450,9 +450,9 @@ export function P2PServerFactory(options) {
         }
 
         destroy() {
-            this.firebase.remove(this.channelRef)
+            this.firebase.remove(this.channelsRef)
             this.firebase.remove(this.updateRef)
-            this.firebase.off(this.channelRef)
+            this.firebase.off(this.channelsRef)
             this.firebase.off(this.updateRef)
             this.firebase.off(this.userRef)
 
