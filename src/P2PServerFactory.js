@@ -202,7 +202,10 @@ export function P2PServerFactory(options) {
             )
             this.firebase.set(this.updateRef, this.firebase.serverTimestamp())
 
-            this.channelsRef = this.firebase.child(this.database, 'channels')
+            this.channelsRef = this.firebase.child(
+                this.database,
+                `channels/${this.id}`
+            )
             if (this.stream) {
                 this.firebase.set(
                     this.firebase.child(

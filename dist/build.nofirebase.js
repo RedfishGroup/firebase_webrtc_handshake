@@ -1018,7 +1018,10 @@ function P2PServerFactory(options) {
             );
             this.firebase.set(this.updateRef, this.firebase.serverTimestamp());
 
-            this.channelsRef = this.firebase.child(this.database, 'channels');
+            this.channelsRef = this.firebase.child(
+                this.database,
+                `channels/${this.id}`
+            );
             if (this.stream) {
                 this.firebase.set(
                     this.firebase.child(
@@ -1556,14 +1559,14 @@ function P2PClientFactory(options) {
             offer.serverID = this.serverID;
             if (this.debug)
                 console.log('Got create channel with offer: ', offer, this);
-            this.channelsRef = this.firebase.push(
-                this.firebase.child(this.database, 'channels'),
+            this.channelRef = this.firebase.push(
+                this.firebase.child(this.channelsRef, this.serverID),
                 {
                     fromClient: [offer],
                 }
             );
-            this.outRef = this.firebase.child(this.channelsRef, 'fromClient');
-            this.inRef = this.firebase.child(this.channelsRef, 'fromServer');
+            this.outRef = this.firebase.child(this.channelRef, 'fromClient');
+            this.inRef = this.firebase.child(this.channelRef, 'fromServer');
             this.firebase.onChildAdded(this.inRef, (ev) => {
                 var val = ev.val();
                 if (this.debug) console.log(val, 'channel message, client');
