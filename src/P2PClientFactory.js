@@ -47,13 +47,10 @@ export function P2PClientFactory(options) {
 
             this.database = options.database
 
-            this.peerInfoRef = this.firebase.child(
-                this.database.parent,
-                'peerInfo'
-            )
+            this.peerInfoRef = this.firebase.child(this.database, 'peerInfo')
 
             this.connection = null
-            this.channelsRef = null
+            this.channelsRef = this.firebase.child(this.database, 'channels')
             this.stream = undefined
             this.isStream =
                 typeof options.isStream === 'boolean' ? options.isStream : true
@@ -167,7 +164,7 @@ export function P2PClientFactory(options) {
                     this._notifyCallbacks('peer not defined')
                 } else {
                     this.id = id
-                    this.serverRef = this.firebase.child(this.database, id)
+                    this.serverRef = this.firebase.child(this.peerInfoRef, id)
                     this.firebase.onValue(
                         this.serverRef,
                         (ev1) => {
@@ -265,7 +262,7 @@ export function P2PClientFactory(options) {
             if (this.debug)
                 console.log('Got create channel with offer: ', offer, this)
             this.channelsRef = this.firebase.push(
-                this.firebase.child(this.database.parent, 'channels'),
+                this.firebase.child(this.database, 'channels'),
                 {
                     fromClient: [offer],
                 }

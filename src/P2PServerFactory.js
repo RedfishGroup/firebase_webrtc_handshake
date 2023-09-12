@@ -52,15 +52,9 @@ export function P2PServerFactory(options) {
             this.database = options.database
             console.log('Database: ', this.database.toString())
 
-            this.peerInfoRef = this.firebase.child(
-                this.database.parent,
-                'peerInfo'
-            )
+            this.peerInfoRef = this.firebase.child(this.database, 'peerInfo')
 
-            this.heartbeatRef = this.firebase.child(
-                this.database.parent,
-                'heartbeat'
-            )
+            this.heartbeatRef = this.firebase.child(this.database, 'heartbeat')
 
             this.debug = !!options.debug
             this.initialPeerInfo = initialPeerInfo
@@ -108,20 +102,17 @@ export function P2PServerFactory(options) {
             this.treeTrimmer = new firebaseTreeTrimmer({
                 peersRef: this.peerInfoRef,
                 heartbeatRef: this.heartbeatRef,
-                channelsRef: this.firebase.child(
-                    this.database.parent,
-                    'channels'
-                ),
+                channelsRef: this.firebase.child(this.database, 'channels'),
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
-                    this.firebase.child(this.database.parent, 'treeTrimming'),
+                    this.firebase.child(this.database, 'treeTrimming'),
                 id: this.id,
                 firebase: this.firebase,
                 monitorRate: this.monitorRate || 60000,
                 trimmerRemoveRate: this.trimmerRemoveRate,
             })
 
-            this.userRef = this.firebase.child(this.database, this.id)
+            this.userRef = this.firebase.child(this.peersRef, this.id)
 
             if (this.debug)
                 console.log(
@@ -213,7 +204,7 @@ export function P2PServerFactory(options) {
             )
             this.firebase.set(this.updateRef, this.firebase.serverTimestamp())
 
-            this.channelsRef = this.firebase.child(this.userRef, 'channels')
+            this.channelsRef = this.firebase.child(this.database, 'channels')
             if (this.stream) {
                 this.firebase.set(
                     this.firebase.child(
@@ -240,7 +231,7 @@ export function P2PServerFactory(options) {
 
         _updateOnFireBase() {
             // one may want to overwrite this
-            // console.log('updateOnFirebase')
+
             this.firebase.set(this.updateRef, this.firebase.serverTimestamp())
         }
 
