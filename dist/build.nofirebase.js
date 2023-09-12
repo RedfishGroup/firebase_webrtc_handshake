@@ -926,7 +926,10 @@ function P2PServerFactory(options) {
             this.treeTrimmer = new firebaseTreeTrimmer({
                 peersRef: this.peerInfoRef,
                 heartbeatRef: this.heartbeatRef,
-                channelsRef: this.firebase(this.database.parent, 'channels'),
+                channelsRef: this.firebase.child(
+                    this.database.parent,
+                    'channels'
+                ),
                 treeTrimmingRef:
                     this.treeTrimmingRef ||
                     this.firebase.child(this.database.parent, 'treeTrimming'),
