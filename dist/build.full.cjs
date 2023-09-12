@@ -1331,7 +1331,6 @@ function P2PClientFactory(options) {
                 settings.ICE_SERVERS;
 
             this.database = options.database;
-
             this.peerInfoRef = this.firebase.child(this.database, 'peerInfo');
 
             this.connection = null;
@@ -1446,6 +1445,7 @@ function P2PClientFactory(options) {
                 var peer = peerList[id];
                 if (!peer) {
                     console.error(`peer not defined. id: ${id}`);
+                    console.log('peerList: ', peerList);
                     this._notifyCallbacks('peer not defined');
                 } else {
                     this.id = id;
