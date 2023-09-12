@@ -262,7 +262,7 @@ export function P2PClientFactory(options) {
             if (this.debug)
                 console.log('Got create channel with offer: ', offer, this)
             this.channelRef = this.firebase.push(
-                this.firebase.child(this.channelsRef, this.serverID),
+                this.firebase.child(this.channelsRef, this.peerID),
                 {
                     fromClient: [offer],
                 }
