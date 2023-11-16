@@ -1868,10 +1868,9 @@ node-abi@^3.3.0:
   dependencies:
     semver "^7.3.5"
 
-node-datachannel@0.5.1:
+"node-datachannel@https://github.com/stigmergic/node-datachannel.git#3d8984be00846ed5dd29d97ce2c20ed7be34f44a":
   version "0.5.1"
-  resolved "https://registry.yarnpkg.com/node-datachannel/-/node-datachannel-0.5.1.tgz#55bf24c86ffb83ffa03a1d4363965598971e5a84"
-  integrity sha512-3hwCrBWJqYoozwVtJNzNtISLKwa3l/XTbrPFCyhC3KCgW1IvYMHhHm5FW37p0p2oth3J6MDwCw3T/0m7DTR7lw==
+  resolved "https://github.com/stigmergic/node-datachannel.git#3d8984be00846ed5dd29d97ce2c20ed7be34f44a"
   dependencies:
     node-domexception "^2.0.1"
     prebuild-install "^7.0.1"

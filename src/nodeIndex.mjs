@@ -3,7 +3,7 @@ import { P2PServerFactory } from './P2PServerFactory.js'
 import { P2PClientFactory } from './P2PClientFactory.js'
 
 const Peer = require('simple-peer')
-const wrtc = require('wrtc')
+import nodeDatachannelPolyfill from '../node_modules/node-datachannel/polyfill/index.js'
 
 // import adapter from "webrtc-adapter/src/js/adapter_core.js";
 const { decode, encode } = require('msgpack-lite')
@@ -27,7 +27,11 @@ import { PeerBinaryFactory } from './PeerBinary.js'
 setEncode(encode)
 
 const UnChunker = UnChunkerFactory({ decode })
-const PeerBinary = PeerBinaryFactory({ UnChunker, Peer, wrtc })
+const PeerBinary = PeerBinaryFactory({
+    UnChunker,
+    Peer,
+    wrtc: nodeDatachannelPolyfill,
+})
 const P2PServer = P2PServerFactory({
     PeerBinary,
 })

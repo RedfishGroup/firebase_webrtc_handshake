@@ -1,6 +1,6 @@
 // Rollup plugins.
 // import cjs from 'rollup-plugin-commonjs';
-import globals from 'rollup-plugin-node-globals'
+// import globals from 'rollup-plugin-node-globals'
 // import replace from 'rollup-plugin-replace';
 import resolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
@@ -18,7 +18,7 @@ export default [
             'firebase/database',
         ],
         plugins: [
-            globals(),
+            // globals(),
             resolve({
                 mainFields: ['module', 'main', 'jsnext:main', 'browser'],
                 preferBuiltins: true,
