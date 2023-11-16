@@ -26,17 +26,17 @@
         "webrtc-adapter": "7.7.0"
     },
     "devDependencies": {
-        "@rollup/plugin-commonjs": "25.0.4",
-        "@rollup/plugin-node-resolve": "15.2.1",
-        "firebase": "10.3.1",
+        "@rollup/plugin-commonjs": "25.0.7",
+        "@rollup/plugin-node-resolve": "15.2.3",
+        "firebase": "10.6.0",
         "msgpack-lite": "0.1.26",
-        "rollup": "3.29.1",
+        "node-datachannel": "0.5.1",
+        "rollup": "4.4.1",
         "rollup-plugin-node-builtins": "2.1.2",
         "rollup-plugin-node-globals": "1.4.0",
         "rollup-plugin-replace": "2.2.0",
         "simple-peer": "9.11.1",
-        "webrtc-adapter": "8.2.3",
-        "wrtc": "0.4.7"
+        "webrtc-adapter": "8.2.3"
     },
     "dependencies": {
         "fast-equals": "5.0.1",
