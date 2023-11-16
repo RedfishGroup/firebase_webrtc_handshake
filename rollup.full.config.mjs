@@ -49,11 +49,11 @@ export default [
         external: ['firebase/app', 'firebase/database', 'firebase/storage'],
         plugins: [
             // nodeGlobals(),
+            commonjs(),
             resolve({
                 mainFields: ['module', 'main'],
                 preferBuiltins: true,
             }),
-            commonjs(),
         ],
         output: [
             {
