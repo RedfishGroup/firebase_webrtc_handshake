@@ -1761,7 +1761,7 @@ const require$1 = module$1.createRequire((typeof document === 'undefined' ? requ
 
 const nodeDataChannel = require$1('../build/Release/node_datachannel.node');
 
-var NodeDataChannel = {
+var nodeDataChannel$1 = {
     ...nodeDataChannel,
     DataChannelStream,
 };
@@ -2347,7 +2347,7 @@ class _RTCPeerConnection extends EventTarget {
         this.#dataChannels = new Set();
         this.#canTrickleIceCandidates = null;
 
-        this.#peerConnection = new NodeDataChannel.PeerConnection(init?.peerIdentity ?? `peer-${getRandomString(7)}`, {
+        this.#peerConnection = new nodeDataChannel$1.PeerConnection(init?.peerIdentity ?? `peer-${getRandomString(7)}`, {
             ...init,
             iceServers: init?.iceServers
                 ?.map((server) => {
@@ -3029,6 +3029,9 @@ function PeerBinaryFactory(options) {
 }
 
 const Peer = require('simple-peer');
+
+// Log Level
+nodeDataChannel$1.initLogger('Debug');
 
 // import adapter from "webrtc-adapter/src/js/adapter_core.js";
 const { decode, encode } = require('msgpack-lite');

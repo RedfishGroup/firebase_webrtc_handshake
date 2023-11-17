@@ -4,6 +4,10 @@ import { P2PClientFactory } from './P2PClientFactory.js'
 
 const Peer = require('simple-peer')
 import nodeDatachannelPolyfill from '../node_modules/node-datachannel/polyfill/index.js'
+import nodeDataChannel from 'node-datachannel'
+
+// Log Level
+nodeDataChannel.initLogger('Debug')
 
 // import adapter from "webrtc-adapter/src/js/adapter_core.js";
 const { decode, encode } = require('msgpack-lite')
