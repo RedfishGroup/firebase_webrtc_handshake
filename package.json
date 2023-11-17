@@ -17,7 +17,7 @@
     "browser": "/src/index.js",
     "scripts": {
         "start": "node server.js",
-        "postinstall": "cp -r ./node_modules/node-datachannel/build ./node_modules/firebase_webrtc_handshake",
+        "postinstall": "cp -r ../node-datachannel/build .",
         "build:simple-peer": "rollup --config simple-peer-rollup.mjs",
         "build": "yarn run build:simple-peer && rollup --config rollup.config.mjs && rollup --config rollup.full.config.mjs "
     },
