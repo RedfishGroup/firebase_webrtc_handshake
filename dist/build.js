@@ -1487,7 +1487,7 @@ function P2PClientFactory(options) {
                                             data,
                                             {
                                                 outRef: this.outRef,
-                                                channelRef: history.channelRef,
+                                                channelRef: this.channelRef,
                                             }
                                         );
                                     }
