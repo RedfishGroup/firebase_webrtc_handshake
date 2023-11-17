@@ -3,7 +3,7 @@ import { P2PServerFactory } from './P2PServerFactory.js'
 import { P2PClientFactory } from './P2PClientFactory.js'
 
 const Peer = require('simple-peer')
-import nodeDatachannelPolyfill from '../node_modules/node-datachannel/polyfill/index.js'
+import nodeDatachannelPolyfill from 'node-datachannel/polyfill'
 import nodeDataChannel from 'node-datachannel'
 
 // Log Level

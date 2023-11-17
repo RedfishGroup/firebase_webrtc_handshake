@@ -30,7 +30,6 @@
         "@rollup/plugin-node-resolve": "15.2.3",
         "firebase": "10.6.0",
         "msgpack-lite": "0.1.26",
-        "node-datachannel": "https://github.com/stigmergic/node-datachannel.git#3d8984be00846ed5dd29d97ce2c20ed7be34f44a",
         "rollup": "4.4.1",
         "rollup-plugin-node-builtins": "2.1.2",
         "rollup-plugin-node-globals": "1.4.0",
@@ -40,6 +39,7 @@
     },
     "dependencies": {
         "fast-equals": "5.0.1",
+        "node-datachannel": "https://github.com/stigmergic/node-datachannel.git#3d8984be00846ed5dd29d97ce2c20ed7be34f44a",
         "simple-peer-files": "1.2.3"
     }
 }
