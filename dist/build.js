@@ -1488,6 +1488,7 @@ function P2PClientFactory(options) {
                                             {
                                                 outRef: this.outRef,
                                                 channelRef: this.channelRef,
+                                                this: this,
                                             }
                                         );
                                     }
