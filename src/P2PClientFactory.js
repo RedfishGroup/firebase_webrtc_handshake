@@ -199,7 +199,11 @@ export function P2PClientFactory(options) {
                                     if (this.debug) {
                                         console.log(
                                             'client received candidate from webrtc',
-                                            data
+                                            data,
+                                            {
+                                                outRef: this.outRef,
+                                                channelRef: history.channelRef,
+                                            }
                                         )
                                     }
                                     this.firebase.push(this.outRef, data)
