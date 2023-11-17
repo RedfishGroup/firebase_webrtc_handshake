@@ -1491,8 +1491,8 @@ function P2PClientFactory(options) {
                                             data,
                                             {
                                                 outRef: this.outRef,
+                                                channelsRef: this.channelsRef,
                                                 channelRef: this.channelRef,
-                                                this: this,
                                             }
                                         );
                                     }
@@ -1555,12 +1555,11 @@ function P2PClientFactory(options) {
             offer.serverID = this.serverID;
             if (this.debug)
                 console.log('Got create channel with offer: ', offer, this);
-            this.channelRef = this.firebase.push(
-                this.firebase.child(this.channelsRef, this.peerID),
-                {
-                    fromClient: [offer],
-                }
-            );
+            this.channelRef = this.firebase.child(this.channelsRef, this.peerID);
+
+            this.firebase.push(this.channelRef, {
+                fromClient: [offer],
+            });
             this.outRef = this.firebase.child(this.channelRef, 'fromClient');
             this.inRef = this.firebase.child(this.channelRef, 'fromServer');
             this.firebase.onChildAdded(this.inRef, (ev) => {
