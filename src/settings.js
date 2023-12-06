@@ -11,11 +11,26 @@ export var settings = {
         {
             url: 'turn:global.turn.twilio.com:3478?transport=udp',
             username:
-                '508d1e639868dc17f5da97a75b1d3b43bf2fc6d11e4e863678501db568b5665c',
-            credential: 'W5GTdhQQ6DqOD7k6bS8+xZVNQXm+fgLXSEQpN8bTe70=',
+                'f98c05f3b1e0096319172bc9e94782fd417b5128f8921ed1b77ac9b4e73b3ce2',
             urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+            credential: '5eyxPwW/ubyxf0u1zuLhhqNdRxM3oFqGvYnxJw7uYxQ=',
+        },
+        {
+            url: 'turn:global.turn.twilio.com:3478?transport=tcp',
+            username:
+                'f98c05f3b1e0096319172bc9e94782fd417b5128f8921ed1b77ac9b4e73b3ce2',
+            urls: 'turn:global.turn.twilio.com:3478?transport=tcp',
+            credential: '5eyxPwW/ubyxf0u1zuLhhqNdRxM3oFqGvYnxJw7uYxQ=',
+        },
+        {
+            url: 'turn:global.turn.twilio.com:443?transport=tcp',
+            username:
+                'f98c05f3b1e0096319172bc9e94782fd417b5128f8921ed1b77ac9b4e73b3ce2',
+            urls: 'turn:global.turn.twilio.com:443?transport=tcp',
+            credential: '5eyxPwW/ubyxf0u1zuLhhqNdRxM3oFqGvYnxJw7uYxQ=',
         },
     ],
     POLLING_FREQUENCY: 30000,
     debug: false,
 }
+

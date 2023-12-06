@@ -13,7 +13,7 @@ export function P2PServerFactory(options) {
         constructor(options = {}, initialPeerInfo = {}) {
             super() //no idea what this does
             console.assert(
-                options.iceServers,
+                options.iceServers || options.ICE_SERVERS,
                 'Server: no ice servers yet. Using defaults'
             )
 
