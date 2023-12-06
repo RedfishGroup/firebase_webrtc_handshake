@@ -18,6 +18,7 @@
     "scripts": {
         "start": "node server.js",
         "postinstall": "cp -r ../node-datachannel/build .",
+        "localDatachannel": "cp -r node_modules/node-datachannel/build .",
         "build:simple-peer": "rollup --config simple-peer-rollup.mjs",
         "build": "yarn run build:simple-peer && rollup --config rollup.config.mjs && rollup --config rollup.full.config.mjs "
     },
@@ -40,7 +41,7 @@
     },
     "dependencies": {
         "fast-equals": "5.0.1",
-        "node-datachannel": "https://github.com/stigmergic/node-datachannel.git#3d8984be00846ed5dd29d97ce2c20ed7be34f44a",
+        "node-datachannel": "https://github.com/stigmergic/node-datachannel.git#737d24a9c4403c4656928eb6718bafe3060e9ecf",
         "simple-peer-files": "1.2.3"
     }
 }

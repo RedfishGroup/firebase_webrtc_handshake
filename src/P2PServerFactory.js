@@ -29,7 +29,6 @@ export function P2PServerFactory(options) {
             this.isListening = false
 
             this.id = 'server_' + Math.floor(Math.random() * 100000)
-            this.myID = this.id
             this.peerID = this.id
 
             this.stream = undefined
@@ -294,14 +293,14 @@ export function P2PServerFactory(options) {
                 }
                 for (var i in val.fromClient) {
                     var sig = val.fromClient[i]
-                    if (this.debug) console.log('signal: ', { sig })
+                    if (this.debug) console.log('signal: ', sig)
                     if (sig.type === 'offer') {
                         var mykey = ev.key
-                        var { serverID } = sig
+                        var { serverID, peerID } = sig
                         console.log('listener create channel: ', sig)
                         var channel = new Channel(
                             this.firebase.child(this.channelsRef, mykey),
-                            this._makePeer(serverID),
+                            this._makePeer(peerID),
                             this.firebase
                         )
                         this.connections = [...this.connections, channel]
@@ -364,7 +363,7 @@ export function P2PServerFactory(options) {
             this.fire('makePeer', undefined)
             var myoptions = {
                 initiator: false,
-                trickle: true,
+                trickle: false,
                 config: {
                     iceServers: this.iceServers,
                 },
@@ -390,7 +389,8 @@ export function P2PServerFactory(options) {
                 this.fire('data', { peer: p, data: data })
             })
             p.on('close', () => {
-                if (this.debug) console.log('server: connection closed', p)
+                if (this.debug)
+                    console.log('server: connection closed', p.peerID)
                 this._removeConnection(p)
                 this.fire('close', { peer: p })
             })

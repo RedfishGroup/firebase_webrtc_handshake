@@ -7,7 +7,7 @@ import nodeDatachannelPolyfill from 'node-datachannel/polyfill'
 import nodeDataChannel from 'node-datachannel'
 
 // Log Level
-nodeDataChannel.initLogger('Debug')
+// nodeDataChannel.initLogger('Debug')
 
 // import adapter from "webrtc-adapter/src/js/adapter_core.js";
 const { decode, encode } = require('msgpack-lite')

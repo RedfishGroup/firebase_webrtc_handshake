@@ -550,27 +550,6 @@ var settings = {
             url: 'stun:23.21.150.121',
             urls: 'stun:23.21.150.121',
         },
-        {
-            url: 'turn:global.turn.twilio.com:3478?transport=udp',
-            username:
-                'f98c05f3b1e0096319172bc9e94782fd417b5128f8921ed1b77ac9b4e73b3ce2',
-            urls: 'turn:global.turn.twilio.com:3478?transport=udp',
-            credential: '5eyxPwW/ubyxf0u1zuLhhqNdRxM3oFqGvYnxJw7uYxQ=',
-        },
-        {
-            url: 'turn:global.turn.twilio.com:3478?transport=tcp',
-            username:
-                'f98c05f3b1e0096319172bc9e94782fd417b5128f8921ed1b77ac9b4e73b3ce2',
-            urls: 'turn:global.turn.twilio.com:3478?transport=tcp',
-            credential: '5eyxPwW/ubyxf0u1zuLhhqNdRxM3oFqGvYnxJw7uYxQ=',
-        },
-        {
-            url: 'turn:global.turn.twilio.com:443?transport=tcp',
-            username:
-                'f98c05f3b1e0096319172bc9e94782fd417b5128f8921ed1b77ac9b4e73b3ce2',
-            urls: 'turn:global.turn.twilio.com:443?transport=tcp',
-            credential: '5eyxPwW/ubyxf0u1zuLhhqNdRxM3oFqGvYnxJw7uYxQ=',
-        },
     ],
     POLLING_FREQUENCY: 30000,
     debug: false,
@@ -848,7 +827,6 @@ function P2PServerFactory(options) {
             this.isListening = false;
 
             this.id = 'server_' + Math.floor(Math.random() * 100000);
-            this.myID = this.id;
             this.peerID = this.id;
 
             this.stream = undefined;
@@ -1111,14 +1089,14 @@ function P2PServerFactory(options) {
                 }
                 for (var i in val.fromClient) {
                     var sig = val.fromClient[i];
-                    if (this.debug) console.log('signal: ', { sig });
+                    if (this.debug) console.log('signal: ', sig);
                     if (sig.type === 'offer') {
                         var mykey = ev.key;
-                        var { serverID } = sig;
+                        var { serverID, peerID } = sig;
                         console.log('listener create channel: ', sig);
                         var channel = new Channel(
                             this.firebase.child(this.channelsRef, mykey),
-                            this._makePeer(serverID),
+                            this._makePeer(peerID),
                             this.firebase
                         );
                         this.connections = [...this.connections, channel];
@@ -1205,7 +1183,8 @@ function P2PServerFactory(options) {
                 this.fire('data', { peer: p, data: data });
             });
             p.on('close', () => {
-                if (this.debug) console.log('server: connection closed', p);
+                if (this.debug)
+                    console.log('server: connection closed', p.peerID);
                 this._removeConnection(p);
                 this.fire('close', { peer: p });
             });
@@ -1317,12 +1296,10 @@ function P2PClientFactory(options) {
             this.firebase = options.firebase;
 
             this.id =
-                options.peerID || 'client_' + Math.floor(Math.random() * 100000);
-            this.myID = this.id;
+                options.id || 'client_' + Math.floor(Math.random() * 100000);
             this.peerID = this.id;
-            this.serverID = options.serverID;
 
-            console.log('P2PClient: ', this);
+            console.log('P2PClient: ', this.id);
 
             this.ackID = 0;
             this.ackCallbacks = {};
@@ -1401,7 +1378,8 @@ function P2PClientFactory(options) {
                 type: 'ack',
                 data: {
                     ackID: this.ackID,
-                    peerID: this.serverID,
+                    peerID: this.peerID,
+                    serverID: this.serverID,
                     startDate: new Date().getTime(),
                     message,
                 },
@@ -1447,10 +1425,8 @@ function P2PClientFactory(options) {
         }
 
         connectToPeerID(id, callback = () => {}) {
+            this.serverID = id;
             this.connectionCallbacks.push(callback);
-            this.channelRef = this.firebase.child(this.channelsRef, this.id);
-            this.outRef = this.firebase.child(this.channelRef, 'fromClient');
-            this.inRef = this.firebase.child(this.channelRef, 'fromServer');
 
             this.getPeerList((err, peerList) => {
                 if (err) {
@@ -1466,7 +1442,7 @@ function P2PClientFactory(options) {
                     console.log('peerList: ', peerList);
                     this._notifyCallbacks('peer not defined');
                 } else {
-                    this.id = id;
+                    this.serverID = id;
                     this.serverRef = this.firebase.child(this.peerInfoRef, id);
                     this.firebase.onValue(
                         this.serverRef,
@@ -1478,7 +1454,8 @@ function P2PClientFactory(options) {
                                 config: {
                                     iceServers: this.iceServers,
                                 },
-                                peerID: id,
+                                peerID: this.peerID,
+                                serverID: this.serverID,
                             };
 
                             if (this.isStream) {
@@ -1502,12 +1479,7 @@ function P2PClientFactory(options) {
                                     if (this.debug) {
                                         console.log(
                                             'client received candidate from webrtc',
-                                            data,
-                                            {
-                                                outRef: this.outRef,
-                                                channelsRef: this.channelsRef,
-                                                channelRef: this.channelRef,
-                                            }
+                                            data
                                         );
                                     }
                                     this.firebase.push(this.outRef, data);
@@ -1565,14 +1537,19 @@ function P2PClientFactory(options) {
 
         _createChannel(offer) {
             offer.peerID = this.peerID;
-            offer.myID = this.myID;
             offer.serverID = this.serverID;
             if (this.debug)
-                console.log('Got create channel with offer: ', offer, this);
+                console.log('Got create channel with offer: ', offer, this.id);
 
-            this.firebase.push(this.channelRef, {
-                fromClient: [offer],
-            });
+            this.channelRef = this.firebase.push(
+                this.firebase.child(this.channelsRef, this.serverID),
+                {
+                    fromClient: [offer],
+                }
+            );
+            this.outRef = this.firebase.child(this.channelRef, 'fromClient');
+            this.inRef = this.firebase.child(this.channelRef, 'fromServer');
+
             this.firebase.onChildAdded(this.inRef, (ev) => {
                 var val = ev.val();
                 if (this.debug) console.log(val, 'channel message, client');
@@ -1591,7 +1568,7 @@ function P2PClientFactory(options) {
                         }
                         if (this.debug) console.log('signal start negotiation');
                         this.lastNegotiationState = state;
-                        if (this.debug) console.log('answer', this);
+                        if (this.debug) console.log('answer', this.id);
                         if (!this.connection.destroyed)
                             this.connection.signal(val);
                     }, 50); // a slight delay helps establish connection, I think.

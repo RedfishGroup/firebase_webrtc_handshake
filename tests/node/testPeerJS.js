@@ -1,5 +1,3 @@
-// import {P2PServer} from "../src/P2PServer.js"
-// import {P2PClient} from "../src/P2PClient.js"
 const { P2PClient, P2PServer } = require('../../dist/build.full.cjs')
 const { firebase, getPeersRef } = require('./firebase.js')
 
@@ -23,7 +21,7 @@ const settings = {
 
 //helper function
 function sendToDiv(id, text) {
-    console.log('sedn', { id, text })
+    console.log('sTD', { id, text })
 }
 
 //
@@ -39,7 +37,7 @@ const server = new P2PServer({
     database,
     ICE_SERVERS: settings.ICE_SERVERS,
     treeTrimmingRef,
-    debug: false,
+    debug: true,
 })
 
 sendToDiv('Server: ', server.id)
@@ -48,7 +46,7 @@ server.on('connect', function (args) {
     sendToDiv('server', 'client connected to the server')
 })
 
-server.on('data', function (args) {
+server.on('dataBig', function (args) {
     sendToDiv('server', 'server recieved data:' + args.data)
     //capitalize the response
     try {
@@ -68,43 +66,70 @@ server.on('error', (err) => {
 function ab2str(buf) {
     return String.fromCharCode.apply(null, new Uint16Array(buf))
 }
-// connect to a server twice
-//
-//    the first peer
-const client1 = new P2PClient({
-    isStream: false,
-    firebase,
-    database,
-    serverID: server.id,
-    myID: server.id,
-    peerID: server.id,
-    ICE_SERVERS: settings.ICE_SERVERS,
-    debug: false,
-})
-client1.connectToPeerID(server.id, function (err, connection) {
-    sendToDiv(client1.id, connection)
-    if (err) console.log('ERRPR')
-    connection.on('connect', function () {
-        sendToDiv('client1', 'CONNECTED')
-        connection.send('hello world')
-        sendToDiv('client1', 'client 1 sent data: hello world')
+
+function createClientAndConnect() {
+    const client1 = new P2PClient({
+        isStream: false,
+        firebase,
+        database,
+        ICE_SERVERS: settings.ICE_SERVERS,
+        debug: true,
     })
-    connection.on('data', function (data) {
-        sendToDiv('client1', 'client 1 recieved data:' + data)
+    client1.connectToPeerID(server.id, function (err, connection) {
+        sendToDiv(client1.id, 'connection')
+
+        setTimeout(() => {
+            client1.sendAck('help!')
+        }, 1000)
+
+        if (err) console.log('ERRPR')
+        connection.on('connect', function () {
+            sendToDiv('client1', 'CONNECTED')
+            connection.send('hello world')
+            sendToDiv('client1', 'client 1 sent data: hello world')
+        })
+        connection.on('data', function (data) {
+            sendToDiv('client1', 'client 1 recieved data:' + data)
+        })
+        connection.on('error', (err) => {
+            console.log('error', err)
+        })
     })
-    connection.on('error', (err) => {
+
+    sendToDiv(client1.id, 'started')
+
+    client1.on('error', (err) => {
         console.log('error', err)
     })
-})
+    client1.on('close', (err) => {
+        console.log('lose', err)
+    })
 
-sendToDiv(client1.id, 'started')
+    //
+    //  Just test if there are more peers
+    //
+    client1.getPeerList(function (err, val) {
+        var count = 0
+        for (var i in val) {
+            var server = val[i]
+            count++
+        }
+        console.assert(!err, err)
+        console.assert(count > 0, "No servers. That shouldn't happen")
+    })
 
-client1.on('error', (err) => {
-    console.log('error', err)
-})
-client1.on('close', (err) => {
-    console.log('lose', err)
-})
+    return client1
+}
+
+setTimeout(() => {
+    console.log('new client: ', createClientAndConnect().id)
+}, 5000)
+// setTimeout(() => {
+//     console.log('new client: ', createClientAndConnect().id)
+// }, 10000)
+// setTimeout(() => {
+//     console.log('new client: ', createClientAndConnect().id)
+// }, 15000)
 
 // // the second peer
 // // this one is using the evented events
@@ -112,7 +137,6 @@ client1.on('close', (err) => {
 //     isStream: false,
 //     firebase,
 //     database,
-//     myID: server.id,
 //     serverID: server.id,
 //     ICE_SERVERS: settings.ICE_SERVERS,
 // })
@@ -129,20 +153,6 @@ client1.on('close', (err) => {
 // })
 
 // //
-// //  Just test if there are more peers
-// //
-// client1.getPeerList(function (err, val) {
-//     var count = 0
-//     for (var i in val) {
-//         var server = val[i]
-//         count++
-//     }
-//     console.assert(!err, err)
-//     console.assert(count > 0, "No servers. That shouldn't happen")
-// })
-
-
-// //
 // // test if blob support is in yet
 // //
 // function testBlobSupport() {
@@ -150,7 +160,6 @@ client1.on('close', (err) => {
 //         isStream: false,
 //         firebase,
 //         database,
-//         myID: server.id,
 //         serverID: server.id,
 //         ICE_SERVERS: settings.ICE_SERVERS,
 //     })

@@ -18,12 +18,10 @@ export function P2PClientFactory(options) {
             this.firebase = options.firebase
 
             this.id =
-                options.peerID || 'client_' + Math.floor(Math.random() * 100000)
-            this.myID = this.id
+                options.id || 'client_' + Math.floor(Math.random() * 100000)
             this.peerID = this.id
-            this.serverID = options.serverID
 
-            console.log('P2PClient: ', this)
+            console.log('P2PClient: ', this.id)
 
             this.ackID = 0
             this.ackCallbacks = {}
@@ -102,7 +100,8 @@ export function P2PClientFactory(options) {
                 type: 'ack',
                 data: {
                     ackID: this.ackID,
-                    peerID: this.serverID,
+                    peerID: this.peerID,
+                    serverID: this.serverID,
                     startDate: new Date().getTime(),
                     message,
                 },
@@ -148,10 +147,8 @@ export function P2PClientFactory(options) {
         }
 
         connectToPeerID(id, callback = () => {}) {
+            this.serverID = id
             this.connectionCallbacks.push(callback)
-            this.channelRef = this.firebase.child(this.channelsRef, this.id)
-            this.outRef = this.firebase.child(this.channelRef, 'fromClient')
-            this.inRef = this.firebase.child(this.channelRef, 'fromServer')
 
             this.getPeerList((err, peerList) => {
                 if (err) {
@@ -167,7 +164,7 @@ export function P2PClientFactory(options) {
                     console.log('peerList: ', peerList)
                     this._notifyCallbacks('peer not defined')
                 } else {
-                    this.id = id
+                    this.serverID = id
                     this.serverRef = this.firebase.child(this.peerInfoRef, id)
                     this.firebase.onValue(
                         this.serverRef,
@@ -175,11 +172,12 @@ export function P2PClientFactory(options) {
                             var sval = ev1.val()
                             let pOpts = {
                                 initiator: true,
-                                trickle: true,
+                                trickle: false,
                                 config: {
                                     iceServers: this.iceServers,
                                 },
-                                peerID: id,
+                                peerID: this.peerID,
+                                serverID: this.serverID,
                             }
 
                             if (this.isStream) {
@@ -203,12 +201,7 @@ export function P2PClientFactory(options) {
                                     if (this.debug) {
                                         console.log(
                                             'client received candidate from webrtc',
-                                            data,
-                                            {
-                                                outRef: this.outRef,
-                                                channelsRef: this.channelsRef,
-                                                channelRef: this.channelRef,
-                                            }
+                                            data
                                         )
                                     }
                                     this.firebase.push(this.outRef, data)
@@ -266,14 +259,19 @@ export function P2PClientFactory(options) {
 
         _createChannel(offer) {
             offer.peerID = this.peerID
-            offer.myID = this.myID
             offer.serverID = this.serverID
             if (this.debug)
-                console.log('Got create channel with offer: ', offer, this)
+                console.log('Got create channel with offer: ', offer, this.id)
 
-            this.firebase.push(this.channelRef, {
-                fromClient: [offer],
-            })
+            this.channelRef = this.firebase.push(
+                this.firebase.child(this.channelsRef, this.serverID),
+                {
+                    fromClient: [offer],
+                }
+            )
+            this.outRef = this.firebase.child(this.channelRef, 'fromClient')
+            this.inRef = this.firebase.child(this.channelRef, 'fromServer')
+
             this.firebase.onChildAdded(this.inRef, (ev) => {
                 var val = ev.val()
                 if (this.debug) console.log(val, 'channel message, client')
@@ -292,7 +290,7 @@ export function P2PClientFactory(options) {
                         }
                         if (this.debug) console.log('signal start negotiation')
                         this.lastNegotiationState = state
-                        if (this.debug) console.log('answer', this)
+                        if (this.debug) console.log('answer', this.id)
                         if (!this.connection.destroyed)
                             this.connection.signal(val)
                     }, 50) // a slight delay helps establish connection, I think.
