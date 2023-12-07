@@ -2992,6 +2992,11 @@ function PeerBinaryFactory(options) {
                 this.emit('dataBig', val);
             };
             this.peerID = options.peerID;
+            this.serverID = options.serverID;
+            console.log('Peer Binary created: ', {
+                peerID: this.peerID,
+                serverID: this.serverID,
+            });
         }
 
         //want to overide these 2 functions I think.
