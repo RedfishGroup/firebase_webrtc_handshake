@@ -1309,7 +1309,9 @@ function P2PClientFactory(options) {
             this.firebase = options.firebase;
 
             this.id =
-                options.id || 'client_' + Math.floor(Math.random() * 100000);
+                options.id ||
+                options.peerID ||
+                'client_' + Math.floor(Math.random() * 100000);
             this.peerID = this.id;
 
             console.log('P2PClient: ', this.id);
@@ -1350,7 +1352,8 @@ function P2PClientFactory(options) {
         }
 
         getPeerList(callback) {
-            if (this.debug) console.log('Database: ', this.peerInfoRef);
+            if (this.debug)
+                console.log('Database: ', this.peerInfoRef.toString());
             return getPeerList(this.peerInfoRef, callback, this.firebase)
         }
 
@@ -1438,6 +1441,7 @@ function P2PClientFactory(options) {
         }
 
         connectToPeerID(id, callback = () => {}) {
+            console.log('connectToPeerID: ', id, this.serverID);
             this.serverID = id;
             this.connectionCallbacks.push(callback);
 
