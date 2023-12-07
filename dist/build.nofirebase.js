@@ -1,3 +1,5 @@
+import { serverTimestamp } from 'firebase/database';
+
 function _mergeNamespaces(n, m) {
     m.forEach(function (e) {
         e && typeof e !== 'string' && !Array.isArray(e) && Object.keys(e).forEach(function (k) {
@@ -1096,71 +1098,72 @@ function P2PServerFactory(options) {
                     );
                     return
                 }
-                var val = ev.val();
-                if (this.debug) {
-                    console.log(val, 'new child');
-                }
-                for (var i in val.fromClient) {
-                    var sig = val.fromClient[i];
-                    if (this.debug) console.log('signal: ', sig);
-                    if (sig.type === 'offer') {
-                        var mykey = ev.key;
-                        var { serverID, peerID } = sig;
-                        console.log('listener create channel: ', sig);
-                        var channel = new Channel(
-                            this.firebase.child(this.channelsRef, mykey),
-                            this._makePeer(peerID),
-                            this.firebase
-                        );
-                        this.connections = [...this.connections, channel];
-                        this.fire('addConnection', channel);
+                const unsubscribe = this.firebase.onChildAdded(
+                    this.firebase.child(ev.ref, 'fromClient'),
+                    (snapshot) => {
+                        var sig = snapshot.val();
+                        if (this.debug) console.log('signal: ', sig);
+                        if (sig.type === 'offer') {
+                            unsubscribe();
+                            var mykey = ev.key;
+                            var { serverID, peerID } = sig;
+                            console.log('listener create channel: ', sig);
+                            var channel = new Channel(
+                                this.firebase.child(this.channelsRef, mykey),
+                                this._makePeer(peerID),
+                                this.firebase
+                            );
+                            this.connections = [...this.connections, channel];
+                            this.fire('addConnection', channel);
 
-                        // on message through webRTC (simple-peer)
-                        var answerSentYet = false;
-                        channel.peer.on('signal', (data) => {
-                            if (data.type === 'answer') {
-                                if (answerSentYet) {
+                            // on message through webRTC (simple-peer)
+                            var answerSentYet = false;
+                            channel.peer.on('signal', (data) => {
+                                if (data.type === 'answer') {
+                                    if (answerSentYet) {
+                                        console.warn(
+                                            'Why am i trying to send multiple answers'
+                                        );
+                                    }
+                                    this.firebase.push(channel.outRef, data);
+                                    answerSentYet = true;
+                                } else if (data.candidate) {
+                                    this.firebase.push(channel.outRef, data);
+                                } else {
                                     console.warn(
-                                        'Why am i trying to send multiple answers'
+                                        data,
+                                        'unexpected message from WebRTC'
                                     );
                                 }
-                                this.firebase.push(channel.outRef, data);
-                                answerSentYet = true;
-                            } else if (data.candidate) {
-                                this.firebase.push(channel.outRef, data);
-                            } else {
-                                console.warn(
-                                    data,
-                                    'unexpected message from WebRTC'
-                                );
-                            }
-                        });
+                            });
 
-                        // on message through firebase
-                        this.firebase.onChildAdded(channel.inRef, (ev2) => {
-                            var val2 = ev2.val();
-                            if (this.debug) {
-                                console.log(val2, 'child_added -- firebase');
-                            }
-                            if (val2.candidate) {
+                            // on message through firebase
+                            this.firebase.onChildAdded(channel.inRef, (ev2) => {
+                                var val2 = ev2.val();
                                 if (this.debug) {
-                                    console.log(
+                                    console.log(val2, 'child_added -- firebase');
+                                }
+                                if (val2.candidate) {
+                                    if (this.debug) {
+                                        console.log(
+                                            val2,
+                                            'server got candidate from firebase'
+                                        );
+                                    }
+                                    channel.peer.signal(val2);
+                                } else if (val2.type === 'offer') {
+                                    channel.peer.signal(val2);
+                                } else if (val2.type === 'answer') ; else {
+                                    console.warn(
                                         val2,
-                                        'server got candidate from firebase'
+                                        'unexpected message from Firebase'
                                     );
                                 }
-                                channel.peer.signal(val2);
-                            } else if (val2.type === 'offer') {
-                                channel.peer.signal(val2);
-                            } else if (val2.type === 'answer') ; else {
-                                console.warn(
-                                    val2,
-                                    'unexpected message from Firebase'
-                                );
-                            }
-                        });
-                    }
-                }
+                            });
+                        }
+                    },
+                    {}
+                );
             });
         }
 
@@ -1170,7 +1173,7 @@ function P2PServerFactory(options) {
             this.fire('makePeer', undefined);
             var myoptions = {
                 initiator: false,
-                trickle: false,
+                trickle: true,
                 config: {
                     iceServers: this.iceServers,
                 },
@@ -1446,6 +1449,18 @@ function P2PClientFactory(options) {
             this.serverID = id;
             this.connectionCallbacks.push(callback);
 
+            let candidates = [];
+            let offer = null;
+
+            this.channelRef = this.firebase.push(
+                this.firebase.child(this.channelsRef, this.serverID),
+                {
+                    initialized: serverTimestamp(),
+                }
+            );
+            this.outRef = this.firebase.child(this.channelRef, 'fromClient');
+            this.inRef = this.firebase.child(this.channelRef, 'fromServer');
+
             this.getPeerList((err, peerList) => {
                 if (err) {
                     console.error(err);
@@ -1467,7 +1482,7 @@ function P2PClientFactory(options) {
                             ev1.val();
                             let pOpts = {
                                 initiator: true,
-                                trickle: false,
+                                trickle: true,
                                 config: {
                                     iceServers: this.iceServers,
                                 },
@@ -1492,6 +1507,7 @@ function P2PClientFactory(options) {
                             p.on('signal', (data) => {
                                 if (data.type == 'offer') {
                                     this._createChannel(data);
+                                    offer = data;
                                 } else if (data.candidate) {
                                     if (this.debug) {
                                         console.log(
@@ -1499,7 +1515,19 @@ function P2PClientFactory(options) {
                                             data
                                         );
                                     }
-                                    this.firebase.push(this.outRef, data);
+                                    console.log('this outRef: ', this.outRef);
+                                    if (offer) {
+                                        this.firebase.push(this.outRef, data);
+                                        offer = data;
+                                        if (candidates.length > 0)
+                                            candidates.forEach((candidate) => {
+                                                this.firebase.push(
+                                                    this.outRef,
+                                                    candidate
+                                                );
+                                            });
+                                        candidates = [];
+                                    } else candidates.push(data);
                                 } else {
                                     console.warn(
                                         'Client received unexpected signal through WebRTC:',
@@ -1555,17 +1583,10 @@ function P2PClientFactory(options) {
         _createChannel(offer) {
             offer.peerID = this.peerID;
             offer.serverID = this.serverID;
-            if (this.debug)
+            if (this.debug) {
                 console.log('Got create channel with offer: ', offer, this.id);
-
-            this.channelRef = this.firebase.push(
-                this.firebase.child(this.channelsRef, this.serverID),
-                {
-                    fromClient: [offer],
-                }
-            );
-            this.outRef = this.firebase.child(this.channelRef, 'fromClient');
-            this.inRef = this.firebase.child(this.channelRef, 'fromServer');
+            }
+            this.firebase.push(this.outRef, offer);
 
             this.firebase.onChildAdded(this.inRef, (ev) => {
                 var val = ev.val();

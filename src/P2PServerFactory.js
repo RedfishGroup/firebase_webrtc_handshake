@@ -287,73 +287,74 @@ export function P2PServerFactory(options) {
                     )
                     return
                 }
-                var val = ev.val()
-                if (this.debug) {
-                    console.log(val, 'new child')
-                }
-                for (var i in val.fromClient) {
-                    var sig = val.fromClient[i]
-                    if (this.debug) console.log('signal: ', sig)
-                    if (sig.type === 'offer') {
-                        var mykey = ev.key
-                        var { serverID, peerID } = sig
-                        console.log('listener create channel: ', sig)
-                        var channel = new Channel(
-                            this.firebase.child(this.channelsRef, mykey),
-                            this._makePeer(peerID),
-                            this.firebase
-                        )
-                        this.connections = [...this.connections, channel]
-                        this.fire('addConnection', channel)
+                const unsubscribe = this.firebase.onChildAdded(
+                    this.firebase.child(ev.ref, 'fromClient'),
+                    (snapshot) => {
+                        var sig = snapshot.val()
+                        if (this.debug) console.log('signal: ', sig)
+                        if (sig.type === 'offer') {
+                            unsubscribe()
+                            var mykey = ev.key
+                            var { serverID, peerID } = sig
+                            console.log('listener create channel: ', sig)
+                            var channel = new Channel(
+                                this.firebase.child(this.channelsRef, mykey),
+                                this._makePeer(peerID),
+                                this.firebase
+                            )
+                            this.connections = [...this.connections, channel]
+                            this.fire('addConnection', channel)
 
-                        // on message through webRTC (simple-peer)
-                        var answerSentYet = false
-                        channel.peer.on('signal', (data) => {
-                            if (data.type === 'answer') {
-                                if (answerSentYet) {
+                            // on message through webRTC (simple-peer)
+                            var answerSentYet = false
+                            channel.peer.on('signal', (data) => {
+                                if (data.type === 'answer') {
+                                    if (answerSentYet) {
+                                        console.warn(
+                                            'Why am i trying to send multiple answers'
+                                        )
+                                    }
+                                    this.firebase.push(channel.outRef, data)
+                                    answerSentYet = true
+                                } else if (data.candidate) {
+                                    this.firebase.push(channel.outRef, data)
+                                } else {
                                     console.warn(
-                                        'Why am i trying to send multiple answers'
+                                        data,
+                                        'unexpected message from WebRTC'
                                     )
                                 }
-                                this.firebase.push(channel.outRef, data)
-                                answerSentYet = true
-                            } else if (data.candidate) {
-                                this.firebase.push(channel.outRef, data)
-                            } else {
-                                console.warn(
-                                    data,
-                                    'unexpected message from WebRTC'
-                                )
-                            }
-                        })
+                            })
 
-                        // on message through firebase
-                        this.firebase.onChildAdded(channel.inRef, (ev2) => {
-                            var val2 = ev2.val()
-                            if (this.debug) {
-                                console.log(val2, 'child_added -- firebase')
-                            }
-                            if (val2.candidate) {
+                            // on message through firebase
+                            this.firebase.onChildAdded(channel.inRef, (ev2) => {
+                                var val2 = ev2.val()
                                 if (this.debug) {
-                                    console.log(
+                                    console.log(val2, 'child_added -- firebase')
+                                }
+                                if (val2.candidate) {
+                                    if (this.debug) {
+                                        console.log(
+                                            val2,
+                                            'server got candidate from firebase'
+                                        )
+                                    }
+                                    channel.peer.signal(val2)
+                                } else if (val2.type === 'offer') {
+                                    channel.peer.signal(val2)
+                                } else if (val2.type === 'answer') {
+                                    //ignore this. It was probably from me.
+                                } else {
+                                    console.warn(
                                         val2,
-                                        'server got candidate from firebase'
+                                        'unexpected message from Firebase'
                                     )
                                 }
-                                channel.peer.signal(val2)
-                            } else if (val2.type === 'offer') {
-                                channel.peer.signal(val2)
-                            } else if (val2.type === 'answer') {
-                                //ignore this. It was probably from me.
-                            } else {
-                                console.warn(
-                                    val2,
-                                    'unexpected message from Firebase'
-                                )
-                            }
-                        })
-                    }
-                }
+                            })
+                        }
+                    },
+                    {}
+                )
             })
         }
 
@@ -363,7 +364,7 @@ export function P2PServerFactory(options) {
             this.fire('makePeer', undefined)
             var myoptions = {
                 initiator: false,
-                trickle: false,
+                trickle: true,
                 config: {
                     iceServers: this.iceServers,
                 },

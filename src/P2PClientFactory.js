@@ -1,6 +1,7 @@
 import { settings } from './settings.js'
 import { Evented } from './Evented.js'
 import { getPeerList as _getPeerList } from './peerDatabaseUtils.js'
+import { serverTimestamp } from 'firebase/database'
 
 export function P2PClientFactory(options) {
     const { PeerBinary } = options
@@ -154,6 +155,18 @@ export function P2PClientFactory(options) {
             this.serverID = id
             this.connectionCallbacks.push(callback)
 
+            let candidates = []
+            let offer = null
+
+            this.channelRef = this.firebase.push(
+                this.firebase.child(this.channelsRef, this.serverID),
+                {
+                    initialized: serverTimestamp(),
+                }
+            )
+            this.outRef = this.firebase.child(this.channelRef, 'fromClient')
+            this.inRef = this.firebase.child(this.channelRef, 'fromServer')
+
             this.getPeerList((err, peerList) => {
                 if (err) {
                     console.error(err)
@@ -175,7 +188,7 @@ export function P2PClientFactory(options) {
                             var sval = ev1.val()
                             let pOpts = {
                                 initiator: true,
-                                trickle: false,
+                                trickle: true,
                                 config: {
                                     iceServers: this.iceServers,
                                 },
@@ -200,6 +213,7 @@ export function P2PClientFactory(options) {
                             p.on('signal', (data) => {
                                 if (data.type == 'offer') {
                                     this._createChannel(data)
+                                    offer = data
                                 } else if (data.candidate) {
                                     if (this.debug) {
                                         console.log(
@@ -207,7 +221,19 @@ export function P2PClientFactory(options) {
                                             data
                                         )
                                     }
-                                    this.firebase.push(this.outRef, data)
+                                    console.log('this outRef: ', this.outRef)
+                                    if (offer) {
+                                        this.firebase.push(this.outRef, data)
+                                        offer = data
+                                        if (candidates.length > 0)
+                                            candidates.forEach((candidate) => {
+                                                this.firebase.push(
+                                                    this.outRef,
+                                                    candidate
+                                                )
+                                            })
+                                        candidates = []
+                                    } else candidates.push(data)
                                 } else {
                                     console.warn(
                                         'Client received unexpected signal through WebRTC:',
@@ -263,17 +289,10 @@ export function P2PClientFactory(options) {
         _createChannel(offer) {
             offer.peerID = this.peerID
             offer.serverID = this.serverID
-            if (this.debug)
+            if (this.debug) {
                 console.log('Got create channel with offer: ', offer, this.id)
-
-            this.channelRef = this.firebase.push(
-                this.firebase.child(this.channelsRef, this.serverID),
-                {
-                    fromClient: [offer],
-                }
-            )
-            this.outRef = this.firebase.child(this.channelRef, 'fromClient')
-            this.inRef = this.firebase.child(this.channelRef, 'fromServer')
+            }
+            this.firebase.push(this.outRef, offer)
 
             this.firebase.onChildAdded(this.inRef, (ev) => {
                 var val = ev.val()
