@@ -1174,7 +1174,8 @@ function P2PServerFactory(options) {
                 config: {
                     iceServers: this.iceServers,
                 },
-                peerID,
+                peerID: peerID,
+                serverID: this.id,
             };
             if (this.stream) myoptions.stream = this.stream;
             if (this.PER_CHUNK_WAIT !== undefined)
