@@ -1446,7 +1446,6 @@ function P2PClientFactory(options) {
                     console.log('peerList: ', peerList);
                     this._notifyCallbacks('peer not defined');
                 } else {
-                    this.serverID = id;
                     this.serverRef = this.firebase.child(this.peerInfoRef, id);
                     this.firebase.onValue(
                         this.serverRef,
