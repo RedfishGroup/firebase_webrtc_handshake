@@ -1482,7 +1482,10 @@ function P2PClientFactory(options) {
                                             data
                                         );
                                     }
-                                    console.log('this outRef: ', this.outRef);
+                                    console.log(
+                                        'this outRef: ',
+                                        this.outRef?.toString()
+                                    );
                                     if (offer) {
                                         this.firebase.push(this.outRef, data);
                                         offer = data;
@@ -1494,7 +1497,12 @@ function P2PClientFactory(options) {
                                                 );
                                             });
                                         candidates = [];
-                                    } else candidates.push(data);
+                                    } else {
+                                        console.log(
+                                            'storing candidate until we have an offer'
+                                        );
+                                        candidates.push(data);
+                                    }
                                 } else {
                                     console.warn(
                                         'Client received unexpected signal through WebRTC:',
