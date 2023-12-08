@@ -158,15 +158,6 @@ export function P2PClientFactory(options) {
             let candidates = []
             let offer = null
 
-            this.channelRef = this.firebase.push(
-                this.firebase.child(this.channelsRef, this.serverID),
-                {
-                    initialized: serverTimestamp(),
-                }
-            )
-            this.outRef = this.firebase.child(this.channelRef, 'fromClient')
-            this.inRef = this.firebase.child(this.channelRef, 'fromServer')
-
             this.getPeerList((err, peerList) => {
                 if (err) {
                     console.error(err)
@@ -292,7 +283,17 @@ export function P2PClientFactory(options) {
             if (this.debug) {
                 console.log('Got create channel with offer: ', offer, this.id)
             }
-            this.firebase.push(this.outRef, offer)
+
+            this.channelRef = this.firebase.push(
+                this.firebase.child(this.channelsRef, this.serverID),
+                {
+                    initialized: serverTimestamp(),
+                    fromClient: [offer],
+                }
+            )
+            this.outRef = this.firebase.child(this.channelRef, 'fromClient')
+            this.inRef = this.firebase.child(this.channelRef, 'fromServer')
+
 
             this.firebase.onChildAdded(this.inRef, (ev) => {
                 var val = ev.val()
