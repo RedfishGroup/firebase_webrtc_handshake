@@ -19,7 +19,6 @@ import {
 
 import { PeerBinaryFactory } from './PeerBinary.js'
 
-
 setEncode(msgPack.encode)
 
 const UnChunker = UnChunkerFactory({ decode: msgPack.decode })
@@ -38,4 +37,5 @@ export {
     Channel,
     recursivelyEncodeBlobs,
     recursivelyDecodeBlobs,
+    Peer as SimplePeer,
 }
