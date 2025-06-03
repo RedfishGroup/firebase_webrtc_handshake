@@ -41,7 +41,7 @@
     },
     "dependencies": {
         "fast-equals": "5.0.1",
-        "node-datachannel": "https://github.com/stigmergic/node-datachannel.git#737d24a9c4403c4656928eb6718bafe3060e9ecf",
+        "node-datachannel": "https://github.com/stigmergic/node-datachannel.git#b4d09282e8527bb2bb37b70091d049b3aacc6447",
         "simple-peer-files": "1.2.3"
     }
 }
